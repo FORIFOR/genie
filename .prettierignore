@@ -18,6 +18,9 @@ docs/ux-benchmark/
 artifacts/ux/
 docs/golden-screenshots/
 docs/evidence/
+# status-audit.md is generated audit evidence and was already unformatted on main;
+# preserve its captured wording instead of making unrelated design PRs rewrite it.
+status-audit.md
 # UI Atlas also contains verbatim judge output and build.py/selftest-owned files.
 # Keep the same evidence-preservation rule as ux-benchmark; authored docs remain checked.
 docs/ui-atlas/review/
