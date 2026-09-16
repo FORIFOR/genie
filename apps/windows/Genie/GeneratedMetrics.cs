@@ -105,18 +105,18 @@ public static class Motion
 /// <summary>§17.1 カラートークン（Light/Dark, #AARRGGBB は不要な #RRGGBB 文字列）。</summary>
 public static class Palette
 {
-    public const string CanvasLight = "#F7F8FA";
-    public const string CanvasDark = "#0F1115";
-    public const string SurfaceLight = "#FFFFFF";
-    public const string SurfaceDark = "#171A20";
-    public const string TextLight = "#17191D";
-    public const string TextDark = "#F2F4F7";
-    public const string MutedLight = "#667085";
-    public const string MutedDark = "#98A2B3";
-    public const string BorderLight = "#E6E8EC";
-    public const string BorderDark = "#2B3038";
-    public const string AccentLight = "#5B4CF0";
-    public const string AccentDark = "#8A7DFF";
+    public const string CanvasLight = "#F6F5F0";
+    public const string CanvasDark = "#171A17";
+    public const string SurfaceLight = "#FFFEFA";
+    public const string SurfaceDark = "#202420";
+    public const string TextLight = "#20251F";
+    public const string TextDark = "#F2F0EA";
+    public const string MutedLight = "#62675F";
+    public const string MutedDark = "#A7ADA6";
+    public const string BorderLight = "#D8DAD2";
+    public const string BorderDark = "#303530";
+    public const string AccentLight = "#A83B2F";
+    public const string AccentDark = "#D77467";
     public const string SuccessLight = "#18794E";
     public const string SuccessDark = "#3CCB7F";
     public const string WarningLight = "#B54708";
