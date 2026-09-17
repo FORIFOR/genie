@@ -5,7 +5,7 @@
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { spawn, execFile } from 'node:child_process';
-import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { access, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { promisify } from 'node:util';
@@ -213,32 +213,42 @@ try {
     config = JSON.parse(await readFile(join(stateDir, 'runtime.json'), 'utf8').catch(() => 'null'));
   if (config) {
     validateConfig(config);
-    const contextName = (await exec('docker', ['context', 'show'], { env })).stdout.trim();
-    const host = (
+    const composePath = join(stateDir, 'compose.json');
+    // A clean `start-local-preview ... stop` may already remove its generated
+    // compose file after bringing the disposable project down. Do not turn that
+    // successful cleanup into a CI failure by invoking Docker with a vanished -f.
+    const composeStillExists = await access(composePath).then(
+      () => true,
+      () => false,
+    );
+    if (composeStillExists) {
+      const contextName = (await exec('docker', ['context', 'show'], { env })).stdout.trim();
+      const host = (
+        await exec(
+          'docker',
+          ['context', 'inspect', contextName, '--format', '{{.Endpoints.docker.Host}}'],
+          { env },
+        )
+      ).stdout.trim();
+      assert.ok(host.startsWith('unix://'));
       await exec(
         'docker',
-        ['context', 'inspect', contextName, '--format', '{{.Endpoints.docker.Host}}'],
-        { env },
-      )
-    ).stdout.trim();
-    assert.ok(host.startsWith('unix://'));
-    await exec(
-      'docker',
-      [
-        '--context',
-        contextName,
-        'compose',
-        '--env-file',
-        '/dev/null',
-        '-p',
-        config.project,
-        '-f',
-        join(stateDir, 'compose.json'),
-        'down',
-        '--volumes',
-      ],
-      { env: { ...env, GENIE_PREVIEW_DB_PASSWORD: config.adminPassword }, timeout: 60_000 },
-    );
+        [
+          '--context',
+          contextName,
+          'compose',
+          '--env-file',
+          '/dev/null',
+          '-p',
+          config.project,
+          '-f',
+          composePath,
+          'down',
+          '--volumes',
+        ],
+        { env: { ...env, GENIE_PREVIEW_DB_PASSWORD: config.adminPassword }, timeout: 60_000 },
+      );
+    }
   }
   fixture.closeAllConnections();
   await new Promise((yes) => fixture.close(yes));
