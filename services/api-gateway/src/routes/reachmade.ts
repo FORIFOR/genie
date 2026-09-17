@@ -4,6 +4,9 @@ import {
   CapabilityRouter,
   CapabilityWorkflowRunner,
   LaunchloomCapability,
+  type CapabilityIntent,
+  type CapabilityWorkflowRequest,
+  type CapabilityWorkflowStep,
 } from '@genie/service-capabilities';
 import type { App } from '../fastify.js';
 import { requirePrincipal } from '../auth/middleware.js';
@@ -34,6 +37,38 @@ const Workflow = z.object({
   steps: z.array(WorkflowStep).min(1).max(12),
   maxWaitMs: z.number().int().positive().max(60 * 60 * 1000).optional(),
 }).strict();
+
+type ParsedIntent = z.infer<typeof Intent>;
+type ParsedWorkflow = z.infer<typeof Workflow>;
+
+function normalizeIntent(value: ParsedIntent): CapabilityIntent {
+  return {
+    id: value.id,
+    objective: value.objective,
+    ...(value.preferredCapability === undefined
+      ? {}
+      : { preferredCapability: value.preferredCapability }),
+    ...(value.inputs === undefined ? {} : { inputs: value.inputs }),
+    ...(value.maxWaitMs === undefined ? {} : { maxWaitMs: value.maxWaitMs }),
+    ...(value.dryRun === undefined ? {} : { dryRun: value.dryRun }),
+  };
+}
+
+function normalizeWorkflow(value: ParsedWorkflow): CapabilityWorkflowRequest {
+  const steps: CapabilityWorkflowStep[] = value.steps.map((step) => ({
+    id: step.id,
+    capabilityId: step.capabilityId,
+    ...(step.inputs === undefined ? {} : { inputs: step.inputs }),
+    ...(step.dryRun === undefined ? {} : { dryRun: step.dryRun }),
+  }));
+  return {
+    id: value.id,
+    objective: value.objective,
+    steps,
+    ...(value.inputs === undefined ? {} : { inputs: value.inputs }),
+    ...(value.maxWaitMs === undefined ? {} : { maxWaitMs: value.maxWaitMs }),
+  };
+}
 
 export function reachmadeRouterFromEnv(env: NodeJS.ProcessEnv = process.env): CapabilityRouter {
   const capabilities = [];
@@ -80,7 +115,7 @@ export function registerReachmadeRoutes(app: App, deps: ReachmadeRouteDeps): voi
   app.post('/v1/reachmade/route', async (request, reply) => {
     requirePrincipal();
     if (deps.router.list().length === 0) return unavailable(reply);
-    const intent = Intent.parse(request.body ?? {});
+    const intent = normalizeIntent(Intent.parse(request.body ?? {}));
     const decision = deps.router.route(intent);
     return {
       capability: {
@@ -96,7 +131,7 @@ export function registerReachmadeRoutes(app: App, deps: ReachmadeRouteDeps): voi
   app.post('/v1/reachmade/plan', async (request, reply) => {
     requirePrincipal();
     if (deps.router.list().length === 0) return unavailable(reply);
-    const intent = Intent.parse(request.body ?? {});
+    const intent = normalizeIntent(Intent.parse(request.body ?? {}));
     const { decision, plan } = await deps.router.plan(intent);
     return {
       capability: {
@@ -112,7 +147,7 @@ export function registerReachmadeRoutes(app: App, deps: ReachmadeRouteDeps): voi
   app.post('/v1/reachmade/execute', async (request, reply) => {
     requirePrincipal();
     if (deps.router.list().length === 0) return unavailable(reply);
-    const intent = Intent.parse(request.body ?? {});
+    const intent = normalizeIntent(Intent.parse(request.body ?? {}));
     // The adapters enforce the final side-effect boundary. Launchloom never calls
     // release/publication/submit and stops at its review gate unless approvePlan
     // was explicitly provided by the authenticated caller.
@@ -122,7 +157,7 @@ export function registerReachmadeRoutes(app: App, deps: ReachmadeRouteDeps): voi
   app.post('/v1/reachmade/workflows/execute', async (request, reply) => {
     requirePrincipal();
     if (deps.router.list().length === 0) return unavailable(reply);
-    const workflow = Workflow.parse(request.body ?? {});
+    const workflow = normalizeWorkflow(Workflow.parse(request.body ?? {}));
     // One authenticated Genie request can hand work across multiple Reachmade
     // capabilities. The runner stops rather than guessing past failed/unknown or
     // approval-blocked evidence.
