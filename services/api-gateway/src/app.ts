@@ -35,6 +35,7 @@ import { registerBriefRoutes } from './routes/brief.js';
 import { registerConversationRoutes } from './routes/conversations.js';
 import { registerOnboardingRoutes } from './routes/onboarding.js';
 import { registerVoiceRoutes, type VoiceRouteDeps } from './routes/voice.js';
+import { reachmadeRouterFromEnv, registerReachmadeRoutes } from './routes/reachmade.js';
 import type { ConversationService } from '@genie/service-conversation';
 import type { WorkContextService, WorldModelService } from '@genie/service-world-model';
 import { localArtifacts, registerWorkRoutes } from './routes/work.js';
@@ -157,6 +158,9 @@ export function buildApp(deps: AppDeps): App {
   }
   registerArtifactRoutes(app, { library: deps.library });
   registerVoiceRoutes(app, deps.voice ?? {});
+  // Reachmade の外部 product capability は設定されたものだけ router に登録する。
+  // route 自体は常に認証下に置き、未設定時は list=[] / execute=503 とする。
+  registerReachmadeRoutes(app, { router: reachmadeRouterFromEnv() });
   // §3 の初期セットアップ。catalog を見るので registry の後。
   registerOnboardingRoutes(app, { db: deps.db, registry: deps.registry, tasks: deps.tasks });
   registerPluginRoutes(app, {
