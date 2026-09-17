@@ -24,5 +24,11 @@ export {
 } from './protocol.js';
 export { assertEvidenceEnvelope, createEvidenceEnvelope, failedEvidenceEnvelope } from './evidence.js';
 export { CapabilityRouter, type RouteDecision } from './router.js';
+export {
+  CapabilityWorkflowRunner,
+  type CapabilityWorkflowRequest,
+  type CapabilityWorkflowResult,
+  type CapabilityWorkflowStep,
+} from './workflow.js';
 export { AgentTeamCapability } from './adapters/agent-team.js';
 export { LaunchloomCapability } from './adapters/launchloom.js';
