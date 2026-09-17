@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   AgentTeamCapability,
   CapabilityRouter,
+  CapabilityWorkflowRunner,
   LaunchloomCapability,
   createEvidenceEnvelope,
   type CapabilityExecutionContext,
@@ -117,6 +118,52 @@ describe('Launchloom adapter', () => {
     expect(result.status).toBe('completed');
     expect(result.artifacts.map((a) => a.id)).toEqual(['launch-kit.zip', 'landing.html']);
     expect(calls.some((call) => call.includes('/render'))).toBe(true);
+    expect(calls.some((call) => /release|publications|submit/.test(call))).toBe(false);
+  });
+});
+
+describe('multi-product workflow', () => {
+  it('runs Agent Team then Launchloom in one workflow and aggregates both evidence trails', async () => {
+    let launchRendered = false;
+    const calls: string[] = [];
+    const fetchMock = vi.fn<typeof fetch>(async (input, init) => {
+      const url = String(input); calls.push(`${init?.method ?? 'GET'} ${url}`);
+      if (url === 'http://127.0.0.1:8787/api/runs' && init?.method === 'POST') return json({ run_id: 'run-workflow', status: 'queued' });
+      if (url === 'http://127.0.0.1:8787/api/runs/run-workflow') return json({
+        run_id: 'run-workflow', status: 'completed', artifacts: [
+          { artifact_id: 'reviewed-copy', revision: 1, sha256: 'b'.repeat(64), path: 'launch-brief.md' },
+        ],
+      });
+      if (url === 'http://127.0.0.1:8788/api/campaigns' && init?.method === 'POST') return json({ id: 'campaign-workflow' });
+      if (url === 'http://127.0.0.1:8788/api/campaigns/campaign-workflow/build') return json({ state: 'building' });
+      if (url === 'http://127.0.0.1:8788/api/campaigns/campaign-workflow/render') { launchRendered = true; return json({ state: 'rendering' }); }
+      if (url === 'http://127.0.0.1:8788/api/campaigns/campaign-workflow') {
+        return launchRendered
+          ? json({ id: 'campaign-workflow', state: 'ready', outputs: { 'launch-kit.zip': '/artifacts/campaign-workflow/launch-kit.zip' } })
+          : json({ id: 'campaign-workflow', state: 'awaiting_review' });
+      }
+      return json({ detail: 'not found' }, 404);
+    });
+    const router = new CapabilityRouter([
+      new AgentTeamCapability({ baseUrl: 'http://127.0.0.1:8787', pollIntervalMs: 0 }),
+      new LaunchloomCapability({ baseUrl: 'http://127.0.0.1:8788', token: 'test-token', pollIntervalMs: 0 }),
+    ]);
+    const result = await new CapabilityWorkflowRunner(router).execute({
+      id: 'ship-orbit',
+      objective: 'Review the launch story, then turn it into a launch kit.',
+      steps: [
+        { id: 'review', capabilityId: 'agent-team' },
+        { id: 'launch', capabilityId: 'launchloom', inputs: { brief: launchBrief, approvePlan: true } },
+      ],
+    }, context(fetchMock));
+    expect(result.status).toBe('completed');
+    expect(result.steps.map((step) => step.capabilityId)).toEqual(['agent-team', 'launchloom']);
+    expect(result.envelope.artifacts.map((artifact) => artifact.id)).toEqual([
+      'agent-team:reviewed-copy',
+      'launchloom:launch-kit.zip',
+    ]);
+    expect(result.envelope.evidence.some((e) => e.metadata?.['capabilityId'] === 'agent-team')).toBe(true);
+    expect(result.envelope.evidence.some((e) => e.metadata?.['capabilityId'] === 'launchloom')).toBe(true);
     expect(calls.some((call) => /release|publications|submit/.test(call))).toBe(false);
   });
 });
