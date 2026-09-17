@@ -2,6 +2,7 @@ import { z } from 'zod';
 import {
   AgentTeamCapability,
   CapabilityRouter,
+  CapabilityWorkflowRunner,
   LaunchloomCapability,
 } from '@genie/service-capabilities';
 import type { App } from '../fastify.js';
@@ -11,13 +12,27 @@ export interface ReachmadeRouteDeps {
   readonly router: CapabilityRouter;
 }
 
+const Inputs = z.record(z.string(), z.unknown());
 const Intent = z.object({
   id: z.string().min(1).max(160),
   objective: z.string().min(1).max(8000),
   preferredCapability: z.string().min(1).max(120).optional(),
-  inputs: z.record(z.string(), z.unknown()).optional(),
+  inputs: Inputs.optional(),
   maxWaitMs: z.number().int().positive().max(60 * 60 * 1000).optional(),
   dryRun: z.boolean().optional(),
+}).strict();
+const WorkflowStep = z.object({
+  id: z.string().min(1).max(120),
+  capabilityId: z.string().min(1).max(120),
+  inputs: Inputs.optional(),
+  dryRun: z.boolean().optional(),
+}).strict();
+const Workflow = z.object({
+  id: z.string().min(1).max(160),
+  objective: z.string().min(1).max(8000),
+  inputs: Inputs.optional(),
+  steps: z.array(WorkflowStep).min(1).max(12),
+  maxWaitMs: z.number().int().positive().max(60 * 60 * 1000).optional(),
 }).strict();
 
 export function reachmadeRouterFromEnv(env: NodeJS.ProcessEnv = process.env): CapabilityRouter {
@@ -102,5 +117,15 @@ export function registerReachmadeRoutes(app: App, deps: ReachmadeRouteDeps): voi
     // release/publication/submit and stops at its review gate unless approvePlan
     // was explicitly provided by the authenticated caller.
     return deps.router.execute(intent);
+  });
+
+  app.post('/v1/reachmade/workflows/execute', async (request, reply) => {
+    requirePrincipal();
+    if (deps.router.list().length === 0) return unavailable(reply);
+    const workflow = Workflow.parse(request.body ?? {});
+    // One authenticated Genie request can hand work across multiple Reachmade
+    // capabilities. The runner stops rather than guessing past failed/unknown or
+    // approval-blocked evidence.
+    return new CapabilityWorkflowRunner(deps.router).execute(workflow);
   });
 }
