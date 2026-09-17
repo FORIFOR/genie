@@ -33,6 +33,8 @@
     "dev:infra": "docker compose -f infra/docker-compose.dev.yml up -d",
     "dev:infra:down": "docker compose -f infra/docker-compose.dev.yml down",
     "dev:worker": "tsx workers/task-worker/src/worker-main.ts",
+    "doctor": "node scripts/doctor-local-preview.mjs --repo .",
+    "doctor:json": "node scripts/doctor-local-preview.mjs --repo . --json",
     "preview": "node scripts/start-local-preview.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
