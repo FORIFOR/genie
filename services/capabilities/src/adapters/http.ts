@@ -15,16 +15,17 @@ export async function jsonRequest<T>(
   init: RequestInit,
   headers: Readonly<Record<string, string>> = {},
 ): Promise<T> {
-  const response = await context.fetch(url, {
+  const requestInit: RequestInit = {
     ...init,
-    signal: context.signal,
     headers: {
       accept: 'application/json',
       ...(init.body ? { 'content-type': 'application/json' } : {}),
       ...headers,
       ...(init.headers ?? {}),
     },
-  });
+  };
+  if (context.signal) requestInit.signal = context.signal;
+  const response = await context.fetch(url, requestInit);
   const text = await response.text();
   let body: unknown = null;
   if (text) {
@@ -44,8 +45,17 @@ export async function jsonRequest<T>(
 export async function wait(ms: number, signal?: AbortSignal): Promise<void> {
   if (ms <= 0) return;
   await new Promise<void>((resolve, reject) => {
-    const timer = setTimeout(resolve, ms);
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      if (signal) signal.removeEventListener('abort', onAbort);
+      resolve();
+    };
+    const timer = setTimeout(finish, ms);
     const onAbort = () => {
+      if (settled) return;
+      settled = true;
       clearTimeout(timer);
       reject(new Error('Capability execution aborted'));
     };
