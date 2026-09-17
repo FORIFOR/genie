@@ -1,0 +1,54 @@
+import type { CapabilityExecutionContext } from '../protocol.js';
+
+export function normalizeBaseUrl(value: string, allowRemote = false): string {
+  const url = new URL(value);
+  if (!['http:', 'https:'].includes(url.protocol)) throw new Error('Capability endpoint must use http or https');
+  if (url.username || url.password || url.search || url.hash) throw new Error('Capability endpoint must not contain credentials, query or fragment');
+  const loopback = url.hostname === '127.0.0.1' || url.hostname === 'localhost' || url.hostname === '::1';
+  if (!allowRemote && !loopback) throw new Error('Remote capability endpoints require allowRemote=true');
+  return url.href.replace(/\/$/, '');
+}
+
+export async function jsonRequest<T>(
+  context: CapabilityExecutionContext,
+  url: string,
+  init: RequestInit,
+  headers: Readonly<Record<string, string>> = {},
+): Promise<T> {
+  const response = await context.fetch(url, {
+    ...init,
+    signal: context.signal,
+    headers: {
+      accept: 'application/json',
+      ...(init.body ? { 'content-type': 'application/json' } : {}),
+      ...headers,
+      ...(init.headers ?? {}),
+    },
+  });
+  const text = await response.text();
+  let body: unknown = null;
+  if (text) {
+    try {
+      body = JSON.parse(text);
+    } catch {
+      body = text;
+    }
+  }
+  if (!response.ok) {
+    const detail = typeof body === 'string' ? body : JSON.stringify(body);
+    throw new Error(`HTTP ${response.status} from ${url}: ${detail.slice(0, 600)}`);
+  }
+  return body as T;
+}
+
+export async function wait(ms: number, signal?: AbortSignal): Promise<void> {
+  if (ms <= 0) return;
+  await new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(resolve, ms);
+    const onAbort = () => {
+      clearTimeout(timer);
+      reject(new Error('Capability execution aborted'));
+    };
+    if (signal) signal.addEventListener('abort', onAbort, { once: true });
+  });
+}
