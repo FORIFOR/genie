@@ -36,8 +36,10 @@ export async function jsonRequest<T>(
     }
   }
   if (!response.ok) {
-    const detail = typeof body === 'string' ? body : JSON.stringify(body);
-    throw new Error(`HTTP ${response.status} from ${url}: ${detail.slice(0, 600)}`);
+    // Do not copy arbitrary upstream error text into the Evidence Envelope returned
+    // by Genie. The upstream body can contain implementation details or secrets.
+    const target = new URL(url);
+    throw new Error(`Capability endpoint returned HTTP ${response.status} for ${target.pathname}`);
   }
   return body as T;
 }
