@@ -10,6 +10,17 @@ export const COMPUTER_TOOLS = [
 
 type ComputerTool = (typeof COMPUTER_TOOLS)[number];
 
+export interface ComputerObservation {
+  readonly app: string;
+  readonly bundleId: string;
+  readonly window: string;
+  readonly focusedRole: string;
+  readonly mouseX: number;
+  readonly mouseY: number;
+  readonly screens: number;
+  readonly accessibilityTrusted: boolean;
+}
+
 export interface ComputerRuntimeConfig {
   readonly enabled?: boolean;
   readonly command?: string;
@@ -86,13 +97,13 @@ export class ComputerRuntime {
 
     const tool = step.toolId as ComputerTool;
     if (tool === 'computer.observe') {
-      return {
-        ok: true,
-        result: {
-          capability: 'input',
-          note: 'Observation is supplied by Genie visual/accessibility context; no input was sent.',
-        },
-      };
+      const observation = await this.#observe();
+      return observation
+        ? { ok: true, result: observation }
+        : {
+            ok: false,
+            error: { code: 'computer.observe_failed', message: '現在の画面状態を確認できませんでした。' },
+          };
     }
 
     // Mutating actions require an approval proof from the cloud and are rechecked here.
@@ -111,6 +122,7 @@ export class ComputerRuntime {
       };
     }
 
+    const before = await this.#observe();
     const result = await this.#run(
       this.#config.command ?? 'uxin',
       args,
@@ -134,7 +146,47 @@ export class ComputerRuntime {
         },
       };
     }
-    return { ok: true, result: { action: tool, applied: true } };
+    const after = await this.#observe();
+    const changed = before !== null && after !== null ? observationKey(before) !== observationKey(after) : null;
+    if (step.args['expectChange'] === true && changed === false) {
+      return {
+        ok: false,
+        error: {
+          code: 'computer.verification_failed',
+          message: '操作後の画面状態に期待した変化を確認できませんでした。',
+        },
+      };
+    }
+    return {
+      ok: true,
+      result: { action: tool, applied: true, before, after, changed },
+    };
+  }
+
+  async #observe(): Promise<ComputerObservation | null> {
+    const result = await this.#run(
+      this.#config.command ?? 'uxin',
+      ['observe'],
+      this.#config.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+    );
+    if (result.code !== 0) return null;
+    try {
+      const value = JSON.parse(result.stdout.trim()) as Partial<ComputerObservation>;
+      if (
+        typeof value.app !== 'string' ||
+        typeof value.bundleId !== 'string' ||
+        typeof value.window !== 'string' ||
+        typeof value.focusedRole !== 'string' ||
+        typeof value.mouseX !== 'number' ||
+        typeof value.mouseY !== 'number' ||
+        typeof value.screens !== 'number' ||
+        typeof value.accessibilityTrusted !== 'boolean'
+      )
+        return null;
+      return value as ComputerObservation;
+    } catch {
+      return null;
+    }
   }
 
   #arguments(tool: ComputerTool, args: Record<string, unknown>): string[] | null {
@@ -165,4 +217,14 @@ function numberInRange(value: unknown, min: number, max: number): number | null 
   return typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max
     ? Math.round(value)
     : null;
+}
+
+function observationKey(value: ComputerObservation): string {
+  return JSON.stringify([
+    value.bundleId,
+    value.window,
+    value.focusedRole,
+    value.mouseX,
+    value.mouseY,
+  ]);
 }
