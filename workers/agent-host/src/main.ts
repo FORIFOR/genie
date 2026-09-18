@@ -272,7 +272,9 @@ async function main(): Promise<void> {
 
   const computer = new ComputerRuntime({
     enabled: process.env['ASTRA_COMPUTER_USE'] === 'on',
-    ...(process.env['ASTRA_COMPUTER_HELPER'] ? { command: process.env['ASTRA_COMPUTER_HELPER'] } : {}),
+    ...(process.env['ASTRA_COMPUTER_HELPER']
+      ? { command: process.env['ASTRA_COMPUTER_HELPER'] }
+      : {}),
   });
   logger.info({ enabled: process.env['ASTRA_COMPUTER_USE'] === 'on' }, 'computer use capability');
 
