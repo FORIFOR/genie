@@ -67,7 +67,7 @@ An explicitly selected route is not silently replaced by a paid provider. Local 
 - [Mac builds](https://github.com/FORIFOR/genie/releases): use the build and source version named together in its release notes.
 - [See the actual interface and demo](https://genie-forifor.forifor.chatgpt.site/#demo).
 
-The preview includes recording, live transcription, service connections, and guided Mac permissions. Those paths have additional credentials and permissions; they are not prerequisites for the local text workflow. Production-wide release acceptance is still tracked separately from this developer preview.
+The preview includes recording, live transcription, service connections, guided Mac permissions, and an opt-in [computer-use runtime](docs/COMPUTER_USE.md). Computer control is off by default, requires explicit local enablement and per-action approval, and is not a prerequisite for the local text workflow. Production-wide release acceptance is still tracked separately from this developer preview.
 
 ## Help shape Genie
 
