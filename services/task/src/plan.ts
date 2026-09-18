@@ -92,7 +92,13 @@ export interface TaskPlan {
   };
 }
 
-export const KNOWN_TASK_KINDS = ['echo', 'research', 'meeting.finalize', 'mail.send'] as const;
+export const KNOWN_TASK_KINDS = [
+  'echo',
+  'research',
+  'meeting.finalize',
+  'mail.send',
+  'computer.action',
+] as const;
 export type TaskKind = (typeof KNOWN_TASK_KINDS)[number];
 
 export function isKnownTaskKind(kind: string): kind is TaskKind {
@@ -335,6 +341,35 @@ function planMailSend(input: Record<string, unknown>): TaskPlan {
   };
 }
 
+function planComputerAction(input: Record<string, unknown>): TaskPlan {
+  const action = typeof input['action'] === 'string' ? input['action'] : '';
+  const allowed = ['observe', 'click', 'type', 'key'] as const;
+  if (!(allowed as readonly string[]).includes(action))
+    throw new UnknownTaskKindError('computer.action needs observe, click, type, or key');
+  const mutating = action !== 'observe';
+  const args = Object.fromEntries(
+    Object.entries(input).filter(([key]) => !['action', 'title'].includes(key)),
+  );
+  return {
+    steps: [
+      {
+        index: 0,
+        toolId: `computer.${action}`,
+        risk: mutating ? 'REVERSIBLE_WRITE' : 'READ',
+        surface: 'local',
+        requiresConfirmation: mutating,
+        message: mutating ? '画面を操作します' : '現在の画面を確認します',
+        args,
+      },
+    ],
+    artifact: {
+      type: 'OTHER',
+      title: typeof input['title'] === 'string' ? input['title'] : 'Computer action',
+      mimeType: 'application/json',
+    },
+  };
+}
+
 export function planTask(kind: string, input: Record<string, unknown>): TaskPlan {
   switch (kind) {
     case 'echo':
@@ -345,6 +380,8 @@ export function planTask(kind: string, input: Record<string, unknown>): TaskPlan
       return planMeetingFinalize(input);
     case 'mail.send':
       return planMailSend(input);
+    case 'computer.action':
+      return planComputerAction(input);
     default:
       throw new UnknownTaskKindError(kind);
   }
