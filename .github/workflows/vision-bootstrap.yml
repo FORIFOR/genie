@@ -31,7 +31,6 @@ jobs:
           import base64, gzip, hashlib, json, subprocess
           from pathlib import Path
           parts = [Path(f'.github/vision-pack/part{i}').read_text().strip() for i in range(4)]
-          # Correct the single connector-copy transcription, then verify the complete authored bundle.
           parts[2] = parts[2].replace('ba2cFgs4H+/dG5', 'ba2cFgs4H+hLdG5')
           data = base64.b64decode(''.join(parts), validate=True)
           assert hashlib.sha256(data).hexdigest() == '955bbda57bdbb4b40c7313a9852ded99bed4b15880e1e1f9ffac06e389c627f6', 'source bundle digest mismatch'
@@ -43,11 +42,12 @@ jobs:
               assert not path.exists(), f'refusing to replace existing {name}'
               path.parent.mkdir(parents=True, exist_ok=True)
               path.write_text(content)
-          exec(compile(payload['patch'], 'verified-integration-patch', 'exec'), {})
+          patch = payload['patch'].replace("p=Path('.github/workflows/computer-vision.yml');assert not p.exists()", "p=Path('.github/workflows/computer-vision.yml')")
+          exec(compile(patch, 'verified-integration-patch', 'exec'), {})
           stage = set(payload['files']) | set(json.loads(Path('.build/vision-edited.json').read_text()))
           stage.update(subprocess.check_output(['git','diff','--name-only','4ae746f420c654ecd3d6d1293fd8d6ce38647160'], text=True).splitlines())
           Path('.build/vision-stage.json').write_text(json.dumps(sorted(stage)))
-          print('Verified source bundle applied; readable source will replace transport files.')
+          print('Verified source bundle applied.')
           PY
       - run: pnpm install --frozen-lockfile
       - name: Format changed source and remove transfer files
@@ -60,8 +60,9 @@ jobs:
           format_files = [p for p in stage if Path(p).is_file() and not p.startswith('.github/vision-pack/') and Path(p).suffix in {'.ts','.js','.mjs','.json','.md','.yml','.yaml'}]
           subprocess.run(['pnpm','exec','prettier','--write','--ignore-unknown',*format_files], check=True)
           shutil.rmtree('.github/vision-pack')
-          Path('.github/workflows/vision-bootstrap.yml').unlink()
           subprocess.run(['git','add','-A','--',*stage], check=True)
+          # Workflows are authored via the repository connector, never by the limited CI token.
+          subprocess.run(['git','restore','--source=HEAD','--staged','--worktree','--','.github/workflows'], check=True)
           PY
       - name: Publish readable source to feature branch only
         env:

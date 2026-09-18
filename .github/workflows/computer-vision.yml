@@ -1,0 +1,32 @@
+name: computer-vision
+on:
+  pull_request:
+    paths:
+      - 'workers/agent-host/**'
+      - 'services/task/**'
+      - 'tools/computer-use/**'
+      - 'scripts/build-computer-helper.sh'
+      - '.github/workflows/computer-vision.yml'
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: computer-vision-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  native-and-loop:
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm exec tsc -p tsconfig.tests.json
+      - run: bash scripts/build-computer-helper.sh
+      - run: node --test workers/agent-host/test/computer-vision.node.mjs workers/agent-host/test/computer-vision-integration.node.mjs
