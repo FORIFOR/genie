@@ -14,20 +14,39 @@ export interface ComputerRuntimeConfig {
   readonly enabled?: boolean;
   readonly command?: string;
   readonly timeoutMs?: number;
-  readonly run?: (command: string, args: readonly string[], timeoutMs: number) => Promise<{ code: number | null; stdout: string; stderr: string }>;
+  readonly run?: (
+    command: string,
+    args: readonly string[],
+    timeoutMs: number,
+  ) => Promise<{ code: number | null; stdout: string; stderr: string }>;
 }
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 
-function defaultRun(command: string, args: readonly string[], timeoutMs: number): Promise<{ code: number | null; stdout: string; stderr: string }> {
+function defaultRun(
+  command: string,
+  args: readonly string[],
+  timeoutMs: number,
+): Promise<{ code: number | null; stdout: string; stderr: string }> {
   return new Promise((resolve) => {
-    execFile(command, [...args], { timeout: timeoutMs, maxBuffer: 4 * 1024 * 1024 }, (error, stdout, stderr) => {
-      resolve({
-        code: error ? (error.killed ? 124 : typeof error.code === 'number' ? error.code : null) : 0,
-        stdout,
-        stderr: (error as { code?: unknown } | null)?.code === 'ENOENT' ? 'ENOENT' : stderr,
-      });
-    });
+    execFile(
+      command,
+      [...args],
+      { timeout: timeoutMs, maxBuffer: 4 * 1024 * 1024 },
+      (error, stdout, stderr) => {
+        resolve({
+          code: error
+            ? error.killed
+              ? 124
+              : typeof error.code === 'number'
+                ? error.code
+                : null
+            : 0,
+          stdout,
+          stderr: (error as { code?: unknown } | null)?.code === 'ENOENT' ? 'ENOENT' : stderr,
+        });
+      },
+    );
   });
 }
 
@@ -53,10 +72,16 @@ export class ComputerRuntime {
 
   async run(step: HostStep, signal?: AbortSignal): Promise<StepOutcome> {
     if (!this.handles(step.toolId)) {
-      return { ok: false, error: { code: 'computer.disabled', message: '画面操作はこの端末で有効になっていません。' } };
+      return {
+        ok: false,
+        error: { code: 'computer.disabled', message: '画面操作はこの端末で有効になっていません。' },
+      };
     }
     if (signal?.aborted) {
-      return { ok: false, error: { code: 'computer.cancelled', message: '画面操作を取り消しました。' } };
+      return {
+        ok: false,
+        error: { code: 'computer.cancelled', message: '画面操作を取り消しました。' },
+      };
     }
 
     const tool = step.toolId as ComputerTool;
@@ -72,12 +97,18 @@ export class ComputerRuntime {
 
     // Mutating actions require an approval proof from the cloud and are rechecked here.
     if (!step.approval) {
-      return { ok: false, error: { code: 'approval.required', message: 'この画面操作には確認が必要です。' } };
+      return {
+        ok: false,
+        error: { code: 'approval.required', message: 'この画面操作には確認が必要です。' },
+      };
     }
 
     const args = this.#arguments(tool, step.args);
     if (!args) {
-      return { ok: false, error: { code: 'computer.invalid_action', message: '安全に実行できない画面操作です。' } };
+      return {
+        ok: false,
+        error: { code: 'computer.invalid_action', message: '安全に実行できない画面操作です。' },
+      };
     }
 
     const result = await this.#run(
@@ -89,7 +120,12 @@ export class ComputerRuntime {
       return {
         ok: false,
         error: {
-          code: result.code === 124 ? 'computer.timeout' : result.stderr.includes('ENOENT') ? 'computer.unavailable' : 'computer.failed',
+          code:
+            result.code === 124
+              ? 'computer.timeout'
+              : result.stderr.includes('ENOENT')
+                ? 'computer.unavailable'
+                : 'computer.failed',
           message: result.code === 124
             ? '画面操作が時間内に完了しませんでした。'
             : result.stderr.includes('ENOENT')
@@ -115,7 +151,9 @@ export class ComputerRuntime {
       const keycode = numberInRange(args['keycode'], 0, 255);
       if (keycode === null) return null;
       const raw = Array.isArray(args['modifiers']) ? args['modifiers'] : [];
-      const modifiers = raw.filter((v): v is string => typeof v === 'string' && ['opt', 'cmd', 'shift'].includes(v));
+      const modifiers = raw.filter(
+        (v): v is string => typeof v === 'string' && ['opt', 'cmd', 'shift'].includes(v),
+      );
       if (modifiers.length !== raw.length) return null;
       return ['key', String(keycode), ...modifiers];
     }
