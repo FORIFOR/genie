@@ -31,6 +31,8 @@ request
 
 Supported steps:
 
+- `computer.run`: a bounded observe → plan one action → act → re-observe loop. It requires explicit approval before the run starts, has a hard action limit, and stops when the planner reaches a new important boundary.
+
 - `computer.observe`: read the active app/window/focused role and pointer position.
 - `computer.click`: click a validated screen coordinate.
 - `computer.type`: type bounded text.
@@ -72,3 +74,11 @@ If a structured API can perform and verify the operation, use it instead of coor
 ## Current scope
 
 This provides a production-shaped execution boundary for local Mac input and verification. It does not claim that arbitrary websites or applications are safe to automate. Site-specific workflows should prefer APIs/DOM/Accessibility and define their own completion evidence rather than relying only on visible change.
+
+## Autonomous planner
+
+`computer.run` is the higher-level route for a small, explicit goal. Each turn obtains a fresh device observation, asks the selected local/BYOK model for exactly one constrained action, executes it through the same `ComputerRuntime`, then observes again. A verification failure is returned to the planner once as evidence for re-planning; other execution failures stop the run.
+
+The planner can only emit `click`, `type`, `key`, `done`, or `stop`. It cannot emit shell commands, arbitrary tools, URLs, connector calls, or new permissions. The default hard limit is 12 mutating actions. Reaching the limit fails visibly instead of continuing in the background.
+
+The planner prompt treats screen text as untrusted data. It must stop at newly encountered login, payment, send/publish, delete, or permission-change boundaries. A `done` decision is valid only when the latest observation supports completion.
