@@ -51,7 +51,7 @@ describe('ComputerRuntime', () => {
     ];
     const run = vi.fn(async (_command: string, args: readonly string[]) => ({
       code: 0,
-      stdout: args[0] === 'observe' ? observations.shift() ?? '{}' : '',
+      stdout: args[0] === 'observe' ? (observations.shift() ?? '{}') : '',
       stderr: '',
     }));
     const runtime = new ComputerRuntime({
@@ -92,9 +92,7 @@ describe('ComputerRuntime', () => {
   it('rejects unknown key modifiers', async () => {
     const run = vi.fn();
     const runtime = new ComputerRuntime({ enabled: true, run });
-    const result = await runtime.run(
-      step('computer.key', { keycode: 36, modifiers: ['ctrl'] }),
-    );
+    const result = await runtime.run(step('computer.key', { keycode: 36, modifiers: ['ctrl'] }));
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe('computer.invalid_action');
     expect(run).not.toHaveBeenCalled();

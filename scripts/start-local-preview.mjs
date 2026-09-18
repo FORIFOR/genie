@@ -331,11 +331,19 @@ export async function start(options) {
       if (process.platform !== 'darwin')
         throw new Error('--computer-use はmacOSでのみ利用できます。');
       if (!(await probe('swiftc', ['--version'], env)))
-        throw new Error('画面操作の準備にSwiftコンパイラが必要です。Xcode Command Line Toolsを導入してください。');
+        throw new Error(
+          '画面操作の準備にSwiftコンパイラが必要です。Xcode Command Line Toolsを導入してください。',
+        );
       stage('computer', '画面操作ヘルパーを準備しています…');
-      await processes.run('computer-helper', 'bash', [join(REPO, 'scripts/ux-auto/build-tools.sh')], env, {
-        timeout: 120_000,
-      });
+      await processes.run(
+        'computer-helper',
+        'bash',
+        [join(REPO, 'scripts/ux-auto/build-tools.sh')],
+        env,
+        {
+          timeout: 120_000,
+        },
+      );
       computerHelper = join(REPO, '.build/uxlab/uxin');
       await access(computerHelper, constants.X_OK);
     }

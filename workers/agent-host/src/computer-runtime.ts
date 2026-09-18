@@ -102,7 +102,10 @@ export class ComputerRuntime {
         ? { ok: true, result: observation }
         : {
             ok: false,
-            error: { code: 'computer.observe_failed', message: '現在の画面状態を確認できませんでした。' },
+            error: {
+              code: 'computer.observe_failed',
+              message: '現在の画面状態を確認できませんでした。',
+            },
           };
     }
 
@@ -138,19 +141,18 @@ export class ComputerRuntime {
               : result.stderr.includes('ENOENT')
                 ? 'computer.unavailable'
                 : 'computer.failed',
-          message: result.code === 124
-            ? '画面操作が時間内に完了しませんでした。'
-            : result.stderr.includes('ENOENT')
-              ? '画面操作ヘルパーが見つかりません。'
-              : '画面操作を完了できませんでした。',
+          message:
+            result.code === 124
+              ? '画面操作が時間内に完了しませんでした。'
+              : result.stderr.includes('ENOENT')
+                ? '画面操作ヘルパーが見つかりません。'
+                : '画面操作を完了できませんでした。',
         },
       };
     }
     const after = await this.#observe();
     const changed =
-      before !== null && after !== null
-        ? observationKey(before) !== observationKey(after)
-        : null;
+      before !== null && after !== null ? observationKey(before) !== observationKey(after) : null;
     if (step.args['expectChange'] === true && changed === false) {
       return {
         ok: false,
