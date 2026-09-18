@@ -271,6 +271,9 @@ const OPERATION_FOR: Readonly<Record<string, string>> = {
   'outlook.mail.reply': 'outlook.mail.reply',
   'mail.trash': 'gmail.trash',
   'calendar.create_event': 'calendar.create',
+  'computer.click': 'computer.click',
+  'computer.type': 'computer.type',
+  'computer.key': 'computer.key',
 };
 
 main().catch((error: unknown) => {
