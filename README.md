@@ -12,9 +12,9 @@ Previously Astra. The app, downloads, and source are now named Genie. Existing s
 
 **Using Ollama on a Mac? Help test the preview.** Try the loop below with a fictional screen or note, then tell us the first place you get stuck. Setup feedback counts, too. No waitlist or separate signup; a GitHub account is only needed to post feedback.
 
-**[Watch the first workflow →](https://genie-forifor.forifor.chatgpt.site/#demo)** · [Start a first test](docs/TESTING.md) · [Download the Mac preview](https://github.com/FORIFOR/genie/releases/tag/v0.1.4) · [Report your experience](https://github.com/FORIFOR/genie/issues/new?template=tester_feedback.yml)
+**[Watch the first workflow →](https://reachmade.com/en/products/genie/demos/#prototype)** · [Start a first test](docs/TESTING.md) · [Download the Mac preview](https://github.com/FORIFOR/genie/releases/tag/v0.1.4) · [Report your experience](https://github.com/FORIFOR/genie/issues/new?template=tester_feedback.yml)
 
-[Website & demos](https://genie-forifor.forifor.chatgpt.site) · [日本語](docs/README.ja.md) · [Mac preview v0.1.4](https://github.com/FORIFOR/genie/releases/tag/v0.1.4)
+[Website & demos](https://reachmade.com/en/products/genie/) · [日本語](docs/README.ja.md) · [Mac preview v0.1.4](https://github.com/FORIFOR/genie/releases/tag/v0.1.4)
 
 ## One workflow to try first
 
@@ -29,9 +29,9 @@ This is the product’s first proof point: less context switching, a clear local
 
 | Real workflow             | Watch / explore                                                                                                                                          | What the demonstration shows                                                         |
 | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| Build a small prototype   | [33-second demo](https://genie-forifor.forifor.chatgpt.site/#demo) · [Try the orbital playground](https://genie-forifor.forifor.chatgpt.site/orbit.html) | Generate HTML, save the result, then open the extracted HTML in an external browser. |
-| Improve a website message | [30-second demo](https://genie-forifor.forifor.chatgpt.site/#proposal)                                                                                   | A local model turns a fictional website into a copy proposal.                        |
-| Decide what to do next    | [42-second demo](https://genie-forifor.forifor.chatgpt.site/#priorities)                                                                                 | Ask about a fictional dashboard, review a recommendation, and save it.               |
+| Build a small prototype   | [33-second demo](https://reachmade.com/en/products/genie/demos/#prototype) · [Try the orbital playground](https://reachmade.com/media/originals/genie/orbit.html) | Generate HTML, save the result, then open the extracted HTML in an external browser. |
+| Improve a website message | [30-second demo](https://reachmade.com/en/products/genie/demos/#proposal)                                                                                   | A local model turns a fictional website into a copy proposal.                        |
+| Decide what to do next    | [42-second demo](https://reachmade.com/en/products/genie/demos/#priorities)                                                                                 | Ask about a fictional dashboard, review a recommendation, and save it.               |
 
 Real app captures; waiting is condensed. Model speed and quality vary. These examples do not demonstrate automatic deployment, SNS posting, or a guaranteed business result.
 
@@ -65,7 +65,7 @@ An explicitly selected route is not silently replaced by a paid provider. Local 
 - [Start the tester guide](docs/TESTING.md) for a matching app and source, a first task, and troubleshooting.
 - [Build current source](docs/LOCAL_PREVIEW.md) if you want to work on the latest code.
 - [Mac builds](https://github.com/FORIFOR/genie/releases): use the build and source version named together in its release notes.
-- [See the actual interface and demo](https://genie-forifor.forifor.chatgpt.site/#demo).
+- [See the actual interface and demo](https://reachmade.com/en/products/genie/demos/#prototype).
 
 The preview includes recording, live transcription, service connections, and guided Mac permissions. Those paths have additional credentials and permissions; they are not prerequisites for the local text workflow. Production-wide release acceptance is still tracked separately from this developer preview.
 
