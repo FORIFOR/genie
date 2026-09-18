@@ -274,6 +274,7 @@ const OPERATION_FOR: Readonly<Record<string, string>> = {
   'computer.click': 'computer.click',
   'computer.type': 'computer.type',
   'computer.key': 'computer.key',
+  'computer.run': 'computer.run',
 };
 
 main().catch((error: unknown) => {
