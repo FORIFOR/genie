@@ -1,0 +1,33 @@
+name: format-computer-use-branch
+
+on:
+  push:
+    branches:
+      - feat/computer-use-runtime
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/computer-use-runtime
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec prettier --write scripts/start-local-preview.mjs workers/agent-host/src/computer-runtime.ts workers/agent-host/test/computer-runtime.test.ts
+      - name: Commit formatting
+        run: |
+          if git diff --quiet; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/start-local-preview.mjs workers/agent-host/src/computer-runtime.ts workers/agent-host/test/computer-runtime.test.ts
+          git commit -m "style: apply prettier to computer use changes"
+          git push origin HEAD:feat/computer-use-runtime
