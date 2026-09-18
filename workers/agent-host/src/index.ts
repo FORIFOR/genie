@@ -18,3 +18,4 @@ export * from './work-sync.js';
 export * from './live-fixture.js';
 export * from './grants.js';
 export * from './computer-runtime.js';
+export * from './computer-planner.js';
