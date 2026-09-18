@@ -14,6 +14,14 @@ If Genie is already running on its own, quit it from its menu first. The launche
 node scripts/start-local-preview.mjs --model qwen3.5:9b
 ```
 
+To enable the local Mac computer-use runtime, add `--computer-use`. It remains off by default. The launcher builds the local input helper and mutating actions still require approval:
+
+```sh
+node scripts/start-local-preview.mjs --model qwen3.5:9b --computer-use
+```
+
+See [Computer use](COMPUTER_USE.md) for the execution and verification boundary.
+
 Use `--model llama3.2` if that is the text model you already have. Image requests require a vision model. Without a model argument, an interactive terminal offers a choice if multiple models are installed. The choice persists. No model is downloaded automatically and no paid provider is selected as a fallback.
 
 The first run downloads a pinned pnpm, workspace dependencies, and container images, then applies migrations and creates the restricted application roles. Progress and actionable errors are displayed in Japanese. It opens the real Home when the gateway, Temporal pollers and local host have been checked. Keep that terminal open while using Genie.
