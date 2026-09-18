@@ -42,7 +42,10 @@ describe('ComputerPlannerRuntime', () => {
 
     expect(result.ok).toBe(true);
     expect(computer.run).toHaveBeenCalledWith(
-      expect.objectContaining({ toolId: 'computer.click', args: expect.objectContaining({ x: 100, y: 200 }) }),
+      expect.objectContaining({
+        toolId: 'computer.click',
+        args: expect.objectContaining({ x: 100, y: 200 }),
+      }),
       undefined,
     );
     expect(model.run).toHaveBeenCalledTimes(2);

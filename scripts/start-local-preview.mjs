@@ -338,13 +338,13 @@ export async function start(options) {
       await processes.run(
         'computer-helper',
         'bash',
-        [join(REPO, 'scripts/ux-auto/build-tools.sh')],
+        [join(REPO, 'scripts/build-computer-helper.sh')],
         env,
         {
           timeout: 120_000,
         },
       );
-      computerHelper = join(REPO, '.build/uxlab/uxin');
+      computerHelper = join(REPO, '.build/computer/genie-computer');
       await access(computerHelper, constants.X_OK);
     }
     const composeFile = join(stateDir, 'compose.json');
@@ -415,7 +415,7 @@ export async function start(options) {
     const runtimeEnv = serviceEnvironment(config, stateDir, REPO);
     if (options.computerUse) {
       runtimeEnv.ASTRA_COMPUTER_USE = 'on';
-      runtimeEnv.ASTRA_COMPUTER_HELPER = computerHelper;
+      runtimeEnv.ASTRA_COMPUTER_VISION_HELPER = computerHelper;
     }
     if (process.platform !== 'darwin')
       runtimeEnv.ASTRA_SECRET_STORE_FILE = join(stateDir, 'host-secrets.json');

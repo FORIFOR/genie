@@ -23,7 +23,7 @@ describe('computer.action plan', () => {
     });
     expect(plan.steps[0]).toMatchObject({
       toolId: 'computer.click',
-      risk: 'REVERSIBLE_WRITE',
+      risk: 'EXTERNAL_COMMIT',
       surface: 'local',
       requiresConfirmation: true,
       args: { x: 120, y: 240, expectChange: true },
@@ -34,10 +34,10 @@ describe('computer.action plan', () => {
     const plan = planTask('computer.run', { goal: '設定画面を開く' });
     expect(plan.steps[0]).toMatchObject({
       toolId: 'computer.run',
-      risk: 'REVERSIBLE_WRITE',
+      risk: 'EXTERNAL_COMMIT',
       surface: 'local',
       requiresConfirmation: true,
-      args: { goal: '設定画面を開く' },
+      args: { goal: '設定画面を開く', successCriteria: '設定画面を開く' },
     });
   });
 

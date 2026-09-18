@@ -350,11 +350,15 @@ function planComputerRun(input: Record<string, unknown>): TaskPlan {
       {
         index: 0,
         toolId: 'computer.run',
-        risk: 'REVERSIBLE_WRITE',
+        risk: 'EXTERNAL_COMMIT',
         surface: 'local',
         requiresConfirmation: true,
-        message: '画面を確認しながら操作します',
-        args: { goal },
+        message: '選択したウィンドウを画像で確認し、操作ごとに確認します',
+        args: {
+          goal,
+          successCriteria:
+            typeof input['successCriteria'] === 'string' ? input['successCriteria'] : goal,
+        },
       },
     ],
     artifact: {
@@ -379,7 +383,7 @@ function planComputerAction(input: Record<string, unknown>): TaskPlan {
       {
         index: 0,
         toolId: `computer.${action}`,
-        risk: mutating ? 'REVERSIBLE_WRITE' : 'READ',
+        risk: mutating ? 'EXTERNAL_COMMIT' : 'READ',
         surface: 'local',
         requiresConfirmation: mutating,
         message: mutating ? '画面を操作します' : '現在の画面を確認します',

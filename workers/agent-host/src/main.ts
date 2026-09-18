@@ -26,8 +26,9 @@ import { ClaudeCodeCli } from './claude-code.js';
 import { LlmRuntime } from './llm-steps.js';
 import { HttpLlmClient } from './http-llm.js';
 import { CompositeRunner } from './runner.js';
-import { ComputerRuntime } from './computer-runtime.js';
-import { ComputerPlannerRuntime } from './computer-planner.js';
+import { ComputerVisionRuntime } from './computer-vision.js';
+import { NativeVisionDevice } from './computer-vision-device.js';
+import { selectLanguageModel } from '@genie/contracts';
 import type { WorkSyncState, LanguageModelKind } from '@genie/contracts';
 import { DEFAULT_SYNC_INTERVAL_MS, WorkSyncLoop } from './work-sync.js';
 import {
@@ -271,18 +272,17 @@ async function main(): Promise<void> {
     },
   });
 
-  const computer = new ComputerRuntime({
+  const computerVision = new ComputerVisionRuntime({
     enabled: process.env['ASTRA_COMPUTER_USE'] === 'on',
-    ...(process.env['ASTRA_COMPUTER_HELPER']
-      ? { command: process.env['ASTRA_COMPUTER_HELPER'] }
-      : {}),
+    model: llm,
+    selectModel: async () => selectLanguageModel(await llm.options())?.kind ?? null,
+    allowExternalPixels: process.env['ASTRA_COMPUTER_VISION_EXTERNAL'] === 'on',
+    device: () => new NativeVisionDevice(process.env['ASTRA_COMPUTER_VISION_HELPER'] ?? ''),
   });
-  logger.info({ enabled: process.env['ASTRA_COMPUTER_USE'] === 'on' }, 'computer use capability');
-  const computerPlanner = new ComputerPlannerRuntime({ computer, model: llm });
 
   const steps = new HostStepLoop({
     transport: httpStepTransport({ baseUrl, token, fetch: apiSession.fetch }),
-    runner: new CompositeRunner([runtime, computerPlanner, computer, llm]),
+    runner: new CompositeRunner([runtime, computerVision, llm]),
     onError: (error) => logger.warn({ err: error.message }, 'a step could not be handled'),
   });
   void steps.start(id);
@@ -341,6 +341,7 @@ async function main(): Promise<void> {
     logger.info({ signal }, 'shutting down the local agent host');
     clearInterval(initialTimer);
     workSync.stop();
+    steps.stop();
     void host.stop().finally(async () => {
       await instance.release();
       process.exit(0);

@@ -37,7 +37,10 @@ export class ComputerPlannerRuntime implements StepRunner {
     if (!this.handles(step.toolId))
       return {
         ok: false,
-        error: { code: 'computer.planner_disabled', message: '画面操作プランナーは利用できません。' },
+        error: {
+          code: 'computer.planner_disabled',
+          message: '画面操作プランナーは利用できません。',
+        },
       };
 
     const goal = typeof step.args['goal'] === 'string' ? step.args['goal'].trim() : '';
@@ -81,7 +84,10 @@ export class ComputerPlannerRuntime implements StepRunner {
       if (action.action === 'stop')
         return {
           ok: false,
-          error: { code: 'computer.planner_stopped', message: action.reason || '安全に続行できません。' },
+          error: {
+            code: 'computer.planner_stopped',
+            message: action.reason || '安全に続行できません。',
+          },
         };
 
       const toolId = `computer.${action.action}`;
@@ -143,7 +149,9 @@ export class ComputerPlannerRuntime implements StepRunner {
   }
 }
 
-function actionArgs(action: Exclude<PlannedAction, { action: 'done' | 'stop' }>): Record<string, unknown> {
+function actionArgs(
+  action: Exclude<PlannedAction, { action: 'done' | 'stop' }>,
+): Record<string, unknown> {
   if (action.action === 'click')
     return { x: action.x, y: action.y, expectChange: action.expectChange ?? true };
   if (action.action === 'type')

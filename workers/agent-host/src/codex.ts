@@ -56,7 +56,7 @@ export class CodexCli {
 
   async ask(
     prompt: string,
-    options: { images?: readonly string[]; webSearch?: boolean } = {},
+    options: { images?: readonly string[]; webSearch?: boolean; signal?: AbortSignal } = {},
   ): Promise<unknown> {
     const directory = await mkdtemp(join(tmpdir(), 'astra-codex-'));
     try {
@@ -95,6 +95,7 @@ export class CodexCli {
       const result = await this.#run(this.command, args, {
         input: prompt,
         timeoutMs: this.config.timeoutMs ?? 120_000,
+        ...(options.signal ? { signal: options.signal } : {}),
       });
       if (result.code !== 0) {
         const text = result.stderr + result.stdout;
