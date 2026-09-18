@@ -147,7 +147,10 @@ export class ComputerRuntime {
       };
     }
     const after = await this.#observe();
-    const changed = before !== null && after !== null ? observationKey(before) !== observationKey(after) : null;
+    const changed =
+      before !== null && after !== null
+        ? observationKey(before) !== observationKey(after)
+        : null;
     if (step.args['expectChange'] === true && changed === false) {
       return {
         ok: false,
