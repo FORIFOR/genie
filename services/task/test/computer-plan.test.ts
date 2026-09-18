@@ -30,6 +30,17 @@ describe('computer.action plan', () => {
     });
   });
 
+  it('plans a bounded autonomous run behind one explicit approval', () => {
+    const plan = planTask('computer.run', { goal: '設定画面を開く' });
+    expect(plan.steps[0]).toMatchObject({
+      toolId: 'computer.run',
+      risk: 'REVERSIBLE_WRITE',
+      surface: 'local',
+      requiresConfirmation: true,
+      args: { goal: '設定画面を開く' },
+    });
+  });
+
   it('rejects unknown computer actions', () => {
     expect(() => planTask('computer.action', { action: 'shell' })).toThrow(
       'computer.action needs observe, click, type, or key',
