@@ -26,6 +26,7 @@ import { ClaudeCodeCli } from './claude-code.js';
 import { LlmRuntime } from './llm-steps.js';
 import { HttpLlmClient } from './http-llm.js';
 import { CompositeRunner } from './runner.js';
+import { ComputerRuntime } from './computer-runtime.js';
 import type { WorkSyncState, LanguageModelKind } from '@genie/contracts';
 import { DEFAULT_SYNC_INTERVAL_MS, WorkSyncLoop } from './work-sync.js';
 import {
@@ -269,9 +270,15 @@ async function main(): Promise<void> {
     },
   });
 
+  const computer = new ComputerRuntime({
+    enabled: process.env['ASTRA_COMPUTER_USE'] === 'on',
+    ...(process.env['ASTRA_COMPUTER_HELPER'] ? { command: process.env['ASTRA_COMPUTER_HELPER'] } : {}),
+  });
+  logger.info({ enabled: process.env['ASTRA_COMPUTER_USE'] === 'on' }, 'computer use capability');
+
   const steps = new HostStepLoop({
     transport: httpStepTransport({ baseUrl, token, fetch: apiSession.fetch }),
-    runner: new CompositeRunner([runtime, llm]),
+    runner: new CompositeRunner([runtime, computer, llm]),
     onError: (error) => logger.warn({ err: error.message }, 'a step could not be handled'),
   });
   void steps.start(id);
