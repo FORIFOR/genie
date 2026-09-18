@@ -27,6 +27,7 @@ import { LlmRuntime } from './llm-steps.js';
 import { HttpLlmClient } from './http-llm.js';
 import { CompositeRunner } from './runner.js';
 import { ComputerRuntime } from './computer-runtime.js';
+import { ComputerPlannerRuntime } from './computer-planner.js';
 import type { WorkSyncState, LanguageModelKind } from '@genie/contracts';
 import { DEFAULT_SYNC_INTERVAL_MS, WorkSyncLoop } from './work-sync.js';
 import {
@@ -277,10 +278,11 @@ async function main(): Promise<void> {
       : {}),
   });
   logger.info({ enabled: process.env['ASTRA_COMPUTER_USE'] === 'on' }, 'computer use capability');
+  const computerPlanner = new ComputerPlannerRuntime({ computer, model: llm });
 
   const steps = new HostStepLoop({
     transport: httpStepTransport({ baseUrl, token, fetch: apiSession.fetch }),
-    runner: new CompositeRunner([runtime, computer, llm]),
+    runner: new CompositeRunner([runtime, computerPlanner, computer, llm]),
     onError: (error) => logger.warn({ err: error.message }, 'a step could not be handled'),
   });
   void steps.start(id);
