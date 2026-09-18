@@ -28,8 +28,26 @@ describe('ComputerRuntime', () => {
 
   it('validates, executes and re-observes an approved click', async () => {
     const observations = [
-      JSON.stringify({ app: 'Safari', bundleId: 'com.apple.Safari', window: 'Before', focusedRole: 'AXButton', mouseX: 1, mouseY: 2, screens: 1, accessibilityTrusted: true }),
-      JSON.stringify({ app: 'Safari', bundleId: 'com.apple.Safari', window: 'After', focusedRole: 'AXButton', mouseX: 10, mouseY: 21, screens: 1, accessibilityTrusted: true }),
+      JSON.stringify({
+        app: 'Safari',
+        bundleId: 'com.apple.Safari',
+        window: 'Before',
+        focusedRole: 'AXButton',
+        mouseX: 1,
+        mouseY: 2,
+        screens: 1,
+        accessibilityTrusted: true,
+      }),
+      JSON.stringify({
+        app: 'Safari',
+        bundleId: 'com.apple.Safari',
+        window: 'After',
+        focusedRole: 'AXButton',
+        mouseX: 10,
+        mouseY: 21,
+        screens: 1,
+        accessibilityTrusted: true,
+      }),
     ];
     const run = vi.fn(async (_command: string, args: readonly string[]) => ({
       code: 0,
@@ -50,7 +68,16 @@ describe('ComputerRuntime', () => {
   });
 
   it('fails verification when an expected UI change is not observed', async () => {
-    const observation = JSON.stringify({ app: 'Safari', bundleId: 'com.apple.Safari', window: 'Same', focusedRole: 'AXButton', mouseX: 10, mouseY: 20, screens: 1, accessibilityTrusted: true });
+    const observation = JSON.stringify({
+      app: 'Safari',
+      bundleId: 'com.apple.Safari',
+      window: 'Same',
+      focusedRole: 'AXButton',
+      mouseX: 10,
+      mouseY: 20,
+      screens: 1,
+      accessibilityTrusted: true,
+    });
     const run = vi.fn(async (_command: string, args: readonly string[]) => ({
       code: 0,
       stdout: args[0] === 'observe' ? observation : '',
