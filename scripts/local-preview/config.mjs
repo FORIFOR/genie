@@ -25,6 +25,7 @@ export function parseOptions(args) {
     const arg = args[i];
     if (arg === '--help' || arg === '-h') result.help = true;
     else if (arg === '--no-open') result.open = false;
+    else if (arg === '--computer-use') result.computerUse = true;
     else if (fields[arg] && args[i + 1] && !args[i + 1].startsWith('--'))
       result[fields[arg]] = args[++i];
     else throw new Error('不明なオプションです。--help で起動方法を確認してください。');

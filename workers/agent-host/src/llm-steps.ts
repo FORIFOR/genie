@@ -1,4 +1,5 @@
 import { compositionIssues } from './compose-quality.js';
+import { visionPromptFor } from './computer-vision-prompts.js';
 /**
  * 端末で言語モデルの依頼を走らせる。正本 §8・§21、UI/UX §22。
  *
@@ -36,6 +37,8 @@ export const LLM_TOOLS = [
   'llm.compose',
   'llm.summarize_meeting',
   'llm.classify_email',
+  'llm.plan_computer_action',
+  'llm.verify_computer_action',
   'search.web',
 ] as const;
 
@@ -54,6 +57,8 @@ const TOOLS_FOR: Readonly<Record<LlmTool, readonly string[]>> = {
   'llm.compose': [],
   'llm.summarize_meeting': [],
   'llm.classify_email': [],
+  'llm.plan_computer_action': [],
+  'llm.verify_computer_action': [],
   'search.web': ['WebSearch'],
 };
 export type LlmTool = (typeof LLM_TOOLS)[number];
@@ -70,7 +75,15 @@ export function toolsFor(
   args: Record<string, unknown>,
   images: readonly LocatedImage[] = locateImages(imageRefsOf(args['images'])),
 ): readonly string[] {
-  if ((tool === 'llm.answer' || tool === 'llm.compose') && images.some((image) => image.present))
+  if (
+    [
+      'llm.answer',
+      'llm.compose',
+      'llm.plan_computer_action',
+      'llm.verify_computer_action',
+    ].includes(tool) &&
+    images.some((image) => image.present)
+  )
     return ['Read'];
   return TOOLS_FOR[tool];
 }
@@ -189,6 +202,10 @@ export function promptFor(
         '記録:',
         ...meetingLines(args['segments']),
       ].join('\n');
+
+    case 'llm.plan_computer_action':
+    case 'llm.verify_computer_action':
+      return visionPromptFor(tool, args);
 
     case 'llm.classify_email':
       return [
@@ -370,8 +387,8 @@ export class LlmRuntime {
     this.#options = null;
   }
 
-  async run(step: HostStep): Promise<StepOutcome> {
-    return this.#run(step, false);
+  async run(step: HostStep, signal?: AbortSignal): Promise<StepOutcome> {
+    return this.#run(step, false, signal);
   }
 
   /** Periodic mailbox classification must not spend paid API/CLI usage silently. */
@@ -382,7 +399,7 @@ export class LlmRuntime {
     };
   }
 
-  async #run(step: HostStep, localOnly: boolean): Promise<StepOutcome> {
+  async #run(step: HostStep, localOnly: boolean, signal?: AbortSignal): Promise<StepOutcome> {
     if (!this.handles(step.toolId)) {
       return {
         ok: false,
@@ -391,9 +408,14 @@ export class LlmRuntime {
     }
 
     const options = await this.options();
-    const chosen = selectLanguageModel(
-      localOnly ? options.filter((option) => option.kind === 'local') : options,
+    const vision = ['llm.plan_computer_action', 'llm.verify_computer_action'].includes(step.toolId);
+    const pinned = vision ? step.args['vision_model_kind'] : null;
+    const candidates = options.filter(
+      (option) =>
+        (!localOnly || option.kind === 'local') &&
+        (!vision || (typeof pinned === 'string' && option.kind === pinned)),
     );
+    const chosen = selectLanguageModel(candidates);
     if (!chosen) {
       /*
        * 使えるものが無い。**運営側のモデルへ落ちない。**
@@ -422,7 +444,7 @@ export class LlmRuntime {
       };
     }
 
-    const ask = this.#askFor(chosen.kind, step.toolId, step.args);
+    const ask = this.#askFor(chosen.kind, step.toolId, step.args, signal);
     if (!ask) {
       return {
         ok: false,
@@ -436,6 +458,13 @@ export class LlmRuntime {
     try {
       const tool = step.toolId as LlmTool;
       const images = locateImages(imageRefsOf(step.args['images']));
+      if (vision) {
+        const expected =
+          tool === 'llm.plan_computer_action' || step.args['phase'] === 'goal' ? 1 : 2;
+        if (images.length !== expected || images.some((image) => !image.present))
+          throw new HttpLlmError('image_unavailable', 'Fresh vision frames are required');
+        readVisualImages(images);
+      }
       const prompt = promptFor(
         tool,
         step.args,
@@ -532,6 +561,7 @@ export class LlmRuntime {
     kind: LanguageModelKind,
     tool: string,
     args: Record<string, unknown>,
+    signal?: AbortSignal,
   ):
     | ((
         prompt: string,
@@ -547,12 +577,14 @@ export class LlmRuntime {
             ? images.filter((image) => image.present).map((image) => image.path)
             : [],
           webSearch: allowedTools.includes('WebSearch'),
+          ...(signal ? { signal } : {}),
         });
     }
     // Search always uses the real CLI tool path, never a text-only override.
     if (tool === 'search.web' && kind === 'claude_code' && this.#deps.claudeCode) {
       const cli = this.#deps.claudeCode;
-      return (prompt, allowedTools) => cli.ask(prompt, { allowedTools });
+      return (prompt, allowedTools) =>
+        cli.ask(prompt, { allowedTools, ...(signal ? { signal } : {}) });
     }
     const provided = this.#deps.askWith?.[kind];
     if (provided) return provided;
@@ -568,13 +600,15 @@ export class LlmRuntime {
                   String(args['instruction'] ?? ''),
                 ),
               readVisualImages(images),
+              signal,
             ),
           })
-        : (prompt) => http.ask(prompt);
+        : (prompt, _allowedTools, images) => http.ask(prompt, readVisualImages(images), signal);
     }
     if (kind === 'claude_code' && this.#deps.claudeCode) {
       const cli = this.#deps.claudeCode;
-      return (prompt, allowedTools) => cli.ask(prompt, { allowedTools });
+      return (prompt, allowedTools) =>
+        cli.ask(prompt, { allowedTools, ...(signal ? { signal } : {}) });
     }
     return null;
   }

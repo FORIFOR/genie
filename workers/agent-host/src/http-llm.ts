@@ -93,8 +93,12 @@ export class HttpLlmClient {
     }
   }
 
-  async ask(prompt: string, images: readonly HttpLlmImage[] = []): Promise<unknown> {
-    const content = await this.#request(prompt, true, false, images);
+  async ask(
+    prompt: string,
+    images: readonly HttpLlmImage[] = [],
+    signal?: AbortSignal,
+  ): Promise<unknown> {
+    const content = await this.#request(prompt, true, false, images, signal);
     try {
       return JSON.parse(content) as unknown;
     } catch {
@@ -107,8 +111,9 @@ export class HttpLlmClient {
     prompt: string,
     creative = false,
     images: readonly HttpLlmImage[] = [],
+    signal?: AbortSignal,
   ): Promise<string> {
-    return this.#request(prompt, false, creative, images);
+    return this.#request(prompt, false, creative, images, signal);
   }
 
   async #request(
@@ -116,6 +121,7 @@ export class HttpLlmClient {
     structured: boolean,
     creative = false,
     images: readonly HttpLlmImage[] = [],
+    signal?: AbortSignal,
   ): Promise<string> {
     if (!prompt.trim()) throw new Error('LLM prompt is empty');
     if (
@@ -164,7 +170,9 @@ export class HttpLlmClient {
           ...(structured ? { response_format: { type: 'json_object' } } : {}),
           ...(this.#config.kind === 'local' ? { temperature: creative ? 0.6 : 0 } : {}),
         }),
-        signal: AbortSignal.timeout(this.#config.timeoutMs ?? 120_000),
+        signal: signal
+          ? AbortSignal.any([signal, AbortSignal.timeout(this.#config.timeoutMs ?? 120_000)])
+          : AbortSignal.timeout(this.#config.timeoutMs ?? 120_000),
       },
     ).catch((error: unknown) => {
       if (error instanceof Error && ['TimeoutError', 'AbortError'].includes(error.name))

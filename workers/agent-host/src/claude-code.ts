@@ -51,7 +51,7 @@ export interface RunResult {
 export type RunCommand = (
   command: string,
   args: readonly string[],
-  options: { input?: string; timeoutMs: number },
+  options: { input?: string; timeoutMs: number; signal?: AbortSignal },
 ) => Promise<RunResult>;
 
 export const runCommand: RunCommand = (command, args, options) =>
@@ -59,7 +59,11 @@ export const runCommand: RunCommand = (command, args, options) =>
     const child = execFile(
       command,
       [...args],
-      { timeout: options.timeoutMs, maxBuffer: 32 * 1024 * 1024 },
+      {
+        timeout: options.timeoutMs,
+        maxBuffer: 32 * 1024 * 1024,
+        ...(options.signal ? { signal: options.signal } : {}),
+      },
       (error, stdout, stderr) => {
         resolve({
           code: error ? (error.killed ? 124 : typeof error.code === 'number' ? error.code : 1) : 0,
@@ -166,6 +170,7 @@ export class ClaudeCodeCli {
     const result = await this.#run(this.command, args, {
       input: prompt,
       timeoutMs: this.#config.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+      ...(options.signal ? { signal: options.signal } : {}),
     });
 
     const failure = failureFrom(result);

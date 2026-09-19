@@ -46,6 +46,7 @@ DB設定・マイグレーション・3サービスの起動をまとめて行�
   --state-dir <path>  専用の保存先（既定 ${DEFAULT_STATE}）
   --port <port>       初回作成時のGatewayポート（既定 ${DEFAULT_PORT}）
   --no-open           アプリを開かず起動（Linuxの統合検証でも使用）
+  --computer-use      Macの画面操作を有効化。操作ごとの承認が必要
   --help             この案内を表示
 
 この起動経路は独立したプレビュー用です。既存の.env・DB・通常起動のアプリ履歴を変更しません。
@@ -325,6 +326,27 @@ export async function start(options) {
     );
     stage('build', 'ローカル実行サービスを準備しています…');
     await processes.run('build', pnpm, [...pnpmArgs, 'build'], env, { timeout: 300_000 });
+    let computerHelper;
+    if (options.computerUse) {
+      if (process.platform !== 'darwin')
+        throw new Error('--computer-use はmacOSでのみ利用できます。');
+      if (!(await probe('swiftc', ['--version'], env)))
+        throw new Error(
+          '画面操作の準備にSwiftコンパイラが必要です。Xcode Command Line Toolsを導入してください。',
+        );
+      stage('computer', '画面操作ヘルパーを準備しています…');
+      await processes.run(
+        'computer-helper',
+        'bash',
+        [join(REPO, 'scripts/build-computer-helper.sh')],
+        env,
+        {
+          timeout: 120_000,
+        },
+      );
+      computerHelper = join(REPO, '.build/computer/genie-computer');
+      await access(computerHelper, constants.X_OK);
+    }
     const composeFile = join(stateDir, 'compose.json');
     await privateJSON(composeFile, composeConfig(config, REPO));
     composeArgs = [
@@ -391,6 +413,10 @@ export async function start(options) {
       { input: bootstrap + '\n' + passwords, timeout: 30_000 },
     );
     const runtimeEnv = serviceEnvironment(config, stateDir, REPO);
+    if (options.computerUse) {
+      runtimeEnv.ASTRA_COMPUTER_USE = 'on';
+      runtimeEnv.ASTRA_COMPUTER_VISION_HELPER = computerHelper;
+    }
     if (process.platform !== 'darwin')
       runtimeEnv.ASTRA_SECRET_STORE_FILE = join(stateDir, 'host-secrets.json');
     const runService = async (name, entry, extra = {}) =>

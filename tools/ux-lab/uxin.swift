@@ -1,13 +1,48 @@
 import AppKit
 import CoreGraphics
+import ApplicationServices
 
 // 画面へ実際に入力を送る。Blind Operator の「手」。
 // 使い方: uxin click <x> <y> / uxin move <x> <y> / uxin key <keycode> [opt|cmd|shift]
-//         uxin pos
+//         uxin type <text> / uxin pos / uxin observe
 let a = CommandLine.arguments
 func pt(_ i: Int) -> CGPoint { CGPoint(x: Double(a[i]) ?? 0, y: Double(a[i+1]) ?? 0) }
 
+func axString(_ element: AXUIElement, _ attribute: CFString) -> String? {
+    var value: CFTypeRef?
+    guard AXUIElementCopyAttributeValue(element, attribute, &value) == .success else { return nil }
+    return value as? String
+}
+
 switch a.count > 1 ? a[1] : "" {
+case "observe":
+    let app = NSWorkspace.shared.frontmostApplication
+    let pid = app?.processIdentifier ?? 0
+    let axApp = AXUIElementCreateApplication(pid)
+    var focusedWindow: CFTypeRef?
+    var focusedElement: CFTypeRef?
+    let windowTitle: String? = AXUIElementCopyAttributeValue(axApp, kAXFocusedWindowAttribute as CFString, &focusedWindow) == .success
+        ? axString(focusedWindow as! AXUIElement, kAXTitleAttribute as CFString) : nil
+    let system = AXUIElementCreateSystemWide()
+    let focusedRole: String? = AXUIElementCopyAttributeValue(system, kAXFocusedUIElementAttribute as CFString, &focusedElement) == .success
+        ? axString(focusedElement as! AXUIElement, kAXRoleAttribute as CFString) : nil
+    let p = NSEvent.mouseLocation
+    let h = NSScreen.screens.first?.frame.height ?? 0
+    let payload: [String: Any] = [
+        "app": app?.localizedName ?? "",
+        "bundleId": app?.bundleIdentifier ?? "",
+        "window": windowTitle ?? "",
+        "focusedRole": focusedRole ?? "",
+        "mouseX": Int(p.x.rounded()),
+        "mouseY": Int((h - p.y).rounded()),
+        "screens": NSScreen.screens.count,
+        "accessibilityTrusted": AXIsProcessTrusted(),
+    ]
+    if let data = try? JSONSerialization.data(withJSONObject: payload), let json = String(data: data, encoding: .utf8) {
+        print(json)
+    } else {
+        print("{}")
+    }
 case "pos":
     let p = NSEvent.mouseLocation
     // NSEvent は左下原点。CG は左上原点。
@@ -59,5 +94,5 @@ case "type":
         usleep(12_000)
     }
 default:
-    print("usage: uxin click|move <x> <y> | key <code> [opt|cmd|shift] | type <text> | pos"); exit(2)
+    print("usage: uxin click|move <x> <y> | key <code> [opt|cmd|shift] | type <text> | pos | observe"); exit(2)
 }

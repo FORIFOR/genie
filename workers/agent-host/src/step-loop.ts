@@ -40,6 +40,8 @@ export class HostStepLoop {
   #stopping = false;
   /** いま走らせている 1 件。**2 件目を取りに行かないための記録。** */
   #current: string | null = null;
+  #claiming = false;
+  #abort: AbortController | null = null;
 
   constructor(options: StepLoopOptions) {
     this.#options = options;
@@ -51,12 +53,18 @@ export class HostStepLoop {
 
   /** 1 周だけ回す。取るものが無ければ false。 */
   async tick(hostId: string): Promise<boolean> {
-    if (this.#current !== null) return false;
-
-    const step = await this.#options.transport.claim(hostId);
+    if (this.#current !== null || this.#claiming || this.#stopping) return false;
+    this.#claiming = true;
+    let step: HostStep | null;
+    try {
+      step = await this.#options.transport.claim(hostId);
+    } finally {
+      this.#claiming = false;
+    }
     if (!step) return false;
-
     this.#current = step.id;
+    this.#abort = new AbortController();
+    if (this.#stopping) this.#abort.abort();
     try {
       if (!this.#options.runner.handles(step.toolId)) {
         /*
@@ -70,7 +78,7 @@ export class HostStepLoop {
         return true;
       }
 
-      const outcome = await this.#options.runner.run(step);
+      const outcome = await this.#options.runner.run(step, this.#abort.signal);
       if (outcome.ok) {
         await this.#options.transport.complete(step.id, hostId, outcome.result ?? null);
       } else {
@@ -97,6 +105,7 @@ export class HostStepLoop {
       return true;
     } finally {
       this.#current = null;
+      this.#abort = null;
     }
   }
 
@@ -127,5 +136,6 @@ export class HostStepLoop {
 
   stop(): void {
     this.#stopping = true;
+    this.#abort?.abort();
   }
 }
