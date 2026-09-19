@@ -8,18 +8,26 @@ permissions:
 jobs:
   snapshot:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Archive tracked implementation sources only
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Archive installed dependencies and declarations only
         run: |
-          git ls-files -z -- AGENTS.md '*.json' '*.yaml' '*.yml' .prettierignore .env.example apps/genie-macos services workers packages plugins shared/design scripts .github docs/DESIGN_SYSTEM.md > /tmp/source-paths
-          tar --null -czf execution-sources.tar.gz -T /tmp/source-paths
+          find . -type d -name node_modules -prune -print0 > /tmp/dependency-paths
+          find packages services workers -type d -name dist -prune -print0 >> /tmp/dependency-paths
+          tar --null -czf execution-dependencies.tar.gz -T /tmp/dependency-paths
       - uses: actions/upload-artifact@v4
         with:
-          name: execution-sources
-          path: execution-sources.tar.gz
+          name: execution-dependencies
+          path: execution-dependencies.tar.gz
           retention-days: 1
           if-no-files-found: error
