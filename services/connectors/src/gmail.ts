@@ -16,9 +16,28 @@ import {
   type ApprovalProof,
   type OperationDecl,
 } from './approval.js';
-import { buildMime, extractBody, listAttachments, toBase64Url, type DraftMessage } from './mime.js';
+import {
+  buildMime,
+  encodeHeaderValue,
+  fromBase64Url,
+  extractBody,
+  listAttachments,
+  toBase64Url,
+  type DraftMessage,
+} from './mime.js';
 
 const BASE = 'https://gmail.googleapis.com/gmail/v1/users/me';
+
+function draftSubject(value: string): string {
+  const encoded = /^=\?UTF-8\?B\?([A-Za-z0-9+/]*={0,2})\?=$/i.exec(value);
+  if (!encoded) return value;
+  try {
+    const decoded = new TextDecoder('utf-8', { fatal: true }).decode(fromBase64Url(encoded[1]!));
+    return encodeHeaderValue(decoded).toLowerCase() === value.toLowerCase() ? decoded : value;
+  } catch {
+    return value;
+  }
+}
 
 export const GMAIL_OPERATIONS = {
   list: { id: 'gmail.list', scope: 'email.read', risk: 'READ', requiresApproval: false },
@@ -182,6 +201,50 @@ export class GmailConnector {
       cc: addresses(header(raw, 'Cc')),
       attachments: listAttachments(raw.payload as never),
       messageIdHeader: header(raw, 'Message-ID') || null,
+    };
+  }
+
+  /** Check the compose connection with a minimal GET. No body content is retained. */
+  async probeDrafts(signal?: AbortSignal): Promise<void> {
+    requireScope(GMAIL_OPERATIONS.draft, this.#deps.grantedScopes);
+    await callJson(
+      `${BASE}/drafts?maxResults=1&fields=drafts(id)`,
+      { method: 'GET' },
+      this.#deps,
+      signal,
+    );
+  }
+
+  /** Independent readback using the SAME compose connection/account as the write. */
+  async getDraft(
+    draftId: string,
+    signal?: AbortSignal,
+  ): Promise<{
+    id: string;
+    to: readonly string[];
+    subject: string;
+    body: string;
+    draft: boolean;
+  }> {
+    requireScope(GMAIL_OPERATIONS.draft, this.#deps.grantedScopes);
+    if (!draftId) throw new ConnectorError('not_found', 'Missing draft ID');
+    const raw = await callJson<{ id?: string; message?: RawMessage }>(
+      `${BASE}/drafts/${encodeURIComponent(draftId)}?format=full`,
+      { method: 'GET' },
+      this.#deps,
+      signal,
+    );
+    const message = raw.message ?? {};
+    const body = extractBody(message.payload as never);
+    return {
+      id: raw.id ?? '',
+      to: addresses(header(message, 'To')),
+      subject: draftSubject(header(message, 'Subject')),
+      body: body.text,
+      draft:
+        !body.isHtml &&
+        message.labelIds?.includes('DRAFT') === true &&
+        !message.labelIds?.includes('SENT'),
     };
   }
 

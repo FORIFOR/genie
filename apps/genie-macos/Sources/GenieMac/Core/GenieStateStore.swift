@@ -66,6 +66,13 @@ final class GenieStateStore: ObservableObject {
 
     // MARK: - Agent（§15）
 
+    func trackExecution(_ task: AgentTask) {
+        guard state.activeTask?.id == task.id else { return }
+        state.activeTask = task
+        LocalStore.shared.save(task)
+        WindowCoordinator.shared.syncDockPanels()
+    }
+
     func startTask(_ task: AgentTask) {
         state.activeTask = task
         // §23 UI lifecycle ≠ Task lifecycle。Dock を閉じても task は消えない。

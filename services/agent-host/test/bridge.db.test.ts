@@ -102,6 +102,56 @@ describe.skipIf(!url)('the host bridge', () => {
     await db?.close();
   });
 
+  it('pins execution.apply to the device holding the immutable prepared plan', async () => {
+    const taskId = await makeTask();
+    const request = await bridge.request({
+      tenantId,
+      taskId,
+      stepIndex: 1,
+      toolId: 'execution.apply',
+      args: { prepared: { deviceId: hostId } },
+    });
+    expect(await bridge.claimNext({ tenantId, hostId: otherHostId })).toBeNull();
+    expect((await bridge.claimNext({ tenantId, hostId }))?.id).toBe(request.id);
+  });
+
+  it('does not claim an execution.apply request with no pinned device', async () => {
+    await bridge.request({
+      tenantId,
+      taskId: await makeTask(),
+      stepIndex: 1,
+      toolId: 'execution.apply',
+      args: { prepared: {} },
+    });
+    expect(await bridge.claimNext({ tenantId, hostId })).toBeNull();
+  });
+
+  it('does not prepare another member execution on this account', async () => {
+    const otherUser = uuidv7();
+    await withIdentity(db, async (tx) => {
+      await tx
+        .insertInto('users')
+        .values({ id: otherUser, email: `other-${otherUser}@example.com`, display_name: 'Other' })
+        .execute();
+      await tx
+        .insertInto('memberships')
+        .values({ tenant_id: tenantId, user_id: otherUser, role: 'member' })
+        .execute();
+    });
+    const taskId = await makeTask();
+    await withTenant(db, tenantId, (tx) =>
+      tx.updateTable('tasks').set({ created_by: otherUser }).where('id', '=', taskId).execute(),
+    );
+    await bridge.request({
+      tenantId,
+      taskId,
+      stepIndex: 0,
+      toolId: 'execution.prepare',
+      args: { goal: 'a task' },
+    });
+    expect(await bridge.claimNext({ tenantId, hostId })).toBeNull();
+  });
+
   it('says a device is there while it keeps answering', async () => {
     expect(await bridge.hasOnlineHost(tenantId, userId)).toBe(true);
     // 90 秒応答が無ければ、居ないものとして扱う

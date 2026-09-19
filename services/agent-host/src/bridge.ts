@@ -1,3 +1,4 @@
+import { sql } from 'kysely';
 /**
  * 手元でしか動かせない step の受け渡し。正本 §4.4・§16.1・§21。
  *
@@ -205,6 +206,27 @@ export class HostBridge {
         .selectAll()
         .where('status', '=', 'PENDING')
         .where('expires_at', '>', at)
+        .where((eb) =>
+          eb.or([
+            eb('tool_id', 'not like', 'execution.%'),
+            eb.exists(
+              eb
+                .selectFrom('tasks')
+                .innerJoin('agent_hosts', 'agent_hosts.user_id', 'tasks.created_by')
+                .select('tasks.id')
+                .whereRef('tasks.id', '=', 'host_step_requests.task_id')
+                .where('tasks.tenant_id', '=', input.tenantId)
+                .where('agent_hosts.tenant_id', '=', input.tenantId)
+                .where('agent_hosts.id', '=', input.hostId),
+            ),
+          ]),
+        )
+        .where((eb) =>
+          eb.or([
+            eb('tool_id', '!=', 'execution.apply'),
+            eb(sql<string>`args #>> '{prepared,deviceId}'`, '=', input.hostId),
+          ]),
+        )
         .orderBy('created_at', 'asc')
         .limit(1)
         .forUpdate()

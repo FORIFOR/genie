@@ -14,6 +14,7 @@ import type { HostStep, StepOutcome } from './connector-steps.js';
 export interface StepTransport {
   /** 次の 1 件を取る。無ければ null。 */
   claim(hostId: string): Promise<HostStep | null>;
+  shouldCancel?(step: HostStep): Promise<boolean>;
   complete(requestId: string, hostId: string, result: unknown): Promise<void>;
   fail(requestId: string, hostId: string, error: { code: string; message: string }): Promise<void>;
 }
@@ -65,7 +66,30 @@ export class HostStepLoop {
     this.#current = step.id;
     this.#abort = new AbortController();
     if (this.#stopping) this.#abort.abort();
+    const controller = this.#abort;
+    let checking = false;
+    let cancelTimer: ReturnType<typeof setInterval> | undefined;
+    const checkCancel = async () => {
+      if (checking || controller.signal.aborted) return;
+      checking = true;
+      try {
+        if (await this.#options.transport.shouldCancel?.(step!)) controller.abort();
+      } catch {
+        controller.abort();
+      } finally {
+        checking = false;
+      }
+    };
     try {
+      if (
+        this.#options.transport.shouldCancel &&
+        (step.toolId.startsWith('execution.') || step.toolId === 'computer.run')
+      ) {
+        await checkCancel();
+        controller.signal.throwIfAborted();
+        cancelTimer = setInterval(() => void checkCancel(), 1000);
+        cancelTimer.unref?.();
+      }
       if (!this.#options.runner.handles(step.toolId)) {
         /*
          * 取ってしまったが扱えない。**放置しない。**
@@ -79,7 +103,12 @@ export class HostStepLoop {
       }
 
       const outcome = await this.#options.runner.run(step, this.#abort.signal);
-      if (outcome.ok) {
+      if (controller.signal.aborted) {
+        await this.#options.transport.fail(step.id, hostId, {
+          code: 'execution.cancelled',
+          message: '実行を停止しました。既存の変更は取り消していません。',
+        });
+      } else if (outcome.ok) {
         await this.#options.transport.complete(step.id, hostId, outcome.result ?? null);
       } else {
         await this.#options.transport.fail(
@@ -104,6 +133,7 @@ export class HostStepLoop {
         .catch(() => undefined);
       return true;
     } finally {
+      if (cancelTimer) clearInterval(cancelTimer);
       this.#current = null;
       this.#abort = null;
     }

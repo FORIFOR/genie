@@ -622,7 +622,9 @@ struct AgentDock: View {
                 // 178x28）。**止める操作がいちばん小さい**のは、あってはならない。
                 StopButton(label: Facts.taskStop,
                            font: .system(size: S.type(Metrics.dockMetaSize), weight: .medium)) {
-                    GenieStateStore.shared.finishTask(.failed)
+                    if let task = store.state.activeTask, task.requestRecord?.backendKind == "execution.run" {
+                        VoiceHUDState.shared.cancelExecution(task.id)
+                    } else { GenieStateStore.shared.finishTask(.failed) }
                 }
                 .accessibilityIdentifier("stopAgent")
             }

@@ -444,6 +444,9 @@ importers:
 
   services/agent-host:
     dependencies:
+      kysely:
+        specifier: 'catalog:'
+        version: 0.29.5
       '@genie/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
@@ -852,6 +855,9 @@ importers:
 
   workers/agent-host:
     dependencies:
+      '@genie/mcp':
+        specifier: workspace:*
+        version: link:../../packages/mcp
       '@genie/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts

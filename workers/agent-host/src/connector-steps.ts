@@ -7,6 +7,7 @@
  * 承認は cloud で取ってあるが、**ここでもう一度確かめる。**
  * 経路が 1 本しかないと、いつか誰かが近道を作り、それが既定になる。
  */
+import { createHash } from 'node:crypto';
 import {
   ApprovalRequired,
   ConnectorError,
@@ -32,6 +33,7 @@ import {
 export interface HostStep {
   readonly id: string;
   readonly toolId: string;
+  readonly taskId?: string;
   readonly args: Record<string, unknown>;
   readonly approval: ApprovalProof | null;
 }
@@ -162,6 +164,22 @@ export class ConnectorRuntime {
     const { pluginId, connectorId } = CONNECTORS[key];
     const tokens = await this.#tokens.load(this.#deps.credentialRefFor(pluginId, connectorId));
     return tokens !== null;
+  }
+
+  /** An opaque account/credential binding, never the credential itself. Reconnect invalidates prepared work. */
+  async executionFingerprint(key: ConnectorKey): Promise<string | null> {
+    const { pluginId, connectorId } = CONNECTORS[key];
+    const tokens = await this.#tokens.load(this.#deps.credentialRefFor(pluginId, connectorId));
+    if (!tokens) return null;
+    return createHash('sha256')
+      .update(
+        JSON.stringify([
+          key,
+          tokens.refreshToken ?? tokens.accessToken,
+          [...this.granted(key)].sort(),
+        ]),
+      )
+      .digest('hex');
   }
 
   /** この接続の plugin に実際に許された Genie の許可。 */
