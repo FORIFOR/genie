@@ -15,7 +15,8 @@ jobs:
           persist-credentials: false
       - name: Archive tracked implementation sources only
         run: |
-          git archive --format=tar.gz -o execution-sources.tar.gz HEAD AGENTS.md package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json tsconfig.base.json tsconfig.tests.json vitest.config.ts .prettierrc.json .prettierignore apps/genie-macos services workers packages plugins shared/design scripts .github docs/DESIGN_SYSTEM.md
+          git ls-files -z -- AGENTS.md '*.json' '*.yaml' '*.yml' .prettierignore .env.example apps/genie-macos services workers packages plugins shared/design scripts .github docs/DESIGN_SYSTEM.md > /tmp/source-paths
+          tar --null -czf execution-sources.tar.gz -T /tmp/source-paths
       - uses: actions/upload-artifact@v4
         with:
           name: execution-sources
