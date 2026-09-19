@@ -21,3 +21,4 @@ export * from './computer-runtime.js';
 export * from './computer-planner.js';
 export * from './computer-vision.js';
 export * from './computer-vision-device.js';
+export * from './intent-execution-router.js';
