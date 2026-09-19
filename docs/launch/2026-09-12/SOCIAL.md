@@ -1,5 +1,7 @@
 > Historical first launch draft. See [revision 2](v2/PUBLICATION.md) for the current promoted video and [research](v2/RESEARCH.md) for the changes.
 
+> Superseded publishing identity: personal-account posting is prohibited as of 2026-09-13. Follow the [Genie publishing policy](../SOCIAL_PUBLISHING.md). The historical "owner account" wording below is not authorization for new posts.
+
 # Launch posts prepared for the owner account
 
 ## X — Japanese
