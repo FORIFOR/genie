@@ -41,6 +41,17 @@ describe('computer.action plan', () => {
     });
   });
 
+  it('plans a natural-language intent as one confirmed local execution', () => {
+    const plan = planTask('intent.execute', { message: 'この作業を終わらせて' });
+    expect(plan.steps[0]).toMatchObject({
+      toolId: 'intent.execute',
+      risk: 'EXTERNAL_COMMIT',
+      surface: 'local',
+      requiresConfirmation: true,
+      args: { goal: 'この作業を終わらせて' },
+    });
+  });
+
   it('rejects unknown computer actions', () => {
     expect(() => planTask('computer.action', { action: 'shell' })).toThrow(
       'computer.action needs observe, click, type, or key',
