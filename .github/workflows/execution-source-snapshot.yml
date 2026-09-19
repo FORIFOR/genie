@@ -1,0 +1,24 @@
+name: execution-source-snapshot
+on:
+  push:
+    branches: [feat/taskdock-verified-execution]
+    paths: ['.github/workflows/execution-source-snapshot.yml']
+permissions:
+  contents: read
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Archive tracked implementation sources only
+        run: |
+          git archive --format=tar.gz -o execution-sources.tar.gz HEAD AGENTS.md package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json tsconfig.base.json tsconfig.tests.json vitest.config.ts .prettierrc.json .prettierignore apps/genie-macos services workers packages plugins shared/design scripts .github docs/DESIGN_SYSTEM.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: execution-sources
+          path: execution-sources.tar.gz
+          retention-days: 1
+          if-no-files-found: error
