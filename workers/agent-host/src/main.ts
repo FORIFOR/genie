@@ -26,6 +26,9 @@ import { ClaudeCodeCli } from './claude-code.js';
 import { LlmRuntime } from './llm-steps.js';
 import { HttpLlmClient } from './http-llm.js';
 import { CompositeRunner } from './runner.js';
+import { ExecutionRuntime } from './execution-runtime.js';
+import { apiExecutionAdapters, nativeExecutionAdapters } from './execution-adapters.js';
+import { mappedMcpAdapter } from './execution-mcp.js';
 import { ComputerVisionRuntime } from './computer-vision.js';
 import { NativeVisionDevice } from './computer-vision-device.js';
 import { selectLanguageModel } from '@genie/contracts';
@@ -280,9 +283,31 @@ async function main(): Promise<void> {
     device: () => new NativeVisionDevice(process.env['ASTRA_COMPUTER_VISION_HELPER'] ?? ''),
   });
 
+  const execution = new ExecutionRuntime({
+    deviceId: id,
+    model: llm,
+    adapters: [
+      ...apiExecutionAdapters(runtime),
+      ...(process.env['ASTRA_EXECUTION_MCP_CONFIG']
+        ? [mappedMcpAdapter(process.env['ASTRA_EXECUTION_MCP_CONFIG'])]
+        : []),
+      ...nativeExecutionAdapters({
+        vision: computerVision,
+        ...(process.env['ASTRA_EXECUTION_AX_HELPER']
+          ? { axHelper: process.env['ASTRA_EXECUTION_AX_HELPER'] }
+          : {}),
+        ...(process.env['ASTRA_COMPUTER_VISION_HELPER']
+          ? { visionHelper: process.env['ASTRA_COMPUTER_VISION_HELPER'] }
+          : {}),
+        selectVisionModel: computerVision.config.selectModel,
+        allowExternalPixels: computerVision.config.allowExternalPixels,
+      }),
+    ],
+  });
+
   const steps = new HostStepLoop({
     transport: httpStepTransport({ baseUrl, token, fetch: apiSession.fetch }),
-    runner: new CompositeRunner([runtime, computerVision, llm]),
+    runner: new CompositeRunner([execution, runtime, computerVision, llm]),
     onError: (error) => logger.warn({ err: error.message }, 'a step could not be handled'),
   });
   void steps.start(id);

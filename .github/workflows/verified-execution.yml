@@ -1,0 +1,49 @@
+name: verified-execution
+on:
+  pull_request:
+    paths:
+      - 'apps/genie-macos/**'
+      - 'workers/agent-host/**'
+      - 'services/**'
+      - 'tools/execution/**'
+      - 'scripts/build-execution-helper.sh'
+      - 'scripts/test-execution-receipt.swift'
+      - '.github/workflows/verified-execution.yml'
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: verified-execution-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  native-and-execution:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm exec tsc -p tsconfig.tests.json
+      - name: Execution policy, adapters, cancellation and conversation regressions
+        run: pnpm exec vitest run workers/agent-host/test services/connectors/test services/conversation/test services/task/test/execution-plan.test.ts services/task/test/metered-workflow.test.ts services/task/test/mail-plan.test.ts
+      - name: Compile field helper and test UTF-16 boundaries
+        run: bash scripts/build-execution-helper.sh
+      - name: Verify truthful result labels
+        run: |
+          swiftc apps/genie-macos/Sources/GenieMac/Agent/ExecutionReceipt.swift scripts/test-execution-receipt.swift -o /tmp/execution-receipt-check
+          /tmp/execution-receipt-check
+      - name: Prepare pinned Mac app dependencies
+        run: |
+          bash scripts/fetch-sparkle.sh
+          cargo build --manifest-path core/genie-core/Cargo.toml
+      - name: Compile complete Mac app
+        run: swift build --package-path apps/genie-macos

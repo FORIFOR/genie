@@ -14,6 +14,7 @@ export interface StepTransportConfig {
 
 interface RawStep {
   id: string;
+  taskId?: string;
   toolId: string;
   args?: Record<string, unknown>;
   approval?: HostStep['approval'];
@@ -45,10 +46,25 @@ export function httpStepTransport(config: StepTransportConfig): StepTransport {
       if (!body) return null;
       return {
         id: body.id,
+        ...(body.taskId ? { taskId: body.taskId } : {}),
         toolId: body.toolId,
         args: body.args ?? {},
         approval: body.approval ?? null,
       };
+    },
+    async shouldCancel(step) {
+      if (!step.taskId) return true;
+      const response = await doFetch(
+        `${config.baseUrl}/v1/tasks/${encodeURIComponent(step.taskId)}`,
+        {
+          headers: { authorization: `Bearer ${config.token}` },
+          redirect: 'error',
+          signal: AbortSignal.timeout(5000),
+        },
+      );
+      if (!response.ok) return true;
+      const body = (await response.json()) as { status?: string };
+      return !['PENDING', 'RUNNING', 'WAITING_APPROVAL'].includes(body.status ?? '');
     },
     async complete(requestId, hostId, result) {
       await call(`/v1/host-steps/${requestId}/complete`, { host_id: hostId, result });
