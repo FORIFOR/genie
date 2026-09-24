@@ -97,6 +97,7 @@ typealias VoiceHUDView = VoiceTaskDockView
 /// 仕事の成果物（`ResultDock`）とは分け、短い回答には進捗や別の作業ボタンを混ぜない。
 struct AnswerDock: View {
     @Environment(\.colorScheme) private var scheme
+    @ObservedObject private var session = VoiceSessionController.shared
     private var dark: Bool { scheme == .dark }
     let text: String
 
@@ -119,6 +120,22 @@ struct AnswerDock: View {
                 }
                 .buttonStyle(GenieControlStyle(radius: 7, base: 0.06))
                 .accessibilityIdentifier("answerCopy")
+                if session.isActive {
+                    Button { VoiceHUDState.shared.endVoiceSession() } label: {
+                        HStack(spacing: 4) {
+                            Circle().fill(Palette.accent(dark)).frame(width: 6, height: 6)
+                            Text(session.remainingText)
+                                .font(.system(size: S.type(Metrics.dockMetaSize), weight: .medium, design: .monospaced))
+                            Image(systemName: "stop.fill").font(.system(size: 8))
+                        }
+                        .foregroundStyle(Palette.muted(dark))
+                        .frame(height: 28)
+                        .padding(.horizontal, 8)
+                    }
+                    .buttonStyle(GenieControlStyle(radius: 7, base: 0.0))
+                    .accessibilityLabel("音声セッションを終了")
+                    .accessibilityIdentifier("voiceSessionStop")
+                }
                 Button { GenieStateStore.shared.dismissResult() } label: {
                     Image(systemName: "xmark")
                         .font(.system(size: 11))
@@ -143,7 +160,10 @@ struct AnswerDock: View {
         .padding(.horizontal, S.metric(Metrics.dockPadH))
         .padding(.vertical, S.metric(Metrics.dockPadV))
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .escapeKey { GenieStateStore.shared.dismissResult() }
+        .escapeKey {
+            if session.isActive { VoiceHUDState.shared.endVoiceSession() }
+            else { GenieStateStore.shared.dismissResult() }
+        }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("dockAnswer")
     }
