@@ -353,6 +353,7 @@ struct ListeningDock: View {
     private var dark: Bool { scheme == .dark }
     @ObservedObject private var store = GenieStateStore.shared
     @ObservedObject private var voice = VoiceHUDState.shared
+    @ObservedObject private var session = VoiceSessionController.shared
     let partial: String
 
     var body: some View {
@@ -370,6 +371,13 @@ struct ListeningDock: View {
                     .lineLimit(1)
                     .truncationMode(.head)
                 Spacer(minLength: 0)
+                if session.isActive {
+                    Text(session.remainingText)
+                        .font(.system(size: S.type(Metrics.dockMetaSize), weight: .medium, design: .monospaced))
+                        .foregroundStyle(Palette.muted(dark))
+                        .accessibilityLabel("音声セッション残り")
+                        .accessibilityValue(session.remainingText)
+                }
                 // マイクが開いている面に逃げ道が**見えない**、と盲検の 2 名が同じ観察をした
                 // （journeys/panel1）。鍵は効いていても、書いていなければ無いのと同じ。
                 KeyBadge(UserShortcut.cancel.display)
