@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 /// A bounded, explicit hands-free conversation window.
 ///
