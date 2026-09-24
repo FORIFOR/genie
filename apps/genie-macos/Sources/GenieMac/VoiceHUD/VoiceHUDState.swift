@@ -66,18 +66,33 @@ final class VoiceHUDState: ObservableObject {
             PermissionGuideCoordinator.shared.explain(.microphone) { [weak self] in self?.beginListening() }
             return
         }
+
+        // A voice button starts one bounded conversation session rather than one
+        // dictation utterance. Future wake-word and shortcut entry points call the
+        // same controller; they do not get a separate authority path.
+        VoiceSessionController.shared.start(source: "dock")
         listeningAwaitingAudio = true
         mode = .listening(partial: "")
         GenieEventBus.shared.publish(.voiceStarted)
         let started = RecordingRuntime.shared.beginVoiceListening(
-            onFirstFrame: { [weak self] in self?.listeningAwaitingAudio = false },
-            onPartial: { [weak self] text in self?.updatePartial(text) },
+            onFirstFrame: { [weak self] in
+                self?.listeningAwaitingAudio = false
+                VoiceSessionController.shared.markListening()
+            },
+            onPartial: { [weak self] text in
+                VoiceSessionController.shared.touch()
+                self?.updatePartial(text)
+            },
             onFinal: { [weak self] text in
                 guard let self, !text.isEmpty else { return }
+                VoiceSessionController.shared.markProcessing()
                 self.speak(text)
             })
         // 会議の録音中は録音側の STT から partial が流れてくるので、そちらを正とする。
-        if !started, RecordingWorkspaceState.shared.isRecording { listeningAwaitingAudio = false }
+        if !started, RecordingWorkspaceState.shared.isRecording {
+            listeningAwaitingAudio = false
+            VoiceSessionController.shared.markListening()
+        }
     }
 
     /// 聞くのをやめる（Esc）。マイクが開いている面に逃げ道の鍵が無いのは危ない。
@@ -85,6 +100,7 @@ final class VoiceHUDState: ObservableObject {
         inputLevel = 0
         guard case .listening = mode else { return }
         RecordingRuntime.shared.endVoiceListening()
+        VoiceSessionController.shared.stop(reason: "user")
         listeningAwaitingAudio = true
         mode = .idle
     }
@@ -143,9 +159,18 @@ final class VoiceHUDState: ObservableObject {
     /// 戻り値は「dictation として入れたか」。
     @discardableResult
     func speak(_ text: String) -> Bool {
-        // 聞き終えたらマイクを閉じる（開きっぱなしにしない）。
+        // End only the current utterance capture. The bounded VoiceSession remains
+        // alive so follow-up turns do not require another activation gesture.
         RecordingRuntime.shared.endVoiceListening()
         listeningAwaitingAudio = true
+
+        if VoiceSessionController.shared.isActive {
+            VoiceSessionController.shared.markProcessing()
+            ask(text)
+            return false
+        }
+
+        // Outside VoiceSession this keeps the existing one-shot dictation contract.
         if Dictation.insert(text) {
             mode = .idle
             answer = ""
@@ -253,7 +278,12 @@ final class VoiceHUDState: ObservableObject {
                         }
                     }
                 }
-                await MainActor.run { self?.requestInFlight = false }
+                await MainActor.run {
+                    self?.requestInFlight = false
+                    if VoiceSessionController.shared.isActive {
+                        VoiceSessionController.shared.touch()
+                    }
+                }
             } catch {
                 await MainActor.run {
                     self?.updateRequest(task.id) {
