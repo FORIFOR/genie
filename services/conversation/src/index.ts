@@ -13,3 +13,9 @@ export {
   type ResolutionContext,
 } from './reference.js';
 export { ConversationService, type AppendTurnInput, type ConversationDeps } from './service.js';
+
+export {
+  JevDecisionEngine,
+  type FastDecisionEngine,
+  type FastDecisionInput,
+} from './decision.js';
