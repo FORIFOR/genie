@@ -100,12 +100,20 @@ final class VoiceHUDState: ObservableObject {
     func cancelListening() {
         inputLevel = 0
         guard case .listening = mode else { return }
+        endVoiceSession(reason: "user")
+        mode = .idle
+    }
+
+    /// Stop only the ambient conversation session. Background agent work is not
+    /// cancelled here; task cancellation remains an explicit, separate action.
+    func endVoiceSession(reason: String = "user") {
         RecordingRuntime.shared.endVoiceListening()
         if let voiceReplyOwner { GenieSpeechOutput.shared.stop(owner: voiceReplyOwner) }
         voiceReplyOwner = nil
-        VoiceSessionController.shared.stop(reason: "user")
+        VoiceSessionController.shared.stop(reason: reason)
         listeningAwaitingAudio = true
-        mode = .idle
+        inputLevel = 0
+        if case .listening = mode { mode = .idle }
     }
 
     /// 認識の途中経過。**確定を待たずに** Dock へ出す（§Listening）。
