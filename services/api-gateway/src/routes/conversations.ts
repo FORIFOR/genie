@@ -196,11 +196,7 @@ export function registerConversationRoutes(app: App, deps: ConversationRouteDeps
       let replyMeta: ReplyDraftMeta | null = null;
       let replyContext = '';
       let replyInstructionText = '';
-      if (
-        deps.work &&
-        decision.lane === 'chat' &&
-        contextIntent === 'email_reply'
-      ) {
+      if (deps.work && decision.lane === 'chat' && contextIntent === 'email_reply') {
         const extra = (await deps.extraArtifacts?.(principal.tenantId).catch(() => [])) ?? [];
         const resolution = await deps.work
           .resolveReply(
