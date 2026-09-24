@@ -8,20 +8,21 @@ import SwiftUI
     @Published private(set) var owner: UUID?
     private let synthesizer = AVSpeechSynthesizer()
     private var utterance: AVSpeechUtterance?
+    private var completion: (() -> Void)?
     override init() { super.init(); synthesizer.delegate = self }
 
-    func read(_ text: String, owner: UUID) {
+    func read(_ text: String, owner: UUID, onFinish: (() -> Void)? = nil) {
         stop()
         let content = Self.spokenText(text)
         guard !content.isEmpty else { return }
         let utterance = AVSpeechUtterance(string: content)
         utterance.voice = AVSpeechSynthesisVoice(language: content.range(of: "[ぁ-んァ-ン一-龯]", options: .regularExpression) != nil ? "ja-JP" : "en-US")
-        self.utterance = utterance; self.owner = owner; mode = .preparing
+        self.utterance = utterance; self.owner = owner; self.completion = onFinish; mode = .preparing
         synthesizer.speak(utterance)
     }
     func stop(owner: UUID? = nil) {
         if let owner, self.owner != owner { return }
-        utterance = nil; self.owner = nil; mode = .idle
+        utterance = nil; self.owner = nil; completion = nil; mode = .idle
         synthesizer.stopSpeaking(at: .immediate)
     }
     static func spokenText(_ text: String) -> String {
@@ -43,7 +44,9 @@ import SwiftUI
     private nonisolated func finished(_ utterance: AVSpeechUtterance) {
         Task { @MainActor [weak self] in
             guard let self, self.utterance === utterance else { return }
-            self.utterance = nil; self.owner = nil; self.mode = .idle
+            let completion = self.completion
+            self.utterance = nil; self.owner = nil; self.completion = nil; self.mode = .idle
+            completion?()
         }
     }
 }

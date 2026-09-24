@@ -49,6 +49,7 @@ final class VoiceHUDState: ObservableObject {
     private var apiBase: String?
     private var apiToken: String?
     private var conversationId: String?
+    private var voiceReplyOwner: UUID?
 
     func configureBackend(base: String, token: String, renewal: Bool = false) {
         if !renewal || apiBase != base { conversationId = nil }
@@ -66,27 +67,53 @@ final class VoiceHUDState: ObservableObject {
             PermissionGuideCoordinator.shared.explain(.microphone) { [weak self] in self?.beginListening() }
             return
         }
+
+        // A voice button starts one bounded conversation session rather than one
+        // dictation utterance. Future wake-word and shortcut entry points call the
+        // same controller; they do not get a separate authority path.
+        VoiceSessionController.shared.start(source: "dock")
         listeningAwaitingAudio = true
         mode = .listening(partial: "")
         GenieEventBus.shared.publish(.voiceStarted)
         let started = RecordingRuntime.shared.beginVoiceListening(
-            onFirstFrame: { [weak self] in self?.listeningAwaitingAudio = false },
-            onPartial: { [weak self] text in self?.updatePartial(text) },
+            onFirstFrame: { [weak self] in
+                self?.listeningAwaitingAudio = false
+                VoiceSessionController.shared.markListening()
+            },
+            onPartial: { [weak self] text in
+                VoiceSessionController.shared.touch()
+                self?.updatePartial(text)
+            },
             onFinal: { [weak self] text in
                 guard let self, !text.isEmpty else { return }
+                VoiceSessionController.shared.markProcessing()
                 self.speak(text)
             })
         // 会議の録音中は録音側の STT から partial が流れてくるので、そちらを正とする。
-        if !started, RecordingWorkspaceState.shared.isRecording { listeningAwaitingAudio = false }
+        if !started, RecordingWorkspaceState.shared.isRecording {
+            listeningAwaitingAudio = false
+            VoiceSessionController.shared.markListening()
+        }
     }
 
     /// 聞くのをやめる（Esc）。マイクが開いている面に逃げ道の鍵が無いのは危ない。
     func cancelListening() {
         inputLevel = 0
         guard case .listening = mode else { return }
-        RecordingRuntime.shared.endVoiceListening()
-        listeningAwaitingAudio = true
+        endVoiceSession(reason: "user")
         mode = .idle
+    }
+
+    /// Stop only the ambient conversation session. Background agent work is not
+    /// cancelled here; task cancellation remains an explicit, separate action.
+    func endVoiceSession(reason: String = "user") {
+        RecordingRuntime.shared.endVoiceListening()
+        if let voiceReplyOwner { GenieSpeechOutput.shared.stop(owner: voiceReplyOwner) }
+        voiceReplyOwner = nil
+        VoiceSessionController.shared.stop(reason: reason)
+        listeningAwaitingAudio = true
+        inputLevel = 0
+        if case .listening = mode { mode = .idle }
     }
 
     /// 認識の途中経過。**確定を待たずに** Dock へ出す（§Listening）。
@@ -143,9 +170,18 @@ final class VoiceHUDState: ObservableObject {
     /// 戻り値は「dictation として入れたか」。
     @discardableResult
     func speak(_ text: String) -> Bool {
-        // 聞き終えたらマイクを閉じる（開きっぱなしにしない）。
+        // End only the current utterance capture. The bounded VoiceSession remains
+        // alive so follow-up turns do not require another activation gesture.
         RecordingRuntime.shared.endVoiceListening()
         listeningAwaitingAudio = true
+
+        if VoiceSessionController.shared.isActive {
+            VoiceSessionController.shared.markProcessing()
+            ask(text)
+            return false
+        }
+
+        // Outside VoiceSession this keeps the existing one-shot dictation contract.
         if Dictation.insert(text) {
             mode = .idle
             answer = ""
@@ -153,6 +189,27 @@ final class VoiceHUDState: ObservableObject {
         }
         ask(text)
         return false
+    }
+
+    /// In an explicit VoiceSession, spoken replies are allowed and the microphone
+    /// re-opens only after local speech playback has finished. This keeps speaker
+    /// output out of the microphone hot path and gives the user one visible place
+    /// to stop the session.
+    private func presentVoiceReply(_ text: String) {
+        guard VoiceSessionController.shared.isActive,
+              !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+
+        VoiceSessionController.shared.markSpeaking()
+        let owner = UUID()
+        voiceReplyOwner = owner
+        GenieSpeechOutput.shared.read(text, owner: owner) { [weak self] in
+            guard let self,
+                  self.voiceReplyOwner == owner,
+                  VoiceSessionController.shared.isActive else { return }
+            self.voiceReplyOwner = nil
+            VoiceSessionController.shared.touch()
+            self.beginListening()
+        }
     }
 
     /// 声/テキストの依頼を Agent に投げる。listening→thinking→answer→idle と状態を進める。
@@ -230,7 +287,10 @@ final class VoiceHUDState: ObservableObject {
                     // 作業中・待機中は従来どおり静かな入口へ戻し、Work で追える状態にする。
                     self?.mode = reply.settled && !reply.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                         ? .answer(reply.text) : .idle
-                    if reply.settled { VisualContextStore.shared.markRecent(attached) }
+                    if reply.settled {
+                        VisualContextStore.shared.markRecent(attached)
+                        self?.presentVoiceReply(reply.text)
+                    }
                     // 返信案なら、答えとしてではなく確認カードとして出す（送るのは押されたときだけ）。
                     if reply.settled, !outcome.replyJson.isEmpty, let draft = ReplyFlow.draft(replyJson: outcome.replyJson, body: reply.text) {
                         ReplyFlow.shared.present(draft)
@@ -247,13 +307,19 @@ final class VoiceHUDState: ObservableObject {
                                 self?.mode = .answer(later.text)
                             }
                             VisualContextStore.shared.markRecent(attached)
+                            self?.presentVoiceReply(later.text)
                             if !outcome.replyJson.isEmpty, let draft = ReplyFlow.draft(replyJson: outcome.replyJson, body: later.text) {
                                 ReplyFlow.shared.present(draft)
                             }
                         }
                     }
                 }
-                await MainActor.run { self?.requestInFlight = false }
+                await MainActor.run {
+                    self?.requestInFlight = false
+                    if VoiceSessionController.shared.isActive {
+                        VoiceSessionController.shared.touch()
+                    }
+                }
             } catch {
                 await MainActor.run {
                     self?.updateRequest(task.id) {

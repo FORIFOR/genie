@@ -13,6 +13,8 @@ enum GenieEvent: Equatable {
     case voiceStarted
     case voicePartial(String)
     case voiceFinal(String)
+    case voiceSessionStarted(source: String)
+    case voiceSessionEnded(reason: String)
 
     case contextUpdated(sources: [String])
 
@@ -40,6 +42,8 @@ enum GenieEvent: Equatable {
         case .voiceStarted: return "voice.started"
         case .voicePartial: return "voice.partial"
         case .voiceFinal: return "voice.final"
+        case .voiceSessionStarted: return "voice.session.started"
+        case .voiceSessionEnded: return "voice.session.ended"
         case .contextUpdated: return "context.updated"
         case .agentStarted: return "agent.started"
         case .agentStepStarted: return "agent.step.started"
