@@ -35,7 +35,7 @@ import { registerBriefRoutes } from './routes/brief.js';
 import { registerConversationRoutes } from './routes/conversations.js';
 import { registerOnboardingRoutes } from './routes/onboarding.js';
 import { registerVoiceRoutes, type VoiceRouteDeps } from './routes/voice.js';
-import type { ConversationService } from '@genie/service-conversation';
+import type { ConversationService, FastDecisionEngine } from '@genie/service-conversation';
 import type { WorkContextService, WorldModelService } from '@genie/service-world-model';
 import { localArtifacts, registerWorkRoutes } from './routes/work.js';
 import type { ConnectionService, DataSourceResolver } from '@genie/service-plugin-registry';
@@ -77,6 +77,8 @@ export interface AppDeps {
   readonly work?: WorkContextService;
   /** Conversation Engine。Task Dock の入口（Phase 7 §3）。 */
   readonly conversations?: ConversationService;
+  /** D-48 の chat fallback だけを補助する低遅延の typed decision engine。 */
+  readonly fastDecisions?: FastDecisionEngine;
   /** connector の接続状態（正本 §2.4・§21）。 */
   readonly connections?: ConnectionService;
   /** Voice OS の Google STT / TTS。未設定でも route は明示的に 503 を返す。 */
@@ -170,6 +172,7 @@ export function buildApp(deps: AppDeps): App {
       conversations: deps.conversations,
       tasks: deps.tasks,
       redis: deps.redis,
+      ...(deps.fastDecisions === undefined ? {} : { fastDecisions: deps.fastDecisions }),
       ...(deps.work
         ? {
             work: deps.work,
