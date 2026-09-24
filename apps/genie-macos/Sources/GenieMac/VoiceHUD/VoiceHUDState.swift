@@ -49,6 +49,7 @@ final class VoiceHUDState: ObservableObject {
     private var apiBase: String?
     private var apiToken: String?
     private var conversationId: String?
+    private var voiceReplyOwner: UUID?
 
     func configureBackend(base: String, token: String, renewal: Bool = false) {
         if !renewal || apiBase != base { conversationId = nil }
@@ -100,6 +101,8 @@ final class VoiceHUDState: ObservableObject {
         inputLevel = 0
         guard case .listening = mode else { return }
         RecordingRuntime.shared.endVoiceListening()
+        if let voiceReplyOwner { GenieSpeechOutput.shared.stop(owner: voiceReplyOwner) }
+        voiceReplyOwner = nil
         VoiceSessionController.shared.stop(reason: "user")
         listeningAwaitingAudio = true
         mode = .idle
@@ -180,6 +183,27 @@ final class VoiceHUDState: ObservableObject {
         return false
     }
 
+    /// In an explicit VoiceSession, spoken replies are allowed and the microphone
+    /// re-opens only after local speech playback has finished. This keeps speaker
+    /// output out of the microphone hot path and gives the user one visible place
+    /// to stop the session.
+    private func presentVoiceReply(_ text: String) {
+        guard VoiceSessionController.shared.isActive,
+              !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+
+        VoiceSessionController.shared.markSpeaking()
+        let owner = UUID()
+        voiceReplyOwner = owner
+        GenieSpeechOutput.shared.read(text, owner: owner) { [weak self] in
+            guard let self,
+                  self.voiceReplyOwner == owner,
+                  VoiceSessionController.shared.isActive else { return }
+            self.voiceReplyOwner = nil
+            VoiceSessionController.shared.touch()
+            self.beginListening()
+        }
+    }
+
     /// 声/テキストの依頼を Agent に投げる。listening→thinking→answer→idle と状態を進める。
     @discardableResult
     func ask(_ text: String, newConversation: Bool = false, visualContext: [VisualContextArtifact]? = nil, consumerPlanning: ConsumerPlanningMode? = nil) -> Bool {
@@ -255,7 +279,10 @@ final class VoiceHUDState: ObservableObject {
                     // 作業中・待機中は従来どおり静かな入口へ戻し、Work で追える状態にする。
                     self?.mode = reply.settled && !reply.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                         ? .answer(reply.text) : .idle
-                    if reply.settled { VisualContextStore.shared.markRecent(attached) }
+                    if reply.settled {
+                        VisualContextStore.shared.markRecent(attached)
+                        self?.presentVoiceReply(reply.text)
+                    }
                     // 返信案なら、答えとしてではなく確認カードとして出す（送るのは押されたときだけ）。
                     if reply.settled, !outcome.replyJson.isEmpty, let draft = ReplyFlow.draft(replyJson: outcome.replyJson, body: reply.text) {
                         ReplyFlow.shared.present(draft)
@@ -272,6 +299,7 @@ final class VoiceHUDState: ObservableObject {
                                 self?.mode = .answer(later.text)
                             }
                             VisualContextStore.shared.markRecent(attached)
+                            self?.presentVoiceReply(later.text)
                             if !outcome.replyJson.isEmpty, let draft = ReplyFlow.draft(replyJson: outcome.replyJson, body: later.text) {
                                 ReplyFlow.shared.present(draft)
                             }
