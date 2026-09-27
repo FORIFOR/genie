@@ -88,6 +88,7 @@ final class GenieStateStore: ObservableObject {
         case .meeting, .enteringRecording: return .meeting
         case .answer, .info: return .completed
         case .ack: return .acting
+        case .dictated: return .idle
         case .result: return .completed
         case .idle, .appContext, .appContextExpanded, .contextDetail, .quickActions:
             // 会議中や workspace 表示中は、Dock が idle でも活動は続いている。

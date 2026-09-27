@@ -86,6 +86,7 @@ struct VoiceTaskDockView: View {
         case .contextDetail: ContextDetailDock()
         case .quickActions: QuickActionsDock()
         case .ack(let ack): AckDock(ack: ack)
+        case .dictated(let notice): DictatedDock(notice: notice)
         case .enteringRecording: SimpleDock(icon: "record.circle", text: "録音を始めます…", tint: .recordingRed)
         }
     }

@@ -44,6 +44,8 @@ enum DockPresentation: Equatable {
     case quickActions
     /// 受付の応答（「かしこまりました」/ 受け付けられません）。受け付けた後にだけ出す。
     case ack(DockAck)
+    /// 音声入力で言い淀みを消して入れた。数秒だけ「元の文に戻す」を出す。
+    case dictated(DictatedText)
     /// 録音へ移る途中。
     case enteringRecording
 
@@ -129,6 +131,8 @@ enum DockPresentation: Equatable {
             return CGSize(width: s.width, height: min(Metrics.dockInfoMaxHeight, s.height))
         case .result:
             return measured(Metrics.dockResultWidth, fallback: Metrics.dockResultHeight)
+        case .dictated:
+            return measured(Metrics.dockThinkingWidth, fallback: Metrics.dockThinkingHeight)
         case .ack:
             // 会話の間は聞く面と同じ幅（「会話を終了」を動かさない）。
             return measured(VoiceHUDState.shared.conversation.isActive ? Metrics.dockListeningWidth : Metrics.dockConfirmWidth,
@@ -140,6 +144,14 @@ enum DockPresentation: Equatable {
 }
 
 /// 終わった仕事。「✓ できました」で消さず、次にやることを出したまま少し残す。
+/// 音声入力で入れた文と、整える前の文。
+struct DictatedText: Equatable {
+    let id = UUID()
+    let inserted: String
+    let original: String
+    let appPID: pid_t?
+}
+
 struct AgentResult: Equatable {
     let title: String
     /// 後始末。**実際にできることだけ**を挙げる。

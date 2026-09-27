@@ -54,6 +54,7 @@ enum DockContentMeasure {
         case .contextDetail: body = AnyView(ContextDetailDock())
         case .quickActions: body = AnyView(QuickActionsDock())
         case .ack(let ack): body = AnyView(AckDock(ack: ack))
+        case .dictated(let notice): body = AnyView(DictatedDock(notice: notice))
         case .enteringRecording: body = AnyView(SimpleDock(icon: "record.circle", text: "録音を始めます…", tint: .recordingRed))
         case .meeting(let panel) where panel == .notes: body = AnyView(MeetingDock(open: panel))
         case .idle, .appContext, .meeting: return nil

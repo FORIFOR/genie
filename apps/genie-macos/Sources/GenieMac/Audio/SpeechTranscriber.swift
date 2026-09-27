@@ -61,8 +61,13 @@ final class SpeechTranscriber {
     private(set) var finalsEmitted = 0
     private(set) var partialsSeen = 0
 
-    init(localeId: String = "ja-JP", utteranceGap: TimeInterval = SpeechTranscriber.utteranceGap) {
+    /// 認識器に句読点を付けさせる（声の入力だけ。会議の文字起こしは今までどおり）。
+    /// 言葉は変えない（端末内の認識器が付ける。生成モデルで書き直さない）。
+    private let punctuate: Bool
+
+    init(localeId: String = "ja-JP", utteranceGap: TimeInterval = SpeechTranscriber.utteranceGap, punctuate: Bool = false) {
         self.utteranceGap = utteranceGap
+        self.punctuate = punctuate
         recognizer = SFSpeechRecognizer(locale: Locale(identifier: localeId))
         format = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: 16_000,
                                channels: 1, interleaved: false)!
@@ -122,6 +127,7 @@ final class SpeechTranscriber {
         guard let recognizer else { return }
         let req = SFSpeechAudioBufferRecognitionRequest()
         req.shouldReportPartialResults = true
+        req.addsPunctuation = punctuate
         req.requiresOnDeviceRecognition = true   // 資産が無ければ error 102。false で再試行しない
         generation += 1
         let gen = generation

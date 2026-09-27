@@ -69,6 +69,22 @@ enum Dictation {
         return insert(text, into: target)
     }
 
+    /// 入れた文を、元の文へ戻す（「元の文に戻す」）。その欄の値の中で、最後に入れた文を探して差し替える。
+    /// 戻せなければ false（入れた先で ⌘Z を押してもらう）。
+    static func replaceInserted(_ inserted: String, with original: String, appPID: pid_t?) -> Bool {
+        guard AXIsProcessTrusted(), !inserted.isEmpty,
+              let target = focusedTextTarget(excludingOwnProcess: true, appPID: appPID) else { return false }
+        var valueRef: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(target, kAXValueAttribute as CFString, &valueRef) == .success,
+              let current = valueRef as? String,
+              let range = current.range(of: inserted, options: .backwards) else { return false }
+        let next = current.replacingCharacters(in: range, with: original)
+        guard AXUIElementSetAttributeValue(target, kAXValueAttribute as CFString, next as CFTypeRef) == .success else { return false }
+        var checkRef: CFTypeRef?
+        AXUIElementCopyAttributeValue(target, kAXValueAttribute as CFString, &checkRef)
+        return (checkRef as? String) == next
+    }
+
     /// 音声入力を始めたときの前面のアプリ（Genie 自身は除く）。入れる先はここで決める。
     @MainActor static func frontmostOtherAppPID() -> pid_t? {
         guard let app = NSWorkspace.shared.frontmostApplication, app.processIdentifier != getpid() else { return nil }

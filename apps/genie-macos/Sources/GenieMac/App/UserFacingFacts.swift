@@ -74,6 +74,10 @@ enum UserFacingFacts {
     static let resultOpen = "開く"
     static let resultCopy = "コピー"
     static let resultClose = "閉じる"
+    /// 音声入力で言い淀みを消して入れたとき。
+    static let dictationCleaned = "言い淀みを消して入れました"
+    static let dictationRestore = "元の文に戻す"
+    static let dictationRestoreFailed = "元の文に戻せませんでした。入れた先で ⌘Z を押すと戻せます。"
     static let resultOpenSettings = "設定を開く"
     static let recoveryResume = "続きから"
     // Home の Work Context（気にすること・待ち・返すもの・今週の負荷）と Personalization。
@@ -248,6 +252,9 @@ enum UserFacingFacts {
             f("task.cancelled", taskCancelled, false),
             f("task.working", taskWorking, false),
             f("result.close", resultClose, false),
+            f("dictation.cleaned", dictationCleaned, false),
+            f("dictation.restore", dictationRestore, false),
+            f("dictation.restoreFailed", dictationRestoreFailed, false),
             f("task.stoppedDetail", taskStoppedDetail, false),
             f("task.accepted", taskAccepted, false),
             f("task.acceptedSub", taskAcceptedSub, false),

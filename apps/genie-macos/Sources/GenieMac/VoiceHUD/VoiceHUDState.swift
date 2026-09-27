@@ -388,6 +388,16 @@ final class VoiceHUDState: ObservableObject {
         }
     }
 
+    /// 「元の文に戻す」。入れた欄の中で、整えた文を元の文へ差し替える。
+    func restoreDictated(_ notice: DictatedText) {
+        if Dictation.replaceInserted(notice.inserted, with: notice.original, appPID: notice.appPID) {
+            mode = .idle
+        } else {
+            answer = Facts.dictationRestoreFailed
+            mode = .answer(answer)
+        }
+    }
+
     /// いま聞く面を出しているか（遅れて届いた答えで、聞いている途中を消さないため）。
     var isListeningSurface: Bool { if case .listening = mode { return true }; return false }
 
@@ -726,9 +736,21 @@ final class VoiceHUDState: ObservableObject {
         switch listenPurpose {
         case .dictation:
             // 音声入力は文章を入れるだけ。入れる先が無ければ、送らずに「会話」を案内する。
-            if Dictation.insert(text, excludingOwnProcess: true, appPID: dictationTargetPID) {
-                mode = .idle
+            // 整える（言い淀みだけを消す。言葉は変えない）。消したときだけ、数秒「元の文に戻す」を出す。
+            let cleaned = DictationCleanup.clean(text)
+            if Dictation.insert(cleaned, excludingOwnProcess: true, appPID: dictationTargetPID) {
                 answer = ""
+                if cleaned != text {
+                    let notice = DictatedText(inserted: cleaned, original: text, appPID: dictationTargetPID)
+                    mode = .dictated(notice)
+                    Task { @MainActor [weak self] in
+                        try? await Task.sleep(nanoseconds: 5_000_000_000)
+                        guard let self, case .dictated(let shown) = self.mode, shown.id == notice.id else { return }
+                        self.mode = .idle
+                    }
+                } else {
+                    mode = .idle
+                }
                 return true
             }
             answer = (AXIsProcessTrusted() || Dictation.dryRun != nil) ? Facts.dictationNoField : Facts.dictationNeedsAccessibility
