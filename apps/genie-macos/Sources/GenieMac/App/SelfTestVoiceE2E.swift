@@ -1,3 +1,4 @@
+import AppKit
 import AVFoundation
 import Foundation
 
@@ -33,6 +34,19 @@ extension SelfTest {
         } catch { print("SELFTEST_FAIL voicee2e: stage=signin \(error)"); exit(2) }
         guard LocalStore.shared.open() else { print("SELFTEST_FAIL voicee2e: storage unavailable"); exit(2) }
 
+        // 画面に Dock を出す（出さないと、処理の流れだけを見て画面を見ないことになる）。
+        NSApp.setActivationPolicy(.regular)
+        WindowCoordinator.shared.showVoiceHUD()
+        let shotDir = args.firstIndex(of: "--shots").flatMap { args.count > $0 + 1 ? args[$0 + 1] : nil }
+        if let shotDir { try? FileManager.default.createDirectory(atPath: shotDir, withIntermediateDirectories: true) }
+        var shots: [String] = []
+        func shoot(_ name: String) {
+            guard let shotDir, let (id, w, h) = dockWindow() else { return }
+            guard let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, id, [.boundsIgnoreFraming, .nominalResolution]),
+                  let png = NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:]) else { return }
+            try? png.write(to: URL(fileURLWithPath: "\(shotDir)/\(shots.count)-\(name).png"))
+            shots.append("\(name)=\(w)x\(h)")
+        }
         let hud = VoiceHUDState.shared
         hud.configureBackend(base: base, token: token)
         RecordingRuntime.shared.voiceInjection = frames
@@ -44,6 +58,8 @@ extension SelfTest {
         var sawSpeaking = false, sawCard = false
 
         hud.beginConversation()
+        try? await Task.sleep(nanoseconds: 600_000_000)
+        shoot("listening")
         guard hud.conversation.isActive else { print("SELFTEST_FAIL voicee2e: stage=start conversation did not start (mode=\(hud.mode))"); exit(2) }
         log.append("start@\(t())")
 
@@ -58,21 +74,28 @@ extension SelfTest {
                 if hud.conversation.phase == .waiting {
                     sent = hud.latestRequestID.flatMap { id in LocalStore.shared.loadTasks().first { $0.id == id }?.requestRecord?.request } ?? ""
                     log.append("sent@\(t())"); stage = "answer"
+                    try? await Task.sleep(nanoseconds: 400_000_000); shoot("thinking")
                 } else if RecordingRuntime.shared.voiceTranscriptionUnavailable {
                     print("SELFTEST_FAIL voicee2e: stage=stt on-device speech recognition could not start (nothing would be heard) \(log)"); exit(2)
                 }
             case "answer":
-                if hud.conversation.phase == .speaking { sawSpeaking = true; reply = hud.answer; log.append("speaking@\(t())"); stage = "next" }
+                if hud.conversation.phase == .speaking {
+                    sawSpeaking = true; reply = hud.answer; log.append("speaking@\(t())"); stage = "next"
+                    try? await Task.sleep(nanoseconds: 600_000_000); shoot("answer-speaking")
+                }
                 else if hud.conversation.phase == .preparing { reply = hud.answer; log.append("answered-silently@\(t())"); stage = "done" }
             case "next":
-                if hud.conversation.phase == .preparing || hud.conversation.phase == .listening { log.append("listening-again@\(t())"); stage = "done" }
+                if hud.conversation.phase == .preparing || hud.conversation.phase == .listening {
+                    log.append("listening-again@\(t())"); stage = "done"
+                    try? await Task.sleep(nanoseconds: 600_000_000); shoot("listening-again")
+                }
             default: break
             }
             if stage == "done" || !hud.conversation.isActive { break }
         }
         let active = hud.conversation.isActive
         hud.endConversation(.user)
-        let summary = "heard=\"\(heard)\" sent=\"\(sent)\" reply=\"\(reply.prefix(40))\" card=\(sawCard) spoke=\(sawSpeaking) \(log.joined(separator: " "))"
+        let summary = "shots=[\(shots.joined(separator: ","))] heard=\"\(heard)\" sent=\"\(sent)\" reply=\"\(reply.prefix(40))\" card=\(sawCard) spoke=\(sawSpeaking) \(log.joined(separator: " "))"
         guard stage == "done" else {
             print("SELFTEST_FAIL voicee2e: stopped at stage=\(stage) conversationActive=\(active) mode=\(hud.mode) \(summary)"); exit(2)
         }
@@ -112,6 +135,19 @@ extension SelfTest {
         }
         print("SELFTEST_OK voicee2e(listen): route=genie (dockKey=\(dockKey)) answer=\"\(answer.prefix(40))\" @\(t)")
         exit(0)
+    }
+
+    /// 自分の Dock の窓（画面に出ている、いちばん上のもの）。
+    static func dockWindow() -> (CGWindowID, Int, Int)? {
+        guard let infos = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] else { return nil }
+        for info in infos {
+            guard let owner = info[kCGWindowOwnerPID as String] as? pid_t, owner == getpid(),
+                  let id = info[kCGWindowNumber as String] as? CGWindowID,
+                  let b = info[kCGWindowBounds as String] as? [String: Any],
+                  let w = b["Width"] as? CGFloat, let h = b["Height"] as? CGFloat, w > 100, h > 30 else { continue }
+            return (id, Int(w), Int(h))
+        }
+        return nil
     }
 
     /// 音声ファイル → 16 kHz mono の float。
