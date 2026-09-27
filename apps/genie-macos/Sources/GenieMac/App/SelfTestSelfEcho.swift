@@ -44,11 +44,18 @@ extension SelfTest {
         let heardA = a.heard(); let vpA = a.stop()
         await pause(1.0)
 
-        // B: 読み上げ中も開いたまま、除去なし。
+        // B: 読み上げ中も開いたまま、除去なし。別のマイク取り込みで音の大きさも測る
+        // （拾えなかったとき、声が届いていないのか、届いても文字にならないのかを分ける）。
+        let meter = MicCapture()
+        let peak = PeakLevel()
+        try? meter.start { frame in peak.take(frame) }
+        let silence = peak.value
         let b = listen(echoCancellation: false)
         await pause(0.8)
+        let beforeSpeech = peak.value
         await speakAndWait()
         await pause(1.5)
+        meter.stop()
         let heardB = b.heard(); let vpBActual = b.stop()
         if vpBActual { print("SELFTEST_FAIL selfecho: the control could not turn echo cancellation off"); exit(2) }
         await pause(1.0)
@@ -60,9 +67,15 @@ extension SelfTest {
         await pause(1.5)
         let heardC = c.heard(); let vpC = c.stop()
 
-        let report = "halfDuplex=\(heardA.isEmpty ? "clean" : "heard(\(heardA))") vpA=\(vpA) control(openMic noAEC vp=\(vpBActual))=\"\(heardB)\" openMic(AEC vp=\(vpC))=\"\(heardC)\""
+        let levels = String(format: "micPeak(before=%.3f during=%.3f)", max(silence, beforeSpeech), peak.value)
+        let report = "\(levels) halfDuplex=\(heardA.isEmpty ? "clean" : "heard(\(heardA))") vpA=\(vpA) control(openMic noAEC vp=\(vpBActual))=\"\(heardB)\" openMic(AEC vp=\(vpC))=\"\(heardC)\""
         // 対照: 除去なしで読み上げ中に開いたマイクが、読み上げを拾えること。拾えないなら、
         // スピーカーの声がマイクに届いていない（音量・経路）ので、A の「何も拾わない」は何も示さない。
+        // マイクが無音しか渡さない（許可があると答えても、起動のしかたによっては無音になる）。
+        guard peak.value > 0 else {
+            print("SELFTEST_SKIP selfecho: inconclusive — the microphone delivered only silence in this process (grant Genie microphone access and run it from the app). \(report)")
+            exit(0)
+        }
         guard !heardB.isEmpty else {
             print("SELFTEST_SKIP selfecho: inconclusive — the control heard nothing, so the speaker does not reach the microphone here. \(report)")
             exit(0)
@@ -74,4 +87,16 @@ extension SelfTest {
         print("SELFTEST_FAIL selfecho: \(report)")
         exit(2)
     }
+}
+
+
+/// 取り込みの最大振幅（音声スレッドから書かれる）。
+private final class PeakLevel: @unchecked Sendable {
+    private let lock = NSLock()
+    private var peak: Float = 0
+    func take(_ frame: [Float]) {
+        let m = frame.reduce(Float(0)) { max($0, abs($1)) }
+        lock.lock(); peak = max(peak, m); lock.unlock()
+    }
+    var value: Float { lock.lock(); defer { lock.unlock() }; return peak }
 }
