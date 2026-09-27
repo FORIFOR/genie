@@ -15,6 +15,9 @@ struct SettingsView: View {
     }
     @ObservedObject private var practice = PermissionPractice.shared
     @State private var cloudTranscription = RecordingRuntime.cloudTranscriptionAllowed
+    @ObservedObject private var gemini = GeminiLiveSettings.shared
+    @State private var geminiKeyDraft = ""
+    @State private var geminiKeyMessage: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -68,6 +71,48 @@ struct SettingsView: View {
                      : "音声はこのMac内だけで処理します。Googleのライブ字幕を使うにはオンにします。")
                     .font(.system(size: 11)).foregroundStyle(.primary).opacity(0.78)
                     .fixedSize(horizontal: false, vertical: true)
+            }
+
+            // Gemini Live は「会話」の相手を Google に替える。送るものと費用を、オンにする前に読める場所に書く。
+            section("会話（Gemini Live）") {
+                Toggle("会話で Gemini Live を使う", isOn: Binding(
+                    get: { gemini.enabled },
+                    set: { gemini.setEnabled($0) }))
+                .toggleStyle(.switch)
+                .disabled(!gemini.hasKey || gemini.budget.monthlyMinutes == 0)
+                .accessibilityIdentifier("geminiLiveToggle")
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("「会話」の間の声と文字起こしを Google に送ります。")
+                    Text("利用料はあなたの API キーにかかります。")
+                    Text("「聞く」と会議の録音は送りません。")
+                    Text("仕事の中身は Google に返しません。")
+                }
+                .font(.system(size: 11)).foregroundStyle(.primary).opacity(0.78)
+                HStack {
+                    SecureField(gemini.hasKey ? "API キーは保存済み（置き換える）" : "API キー", text: $geminiKeyDraft)
+                        .textFieldStyle(.roundedBorder)
+                        .accessibilityIdentifier("geminiLiveKey")
+                    Button(gemini.hasKey && geminiKeyDraft.isEmpty ? "キーを消す" : "保存") {
+                        let ok = gemini.setKey(geminiKeyDraft)
+                        geminiKeyMessage = ok ? (geminiKeyDraft.isEmpty ? "キーを消しました。" : "キーチェーンに保存しました。") : "キーチェーンに保存できませんでした。"
+                        geminiKeyDraft = ""
+                        if !gemini.hasKey { gemini.setEnabled(false) }
+                    }
+                    .controlSize(.small)
+                    .disabled(!gemini.hasKey && geminiKeyDraft.isEmpty)
+                }
+                Stepper(value: Binding(get: { gemini.budget.monthlyMinutes },
+                                       set: { gemini.setMonthlyMinutes($0); if $0 == 0 { gemini.setEnabled(false) } }),
+                        in: 0...6_000, step: 10) {
+                    Text(gemini.budget.monthlyMinutes == 0
+                         ? "月の上限: 未設定（決めるまで使えません）"
+                         : "月の上限: \(gemini.budget.monthlyMinutes) 分 ・ 今月 \(Int(gemini.budget.current(at: Date()).usedSeconds / 60)) 分使用")
+                        .font(.system(size: 12))
+                }
+                .accessibilityIdentifier("geminiLiveMinutes")
+                if let geminiKeyMessage {
+                    Text(geminiKeyMessage).font(.system(size: 11)).foregroundStyle(.secondary)
+                }
             }
 
             Text(practice.isReadingScreen ? "画面を1枚読み取り中です。外部には送信していません。" : "画面は必要なときだけ読み取ります。許可はmacOSの設定で変更できます。")

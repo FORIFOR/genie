@@ -6,6 +6,8 @@
  */
 import {
   SendTurnRequest,
+  GenieError,
+  ConversationId,
   StartConversationRequest,
   type Referent,
   type TurnAttachment,
@@ -13,9 +15,12 @@ import {
   type ReplyDraftMeta,
   type WorkArtifact,
 } from '@genie/contracts';
+import { z } from 'zod';
 import type { ConversationService } from '@genie/service-conversation';
 import {
+  classifyCurrentInfo,
   clarificationFor,
+  type CurrentInfoQuery,
   isDocumentRequest,
   remember,
   resolveReferences,
@@ -125,6 +130,19 @@ export function registerConversationRoutes(app: App, deps: ConversationRouteDeps
     },
   );
 
+  app.get<{ Params: { conversationId: string; requestId: string } }>(
+    '/v1/conversations/:conversationId/requests/:requestId',
+    async (request) => {
+      const principal = requirePrincipal();
+      return deps.conversations.requestStatus(
+        principal.tenantId,
+        principal.userId,
+        ConversationId.parse(request.params.conversationId),
+        z.uuid().parse(request.params.requestId),
+      );
+    },
+  );
+
   /**
    * 発話を受ける。
    *
@@ -140,6 +158,42 @@ export function registerConversationRoutes(app: App, deps: ConversationRouteDeps
 
       const state = await deps.conversations.state(principal.tenantId, id);
 
+      const receipt = body.request_id
+        ? await deps.conversations.reserveRequest(
+            principal.tenantId,
+            principal.userId,
+            id,
+            body.request_id,
+            body,
+          )
+        : null;
+      if (receipt && !receipt.fresh) {
+        if (receipt.response) return reply.status(receipt.status!).send(receipt.response);
+        const recovered = await deps.conversations.requestStatus(
+          principal.tenantId,
+          principal.userId,
+          id,
+          body.request_id!,
+        );
+        if (recovered.status === 'resolved') return reply.status(202).send(recovered.response);
+        throw new GenieError(
+          'common.conflict',
+          'request is pending; query its receipt instead of submitting again',
+        );
+      }
+      const respond = async (status: number, response: Record<string, unknown>) => {
+        if (body.request_id)
+          await deps.conversations.finishRequest(
+            principal.tenantId,
+            principal.userId,
+            id,
+            body.request_id,
+            status,
+            response,
+          );
+        return reply.status(status).send(response);
+      };
+
       // barge-in。新しい入力が来たら、走っている応答を打ち切る（正本 §7.2）
       if (body.interrupt) {
         await deps.conversations.interruptLastAssistantTurn(principal.tenantId, id);
@@ -149,6 +203,7 @@ export function registerConversationRoutes(app: App, deps: ConversationRouteDeps
         tenantId: principal.tenantId,
         conversationId: id,
         role: 'user',
+        ...(receipt ? { id: receipt.turnId } : {}),
         modality: body.modality,
         text: body.text,
       });
@@ -207,7 +262,7 @@ export function registerConversationRoutes(app: App, deps: ConversationRouteDeps
             { reply_resolution: resolution?.status ?? 'error' },
             'reply target not resolved',
           );
-          return reply.status(200).send({ turn, answer, needs_clarification: true });
+          return respond(200, { turn, answer, needs_clarification: true });
         }
         const replyPack = await deps.work.replyPack(
           principal.tenantId,
@@ -244,7 +299,29 @@ export function registerConversationRoutes(app: App, deps: ConversationRouteDeps
           modality: state.response_mode,
           text: clarification,
         });
-        return reply.status(200).send({ turn, answer, needs_clarification: true });
+        return respond(200, { turn, answer, needs_clarification: true });
+      }
+
+      /*
+       * いまの情報（天気・ニュース・株価）。規則で拾い、端末の取得に回す。
+       * モデルに当てさせると「分かりません」か、それらしい作り話になる。
+       * 株価はまだ正式な取得元が無い。**そう言う**（それらしい数字を出さない）。
+       */
+      const info: CurrentInfoQuery | null =
+        (decision.lane === 'chat' || decision.lane === 'research') &&
+        !replyMeta &&
+        !isDocumentRequest(body.text)
+          ? classifyCurrentInfo(body.text)
+          : null;
+      if (info?.kind === 'quote') {
+        const answer = await deps.conversations.append({
+          tenantId: principal.tenantId,
+          conversationId: id,
+          role: 'assistant',
+          modality: state.response_mode,
+          text: '株価はまだ取得できません。正式な配信元をつなぐまで、推測の数字は出しません。',
+        });
+        return respond(200, { turn, answer, needs_clarification: false });
       }
 
       /*
@@ -264,7 +341,7 @@ export function registerConversationRoutes(app: App, deps: ConversationRouteDeps
        * 直近の会議・開いている件だけを添えて返信案を書かせる（送らない）。
        */
       const pack =
-        deps.work && decision.lane === 'chat' && !replyMeta
+        deps.work && decision.lane === 'chat' && !replyMeta && !info
           ? await deps.work
               .context(principal.tenantId, principal.userId)
               .then(async (ctx) =>
@@ -280,6 +357,22 @@ export function registerConversationRoutes(app: App, deps: ConversationRouteDeps
               .catch(() => null)
           : null;
       if (pack) request.log.info({ work_context: pack.stats }, 'context minimization');
+      const preparedResponse = {
+        turn,
+        needs_clarification: false,
+        intent: laneToIntent(decision.lane),
+        task_id: null,
+        notice: null,
+        ...(replyMeta ? { reply: replyMeta } : {}),
+      };
+      if (body.request_id)
+        await deps.conversations.prepareRequest(
+          principal.tenantId,
+          principal.userId,
+          id,
+          body.request_id,
+          preparedResponse,
+        );
       const started = await startWork(
         deps,
         principal,
@@ -291,10 +384,22 @@ export function registerConversationRoutes(app: App, deps: ConversationRouteDeps
         replyMeta ? replyContext : (pack?.text ?? ''),
         pack?.stats ?? null,
         replyMeta ? { meta: replyMeta, instruction: replyInstructionText } : null,
+        info,
       );
 
+      // A task may be durable even if runtime dispatch threw. Reconcile before
+      // storing a negative notice so a lost dispatch response cannot hide the task.
+      if (body.request_id && !started.taskId) {
+        const recovered = await deps.conversations.requestStatus(
+          principal.tenantId,
+          principal.userId,
+          id,
+          body.request_id,
+        );
+        if (recovered.status === 'resolved') return respond(202, recovered.response!);
+      }
       // Lane は返さない。利用者に見せないものを API で配らない。
-      return reply.status(202).send({
+      return respond(202, {
         turn,
         needs_clarification: false,
         // 何をする話かは、次に作られる task の kind として現れる
@@ -353,6 +458,7 @@ function laneToIntent(lane: string): string {
 /**
  * Lane に応じて仕事を作る。
  *
+ *   天気・ニュース → info.lookup（端末で取得。chat / research より先）
  *   chat     → General Assistant（正本 §2.2）。答えは成果物として残る
  *   research → Research Agent（§8）
  *   meeting  → 仕事にしない。録音は画面側の操作（§12）
@@ -372,9 +478,13 @@ async function startWork(
   workContext = '',
   contextStats: InjectionStats | null = null,
   replyDraft: { meta: ReplyDraftMeta; instruction: string } | null = null,
+  info: CurrentInfoQuery | null = null,
 ): Promise<{ taskId: string | null; notice: string | null }> {
   const request =
-    lane === 'chat'
+    info && info.kind !== 'quote'
+      ? // 端末が取りに行く。場所・話題だけを渡し、会話の文脈や Work Context は渡さない。
+        { kind: 'info.lookup', input: { question: text, ...info } }
+      : lane === 'chat'
       ? {
           kind: agentKindFor('com.astra.general', 'assistant'),
           // 添付は id とラベルだけ。画素は端末に残り、端末のモデル呼び出しが読む。
@@ -393,7 +503,16 @@ async function startWork(
         }
       : lane === 'research'
         ? { kind: 'research', input: { question: text } }
-        : null;
+        : lane === 'action'
+          ? {
+              kind: 'computer.run',
+              input: {
+                goal: text,
+                title: text.length > 30 ? `${text.slice(0, 30)}…` : text,
+                ...(attachments.length > 0 ? { attachments: [...attachments] } : {}),
+              },
+            }
+          : null;
 
   if (!request) {
     return {

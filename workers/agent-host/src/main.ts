@@ -10,7 +10,7 @@ import { cloudClient } from './cloud.js';
 import { ApiSession } from './api-session.js';
 import { acquireHostInstance } from './instance-lock.js';
 import { homedir } from 'node:os';
-import { resolve } from 'node:path';
+import { resolve, join } from 'node:path';
 import { runInitialProfile } from './initial-profile.js';
 import { createLogger } from '@genie/telemetry';
 import { credentialRef, connectorProviderConfig, type OauthProvider } from '@genie/oauth';
@@ -25,8 +25,11 @@ import { CodexCli } from './codex.js';
 import { ClaudeCodeCli } from './claude-code.js';
 import { LlmRuntime } from './llm-steps.js';
 import { HttpLlmClient } from './http-llm.js';
+import { CurrentInfoRunner } from './current-info/runner.js';
 import { CompositeRunner } from './runner.js';
 import { ComputerVisionRuntime } from './computer-vision.js';
+import { CloudModelBudget } from './cloud-vision-budget.js';
+import { visualContextDir } from './visual-context.js';
 import { NativeVisionDevice } from './computer-vision-device.js';
 import { selectLanguageModel } from '@genie/contracts';
 import type { WorkSyncState, LanguageModelKind } from '@genie/contracts';
@@ -272,17 +275,56 @@ async function main(): Promise<void> {
     },
   });
 
+  /*
+   * 画面を端末の外のモデルへ出すときの歯止め。**既定は無料の分だけ。**
+   * 有料は設定で明示したときだけ有効になり、そのときは上限を決めてもらう。
+   * 課金済みプロジェクトの鍵かどうかは API からは分からないので、利用者の申告で受ける。
+   */
+  const number = (name: string): number | undefined => {
+    const raw = process.env[name];
+    if (raw === undefined || raw === '') return undefined;
+    const value = Number(raw);
+    if (!Number.isFinite(value) || value < 0) throw new Error(`${name} must be a non-negative number`);
+    return value;
+  };
+  const limit = (field: string, name: string): Record<string, number> => {
+    const value = number(name);
+    return value === undefined ? {} : { [field]: value };
+  };
+  const tier = process.env['ASTRA_CLOUD_VISION_TIER'] ?? 'free';
+  if (!['free', 'paid'].includes(tier)) throw new Error('ASTRA_CLOUD_VISION_TIER must be free or paid');
+  const budget = new CloudModelBudget({
+    tier: tier as 'free' | 'paid',
+    billedProject: process.env['ASTRA_CLOUD_VISION_BILLED_PROJECT'] === 'yes',
+    statePath: join(visualContextDir(), 'cloud-model-ledger.json'),
+    ...limit('taskCallLimit', 'ASTRA_CLOUD_VISION_TASK_CALLS'),
+    ...limit('monthlyCallLimit', 'ASTRA_CLOUD_VISION_MONTH_CALLS'),
+    ...limit('taskCostLimitUsd', 'ASTRA_CLOUD_VISION_TASK_USD'),
+    ...limit('monthlyCostLimitUsd', 'ASTRA_CLOUD_VISION_MONTH_USD'),
+    ...limit('pricePerCallUsd', 'ASTRA_CLOUD_VISION_PRICE_USD'),
+  });
+  // 有料にするなら、上限を決めずには始めない。「上げたら青天井」を作らない。
+  if (
+    tier === 'paid' &&
+    number('ASTRA_CLOUD_VISION_MONTH_CALLS') === undefined &&
+    number('ASTRA_CLOUD_VISION_MONTH_USD') === undefined
+  )
+    throw new Error(
+      'ASTRA_CLOUD_VISION_TIER=paid requires ASTRA_CLOUD_VISION_MONTH_CALLS or ASTRA_CLOUD_VISION_MONTH_USD',
+    );
   const computerVision = new ComputerVisionRuntime({
     enabled: process.env['ASTRA_COMPUTER_USE'] === 'on',
     model: llm,
     selectModel: async () => selectLanguageModel(await llm.options())?.kind ?? null,
     allowExternalPixels: process.env['ASTRA_COMPUTER_VISION_EXTERNAL'] === 'on',
     device: () => new NativeVisionDevice(process.env['ASTRA_COMPUTER_VISION_HELPER'] ?? ''),
+    budget,
   });
 
   const steps = new HostStepLoop({
     transport: httpStepTransport({ baseUrl, token, fetch: apiSession.fetch }),
-    runner: new CompositeRunner([runtime, computerVision, llm]),
+    // いまの情報（天気・ニュース）は端末で取る。モデルは使わない。
+    runner: new CompositeRunner([runtime, computerVision, new CurrentInfoRunner(), llm]),
     onError: (error) => logger.warn({ err: error.message }, 'a step could not be handled'),
   });
   void steps.start(id);

@@ -1,0 +1,109 @@
+import XCTest
+@testable import GenieMac
+
+/// 段階 2〜4: VoiceHUDState が会話の「やること」を提供元へ正しく渡すか。偽の提供元で一連を通す。
+@MainActor
+final class ConversationWiringTests: XCTestCase {
+    /// 呼ばれたことを順に記録する偽の提供元。マイク・送信・読み上げの実物は使わない。
+    final class FakeProvider: ConversationProvider {
+        let name = "fake"
+        let capabilities = ConversationCapabilities(bargeIn: false, sendsAudioOffDevice: false,
+                                                    synthesizesOffDevice: false, mayNotRespond: false)
+        var log: [String] = []
+        var firstFrame: (() -> Void)?
+        var utterance: ((String) -> Void)?
+        var reply: ((ConversationLoop.Reply) -> Void)?
+        var finish: (() -> Void)?
+        var inputOpens = true
+
+        func openInput(echoCancellation: Bool, onFirstFrame: @escaping () -> Void,
+                       onUtterance: @escaping (String) -> Void) -> Bool {
+            log.append("open(echo:\(echoCancellation))")
+            firstFrame = onFirstFrame; utterance = onUtterance
+            return inputOpens
+        }
+        func closeInput() { log.append("close") }
+        func send(_ text: String, onReply: @escaping (ConversationLoop.Reply) -> Void) { log.append("send(\(text))"); reply = onReply }
+        func speak(_ text: String, onFinish: @escaping () -> Void) { log.append("speak(\(text))"); finish = onFinish }
+        func stopSpeaking() { log.append("stopSpeaking") }
+    }
+
+    private var headless = false
+    private let hud = VoiceHUDState.shared
+
+    override func setUp() {
+        super.setUp()
+        headless = WindowCoordinator.headless
+        WindowCoordinator.headless = true
+        GenieStateStore.shared.reset()
+        hud.endConversation(.user)
+    }
+
+    override func tearDown() {
+        hud.endConversation(.user)
+        GenieStateStore.shared.reset()
+        WindowCoordinator.headless = headless
+        super.tearDown()
+    }
+
+    func testTwoTurnsRunThroughTheProviderHalfDuplex() {
+        let fake = FakeProvider()
+        let t0 = Date()
+        hud.startConversation(using: fake, now: t0)
+        XCTAssertEqual(fake.log, ["open(echo:true)"])
+        XCTAssertEqual(hud.mode, .listening(partial: ""))
+        fake.firstFrame?()
+        XCTAssertEqual(hud.conversation.phase, .listening)
+
+        fake.utterance?("明日の天気は？")
+        XCTAssertEqual(Array(fake.log.suffix(2)), ["close", "send(明日の天気は？)"], "送る前にマイクを閉じる")
+        fake.reply?(.settled("明日は雨です。"))
+        XCTAssertEqual(fake.log.last, "speak(明日は雨です。)")
+        XCTAssertEqual(hud.conversation.phase, .speaking)
+        fake.finish?()
+        XCTAssertEqual(fake.log.last, "open(echo:true)", "読み終えてから次を聞く")
+
+        fake.utterance?("週末は？")
+        fake.reply?(.working)
+        guard case .speak(let ack) = ConversationWiringTests.lastSpeak(fake.log) else { return XCTFail() }
+        XCTAssertTrue(ack.contains("受け付けました"))
+    }
+
+    func testEndingStopsSpeechAndIgnoresTheLateFinish() {
+        let fake = FakeProvider()
+        hud.startConversation(using: fake)
+        fake.firstFrame?(); fake.utterance?("依頼"); fake.reply?(.settled("長い答え"))
+        let lateFinish = fake.finish
+        hud.endConversation(.user)
+        XCTAssertEqual(Array(fake.log.suffix(2)), ["stopSpeaking", "close"])
+        XCTAssertFalse(hud.conversation.isActive)
+        let opens = fake.log.filter { $0.hasPrefix("open") }.count
+        lateFinish?()
+        XCTAssertEqual(fake.log.filter { $0.hasPrefix("open") }.count, opens, "終わった後の読み終えた知らせでマイクを開かない")
+    }
+
+    func testAMicrophoneThatCannotOpenEndsTheConversation() {
+        let fake = FakeProvider()
+        fake.inputOpens = false
+        hud.startConversation(using: fake)
+        XCTAssertFalse(hud.conversation.isActive, "開けないマイクで会話中を名乗らない")
+    }
+
+    func testTheClockEndsTheConversationAfterFiveMinutes() {
+        let fake = FakeProvider()
+        let t0 = Date()
+        hud.startConversation(using: fake, now: t0)
+        hud.tickConversation(now: t0.addingTimeInterval(275))
+        XCTAssertTrue(hud.conversationEnding)
+        hud.tickConversation(now: t0.addingTimeInterval(300))
+        XCTAssertFalse(hud.conversation.isActive)
+        XCTAssertFalse(hud.conversationEnding)
+        XCTAssertEqual(hud.mode, .idle, "聞いている姿を片付ける")
+    }
+
+    enum Spoken: Equatable { case speak(String), none }
+    static func lastSpeak(_ log: [String]) -> Spoken {
+        guard let entry = log.last(where: { $0.hasPrefix("speak(") }) else { return .none }
+        return .speak(String(entry.dropFirst(6).dropLast()))
+    }
+}

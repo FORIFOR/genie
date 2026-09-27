@@ -29,12 +29,40 @@ final class GenieStateStore: ObservableObject {
     var dock: DockPresentation { state.dock }
 
     /// Dock の表示を変える。**活動状態も合わせて動かす**ので、両者がずれない。
+    ///
+    /// **確認カードが出ている間は、ほかの表示でカードを隠さない。**以前は Listening・回答・
+    /// 会議の開始がカードを上書きし、見えないカードが 120 秒待って「承認しない」になっていた。
+    /// 頼まれた表示は覚えておき、カードに答えが済んだらそこへ戻す。
     func setDock(_ presentation: DockPresentation) {
+        if let shown = state.confirmation, presentation != .confirmation(shown) {
+            dockBehindConfirmation = presentation
+            return
+        }
+        applyDock(presentation)
+    }
+
+    private func applyDock(_ presentation: DockPresentation) {
         guard state.dock != presentation else { return }
         state.dock = presentation
-        setMode(Self.mode(for: presentation, current: state.mode))
+        setMode(activity(showing: presentation))
         // 見た目の大きさは状態から導く。ここで必ず合わせる。
         WindowCoordinator.shared.syncDockPanels()
+    }
+
+    /// 何が起きているか。**表示ではなく出来事から決める。**
+    ///
+    /// 以前は表示から活動状態を決めていたので、仕事が動いている間に短い回答を出すと
+    /// 「完了」になり、会話と仕事と表示が互いに上書きしていた。いまは出来事の強い順に見る:
+    /// 確認待ち → 会議 → 聞き取り・考え中（いまの会話）→ 動いている仕事 → 表示から導けるもの。
+    func activity(showing dock: DockPresentation) -> GenieMode {
+        if state.confirmation != nil { return .awaitingConfirmation }
+        if state.meeting.isRecording { return .meeting }
+        switch dock {
+        case .listening, .thinking: return Self.mode(for: dock, current: state.mode)
+        default: break
+        }
+        if state.activeTask?.status == .running { return .acting }
+        return Self.mode(for: dock, current: state.mode)
     }
 
     /// 表示 → 活動状態の対応。App Context や Quick Actions は「活動」ではないので idle のまま。
@@ -45,7 +73,7 @@ final class GenieStateStore: ObservableObject {
         case .agent: return .acting
         case .confirmation: return .awaitingConfirmation
         case .meeting, .enteringRecording: return .meeting
-        case .answer: return .completed
+        case .answer, .info: return .completed
         case .result: return .completed
         case .idle, .appContext, .appContextExpanded, .contextDetail, .quickActions:
             // 会議中や workspace 表示中は、Dock が idle でも活動は続いている。
@@ -114,29 +142,90 @@ final class GenieStateStore: ObservableObject {
 
     // MARK: - 確認（§16 / §17）
 
+    /// 面に出ているカード（`state.confirmation`）の後ろで、出た順に待っているカード。
+    ///
+    /// **表示中のカードを別のカードで置き換えない。**以前は新しいカードが無条件に上書きし、
+    /// Dock のボタンは描いたカードではなく store の現在値に答えていた。読んでいたカードへの
+    /// 「実行する」が、押す直前に差し替わった別の承認に付き得た。いまは 1 枚ずつ、出た順に出す。
+    private var confirmationQueue: [ActionConfirmation] = []
+    /// カードが出ている間に頼まれた Dock の表示（`setDock`）。最後のカードに答えが済んだら戻す。
+    private var dockBehindConfirmation: DockPresentation?
+
     /// R2/R3 のときだけカードを出す。R0/R1 は黙って通す（毎回聞くと確認が意味を失う）。
-    /// 戻り値は「カードを出したか」。
+    /// 戻り値は「カードを出したか」（ほかのカードの後ろで順番を待つ場合も true）。
     @discardableResult
     func requireConfirmation(_ confirmation: ActionConfirmation) -> Bool {
         guard confirmation.risk.needsConfirmation else { return false }
-        state.confirmation = confirmation
-        // §Confirmation Dock 自身が下へ伸びて聞く。
-        setDock(.confirmation(confirmation))
-        bus.publish(.confirmationRequired(confirmation))
+        if let shown = state.confirmation {
+            if shown.id != confirmation.id, !confirmationQueue.contains(where: { $0.id == confirmation.id }) {
+                confirmationQueue.append(confirmation)
+            }
+            return true
+        }
+        showConfirmation(confirmation)
         return true
     }
 
-    /// 確認カードで直した値（param の label → 値、本文は "__preview"）。**答えた直後だけ意味を持つ。**
-    /// これまで「直す」は面の中で閉じていて、押した先には元の値が渡っていた（宣言だけの編集）。
-    var lastConfirmationEdits: [String: String] = [:]
+    private func showConfirmation(_ confirmation: ActionConfirmation) {
+        if dockBehindConfirmation == nil { dockBehindConfirmation = state.dock }
+        state.confirmation = confirmation
+        // §Confirmation Dock 自身が下へ伸びて聞く。
+        applyDock(.confirmation(confirmation))
+        bus.publish(.confirmationRequired(confirmation))
+    }
 
+    /// 確認カードで直した値（param の label → 値、本文は "__preview"）。カードの id ごとに持つ。
+    /// これまで「直す」は面の中で閉じていて、押した先には元の値が渡っていた（宣言だけの編集）。
+    private var confirmationEdits: [UUID: [String: String]] = [:]
+
+    /// そのカードで直した値を受け取る（1 回だけ。読んだら消す）。
+    func takeConfirmationEdits(_ id: UUID) -> [String: String] {
+        confirmationEdits.removeValue(forKey: id) ?? [:]
+    }
+
+    /// **描いたカード**への答え。Dock / 確認の面のボタンは、描いたカードの id を渡す。
+    /// id が面に出ている（または順番を待っている）カードと合わなければ何もしない
+    /// —— 押した瞬間に差し替わったカードへ答えを付けない。
+    func resolveConfirmation(id: UUID, approved: Bool, edits: [String: String] = [:]) {
+        guard removeConfirmation(id) else { return }
+        if approved, !edits.isEmpty { confirmationEdits[id] = edits }
+        bus.publish(.confirmationResolved(id: id, approved: approved))
+        if state.confirmation == nil { setMode(approved ? .acting : state.mode) }
+    }
+
+    /// いま面に出ているカードに答える。**検査の自動操作用**（`--selftest` と単体テスト）。
+    /// 人が押す面は `resolveConfirmation(id:approved:)` を使う（`scripts/verify-approval-boundary.sh`）。
     func resolveConfirmation(approved: Bool, edits: [String: String] = [:]) {
-        guard let pending = state.confirmation else { return }
-        lastConfirmationEdits = approved ? edits : [:]
+        guard let shown = state.confirmation else { return }
+        resolveConfirmation(id: shown.id, approved: approved, edits: edits)
+    }
+
+    /// 答えが無いまま引っ込める（時間切れ・面を出せなかった）。**「やめた」とは扱わない**ので、
+    /// 答えの知らせ（`.confirmationResolved`）は流さない。
+    func withdrawConfirmation(_ id: UUID) {
+        _ = removeConfirmation(id)
+    }
+
+    /// 面に出ているカードなら外して次を出す（無ければ、カードの間に頼まれた表示へ戻す）。
+    /// 順番待ちのカードなら列から外す。どちらでもなければ false。
+    private func removeConfirmation(_ id: UUID) -> Bool {
+        if let i = confirmationQueue.firstIndex(where: { $0.id == id }) {
+            confirmationQueue.remove(at: i)
+            return true
+        }
+        guard state.confirmation?.id == id else { return false }
         state.confirmation = nil
-        bus.publish(.confirmationResolved(id: pending.id, approved: approved))
-        setDock(state.meeting.isRecording ? .meeting(expanded: nil) : .idle)
-        setMode(approved ? .acting : .idle)
+        if !confirmationQueue.isEmpty {
+            showConfirmation(confirmationQueue.removeFirst())
+            return true
+        }
+        let behind = dockBehindConfirmation
+        dockBehindConfirmation = nil
+        switch behind {
+        case nil, .confirmation?: applyDock(state.meeting.isRecording ? .meeting(expanded: nil) : .idle)
+        case let dock?: applyDock(dock)
+        }
+        return true
     }
 
     // MARK: - 会議（§18 / §21）
@@ -200,7 +289,7 @@ final class GenieStateStore: ObservableObject {
     /// 結果面を閉じる。
     func dismissResult() {
         switch state.dock {
-        case .answer, .result: setDock(.idle)
+        case .answer, .info, .result: setDock(.idle)
         default: break
         }
     }

@@ -1,0 +1,86 @@
+import XCTest
+@testable import GenieMac
+
+/// 段階 4: Gemini Live の送受信の形と、上限・同意の扱い。通信はしない（キーが無くても確かめられる部分）。
+final class GeminiLiveTests: XCTestCase {
+    private func object(_ json: String) -> [String: Any] {
+        (try? JSONSerialization.jsonObject(with: Data(json.utf8))) as? [String: Any] ?? [:]
+    }
+
+    func testSetupAsksForAudioWithTranscriptsAndOnlyTheDelegateTool() {
+        let setup = object(GeminiLive.json(GeminiLive.setup(instruction: "短く")))["setup"] as? [String: Any]
+        XCTAssertEqual(setup?["model"] as? String, "models/gemini-3.8-live")
+        XCTAssertEqual((setup?["generationConfig"] as? [String: Any])?["responseModalities"] as? [String], ["AUDIO"])
+        XCTAssertNotNil(setup?["inputAudioTranscription"])
+        XCTAssertNotNil(setup?["outputAudioTranscription"])
+        let tools = (setup?["tools"] as? [[String: Any]])?.first?["functionDeclarations"] as? [[String: Any]]
+        XCTAssertEqual(tools?.map { $0["name"] as? String }, ["delegate_task"], "道具は仕事を渡す 1 つだけ")
+    }
+
+    func testAudioIsSixteenBitLittleEndianPCMAtSixteenKilohertz() throws {
+        let chunk = object(GeminiLive.json(GeminiLive.audioChunk([0, 1, -1, 2])))
+        let audio = (chunk["realtimeInput"] as? [String: Any])?["audio"] as? [String: Any]
+        XCTAssertEqual(audio?["mimeType"] as? String, "audio/pcm;rate=16000")
+        let data = try XCTUnwrap(Data(base64Encoded: audio?["data"] as? String ?? ""))
+        XCTAssertEqual([UInt8](data), [0x00, 0x00, 0xFF, 0x7F, 0x01, 0x80, 0xFF, 0x7F], "0, +max, -max, 範囲外は丸める")
+    }
+
+    func testServerMessagesBecomeEvents() {
+        let pcm = Data([0x00, 0x10, 0x00, 0xF0]).base64EncodedString()
+        let events = GeminiLive.parse("""
+        {"serverContent":{"modelTurn":{"parts":[{"inlineData":{"mimeType":"audio/pcm;rate=24000","data":"\(pcm)"}}]},
+         "inputTranscription":{"text":"明日の天気"},"outputTranscription":{"text":"雨です"},"turnComplete":true},
+         "usageMetadata":{"totalTokenCount":42}}
+        """)
+        XCTAssertEqual(events, [
+            .audio(Data([0x00, 0x10, 0x00, 0xF0]), sampleRate: 24_000),
+            .inputTranscript("明日の天気"), .outputTranscript("雨です"), .turnComplete, .usage(totalTokens: 42),
+        ])
+        XCTAssertEqual(GeminiLive.parse(#"{"setupComplete":{}}"#), [.setupComplete])
+        XCTAssertEqual(GeminiLive.parse(#"{"toolCall":{"functionCalls":[{"id":"c1","name":"delegate_task","args":{"request":"資料を直して"}}]}}"#),
+                       [.toolCall(id: "c1", name: "delegate_task", request: "資料を直して")])
+        XCTAssertEqual(GeminiLive.parse(#"{"goAway":{"timeLeft":"5s"}}"#), [.goAway])
+        XCTAssertEqual(GeminiLive.parse("not json"), [])
+    }
+
+    func testToolResponseCarriesOnlyTheStatus() {
+        let r = object(GeminiLive.json(GeminiLive.toolResponse(id: "c1", name: "delegate_task", response: ["status": "accepted"])))
+        let f = ((r["toolResponse"] as? [String: Any])?["functionResponses"] as? [[String: Any]])?.first
+        XCTAssertEqual(f?["id"] as? String, "c1")
+        XCTAssertEqual(f?["response"] as? [String: String], ["status": "accepted"])
+    }
+
+    func testPlaybackConvertsLittleEndianPCM() {
+        XCTAssertEqual(GeminiLiveProvider.floats(from: Data([0xFF, 0x7F, 0x00, 0x00])), [1, 0])
+    }
+
+    func testBudgetMustBeSetAndIsEnforcedPerMonth() {
+        let sep = Date(timeIntervalSince1970: 1_790_000_000) // 2026-09
+        var budget = GeminiLiveBudget(monthlyMinutes: 0, usedSeconds: 0, month: "")
+        XCTAssertFalse(budget.canStart(at: sep).ok, "上限を決めるまで使えない")
+        budget.monthlyMinutes = 10
+        XCTAssertTrue(budget.canStart(at: sep).ok)
+        budget.record(seconds: 540, at: sep)
+        XCTAssertEqual(budget.remainingSeconds(at: sep), 60)
+        budget.record(seconds: 120, at: sep)
+        XCTAssertFalse(budget.canStart(at: sep).ok, "使い切ったら始めない")
+        XCTAssertEqual(budget.remainingSeconds(at: sep), 0)
+        let oct = sep.addingTimeInterval(40 * 86_400)
+        XCTAssertTrue(budget.canStart(at: oct).ok, "月が変われば 0 から")
+        XCTAssertEqual(budget.remainingSeconds(at: oct), 600)
+    }
+
+    @MainActor
+    func testGeminiIsActiveOnlyWithConsentKeyAndLimit() {
+        let defaults = UserDefaults(suiteName: "genie.gemini.test.\(UUID().uuidString)")!
+        let settings = GeminiLiveSettings(defaults: defaults)
+        settings.setEnabled(true)
+        settings.setMonthlyMinutes(30)
+        XCTAssertEqual(settings.active, settings.hasKey, "キーが無ければ使わない")
+        settings.setMonthlyMinutes(0)
+        XCTAssertFalse(settings.active, "上限が無ければ使わない")
+        settings.setMonthlyMinutes(30)
+        settings.setEnabled(false)
+        XCTAssertFalse(settings.active, "本人がオンにしていなければ使わない")
+    }
+}

@@ -8,8 +8,10 @@ import {
   ActionReceiptView,
   GenieError,
   Task,
+  TaskInstruction,
   isTerminal,
   uuidv7,
+  type AddTaskInstructionRequest,
   type CreateTaskRequest,
   type TaskStatus,
 } from '@genie/contracts';
@@ -186,6 +188,26 @@ export class TaskService {
     }
   }
 
+  /** Read-only acceptance reconciliation. Never dispatches a pending workflow. */
+  async findByConversationTurn(
+    tenantId: string,
+    userId: string,
+    conversationId: string,
+    turnId: string,
+  ): Promise<string | null> {
+    return withTenant(this.#db, tenantId, async (tx) => {
+      const task = await tx
+        .selectFrom('tasks')
+        .select('id')
+        .where('tenant_id', '=', tenantId)
+        .where('created_by', '=', userId)
+        .where('conversation_id', '=', conversationId)
+        .where('idempotency_key', '=', `turn:${turnId}`)
+        .executeTakeFirst();
+      return task?.id ?? null;
+    });
+  }
+
   async get(tenantId: string, taskId: string): Promise<Task> {
     return withTenant(this.#db, tenantId, async (tx) => toTask(await loadTask(tx, taskId)));
   }
@@ -296,10 +318,95 @@ export class TaskService {
     });
   }
 
+  /**
+   * 動いている仕事へ追加指示を渡す（「あと、テストも追加して」）。
+   *
+   * 返すのは**受け取った**という事実（RECEIVED）。反映したかどうかは workflow が次の段の前で決め、
+   * `listInstructions` で APPLIED（どの段で）か NOT_APPLIED として分かる。
+   * 終わった・止めている途中の仕事には足さない（続きの仕事として頼んでもらう）。
+   * 同じ request_id の送り直しは、最初の 1 件をそのまま返す（本文が違えば断る）。
+   */
+  async addInstruction(
+    tenantId: string,
+    taskId: string,
+    userId: string,
+    request: AddTaskInstructionRequest,
+  ): Promise<TaskInstruction> {
+    const text = request.text.trim();
+    const { row, fresh, workflowId } = await withTenant(this.#db, tenantId, async (tx) => {
+      const task = await loadTask(tx, taskId, true);
+      const existing = await tx
+        .selectFrom('task_instructions')
+        .selectAll()
+        .where('task_id', '=', taskId)
+        .where('request_id', '=', request.request_id)
+        .executeTakeFirst();
+      if (existing) {
+        if (existing.text !== text)
+          throw new GenieError('task.idempotency_conflict', 'この request_id は別の指示に使われています');
+        return { row: existing as InstructionRow, fresh: false, workflowId: task.workflow_id };
+      }
+      if (isTerminal(task.status as TaskStatus) || task.status === 'CANCELLING') {
+        throw new GenieError(
+          'task.invalid_state',
+          'この仕事はもう終わっています。続きは新しい仕事として頼んでください。',
+        );
+      }
+      const inserted = await tx
+        .insertInto('task_instructions')
+        .values({
+          tenant_id: tenantId,
+          task_id: taskId,
+          request_id: request.request_id,
+          created_by: userId,
+          text,
+        })
+        .returningAll()
+        .executeTakeFirstOrThrow();
+      return { row: inserted as InstructionRow, fresh: true, workflowId: task.workflow_id };
+    });
+
+    if (fresh) {
+      try {
+        await this.#runtime.instruct(workflowId, { requestId: request.request_id, text });
+      } catch {
+        // 渡せなかった（workflow が既に終わっていた等）。受け取ったままにせず、反映できなかったと残す。
+        await withTenant(this.#db, tenantId, (tx) =>
+          tx
+            .updateTable('task_instructions')
+            .set({ status: 'NOT_APPLIED', resolved_at: new Date() })
+            .where('task_id', '=', taskId)
+            .where('request_id', '=', request.request_id)
+            .where('status', '=', 'RECEIVED')
+            .execute(),
+        );
+        return (await this.listInstructions(tenantId, taskId)).find(
+          (i) => i.request_id === request.request_id,
+        )!;
+      }
+    }
+    return toInstruction(row, false);
+  }
+
+  /** 追加指示の一覧。仕事が終わっても受け取ったままのものは、反映できなかったとして返す。 */
+  async listInstructions(tenantId: string, taskId: string): Promise<TaskInstruction[]> {
+    return withTenant(this.#db, tenantId, async (tx) => {
+      const task = await loadTask(tx, taskId);
+      const rows = await tx
+        .selectFrom('task_instructions')
+        .selectAll()
+        .where('task_id', '=', taskId)
+        .orderBy('created_at', 'asc')
+        .execute();
+      const finished = isTerminal(task.status as TaskStatus);
+      return rows.map((row) => toInstruction(row as InstructionRow, finished));
+    });
+  }
+
   /** 取消要求。実際の終了はワークフローが決めるので、ここでは CANCELLING までしか進めない。 */
   async cancel(tenantId: string, taskId: string, reason: string): Promise<Task> {
     const row = await withTenant(this.#db, tenantId, async (tx) => {
-      const task = await loadTask(tx, taskId);
+      const task = await loadTask(tx, taskId, true);
       if (isTerminal(task.status as TaskStatus)) {
         throw new GenieError('task.invalid_state', `task is already ${task.status}`);
       }
@@ -384,8 +491,34 @@ type TaskRow = {
   updated_at: Date;
 };
 
-async function loadTask(tx: ScopedDb, taskId: string): Promise<TaskRow> {
-  const row = await tx.selectFrom('tasks').selectAll().where('id', '=', taskId).executeTakeFirst();
+type InstructionRow = {
+  task_id: string;
+  request_id: string;
+  text: string;
+  status: string;
+  applied_step_index: number | null;
+  created_at: Date;
+  resolved_at: Date | null;
+};
+
+function toInstruction(row: InstructionRow, taskFinished: boolean): TaskInstruction {
+  // 仕事が終わったのに受け取ったまま = 反映する段が残っていなかった。
+  const status = row.status === 'RECEIVED' && taskFinished ? 'NOT_APPLIED' : row.status;
+  return TaskInstruction.parse({
+    task_id: row.task_id,
+    request_id: row.request_id,
+    text: row.text,
+    status,
+    applied_step_index: row.applied_step_index,
+    created_at: row.created_at.toISOString(),
+    resolved_at: row.resolved_at?.toISOString() ?? null,
+  });
+}
+
+async function loadTask(tx: ScopedDb, taskId: string, lock = false): Promise<TaskRow> {
+  const query = tx.selectFrom('tasks').selectAll().where('id', '=', taskId);
+  // Serialize cancel's read/check/write with terminal activity updates.
+  const row = await (lock ? query.forUpdate() : query).executeTakeFirst();
   // RLS で他テナントの行は見えない。ここに来る「無い」は 404 で正しい（逸脱 D-11）
   if (!row) throw new GenieError('task.not_found', `no task ${taskId}`);
   return row as TaskRow;

@@ -98,6 +98,10 @@ for path in src.rglob('*.swift'):
     rel = str(path.relative_to(src))
     if path.name.startswith('SelfTest') or rel == 'Context/ConnectorState.swift': continue
     text = re.sub(r'//[^\n]*', '', path.read_text())
+    # 会話の Gemini Live の再生は AVAudioEngine の節点をつなぐだけ（OAuth ではない）。
+    # そのファイルでは `engine.connect(player` だけを除き、ほかの .connect( はここで数える。
+    if rel == 'Audio/GeminiLiveProvider.swift':
+        text = text.replace('engine.connect(player', 'engine_node_link(player')
     for call in re.findall(r'\.((?:connect|connectProvider|connectActions))\(', text):
         if allowed.get(rel) != call: raise SystemExit('unreviewed OAuth entry: ' + rel)
         found.add(rel)
@@ -108,7 +112,8 @@ reply = (src/'Work/ReplyFlow.swift').read_text()
 checks = [
     found == set(allowed),
     re.search(r'Button\(provider == "google" \? "Googleで続ける" : "Microsoftで続ける"\)\s*\{\s*preview = nil\s*Task \{[^\n]*connections\.connectProvider\(provider\)', pane),
-    'if Confirm.ask(ask) {\n                _ = connector(pluginId, connectorId)' in reply,
+    # 接続を求める確認は止まらずに待つ（async）。同期で待つ版に戻すと、Dock の中身が戻らない。
+    'if await Confirm.ask(ask) {\n                _ = connector(pluginId, connectorId)' in reply,
 ]
 if not all(checks): raise SystemExit('OAuth must start from the purpose button or send confirmation')
 print('provider purpose button + send confirmation')
@@ -121,12 +126,16 @@ else
 fi
 
 # 5. 外へ届く実行は確認の面を通る（CONFIRMATION_GATE は verify-confirmation.sh が画素で持つ。
-#    ここでは、送る/捨てる系の入口が Confirm.ask を経ることを静的に数える）。
-conf=$(prod "Confirm.ask(" | wc -l | tr -d ' ')
-if [ "$conf" -ge 3 ]; then
-  row "external action confirmation" "PASS (Confirm.ask ×$conf; 面は CONFIRMATION_GATE)"
+#    ここでは、送る/捨てる系の入口が Confirm.ask / Confirm.approve を経ることを静的に数える）。
+#    返信の送信と backend の承認は、証拠（UserApproval）を返す Confirm.approve に移った。
+#    ask だけを数えると、外へ届くいちばん強い入口が数から漏れる。
+ask_n=$(prod "Confirm.ask(" | wc -l | tr -d ' ')
+approve_n=$(prod "Confirm.approve(" | wc -l | tr -d ' ')
+conf=$((ask_n + approve_n))
+if [ "$conf" -ge 3 ] && [ "$approve_n" -ge 2 ]; then
+  row "external action confirmation" "PASS (Confirm.ask ×$ask_n + Confirm.approve ×$approve_n; 面は CONFIRMATION_GATE)"
 else
-  bad "external action confirmation" "FAIL" "Confirm.ask の入口が $conf 箇所しかない"
+  bad "external action confirmation" "FAIL" "確認の入口が ask ×$ask_n / approve ×$approve_n しかない（返信の送信と backend の承認は Confirm.approve を通る）"
 fi
 
 # 6. ガイドが、オンデバイスと Google STT の選択を正しく説明する。
@@ -140,6 +149,76 @@ if [ $claim_ok -eq 1 ]; then
   row "transcription egress guide" "consistent"
 else
   bad "transcription egress guide" "FAIL" "docs/guide/build.py: Google STT の説明が無い / 「相手の声のために」が残っている / 出ない理由の行が無い"
+fi
+
+# 7. いまの情報（天気・ニュース）は、一覧の相手にだけ出る。
+#    - current-info/ の https URL は CURRENT_INFO_HOSTS の中だけ
+#    - 生の fetch( は hosts.ts の infoFetch だけ
+#    - 一覧はこのゲート・hosts.ts・docs/privacy-egress.md で同じ
+info_check=$(python3 - "$ROOT" <<'CHECK'
+import pathlib, re, sys
+root = pathlib.Path(sys.argv[1])
+d = root / 'workers/agent-host/src/current-info'
+expected = ['api.open-meteo.com', 'geocoding-api.open-meteo.com', 'news.web.nhk', 'news.google.com']
+hosts_ts = (d / 'hosts.ts').read_text()
+listed = re.findall(r"^\s*'([a-z0-9.-]+)',", hosts_ts.split('CURRENT_INFO_HOSTS')[1].split('] as const')[0], re.M)
+problems = []
+if listed != expected:
+    problems.append(f'CURRENT_INFO_HOSTS {listed} != {expected}')
+for f in sorted(d.glob('*.ts')):
+    text = f.read_text()
+    for host in re.findall(r'https://([a-z0-9.-]+)', text):
+        if host not in expected and host != 'open-meteo.com':
+            problems.append(f'{f.name}: {host}')
+    if f.name != 'hosts.ts' and re.search(r'(?<![A-Za-z])fetch\(', text.replace('this.#fetch(', '')):
+        problems.append(f'{f.name}: raw fetch(')
+doc = (root / 'docs/privacy-egress.md').read_text()
+for host in expected:
+    if host not in doc:
+        problems.append(f'docs/privacy-egress.md: {host} missing')
+print('; '.join(problems))
+sys.exit(1 if problems else 0)
+CHECK
+)
+if [ "$?" -eq 0 ]; then
+  row "current-info egress allowlist" "PASS (4 hosts)"
+else
+  bad "current-info egress allowlist" "FAIL" "$info_check"
+fi
+
+# 8. 会話の Gemini Live は、本人がオンにし、キーと上限を置いたときだけ外へ出る。
+#    - 接続先（generativelanguage.googleapis.com）を書いてよいのは GeminiLiveProtocol.swift だけ
+#    - Gemini へつなぐ（GeminiLive.endpoint を使う）のは GeminiLiveProvider.swift だけ、キーは URL ではなくヘッダー
+#    - GeminiLiveProvider を作るのは VoiceHUDState.beginConversation だけで、同意・キー・上限を確かめた後
+gemini_check=$(python3 - "$SRC" <<'CHECK'
+import pathlib, re, sys
+src = pathlib.Path(sys.argv[1])
+problems = []
+for f in src.rglob('*.swift'):
+    text = f.read_text()
+    rel = str(f.relative_to(src))
+    if 'generativelanguage.googleapis.com' in text and rel != 'Audio/GeminiLiveProtocol.swift':
+        problems.append(f'{rel}: Gemini endpoint outside GeminiLiveProtocol.swift')
+    if 'GeminiLive.endpoint' in text and rel != 'Audio/GeminiLiveProvider.swift':
+        problems.append(f'{rel}: connects to Gemini outside GeminiLiveProvider.swift')
+    if 'GeminiLiveProvider(' in text and rel not in ('VoiceHUD/VoiceHUDState.swift', 'Audio/GeminiLiveProvider.swift'):
+        problems.append(f'{rel}: GeminiLiveProvider created outside beginConversation')
+provider = (src / 'Audio/GeminiLiveProvider.swift').read_text()
+if 'x-goog-api-key' not in provider or re.search(r'[?&]key=', provider):
+    problems.append('GeminiLiveProvider.swift: API key must go in the x-goog-api-key header, not the URL')
+state = (src / 'VoiceHUD/VoiceHUDState.swift').read_text()
+begin = state.split('func beginConversation()')[1].split('\n    }\n')[0] if 'func beginConversation()' in state else ''
+for needle in ['gemini.enabled', 'gemini.hasKey', 'canStart(at:']:
+    if needle not in begin:
+        problems.append(f'beginConversation: missing {needle} before creating GeminiLiveProvider')
+print('; '.join(problems))
+sys.exit(1 if problems else 0)
+CHECK
+)
+if [ "$?" -eq 0 ]; then
+  row "gemini live requires consent, key, limit" "PASS"
+else
+  bad "gemini live requires consent, key, limit" "FAIL" "$gemini_check"
 fi
 
 # 実行体（ある時だけ）: 既定 OFF と、資産の無いロケールで throw。

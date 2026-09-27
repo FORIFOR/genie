@@ -58,6 +58,7 @@ const FIELDS = [
   ['dockAgentRowHeight', h.agentRowHeight],
   ['dockResultWidth', h.resultWidth],
   ['dockResultHeight', h.resultHeight],
+  ['dockInfoMaxHeight', h.infoMaxHeight],
   ['dockConfirmWidth', h.confirmWidth],
   ['dockConfirmHeight', h.confirmHeight],
   ['dockConfirmPrimaryMinWidth', h.confirmPrimaryMinWidth],

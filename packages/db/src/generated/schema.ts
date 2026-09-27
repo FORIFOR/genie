@@ -154,6 +154,19 @@ export interface ConnectorConnections {
   updated_at: Generated<Timestamp>;
 }
 
+export interface ConversationRequests {
+  body_hash: string;
+  conversation_id: string;
+  created_at: Generated<Timestamp>;
+  prepared_response: Json | null;
+  request_id: string;
+  response: Json | null;
+  response_status: number | null;
+  tenant_id: string;
+  turn_id: string;
+  user_id: string;
+}
+
 export interface Conversations {
   created_at: Generated<Timestamp>;
   created_by: string;
@@ -513,6 +526,18 @@ export interface TaskEvents {
   type: string;
 }
 
+export interface TaskInstructions {
+  applied_step_index: number | null;
+  created_at: Generated<Timestamp>;
+  created_by: string;
+  request_id: string;
+  resolved_at: Timestamp | null;
+  status: Generated<string>;
+  task_id: string;
+  tenant_id: string;
+  text: string;
+}
+
 export interface Tasks {
   completed_at: Timestamp | null;
   conversation_id: string | null;
@@ -699,6 +724,7 @@ export interface DB {
   audit_events: AuditEvents;
   audit_sequences: AuditSequences;
   connector_connections: ConnectorConnections;
+  conversation_requests: ConversationRequests;
   conversation_states: ConversationStates;
   conversation_summaries: ConversationSummaries;
   conversations: Conversations;
@@ -728,6 +754,7 @@ export interface DB {
   share_access_logs: ShareAccessLogs;
   shares: Shares;
   task_events: TaskEvents;
+  task_instructions: TaskInstructions;
   tasks: Tasks;
   tenants: Tenants;
   translations: Translations;

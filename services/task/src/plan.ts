@@ -33,6 +33,22 @@ export function isMeteredStep(step: { readonly toolId: string }): boolean {
   );
 }
 
+/**
+ * 追加指示を、これから走る段に書き足す（「あと、テストも追加して」）。
+ *
+ * 計画は作った時点で決まっている（D-40）ので、段を増やすことはしない。まだ走っていない段の
+ * 依頼文に足すだけ。承認が要る段では、承認を求める**前に**足す（承認は足した後の内容に対して出る）。
+ */
+export function withInstructions(step: TaskStep, texts: readonly string[]): TaskStep {
+  if (texts.length === 0) return step;
+  const note = `\n\n追加の指示:\n${texts.map((t) => `- ${t}`).join('\n')}`;
+  const args: Record<string, unknown> = { ...step.args, follow_up_instructions: [...texts] };
+  for (const key of ['request', 'question', 'message', 'instruction', 'goal']) {
+    if (typeof args[key] === 'string') args[key] = `${args[key] as string}${note}`;
+  }
+  return { ...step, args };
+}
+
 /** Carry the durable summary activity result into rendering; don't ask the LLM twice. */
 export function withMeetingSummary(
   step: TaskStep,
@@ -99,6 +115,7 @@ export const KNOWN_TASK_KINDS = [
   'mail.send',
   'computer.action',
   'computer.run',
+  'info.lookup',
 ] as const;
 export type TaskKind = (typeof KNOWN_TASK_KINDS)[number];
 
@@ -149,8 +166,15 @@ function planEcho(input: Record<string, unknown>): TaskPlan {
     });
   }
 
+  // 承認の段を先頭に置く（承認待ちの間に届いた追加指示が、後ろの段に反映されるかを通すため）。
+  // 指定しなければ従来どおり最後。既存の計画・履歴は変わらない。
+  const ordered =
+    requiresApproval && input['approval_first'] === true
+      ? [steps[steps.length - 1]!, ...steps.slice(0, -1)].map((step, index) => ({ ...step, index }))
+      : steps;
+
   return {
-    steps,
+    steps: ordered,
     artifact: {
       type: 'DOCUMENT',
       title: typeof input['title'] === 'string' ? input['title'] : 'Echo result',
@@ -342,6 +366,21 @@ function planMailSend(input: Record<string, unknown>): TaskPlan {
   };
 }
 
+/**
+ * 画面操作 1 回の上限。端末側（agent-host の `ComputerVisionRuntime` の既定、
+ * helper の実行中の許可の期限）と同じ値。ここは import できない（冒頭の注意）ので写しで持つ。
+ * **承認カードはこの数字で約束する。**端末側を変えるなら、ここも同時に変える。
+ */
+const COMPUTER_RUN_MAX_ACTIONS = 12;
+const COMPUTER_RUN_MINUTES = 5;
+
+/**
+ * 画面を見ながらの操作（1 つの窓・上限付き）。
+ *
+ * 人の関門は**この段の承認カード 1 回**。承認のあとは 1 操作ごとには訊かない
+ * （helper の選択ダイアログは対象を決めるための画面で、承認の代わりにはならない）。
+ * `message` は実行中の進捗の文。承認カードの文面は `approvalSummaryFor` が別に組む。
+ */
 function planComputerRun(input: Record<string, unknown>): TaskPlan {
   const goal = typeof input['goal'] === 'string' ? input['goal'].trim() : '';
   if (!goal) throw new UnknownTaskKindError('computer.run needs a goal');
@@ -353,7 +392,7 @@ function planComputerRun(input: Record<string, unknown>): TaskPlan {
         risk: 'EXTERNAL_COMMIT',
         surface: 'local',
         requiresConfirmation: true,
-        message: '選択したウィンドウを画像で確認し、操作ごとに確認します',
+        message: '対象の窓を画像で確かめながら操作しています',
         args: {
           goal,
           successCriteria:
@@ -398,6 +437,40 @@ function planComputerAction(input: Record<string, unknown>): TaskPlan {
   };
 }
 
+/**
+ * いまの情報（天気・ニュース）を端末で取りに行く。
+ *
+ * 取得先と、何を送ったかを端末が決める（場所・話題は cloud を通らない）。
+ * モデルは使わない。答えの文は取得した値からの定型で、数字を作らせない。
+ */
+function planInfoLookup(input: Record<string, unknown>): TaskPlan {
+  const kind = input['kind'];
+  if (kind !== 'weather' && kind !== 'news')
+    throw new UnknownTaskKindError('info.lookup needs weather or news');
+  const args = Object.fromEntries(
+    ['kind', 'when', 'place', 'topic', 'question']
+      .filter((key) => typeof input[key] === 'string')
+      .map((key) => [key, input[key]]),
+  );
+  return {
+    steps: [
+      {
+        index: 0,
+        toolId: 'info.lookup',
+        risk: 'READ',
+        surface: 'local',
+        message: kind === 'weather' ? '天気予報を確認しています' : 'ニュースを確認しています',
+        args,
+      },
+    ],
+    artifact: {
+      type: 'OTHER',
+      title: typeof input['question'] === 'string' ? input['question'] : kind === 'weather' ? '天気' : 'ニュース',
+      mimeType: 'application/vnd.genie.info+json',
+    },
+  };
+}
+
 export function planTask(kind: string, input: Record<string, unknown>): TaskPlan {
   switch (kind) {
     case 'echo':
@@ -412,6 +485,8 @@ export function planTask(kind: string, input: Record<string, unknown>): TaskPlan
       return planComputerAction(input);
     case 'computer.run':
       return planComputerRun(input);
+    case 'info.lookup':
+      return planInfoLookup(input);
     default:
       throw new UnknownTaskKindError(kind);
   }
@@ -436,6 +511,7 @@ export interface ApprovalCard {
  * クライアント側で組み立てられるようにサーバが影響範囲を持つ。
  */
 export function approvalSummaryFor(step: TaskStep): ApprovalCard {
+  if (step.toolId === 'computer.run') return computerRunApproval(step);
   const external =
     step.risk === 'EXTERNAL_COMMIT' ||
     step.risk === 'DESTRUCTIVE' ||
@@ -455,6 +531,50 @@ export function approvalSummaryFor(step: TaskStep): ApprovalCard {
       scope: external ? 'external' : 'internal',
       reversible: step.risk === 'REVERSIBLE_WRITE',
       recovery_note: step.risk === 'REVERSIBLE_WRITE' ? '実行後に取り消せます' : null,
+    },
+  };
+}
+
+/**
+ * 画面操作の承認カード。**承認のあとは 1 操作ごとに訊かない**ので、訊かないことそのものを
+ * ここで言う。言わずに通せば、1 回の承認が最大 12 回分の同意として使われる。
+ *
+ * 画像の送信先（端末内か外部か）は、承認を作る時点ではサーバに分からない——
+ * 実行の直前に端末側（agent-host）が設定から選ぶ。だから送信先を断定せず、
+ * 決まり方と、外部なら画像が外へ出ることを書く。実際の送信先を示すのは、端末側で対象を選ぶ画面の役目。
+ *
+ * 対象を選ぶ画面の許可は 20 分続き、その間の続きの依頼では画面を出さずに前の窓を使う。
+ * だから「範囲」で、開始時に選ぶとは限らないことを言う。送信先が変わったときは、端末側が
+ * 許可を使い回さずに選択画面を出し直す（BackgroundAX.reusableGrant が送信先を比べる）。
+ */
+function computerRunApproval(step: TaskStep): ApprovalCard {
+  const goal = typeof step.args['goal'] === 'string' ? step.args['goal'] : '';
+  const criteria =
+    typeof step.args['successCriteria'] === 'string' ? step.args['successCriteria'] : goal;
+  const limits = `最大${COMPUTER_RUN_MAX_ACTIONS}操作・${COMPUTER_RUN_MINUTES}分`;
+  return {
+    summary: `対象の窓1つを、1操作ごとの確認なしで${limits}まで操作します`,
+    details: [
+      { label: '目的', value: goal },
+      ...(criteria && criteria !== goal ? [{ label: '完了の条件', value: criteria }] : []),
+      { label: '範囲', value: '対象の窓1つだけ（開始時に選ぶ。20分以内の続きの依頼では前に選んだ窓のまま）。ほかの窓へ移りません' },
+      { label: '確認', value: `この承認のあとは、1操作ごとには確認しません（${limits}）` },
+      {
+        label: '影響',
+        value:
+          'クリックや入力で、送信・保存などアプリの外に届く結果が起き、取り消せないことがあります',
+      },
+      {
+        label: '画像の送信先',
+        value: 'この端末で設定したモデル。外部のモデルなら、対象の窓の画像がその提供元へ送られます',
+      },
+    ],
+    impact: {
+      primary_action_label: '画面の操作を始める',
+      affected_count: null,
+      scope: 'external',
+      reversible: false,
+      recovery_note: null,
     },
   };
 }

@@ -17,7 +17,7 @@ import SwiftUI
 /// - `.confirmation`: 決断の面が作業面ほど大きくならないよう **上限 360**
 /// - `.idle` / `.appContext`（畳んだ棚）: Dynamic Island の寸法そのもの（token）
 ///
-/// `.answer` / `.result` は中身を測る（短い回答も結果面と同じ幅で、長文は面内でスクロール）。
+/// `.answer` / `.info` / `.result` は中身を測る（短い回答も結果面と同じ幅で、長文は面内でスクロール）。
 ///
 /// 測るのは `NSHostingView.fittingSize`。実際に窓へ載せる view と同じ型・同じ幅・
 /// 同じ environment（dark / UIScale）で測るので、窓の中でだけ違う高さになることはない。
@@ -29,6 +29,10 @@ enum DockContentMeasure {
     private struct Key: Equatable {
         let dock: DockPresentation
         let state: GenieState
+        /// 考え中の面に出す「未送信」の行。Store の外（VoiceHUDState）にあるので鍵に入れる。
+        let held: String?
+        /// 会話の 1 行（ConversationBar）が出ているか・終わり際か・延長できるか。
+        let conversation: [Bool]
         let width: CGFloat
         let type: CGFloat
         let metric: CGFloat
@@ -46,13 +50,19 @@ enum DockContentMeasure {
         case .confirmation(let c): body = AnyView(ConfirmationDock(confirmation: c))
         case .result(let r): body = AnyView(ResultDock(result: r))
         case .answer(let text): body = AnyView(AnswerDock(text: text))
+        case .info(let card): body = AnyView(InfoDock(card: card))
         case .contextDetail: body = AnyView(ContextDetailDock())
         case .quickActions: body = AnyView(QuickActionsDock())
         case .enteringRecording: body = AnyView(SimpleDock(icon: "record.circle", text: "録音を始めます…", tint: .recordingRed))
         case .meeting(let panel) where panel == .notes: body = AnyView(MeetingDock(open: panel))
         case .idle, .appContext, .meeting: return nil
         }
-        let key = Key(dock: dock, state: GenieStateStore.shared.state, width: width,
+        let key = Key(dock: dock, state: GenieStateStore.shared.state,
+                      held: VoiceHUDState.shared.heldUtterance,
+                      conversation: [VoiceHUDState.shared.conversation.isActive,
+                                     VoiceHUDState.shared.conversationEnding,
+                                     VoiceHUDState.shared.conversation.canExtend],
+                      width: width,
                       type: UIScale.shared.size.type, metric: UIScale.shared.size.metric)
         if let cache, cache.key == key { return cache.height }
         let host = NSHostingView(rootView: body.frame(width: width).environment(\.colorScheme, .dark))

@@ -13,3 +13,8 @@ export {
   type ResolutionContext,
 } from './reference.js';
 export { ConversationService, type AppendTurnInput, type ConversationDeps } from './service.js';
+export {
+  classifyCurrentInfo,
+  type CurrentInfoQuery,
+  type CurrentInfoWhen,
+} from './current-info.js';

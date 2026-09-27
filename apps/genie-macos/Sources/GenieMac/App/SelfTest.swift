@@ -88,7 +88,9 @@ enum SelfTest {
         case "consumerjourneys": Task { @MainActor in await consumerJourneyShots(args) }; return true
         case "consumer-live": Task { @MainActor in await consumerJourneyLive() }; return true
         case "workcontext": workContextGate(); return true
-        case "replyflow": replyFlowGate(); return true
+        case "replyflow": Task { await replyFlowGate() }; return true
+        case "approval-press": Task { await approvalPress() }; return true
+        case "selfecho": Task { await selfEcho() }; return true
         case "brief": briefGate(); return true
         case "journey": journeyGate(args); return true
         case "idle-hold": idleHold(args); return true
@@ -582,6 +584,15 @@ enum SelfTest {
 
         // 4. Thinking
         shoot("05-thinking", { hud.mode = .thinking })
+        // 3'. Genie と会話（段階 2）: 会話中の Listening と、終わる前の知らせ（延長は本人の操作）。
+        shoot("04b-conversation", { hud.presentConversationForShot(ending: false) })
+        shoot("04c-conversation-ending", { hud.presentConversationForShot(ending: true) })
+        hud.clearConversationForShot()
+        hud.mode = .idle
+
+        // 4'. 答えている途中に届いた発話を預かった姿（黙って消さない。段階 1）。
+        shoot("05b-thinking-held", { hud.hold("明日の天気教えて") })
+        _ = hud.takeHeldUtterance()
 
         // 5. Agent（startTask が Dock を agent の姿にする＝実遷移）
         shoot("06-agent", {
@@ -615,6 +626,21 @@ enum SelfTest {
             if let last = store.state.activeTask?.steps.last { store.updateStep(last.id, to: .failed) }
             store.finishTask(.failed)
         })
+
+        // 5-4. いまの情報（天気・ニュース）。本番と同じく成果物の JSON を taskReply → presentation に通す。
+        // 撮るたびに変わらないよう、取得時刻は固定・ニュースの時刻は無し（相対表記が撮影時刻で変わる）。
+        for (name, body) in [
+            ("06e-info-weather", #"{"schema":"genie.info/v1","kind":"weather","text":"大阪の天気: 今日 雨 24℃/20℃ 降水95%、明日 くもり 25℃/19℃ 降水30%。","data":{"place":"大阪","current":null,"days":[{"date":"2026-09-27","label":"今日","code":63,"summary":"雨","high":24.0,"low":20.2,"precipitation":95},{"date":"2026-09-28","label":"明日","code":3,"summary":"くもり","high":25.1,"low":19.4,"precipitation":30},{"date":"2026-09-29","label":"明後日","code":2,"summary":"晴れ時々くもり","high":26.0,"low":18.8,"precipitation":10},{"date":"2026-09-30","label":"9/30(水)","code":0,"summary":"快晴","high":27.2,"low":18.1,"precipitation":0}]},"sources":[{"name":"Open-Meteo.com","url":"https://open-meteo.com/"}],"fetched_at":"2026-09-27T00:30:00Z"}"#),
+            ("06g-info-weather-day", #"{"schema":"genie.info/v1","kind":"weather","text":"明日の東京都は雨。最高22℃、最低20℃、降水確率78%です。","data":{"place":"東京都","current":null,"days":[{"date":"2026-09-28","label":"明日","code":63,"summary":"雨","high":21.9,"low":19.5,"precipitation":78}]},"sources":[{"name":"Open-Meteo.com","url":"https://open-meteo.com/"}],"fetched_at":"2026-09-27T00:30:00Z"}"#),
+            ("06f-info-news", #"{"schema":"genie.info/v1","kind":"news","text":"主なニュース（NHK）: 1. 台風26号 沖縄に接近へ","data":{"topic":null,"items":[{"title":"台風26号 沖縄に接近へ 来週も東～西日本は雨降りやすい見込み","url":"https://news.web.nhk/a","source":"NHK","published_at":null},{"title":"首相 米大統領と電話会談 米中首脳会談の内容説明受ける","url":"https://news.web.nhk/b","source":"NHK","published_at":null},{"title":"タイで大雨続き 首都バンコクでも浸水被害広がる","url":"https://news.web.nhk/c","source":"NHK","published_at":null}]},"sources":[{"name":"NHK","url":"https://news.web.nhk/"}],"fetched_at":"2026-09-27T00:30:00Z"}"#),
+        ] {
+            shoot(name, {
+                let reply = VoiceHUDState.taskReply(status: "COMPLETED", artifactID: "shot") { body }
+                hud.mode = VoiceHUDState.presentation(for: reply)
+                if case .info = hud.mode {} else { failures.append("\(name)=カードにならない") }
+            })
+        }
+        hud.mode = .idle
 
         // 6. Confirmation（requireConfirmation が Dock を展開する＝実遷移）
         shoot("07-confirmation", {

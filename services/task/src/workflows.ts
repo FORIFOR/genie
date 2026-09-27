@@ -18,6 +18,7 @@ import {
   planTask,
   requiresSingleAttempt,
   isMeteredStep,
+  withInstructions,
   withMeetingSummary,
   type TaskPlan,
 } from './plan.js';
@@ -114,6 +115,13 @@ export interface ApprovalDecisionSignal {
 export const approveSignal = defineSignal<[ApprovalDecisionSignal]>('approve');
 export const cancelSignal = defineSignal<[{ reason: string }]>('cancel');
 
+export interface InstructionSignal {
+  readonly requestId: string;
+  readonly text: string;
+}
+/** 動いている仕事への追加指示。次の段の前で反映する（段の途中には割り込まない）。 */
+export const instructSignal = defineSignal<[InstructionSignal]>('instruct');
+
 export interface TaskStateSnapshot {
   readonly status: string;
   readonly stepIndex: number;
@@ -179,6 +187,12 @@ export async function TaskWorkflow(input: TaskWorkflowInput): Promise<TaskResult
   setHandler(cancelSignal, (signal) => {
     cancelRequested = signal.reason;
   });
+  // 受け取った追加指示（まだ反映していない）と、反映済みの指示の本文（以後のすべての段に持ち越す）。
+  const pendingInstructions: InstructionSignal[] = [];
+  const instructionTexts: string[] = [];
+  setHandler(instructSignal, (signal) => {
+    if (!pendingInstructions.some((p) => p.requestId === signal.requestId)) pendingInstructions.push(signal);
+  });
 
   let plan: TaskPlan;
   try {
@@ -211,12 +225,23 @@ export async function TaskWorkflow(input: TaskWorkflowInput): Promise<TaskResult
 
   const results: unknown[] = [];
 
-  for (const step of plan.steps) {
-    stepIndex = step.index;
+  for (const planned of plan.steps) {
+    stepIndex = planned.index;
 
     if (cancelRequested !== null) {
       return finishCancelled(input, cancelRequested);
     }
+
+    /*
+     * 追加指示はここ（段と段の間）で反映する。承認を求める前なので、承認は足した後の内容に対して出る。
+     * 指示が届いていないときは何もしない（既存の履歴の再生に新しい手順を足さない）。
+     */
+    if (pendingInstructions.length > 0 && patched('task-instructions-v1')) {
+      const taken = pendingInstructions.splice(0);
+      await persistence.applyInstructions(input, taken.map((i) => i.requestId), planned.index);
+      instructionTexts.push(...taken.map((i) => i.text));
+    }
+    const step = withInstructions(planned, instructionTexts);
 
     const approval = await persistence.requestApprovalIfNeeded(input, step);
     if (approval) {
@@ -277,6 +302,15 @@ export async function TaskWorkflow(input: TaskWorkflowInput): Promise<TaskResult
 
   try {
     const artifactId = await tools.composeArtifact(input, plan.artifact, results);
+    if (patched('task-terminal-outcome-v1')) {
+      if (cancelRequested !== null) return finishCancelled(input, cancelRequested);
+      const outcome = await persistence.completeTask(input, artifactId);
+      if (outcome.status === 'CANCELLING') {
+        return finishCancelled(input, cancelRequested ?? 'user_requested');
+      }
+      status = outcome.status;
+      return outcome;
+    }
     await persistence.completeTask(input, artifactId);
     status = 'COMPLETED';
     return { artifactId, status: 'COMPLETED' };
@@ -428,7 +462,11 @@ export async function TaskWorkflow(input: TaskWorkflowInput): Promise<TaskResult
 
   async function finishCancelled(wf: TaskWorkflowInput, reason: string): Promise<TaskResult> {
     // 実行中の外部書き込みは中断しない。中途半端な副作用を作らない（正本 §24）
-    await persistence.cancelTask(wf, reason);
+    const outcome = await persistence.cancelTask(wf, reason);
+    if (patched('task-terminal-outcome-v1')) {
+      status = outcome.status;
+      return outcome;
+    }
     status = 'CANCELLED';
     return { artifactId: null, status: 'CANCELLED' };
   }

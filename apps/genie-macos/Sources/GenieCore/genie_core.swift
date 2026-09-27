@@ -2501,6 +2501,30 @@ fileprivate struct FfiConverterOptionString: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeTurnOutcome: FfiConverterRustBuffer {
+    typealias SwiftType = TurnOutcome?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeTurnOutcome.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeTurnOutcome.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceFloat: FfiConverterRustBuffer {
     typealias SwiftType = [Float]
 
@@ -2672,6 +2696,22 @@ fileprivate struct FfiConverterDictionaryStringString: FfiConverterRustBuffer {
         }
         return dict
     }
+}
+/**
+ * 動いている仕事へ追加指示を渡す（POST /v1/tasks/:id/instructions）。返すのは状態（RECEIVED など）。
+ * 受け取った ≠ 反映した。反映したかは一覧（GET 同じパス）で分かる。終わった仕事は 409（task.invalid_state）。
+ * `request_id` は呼ぶ側が保存しておき、送り直しても 1 件にする。
+ */
+public func apiAddTaskInstruction(baseUrl: String, accessToken: String, taskId: String, requestId: String, text: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeApiError_lift) {
+    uniffi_genie_core_fn_func_api_add_task_instruction(
+        FfiConverterString.lower(baseUrl),
+        FfiConverterString.lower(accessToken),
+        FfiConverterString.lower(taskId),
+        FfiConverterString.lower(requestId),
+        FfiConverterString.lower(text),$0
+    )
+})
 }
 /**
  * 成果物の本文（GET /v1/artifacts/:id/content）。テキスト成果物を UI に出す。
@@ -2860,6 +2900,35 @@ public func apiReachable(baseUrl: String) -> Bool  {
     return try!  FfiConverterBool.lift(try! rustCall() {
     uniffi_genie_core_fn_func_api_reachable(
         FfiConverterString.lower(baseUrl),$0
+    )
+})
+}
+/**
+ * Pending is not failure/success. This GET never starts or resumes external execution.
+ */
+public func apiRecoverTurn(baseUrl: String, accessToken: String, conversationId: String, requestId: String)throws  -> TurnOutcome?  {
+    return try  FfiConverterOptionTypeTurnOutcome.lift(try rustCallWithError(FfiConverterTypeApiError_lift) {
+    uniffi_genie_core_fn_func_api_recover_turn(
+        FfiConverterString.lower(baseUrl),
+        FfiConverterString.lower(accessToken),
+        FfiConverterString.lower(conversationId),
+        FfiConverterString.lower(requestId),$0
+    )
+})
+}
+/**
+ * Send exactly once with a caller-persisted identity. There is no transport retry.
+ */
+public func apiSendRecoverableTurn(baseUrl: String, accessToken: String, conversationId: String, requestId: String, text: String, attachments: [TurnAttachment], replyCandidatesJson: String)throws  -> TurnOutcome  {
+    return try  FfiConverterTypeTurnOutcome_lift(try rustCallWithError(FfiConverterTypeApiError_lift) {
+    uniffi_genie_core_fn_func_api_send_recoverable_turn(
+        FfiConverterString.lower(baseUrl),
+        FfiConverterString.lower(accessToken),
+        FfiConverterString.lower(conversationId),
+        FfiConverterString.lower(requestId),
+        FfiConverterString.lower(text),
+        FfiConverterSequenceTypeTurnAttachment.lower(attachments),
+        FfiConverterString.lower(replyCandidatesJson),$0
     )
 })
 }
@@ -3232,6 +3301,9 @@ private let initializationResult: InitializationResult = {
     if bindings_contract_version != scaffolding_contract_version {
         return InitializationResult.contractVersionMismatch
     }
+    if (uniffi_genie_core_checksum_func_api_add_task_instruction() != 16820) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_genie_core_checksum_func_api_artifact_content() != 17228) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -3278,6 +3350,12 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_genie_core_checksum_func_api_reachable() != 13704) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_genie_core_checksum_func_api_recover_turn() != 13119) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_genie_core_checksum_func_api_send_recoverable_turn() != 65426) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_genie_core_checksum_func_api_send_turn() != 60022) {

@@ -45,9 +45,9 @@
     {
       "kind": "Capsule",
       "file": "VoiceHUD/VoiceHUDView.swift",
-      "sha256": "61f1e16689428a1a2227b61851db1389db3c1809abc0971dac5f1e81837a061a",
+      "sha256": "011538879036abc422f5757400289f55805068319d896a7e1b2655a689f69efe",
       "count": 1,
-      "reason": "Re-reviewed 2026-09-15 after the TaskDock answer surface was added. The two Capsule fills remain the existing task-progress meter; the new answer surface adds no Capsule, shadow, material, or allowance. The source hash is updated solely because the same file gained the answer view; the visual meaning and count allowance are unchanged."
+      "reason": "Re-reviewed 2026-09-15 after the TaskDock answer surface was added. The two Capsule fills remain the existing task-progress meter; the new answer surface adds no Capsule, shadow, material, or allowance. The source hash is updated solely because the same file gained the answer view; the visual meaning and count allowance are unchanged. Re-reviewed 2026-09-27 after the approval-boundary merge (fix/voice-safety-step0) and the info-card case: compared HEAD 61f1e166… with the working tree; Capsule() 2→2, cornerRadius 9→9, sparkles 2→2, and no shadow, gradient or material lines were added or removed. The new info card lives in InfoDock.swift, which uses none of these expressions (docs/ux-benchmark/compare/info-card/ROUND.md). Count allowance unchanged. Re-reviewed 2026-09-27 (stage 1, docs/ux-benchmark/compare/state-separation/ROUND.md): ThinkingDock gained one meta-size muted Text line for a held utterance and ListeningDock restores it into the field; no Capsule, shadow, gradient, material or sparkles expression was added. Capsule() still 2. Re-reviewed 2026-09-27 (stage 2, docs/ux-benchmark/compare/conversation-loop/ROUND.md): added a Quick Actions item (\"会話\") and a ConversationBar() row to Listening/Thinking/Answer; the bar itself lives in ConversationBar.swift and uses one 6pt Circle dot, meta-size text and GenieControlStyle buttons — no Capsule, shadow, gradient, material or sparkles. Capsule() still 2."
     }
   ]
 }

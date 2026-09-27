@@ -111,6 +111,12 @@ enum UserFacingFacts {
     static let sessionInterrupted = "途中で終わっています"
     static let dockRecord = "録音"
     static let dockRelated = "関連操作"
+    /// 「Genie と会話」の入口。一回の音声入力（聞く）とは別。
+    static let dockConversation = "会話"
+    static let conversationEnd = "会話を終了"
+    static let conversationExtend = "延長"
+    static let conversationEnding = "まもなく終了"
+    static let conversationStopSpeech = "読み上げを止める"
     static let menuShowControls = "録音コントロールを表示"
     static let menuHideControls = "録音コントロールを隠す"
     static let translationTarget = "翻訳先"
@@ -283,6 +289,11 @@ enum UserFacingFacts {
             f("session.interrupted", sessionInterrupted),
             f("dock.record", dockRecord),
             f("dock.related", dockRelated),
+            f("dock.conversation", dockConversation),
+            f("conversation.end", conversationEnd),
+            f("conversation.extend", conversationExtend),
+            f("conversation.ending", conversationEnding),
+            f("conversation.stopSpeech", conversationStopSpeech),
             f("menu.showControls", menuShowControls),
             f("menu.hideControls", menuHideControls),
             f("translation.target", translationTarget),

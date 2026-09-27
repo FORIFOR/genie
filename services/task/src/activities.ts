@@ -30,7 +30,7 @@ import type {
   TaskActivities,
   TaskErrorPayload,
 } from './activity-types.js';
-import type { TaskWorkflowInput } from './workflows.js';
+import type { TaskWorkflowInput, TaskResult } from './workflows.js';
 
 /**
  * 1 つの step を実際にやる人。
@@ -274,7 +274,7 @@ export function createTaskActivities(deps: ActivityDeps): TaskActivities {
   return {
     async startTask(input, meta: StartTaskMeta) {
       await inTenant(input, async (tx) => {
-        await tx
+        const updated = await tx
           .updateTable('tasks')
           .set({
             status: 'RUNNING',
@@ -286,7 +286,9 @@ export function createTaskActivities(deps: ActivityDeps): TaskActivities {
           .where('id', '=', input.taskId)
           // 終端に達したタスクを掘り起こさない（状態遷移表。実装仕様 §3.3）
           .where('status', 'in', ['PENDING', 'RUNNING'])
-          .execute();
+          .returning('id')
+          .executeTakeFirst();
+        if (!updated) return;
 
         await appendEvent(
           tx,
@@ -382,6 +384,19 @@ export function createTaskActivities(deps: ActivityDeps): TaskActivities {
 
         return { approvalId };
       });
+    },
+
+    async applyInstructions(input, requestIds, stepIndex) {
+      if (requestIds.length === 0) return;
+      await inTenant(input, (tx) =>
+        tx
+          .updateTable('task_instructions')
+          .set({ status: 'APPLIED', applied_step_index: stepIndex, resolved_at: now() })
+          .where('task_id', '=', input.taskId)
+          .where('request_id', 'in', [...requestIds])
+          .where('status', '=', 'RECEIVED')
+          .execute(),
+      );
     },
 
     async acceptApproval(input, approvalId) {
@@ -791,7 +806,7 @@ export function createTaskActivities(deps: ActivityDeps): TaskActivities {
         title,
         mimeType: spec.mimeType,
         body: Buffer.from(body, 'utf8'),
-        fileName: `${title}.md`,
+        fileName: `${title}.${/json$/.test(spec.mimeType) ? 'json' : 'md'}`,
         sourceTaskId: input.taskId,
         sourceAgentId: 'general',
         ...(spec.sourceMeetingId ? { sourceMeetingId: spec.sourceMeetingId } : {}),
@@ -822,14 +837,14 @@ export function createTaskActivities(deps: ActivityDeps): TaskActivities {
     },
 
     async completeTask(input, artifactId) {
-      await inTenant(input, async (tx) => {
+      return inTenant(input, async (tx) => {
         const startedAt = await tx
           .selectFrom('tasks')
           .select(['created_at'])
           .where('id', '=', input.taskId)
           .executeTakeFirst();
 
-        await tx
+        const updated = await tx
           .updateTable('tasks')
           .set({
             status: 'COMPLETED',
@@ -839,7 +854,10 @@ export function createTaskActivities(deps: ActivityDeps): TaskActivities {
           })
           .where('id', '=', input.taskId)
           .where('status', 'in', ['RUNNING', 'PENDING'])
-          .execute();
+          .returning('id')
+          .executeTakeFirst();
+
+        if (!updated) return persistedOutcome(tx, input.taskId, true);
 
         await appendEvent(
           tx,
@@ -859,12 +877,13 @@ export function createTaskActivities(deps: ActivityDeps): TaskActivities {
           },
           deps.publisher,
         );
+        return { status: 'COMPLETED' as const, artifactId };
       });
     },
 
     async failTask(input, error: TaskErrorPayload) {
       await inTenant(input, async (tx) => {
-        await tx
+        const updated = await tx
           .updateTable('tasks')
           .set({
             status: 'FAILED',
@@ -873,8 +892,10 @@ export function createTaskActivities(deps: ActivityDeps): TaskActivities {
             updated_at: now(),
           })
           .where('id', '=', input.taskId)
-          .where('status', 'not in', ['COMPLETED', 'CANCELLED'])
-          .execute();
+          .where('status', 'not in', ['COMPLETED', 'CANCELLED', 'FAILED'])
+          .returning('id')
+          .executeTakeFirst();
+        if (!updated) return;
 
         await appendEvent(
           tx,
@@ -901,12 +922,14 @@ export function createTaskActivities(deps: ActivityDeps): TaskActivities {
      */
     async pauseForHost(input, stepIndex) {
       await inTenant(input, async (tx) => {
-        await tx
+        const updated = await tx
           .updateTable('tasks')
           .set({ status: 'PAUSED_HOST_OFFLINE', updated_at: now() })
           .where('id', '=', input.taskId)
-          .where('status', 'not in', ['COMPLETED', 'FAILED', 'CANCELLED'])
-          .execute();
+          .where('status', 'in', ['PENDING', 'RUNNING'])
+          .returning('id')
+          .executeTakeFirst();
+        if (!updated) return;
 
         await appendEvent(
           tx,
@@ -969,13 +992,16 @@ export function createTaskActivities(deps: ActivityDeps): TaskActivities {
     },
 
     async cancelTask(input, reason) {
-      await inTenant(input, async (tx) => {
-        await tx
+      return inTenant(input, async (tx) => {
+        const updated = await tx
           .updateTable('tasks')
           .set({ status: 'CANCELLED', completed_at: now(), updated_at: now() })
           .where('id', '=', input.taskId)
-          .where('status', 'not in', ['COMPLETED', 'FAILED'])
-          .execute();
+          .where('status', 'not in', ['COMPLETED', 'FAILED', 'CANCELLED'])
+          .returning('id')
+          .executeTakeFirst();
+
+        if (!updated) return persistedOutcome(tx, input.taskId);
 
         await appendEvent(
           tx,
@@ -997,7 +1023,35 @@ export function createTaskActivities(deps: ActivityDeps): TaskActivities {
           taskId: input.taskId,
           payload: { reason },
         });
+        return { status: 'CANCELLED' as const, artifactId: null };
       });
     },
   };
+}
+
+/** A retried activity must report the original committed result, not invent a new event. */
+async function persistedOutcome(tx: ScopedDb, taskId: string): Promise<TaskResult>;
+async function persistedOutcome(
+  tx: ScopedDb,
+  taskId: string,
+  allowCancelling: true,
+): Promise<TaskResult | { status: 'CANCELLING'; artifactId: null }>;
+async function persistedOutcome(
+  tx: ScopedDb,
+  taskId: string,
+  allowCancelling = false,
+): Promise<TaskResult | { status: 'CANCELLING'; artifactId: null }> {
+  const row = await tx
+    .selectFrom('tasks')
+    .select(['status', 'result_artifact_id'])
+    .where('id', '=', taskId)
+    .executeTakeFirst();
+  if (!row) throw ApplicationFailure.nonRetryable('Task no longer exists', 'TaskGone');
+  if (row.status === 'COMPLETED')
+    return { status: 'COMPLETED', artifactId: row.result_artifact_id };
+  if (row.status === 'FAILED' || row.status === 'CANCELLED')
+    return { status: row.status, artifactId: null };
+  if (allowCancelling && row.status === 'CANCELLING')
+    return { status: 'CANCELLING', artifactId: null };
+  throw new Error(`Cannot finalize task from ${row.status}`);
 }

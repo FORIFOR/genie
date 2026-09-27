@@ -1,6 +1,6 @@
 /** activity の型。ワークフロー側から見える契約なので、実装から分離しておく。 */
 import type { TaskStep } from './plan.js';
-import type { TaskWorkflowInput } from './workflows.js';
+import type { TaskWorkflowInput, TaskResult } from './workflows.js';
 
 export interface TaskErrorPayload {
   readonly code: string;
@@ -48,6 +48,8 @@ export interface TaskActivities {
     step: TaskStep,
   ): Promise<RequestedApproval | null>;
   acceptApproval(input: TaskWorkflowInput, approvalId: string): Promise<void>;
+  /** 追加指示を「反映した（どの段で）」と記録する。受け取ったままのものだけを動かす。 */
+  applyInstructions(input: TaskWorkflowInput, requestIds: readonly string[], stepIndex: number): Promise<void>;
   rejectApproval(input: TaskWorkflowInput, approvalId: string, stepIndex: number): Promise<void>;
   expireApproval(input: TaskWorkflowInput, approvalId: string): Promise<void>;
   executeStep(input: TaskWorkflowInput, step: TaskStep): Promise<unknown>;
@@ -67,7 +69,11 @@ export interface TaskActivities {
     spec: ArtifactSpec,
     results: readonly unknown[],
   ): Promise<string>;
-  completeTask(input: TaskWorkflowInput, artifactId: string): Promise<void>;
+  /** Returns the committed outcome; CANCELLING must be finalized, never shown as completed. */
+  completeTask(
+    input: TaskWorkflowInput,
+    artifactId: string,
+  ): Promise<TaskResult | { status: 'CANCELLING'; artifactId: null }>;
   failTask(input: TaskWorkflowInput, error: TaskErrorPayload): Promise<void>;
-  cancelTask(input: TaskWorkflowInput, reason: string): Promise<void>;
+  cancelTask(input: TaskWorkflowInput, reason: string): Promise<TaskResult>;
 }
