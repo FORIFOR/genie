@@ -20,6 +20,12 @@ export function parseOptions(args) {
     '--model': 'model',
     '--model-url': 'modelURL',
     '--app': 'app',
+    /*
+     * 画面操作ヘルパーの道。**既定は今までどおりリポジトリが建てた本番の実行ファイル。**
+     * 明示したときだけ別のものを使う。試験用のビルドを指すためにあり、
+     * どちらを使ったかは起動時の記録（`unattendedTest`）に残る。
+     */
+    '--computer-helper': 'computerHelper',
   };
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
@@ -31,6 +37,7 @@ export function parseOptions(args) {
     else throw new Error('不明なオプションです。--help で起動方法を確認してください。');
   }
   result.stateDir = resolve(result.stateDir);
+  if (result.computerHelper !== undefined) result.computerHelper = resolve(result.computerHelper);
   if (result.port !== undefined) result.port = portNumber(result.port);
   if (result.model !== undefined) validateModel(result.model);
   if (result.modelURL !== undefined) result.modelURL = localEndpoint(result.modelURL);
@@ -298,6 +305,8 @@ export function serviceEnvironment(config, stateDir, repo, source = process.env)
     ASTRA_API_HOST: '127.0.0.1',
     ASTRA_API_PORT: String(config.port),
     ASTRA_API_URL: `http://127.0.0.1:${config.port}`,
+    // Match the native preview app's image handover and keep run journals isolated.
+    ASTRA_DATA_ROOT: join(stateDir, 'app'),
     ASTRA_GATEWAY_URL: `http://127.0.0.1:${config.port}`,
     DATABASE_URL: database('genie_app'),
     ASTRA_DB_IDENTITY_URL: database('astra_identity'),

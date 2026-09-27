@@ -46,7 +46,10 @@ DB設定・マイグレーション・3サービスの起動をまとめて行�
   --state-dir <path>  専用の保存先（既定 ${DEFAULT_STATE}）
   --port <port>       初回作成時のGatewayポート（既定 ${DEFAULT_PORT}）
   --no-open           アプリを開かず起動（Linuxの統合検証でも使用）
-  --computer-use      Macの画面操作を有効化。操作ごとの承認が必要
+  --computer-use      Macの画面操作を有効化。タスク承認と開始時の同意が必要
+  --computer-helper <path>  画面操作ヘルパーの道。既定はこのリポジトリが建てた本番版。
+                      反復試験用のビルドを指すためのもので、指したものが同意を省く
+                      ビルドなら起動時の記録に unattendedTest として出ます
   --help             この案内を表示
 
 この起動経路は独立したプレビュー用です。既存の.env・DB・通常起動のアプリ履歴を変更しません。
@@ -105,6 +108,11 @@ export async function start(options) {
   const abort = new AbortController();
   let config,
     processes,
+    /*
+     * 使ったヘルパーが、同意を省く試験用ビルドだったかどうか。
+     * null は「確かめられなかった」で、false（本番）とは別に扱う。
+     */
+    computerHelperUnattendedTest = null,
     composeArgs,
     composeEnv,
     containersTouched = false,
@@ -131,6 +139,9 @@ export async function start(options) {
     phase,
     gateway: config ? `http://127.0.0.1:${config.port}` : null,
     model: config?.model ?? null,
+    computerUse: options.computerUse === true,
+    computerDelivery: options.computerUse ? 'background' : null,
+    computerHelperUnattendedTest,
   });
   const server = createServer((req, res) => {
     res.setHeader('content-type', 'application/json');
@@ -335,17 +346,35 @@ export async function start(options) {
           '画面操作の準備にSwiftコンパイラが必要です。Xcode Command Line Toolsを導入してください。',
         );
       stage('computer', '画面操作ヘルパーを準備しています…');
-      await processes.run(
-        'computer-helper',
-        'bash',
-        [join(REPO, 'scripts/build-computer-helper.sh')],
-        env,
-        {
-          timeout: 120_000,
-        },
-      );
-      computerHelper = join(REPO, '.build/computer/genie-computer');
-      await access(computerHelper, constants.X_OK);
+      /*
+       * 明示された道があればそれを使い、無ければ今までどおり建てる。
+       * **指したものが何であるかは、そのヘルパー自身に言わせる**——
+       * `--status` の `unattendedTest` をそのまま起動時の記録へ載せるので、
+       * 同意を省く試験用ビルドで取った結果を、後から本番と取り違えることがない。
+       */
+      if (options.computerHelper) {
+        computerHelper = options.computerHelper;
+        await access(computerHelper, constants.X_OK);
+      } else {
+        await processes.run(
+          'computer-helper',
+          'bash',
+          [join(REPO, 'scripts/build-computer-helper.sh')],
+          env,
+          {
+            timeout: 120_000,
+          },
+        );
+        computerHelper = join(REPO, '.build/computer/genie-computer-background');
+        await access(computerHelper, constants.X_OK);
+      }
+      // `--status` は読み取りだけで、撮影も入力も OS への許可要求も行わない。
+      const reported = await probe(computerHelper, ['--status'], env);
+      try {
+        computerHelperUnattendedTest = JSON.parse(reported ?? '').unattendedTest === true;
+      } catch {
+        computerHelperUnattendedTest = null; // 読めなかったことを false と言わない。
+      }
     }
     const composeFile = join(stateDir, 'compose.json');
     await privateJSON(composeFile, composeConfig(config, REPO));
@@ -509,6 +538,8 @@ export async function start(options) {
         ...env,
         ASTRA_GATEWAY_URL: base,
         ASTRA_DATA_ROOT: appData,
+        ASTRA_MODEL_DISCLOSURE: `送信先: このMacの ${config.model}（${config.modelURL}）。外部モデルへの切替はありません。`,
+        ASTRA_LOCAL_VISION: '1',
       });
     }
     stage(

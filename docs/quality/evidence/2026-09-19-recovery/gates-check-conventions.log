@@ -1,0 +1,5 @@
+convention check failed (1 problem(s)):
+
+  services/conversation/src/service.ts:166  queries "tasks" which it does not own (§5.1)
+
+See docs/spec/phase-0-implementation-spec.md §14.3

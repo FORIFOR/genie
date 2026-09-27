@@ -39,7 +39,7 @@ Real app captures; waiting is condensed. Model speed and quality vary. These exa
 
 1. In Home, describe what you need and what a useful result looks like.
 2. Short questions appear in TaskDock; longer requests continue as work you can reopen in Work.
-3. Review the answer or result, copy it, or save Markdown for the next task.
+3. Review the answer or result in Work, edit it locally, copy it, or save Markdown for the next task. The Markdown includes the title and original request; editing does not call a model.
 
 Try: “Turn these launch notes into a checklist with an owner and a next action: test the app, record a demo, write release notes. Mark unknown owners as unassigned.”
 
@@ -57,6 +57,8 @@ An explicitly selected route is not silently replaced by a paid provider. Local 
 
 ## Quick start
 
+[First success: make, edit and reopen a saved checklist](docs/FIRST_RUN.md) · [SDK and compatibility](docs/INTEGRATION.md) · [Acceptance evidence](docs/quality/RESULTS.md) · [Latest recovery verification](docs/quality/RECOVERY.md)
+
 **Developer preview — setup is required.** The Mac app currently needs a local gateway, task worker, agent host, and model. The app download alone is not a hosted service.
 
 **New in source: [start the local services together](docs/MANAGED_PREVIEW.md).** With Node, Docker Desktop and an Ollama model installed, open `Start Genie.command` to prepare the database, start the services and open Home. The launcher keeps a separate preview workspace and stops its services with Ctrl+C. It is not included in the v0.1.4 DMG.
@@ -67,7 +69,7 @@ An explicitly selected route is not silently replaced by a paid provider. Local 
 - [Mac builds](https://github.com/FORIFOR/genie/releases): use the build and source version named together in its release notes.
 - [See the actual interface and demo](https://genie-forifor.forifor.chatgpt.site/#demo).
 
-The preview includes recording, live transcription, service connections, guided Mac permissions, and an opt-in [screenshot-grounded computer use](docs/COMPUTER_VISION.md). Computer control is off by default, requires explicit local enablement and per-action approval, and is not a prerequisite for the local text workflow. Production-wide release acceptance is still tracked separately from this developer preview.
+The preview includes recording, live transcription, service connections, guided Mac permissions, and an opt-in [screenshot-grounded computer use](docs/COMPUTER_VISION.md). Computer control is off by default, requires explicit local enablement, task approval and one native consent for the bounded run, and is not a prerequisite for the local text workflow. Production-wide release acceptance is still tracked separately from this developer preview.
 
 ## Help shape Genie
 
@@ -78,7 +80,7 @@ If this fits how you work, a star helps other people find it. The most useful fe
 - [Suggest a workflow or team pilot](https://github.com/FORIFOR/genie/issues/new?template=workflow.yml).
 - Read [contribution guidance](CONTRIBUTING.md) before making a change.
 
-Issues are public. Use synthetic examples and remove credentials and personal information. This repository currently has no project-wide open-source license; public visibility is not a license grant. Third-party components retain their own licenses.
+Issues are public. Use synthetic examples and remove credentials and personal information. Genie is available under the [MIT License](LICENSE). Third-party components retain their own licenses. See the [integration contract](docs/INTEGRATION.md) and [quality evidence](docs/quality/acceptance.md) before embedding the experimental preview.
 
 ## Inside the project
 
@@ -104,3 +106,5 @@ pnpm check:conventions
 ```
 
 Native and end-to-end checks require additional local dependencies. See [setup](docs/LOCAL_PREVIEW.md), [design rules](shared/design/DESIGN.md), and [`scripts/verify-all.sh`](scripts/verify-all.sh). Product specifications and architecture decisions are indexed in [docs](docs/README.md).
+
+Computer Use on macOS: [local setup, explicit approval, status and cancellation](docs/COMPUTER_VISION.md#start-and-control).

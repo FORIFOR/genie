@@ -2,6 +2,7 @@
   "name": "@genie/service-api-gateway",
   "version": "0.0.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "description": "Auth, tenant routing, rate limiting, REST entrypoint and realtime WebSocket fan-out.",
   "main": "./dist/index.js",

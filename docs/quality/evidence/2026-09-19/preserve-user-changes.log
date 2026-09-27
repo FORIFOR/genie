@@ -1,0 +1,6 @@
+docs/COMPUTER_VISION.md: OK
+tools/computer-use/genie-computer.swift: OK
+workers/agent-host/src/computer-vision-device.ts: OK
+workers/agent-host/src/computer-vision-prompts.ts: OK
+workers/agent-host/src/computer-vision.ts: OK
+workers/agent-host/test/computer-vision.node.mjs: OK

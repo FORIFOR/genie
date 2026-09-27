@@ -29,4 +29,4 @@ jobs:
       - run: pnpm build
       - run: pnpm exec tsc -p tsconfig.tests.json
       - run: bash scripts/build-computer-helper.sh
-      - run: node --test workers/agent-host/test/computer-vision.node.mjs workers/agent-host/test/computer-vision-integration.node.mjs
+      - run: node --test workers/agent-host/test/computer-vision.node.mjs workers/agent-host/test/computer-vision-integration.node.mjs workers/agent-host/test/cloud-budget.node.mjs

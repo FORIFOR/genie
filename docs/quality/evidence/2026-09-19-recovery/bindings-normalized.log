@@ -1,0 +1,5 @@
+
+> genie@0.1.4 gen:swift-bindings /Users/shuhei/Projects/genie
+> ./scripts/gen-swift-bindings.sh
+
+wrote /Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieCore and /Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieCoreFFI/include

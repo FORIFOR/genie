@@ -1,0 +1,43 @@
+Scope: 21 of 38 workspace projects
+packages/contracts build$ tsc -b
+packages/contracts build: Done
+packages/policy build$ tsc -b
+packages/plugin-sdk build$ tsc -b
+packages/db build$ tsc -b
+packages/tts build$ tsc -b
+packages/policy build: Done
+packages/oauth build$ tsc -b
+packages/tts build: Done
+packages/plugin-sdk build: Done
+packages/db build: Done
+packages/oauth build: Done
+packages/telemetry build$ tsc -b
+packages/agent-sdk build$ tsc -b
+packages/agent-sdk build: Done
+packages/telemetry build: Done
+services/library build$ tsc -b
+services/world-model build$ tsc -b
+services/research build$ tsc -b
+services/context build$ tsc -b
+services/context build: Done
+services/agent-host build$ tsc -b
+services/world-model build: Done
+services/library build: Done
+services/research build: Done
+services/agent-host build: Done
+services/task build$ tsc -b
+services/agent-runtime build$ tsc -b
+services/share build$ tsc -b
+services/share build: Done
+services/agent-runtime build: Done
+services/task build: Done
+services/conversation build$ tsc -b
+services/meeting build$ tsc -b
+services/plugin-registry build$ tsc -b
+services/conversation build: Done
+services/plugin-registry build: Done
+services/meeting build: Done
+services/capabilities build$ tsc -b
+services/capabilities build: Done
+services/api-gateway build$ tsc -b
+services/api-gateway build: Done

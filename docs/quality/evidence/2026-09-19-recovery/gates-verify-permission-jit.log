@@ -1,0 +1,17 @@
+  起動経路（AppDelegate）で権限を求めていない OK
+  求めている場所:
+    apps/genie-macos/Sources/GenieMac/GuidedSetup/PermissionManager.swift:41:        Permissions.requestMicrophone(done)
+    apps/genie-macos/Sources/GenieMac/Settings/PermissionCenter.swift:88:            case .microphone: Permissions.requestMicrophone { _ in done() }
+    apps/genie-macos/Sources/GenieMac/Settings/PermissionCenter.swift:89:            case .screenRecording: Permissions.requestScreenRecording(); done()
+    apps/genie-macos/Sources/GenieMac/Settings/PermissionCenter.swift:91:            case .calendar: Permissions.requestCalendar { _ in done() }
+    apps/genie-macos/Sources/GenieMac/Settings/PermissionCenter.swift:92:            case .speechRecognition: Permissions.requestSpeechRecognition { _ in done() }
+    apps/genie-macos/Sources/GenieMac/Settings/SettingsView.swift:46:                              request: { Permissions.requestSpeechRecognition { _ in speech = Permissions.speechRecognition } })
+    apps/genie-macos/Sources/GenieMac/Settings/SettingsView.swift:48:                              request: { Permissions.requestCalendar { _ in cal = Permissions.calendar } })
+    apps/genie-macos/Sources/GenieMac/Settings/SettingsView.swift:52:                    if !Permissions.requestInputMonitoring() { Permissions.openInputMonitoringSettings() }
+    apps/genie-macos/Sources/GenieMac/Home/HomeView.swift:528:                PermissionCenter.request(.schedule) {
+    apps/genie-macos/Sources/GenieMac/RecordingWorkspace/RecordingWorkspaceState.swift:310:            PermissionCenter.request(.meeting) {
+    apps/genie-macos/Sources/GenieMac/RecordingWorkspace/RecordingWorkspaceState.swift:339:        if screenAudio && requestPermissions { PermissionCenter.request(.meetingAudio) }
+  求める場所は機能の入口だけ OK
+  取扱説明書も「使うときに要るものだけ」 OK
+
+PERMISSION_JIT_OK: 起動時に求めず、使う直前に求める

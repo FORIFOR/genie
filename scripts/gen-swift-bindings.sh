@@ -16,6 +16,14 @@ TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 cargo run --quiet --bin uniffi-bindgen -- generate --library "$LIB" --language swift --out-dir "$TMP" >/dev/null
 
+# UniFFI emits whitespace-only lines in checksum prototypes. Normalize generated
+# headers here so regeneration and git whitespace checks agree (never hand-edit outputs).
+python3 - "$TMP/genie_coreFFI.h" <<'PY_HEADER'
+import pathlib, sys
+header = pathlib.Path(sys.argv[1])
+header.write_text("\n".join(line.rstrip() for line in header.read_text().splitlines()) + "\n")
+PY_HEADER
+
 # SwiftPM の規約に合わせて配置: Swift は GenieCore、C ヘッダ+modulemap は GenieCoreFFI/include。
 mkdir -p "$TMP/swift" "$TMP/inc"
 cp "$TMP/genie_core.swift" "$TMP/swift/genie_core.swift"

@@ -1,0 +1,25 @@
+# Conversation receipt recovery: independent technical verification
+
+Applied installed `independent-product-verification` skill and evidence contract. Separate same-model agent from the implementation agents; not independent human testing. Scope: receipt backend, migration, owner authorization, Rust transport, native persisted identity. No product/test source edits during this review. Root is separately performing native GUI/live verification.
+
+Reviewed revision and exact working-tree hashes, environment, commands and exit codes: `recovery-independent-result.json`. Synthetic database credentials in that manifest are for the disposable loopback test instance only. PostgreSQL uses real tenant RLS; gateway uses Fastify injection; task runtime is InMemoryTaskRuntime. Rust transport test uses an actual loopback TCP server and intentionally drops the POST response. No model/provider/production operations occurred.
+
+| id | method | expected | observed | status | evidence |
+|---|---|---|---|---|---|
+| REC-DUPLICATE | Independently rerun DB/gateway suite; inspect reservation and route ordering | Same owner/conversation/key cannot append/dispatch twice; changed body fails before interruption | Concurrent 20 DB reservations have one winner, concurrent POST has one task creation, repeated accepted POST preserves one turn/task, changed input returns 409 | PASS | `recovery-independent-backend.log` (9 passed, exit 0); service/route source hashes |
+| REC-AUTH | Same suite + inspect tenant RLS and explicit owner filters | Foreign tenant/user cannot read or reserve another owner's receipt | Tests return not_found/404; receipt and task lookup include tenant+owner+conversation; reservation checks conversation creator | PASS | same log; migration, ConversationService and TaskService sources |
+| REC-CRASH-WINDOW | Same suite; examine prepared response before task creation and recovery before final negative response | Task committed before finalization or runtime acknowledgement loss stays discoverable; GET never dispatches | Original task ID recovered; missing final response and lost runtime acknowledgement covered; abandoned reservation remains pending, duplicate rejected | PASS | same log; prepared_response route ordering and read-only findByConversationTurn |
+| REC-TRANSPORT | Independently rerun Rust receipt tests | Dropped accepted POST followed by GET, with no second POST; preserve clarification object/string | TCP test records exactly POST then GET, stable request ID and original task; both answer shapes preserved | PASS | `recovery-independent-rust.log` (2 passed, exit 0) |
+| REC-PERSISTENCE-REVIEW | Static native review + read implementation agent's Swift evidence | Save receipt and conversation ID before POST; retain identity across restart and failed outcome writes | Initial save precedes work, conversation save is guarded; unsaved result retains in-memory record while previously saved receipt enables restart lookup. Optional field preserves legacy decoding. Swift persisted identity/close-open test exists | PASS | TaskRequestRecord, VoiceHUDState, GenieCoreBridge, TaskOutcomeTests hashes; root `swift-tests.log`. This row is code/evidence review, not an independent GUI run |
+| REC-SCHEMA | Inspect migration/generated schema and implementation migration log | Additive migration before new backend/clients; DB contract matches types | Receipt table, key, RLS, JSON response/status CHECK and schema snapshot agree; isolated migration and generated checks recorded separately | PASS | migration/schema/generated hashes; root/backend `backend-migrate.log`, `gates-check-generated.log` |
+
+No release-blocking implementation defect was found within these checked receipt paths. This is not a claim that all task execution, offline recovery, or production interoperability is verified.
+
+Review notes sent to implementation:
+
+- INTEGRATION's earlier cancellation-only statement “request bodies unchanged / no schema migration” must be qualified for the new receipt migration and request field. Root acknowledged documentation update.
+- Custom gateway construction must inject `findAcceptedTask: tasks.findByConversationTurn.bind(tasks)` to resolve the task-committed/response-unfinished window. Default optional dependency otherwise conservatively remains pending. Production server and test gateway supply it.
+- A crash after task DB commit but before runtime dispatch permits task ID lookup but does not automatically launch the pending task. A reservation abandoned before task creation remains pending. These states are not failures or successful completion and must not be presented as universal crash recovery. GET intentionally has no dispatch side effect.
+- This covers conversation turns with persisted request IDs, not the native direct consumer-task creation branch, legacy records lacking IDs, provider-side receipt reconciliation, or older-server interoperability.
+
+No assertion was weakened. The initial independent command used a nonexistent pnpm filter and reported no projects; that exit 0 is explicitly excluded from the PASS evidence. The corrected package command executed all 9 cases.

@@ -2,6 +2,7 @@
   "name": "@genie/service-agent-host",
   "version": "0.0.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "description": "手元の実行基盤の調整役。heartbeat / lease / checkpoint / resume。正本 §4.4・§16.1。",
   "main": "./dist/index.js",

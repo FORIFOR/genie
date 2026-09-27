@@ -136,3 +136,20 @@ test('HTTP model cancellation passes an aborted signal, not a successful model r
   });
   await assert.rejects(client.ask('check', [], controller.signal));
 });
+
+test('moving preview storage does not forget a claim in the legacy cache', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'genie-legacy-home-'));
+  const oldHome = process.env.HOME, oldCache = process.env.ASTRA_VISUAL_CONTEXT_DIR;
+  process.env.HOME = home;
+  try {
+    process.env.ASTRA_VISUAL_CONTEXT_DIR = join(home, 'Library', 'Caches', 'Astra', 'VisualContext');
+    await new NativeVisionDevice('/unused-helper').claim('legacy-started-request');
+    process.env.ASTRA_VISUAL_CONTEXT_DIR = join(home, 'isolated-preview', 'app', 'VisualContext');
+    await assert.rejects(new NativeVisionDevice('/unused-helper').claim('legacy-started-request'), /replay_blocked/);
+    await new NativeVisionDevice('/unused-helper').claim('fresh-isolated-request');
+  } finally {
+    if (oldHome === undefined) delete process.env.HOME; else process.env.HOME = oldHome;
+    if (oldCache === undefined) delete process.env.ASTRA_VISUAL_CONTEXT_DIR; else process.env.ASTRA_VISUAL_CONTEXT_DIR = oldCache;
+    await rm(home, {recursive:true, force:true});
+  }
+});

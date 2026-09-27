@@ -2,11 +2,11 @@
 
 The managed launcher prepares the database and runs the gateway, task worker and agent host in one terminal. It needs **Node 22+, Docker Desktop, an installed Ollama model, and Genie.app**. You no longer need to install `psql`, `dbmate`, or pnpm manually, run SQL commands, or manage three terminals.
 
-This launcher was added after the v0.1.4 distribution and is not inside that DMG. Run it from current source with a Mac app bearing the same version number; the launcher checks this before setup. The existing [manual setup](LOCAL_PREVIEW.md) remains available.
+This launcher was added after the v0.1.4 distribution and is not inside that DMG. Build the Mac app from the same source revision. The launcher checks the display version before setup, but that check alone cannot distinguish different revisions sharing version 0.1.4. The existing [manual setup](LOCAL_PREVIEW.md) remains available.
 
 ## Start
 
-Install the Mac app in Applications and finish Docker Desktop's initial setup. From this source checkout, open **`Start Genie.command`**, or run:
+Build with `pnpm build:macos-app` after preparing the native prerequisites in [source setup](LOCAL_PREVIEW.md). Use `--app apps/genie-macos/build/Genie.app`, or copy that same-revision app to Applications for the double-click launcher. Finish Docker Desktop's initial setup. From this source checkout, open **`Start Genie.command`**, or run:
 
 If Genie is already running on its own, quit it from its menu first. The launcher detects an existing app process and asks you to close it instead of creating a confusing second workspace window.
 
@@ -26,7 +26,7 @@ Use `--model llama3.2` if that is the text model you already have. Image request
 
 The first run downloads a pinned pnpm, workspace dependencies, and container images, then applies migrations and creates the restricted application roles. Progress and actionable errors are displayed in Japanese. It opens the real Home when the gateway, Temporal pollers and local host have been checked. Keep that terminal open while using Genie.
 
-Ask Home to write a checklist for testing the app, capturing a demo and writing release notes. Keep unknown owners unassigned. Open the result in Work, save Markdown, navigate away and reopen it.
+Ask Home to write a checklist for testing the app, capturing a demo and writing release notes. Keep unknown owners unassigned. Open the result in Work, use Edit to correct the text locally, save Markdown, navigate away and reopen it. Markdown contains the title, edited text and original request; original generated text remains stored. No model request is made by editing, saving or reopening.
 
 ## Stop and reopen
 

@@ -602,3 +602,55 @@ it('a missing explicitly selected model never silently changes provider', async 
   }
   expect(ask).not.toHaveBeenCalled();
 });
+
+/*
+ * 画面操作の判断は、写真の鮮度（60 秒）に間に合う必要がある。
+ * 実測（qwen3.5:9b / 同じ画面と問い）: 思考あり 36.9 秒・生成 1314 トークン、
+ * 思考なし 0.9 秒・32 トークン。読んでいる画像は同じ（入力 1207 対 1209 トークン）。
+ * 間に合わない判断は、良くても使えない。
+ */
+describe('keeping a screen decision inside the freshness window', () => {
+  it('asks the local model for no extended reasoning when planning or verifying, and leaves other work alone', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'astra-reasoning-'));
+    const data = Buffer.from('89504e470d0a1a0a0000000d49484452', 'hex');
+    const asked: unknown[] = [];
+    const fetch = vi.fn<typeof globalThis.fetch>(async (url, init) => {
+      if (String(url).endsWith('/models')) return Response.json({ data: [{ id: 'vision' }] });
+      asked.push(JSON.parse(String(init?.body)).reasoning_effort);
+      return Response.json({ choices: [{ message: { content: '{"ok":1}' } }] });
+    });
+    vi.stubEnv('ASTRA_VISUAL_CONTEXT_DIR', dir);
+    try {
+      writeFileSync(join(dir, 'shot-1.png'), data);
+      const runtime = new LlmRuntime({
+        allowedKinds: ['local'],
+        others: [keyOption('local', true)],
+        http: {
+          local: new HttpLlmClient({
+            kind: 'local',
+            endpoint: 'http://localhost/v1',
+            model: 'vision',
+            fetch,
+          }),
+        },
+      });
+      const picture = { id: 'shot-1', kind: 'screenshot', label: 'CURRENT' } as const;
+      const shots = {
+        images: [picture],
+        frames: [{ id: picture.id, width: 10, height: 10 }],
+        vision_model_kind: 'local',
+      };
+      await runtime.run(step({ toolId: 'llm.plan_computer_action', args: { goal: 'g', ...shots } }));
+      await runtime.run(
+        step({ toolId: 'llm.verify_computer_action', args: { goal: 'g', phase: 'goal', ...shots } }),
+      );
+      // 画面と関係ない仕事の出し方は変えない。
+      await runtime.run(
+        step({ toolId: 'llm.answer', args: { question: 'これ何？', images: [picture] } }),
+      );
+      expect(asked).toEqual(['none', 'none', undefined]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});

@@ -1,0 +1,965 @@
+warning: '--skip-update' option is deprecated and will be removed in a future release
+Building for debugging...
+[0/4] Write sources
+[1/4] Write swift-version--58304C5D6DBC2206.txt
+[3/6] Compiling GenieMac TaskHistoryView.swift
+[4/30] Emitting module GenieMac
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/GuidedSetup/GuidedSetupSelfTest.swift:144:21: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+142 |         // アバターの姿を残す（目視用）。
+143 |         if let win = overlay.avatar.window,
+144 |            let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(win.windowNumber), [.boundsIgnoreFraming, .bestResolution]) {
+    |                     `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+145 |             let png = NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:])
+146 |             try? png?.write(to: URL(fileURLWithPath: "\(outDir)/guided-setup-avatar.png"))
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/GuidedSetup/PermissionGuideCoordinator.swift:51:74: warning: passing non-Sendable parameter 'block' to function expecting a '@Sendable' closure
+ 48 |         }
+ 49 |         /// 遅延実行。検査では即時。
+ 50 |         var after: (TimeInterval, @escaping () -> Void) -> Void = { s, block in
+    |                                                                        `- note: parameter 'block' is implicitly non-Sendable
+ 51 |             DispatchQueue.main.asyncAfter(deadline: .now() + s, execute: block)
+    |                                                                          `- warning: passing non-Sendable parameter 'block' to function expecting a '@Sendable' closure
+ 52 |         }
+ 53 |         var now: () -> Date = Date.init
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Main/ConnectionsPane.swift:8:57: warning: main actor-isolated static property 'shared' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+  6 |     let apps: [String]
+  7 |     @ObservedObject private var connections: ConnectorState
+  8 |     init(apps: [String], connections: ConnectorState = .shared) {
+    |                                                         `- warning: main actor-isolated static property 'shared' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+  9 |         self.apps = apps; self.connections = connections
+ 10 |     }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Context/ConnectorState.swift:6:16: note: static property declared here
+  4 | @MainActor
+  5 | final class ConnectorState: ObservableObject {
+  6 |     static let shared = ConnectorState()
+    |                `- note: static property declared here
+  7 |     struct Source: Identifiable, Equatable {
+  8 |         let pluginId: String
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[5/31] Compiling GenieMac WindowCoordinator.swift
+[6/31] Compiling GenieMac SurfaceMotionGate.swift
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SurfaceMotionGate.swift:64:13: warning: immutable property will not be decoded because it is declared with an initial value which cannot be overwritten
+ 62 | 
+ 63 |     struct Result: Codable {
+ 64 |         let product = "Genie"
+    |             |- warning: immutable property will not be decoded because it is declared with an initial value which cannot be overwritten
+    |             |- note: set the initial value via the initializer or explicitly define a CodingKeys enum including a 'product' case to silence this warning
+    |             `- note: make the property mutable instead
+ 65 |         let startedAt: String
+ 66 |         let targetFps = 60
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SurfaceMotionGate.swift:66:13: warning: immutable property will not be decoded because it is declared with an initial value which cannot be overwritten
+ 64 |         let product = "Genie"
+ 65 |         let startedAt: String
+ 66 |         let targetFps = 60
+    |             |- warning: immutable property will not be decoded because it is declared with an initial value which cannot be overwritten
+    |             |- note: set the initial value via the initializer or explicitly define a CodingKeys enum including a 'targetFps' case to silence this warning
+    |             `- note: make the property mutable instead
+ 67 |         var transitions: [Transition] = []
+ 68 |         var notMeasured: [String] = []
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SurfaceMotionGate.swift:102:13: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+100 |     private static func capture(_ wins: [Win]) -> [Shot] {
+101 |         wins.compactMap { win in
+102 |             CGWindowListCreateImage(.null, .optionIncludingWindow, win.id, [.boundsIgnoreFraming, .nominalResolution])
+    |             `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+103 |                 .map { Shot(win: win, image: $0) }
+104 |         }
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[7/31] Compiling GenieMac AppContextResolver.swift
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SurfaceMotionGate.swift:64:13: warning: immutable property will not be decoded because it is declared with an initial value which cannot be overwritten
+ 62 | 
+ 63 |     struct Result: Codable {
+ 64 |         let product = "Genie"
+    |             |- warning: immutable property will not be decoded because it is declared with an initial value which cannot be overwritten
+    |             |- note: set the initial value via the initializer or explicitly define a CodingKeys enum including a 'product' case to silence this warning
+    |             `- note: make the property mutable instead
+ 65 |         let startedAt: String
+ 66 |         let targetFps = 60
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SurfaceMotionGate.swift:66:13: warning: immutable property will not be decoded because it is declared with an initial value which cannot be overwritten
+ 64 |         let product = "Genie"
+ 65 |         let startedAt: String
+ 66 |         let targetFps = 60
+    |             |- warning: immutable property will not be decoded because it is declared with an initial value which cannot be overwritten
+    |             |- note: set the initial value via the initializer or explicitly define a CodingKeys enum including a 'targetFps' case to silence this warning
+    |             `- note: make the property mutable instead
+ 67 |         var transitions: [Transition] = []
+ 68 |         var notMeasured: [String] = []
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SurfaceMotionGate.swift:102:13: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+100 |     private static func capture(_ wins: [Win]) -> [Shot] {
+101 |         wins.compactMap { win in
+102 |             CGWindowListCreateImage(.null, .optionIncludingWindow, win.id, [.boundsIgnoreFraming, .nominalResolution])
+    |             `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+103 |                 .map { Shot(win: win, image: $0) }
+104 |         }
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[8/31] Compiling GenieMac SelfTestOutcomeLive.swift
+[9/31] Compiling GenieMac SelfTestRealMeeting.swift
+[10/31] Compiling GenieMac TaskRequestRecord.swift
+[11/31] Compiling GenieMac HomeView.swift
+[12/31] Compiling GenieMac GenieModels.swift
+[13/31] Compiling GenieMac GenieStateStore.swift
+[14/31] Compiling GenieMac VoiceHUDState.swift
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:226:33: warning: result of call to 'run(resultType:body:)' is unused [#no-usage]
+224 | 
+225 |                 }
+226 |                 await MainActor.run {
+    |                                 `- warning: result of call to 'run(resultType:body:)' is unused [#no-usage]
+227 |                     self?.updateRequest(task.id) { $0.backendTaskID = outcome.taskId; $0.phase = .working }
+228 |                 }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:215:47: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+213 |                     else {
+214 |                         conv = try GenieCoreBridge.startConversation(base, accessToken: token)
+215 |                         await MainActor.run { self?.conversationId = conv }
+    |                                               `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+216 |                     }
+217 |                     let saved = await MainActor.run {
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:219:32: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+217 |                     let saved = await MainActor.run {
+218 |                         VisualContextStore.shared.bind(conversationID: conv, preserving: Set(attached.map(\.id)))
+219 |                         return self?.updateRequest(task.id) { $0.conversationID = conv } ?? false
+    |                                `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+220 |                     }
+221 |                     guard saved else { throw NSError(domain: "Genie", code: 1, userInfo: [NSLocalizedDescriptionKey: "受付IDを保存できませんでした。依頼は送信していません。"] ) }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:227:21: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+225 |                 }
+226 |                 await MainActor.run {
+227 |                     self?.updateRequest(task.id) { $0.backendTaskID = outcome.taskId; $0.phase = .working }
+    |                     `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+228 |                 }
+229 |                 let reply = try Self.followUp(outcome, base: base, token: token, waitMs: 12_000)
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:231:21: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+229 |                 let reply = try Self.followUp(outcome, base: base, token: token, waitMs: 12_000)
+230 |                 await MainActor.run {
+231 |                     self?.applyReply(reply, to: task.id)
+    |                     `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+232 |                     self?.answer = reply.text
+233 |                     // 短い確定回答や聞き返しは、その場で確認できるよう Dock に残す。
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:232:21: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+230 |                 await MainActor.run {
+231 |                     self?.applyReply(reply, to: task.id)
+232 |                     self?.answer = reply.text
+    |                     `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+233 |                     // 短い確定回答や聞き返しは、その場で確認できるよう Dock に残す。
+234 |                     // 作業中・待機中は従来どおり静かな入口へ戻し、Work で追える状態にする。
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:235:21: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+233 |                     // 短い確定回答や聞き返しは、その場で確認できるよう Dock に残す。
+234 |                     // 作業中・待機中は従来どおり静かな入口へ戻し、Work で追える状態にする。
+235 |                     self?.mode = reply.settled && !reply.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    |                     `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+236 |                         ? .answer(reply.text) : .idle
+237 |                     if reply.settled { VisualContextStore.shared.markRecent(attached) }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:247:25: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+245 |                     let later = try Self.followUp(outcome, base: base, token: token, waitMs: 120_000)
+246 |                     await MainActor.run {
+247 |                         self?.applyReply(later, to: task.id)
+    |                         `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+248 |                         if later.settled {
+249 |                             self?.answer = later.text
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:249:29: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+247 |                         self?.applyReply(later, to: task.id)
+248 |                         if later.settled {
+249 |                             self?.answer = later.text
+    |                             `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+250 |                             if !later.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+251 |                                 self?.mode = .answer(later.text)
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:251:33: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+249 |                             self?.answer = later.text
+250 |                             if !later.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+251 |                                 self?.mode = .answer(later.text)
+    |                                 `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+252 |                             }
+253 |                             VisualContextStore.shared.markRecent(attached)
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:260:39: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+258 |                     }
+259 |                 }
+260 |                 await MainActor.run { self?.requestInFlight = false }
+    |                                       `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+261 |             } catch {
+262 |                 await MainActor.run {
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:263:21: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+261 |             } catch {
+262 |                 await MainActor.run {
+263 |                     self?.updateRequest(task.id) {
+    |                     `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+264 |                         $0.phase = .unknown
+265 |                         $0.message = $0.backendTaskID.isEmpty
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:269:21: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+267 |                             : "通信が切れました。状況を確認すると、同じ仕事の続きが読み込まれます。"
+268 |                     }
+269 |                     self?.answer = "接続を確認してください。依頼と現在の状況は Work に保存されています。"; self?.mode = .idle
+    |                     `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+270 |                     self?.requestInFlight = false
+271 |                 }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:269:139: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+267 |                             : "通信が切れました。状況を確認すると、同じ仕事の続きが読み込まれます。"
+268 |                     }
+269 |                     self?.answer = "接続を確認してください。依頼と現在の状況は Work に保存されています。"; self?.mode = .idle
+    |                                                                             `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+270 |                     self?.requestInFlight = false
+271 |                 }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:270:21: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+268 |                     }
+269 |                     self?.answer = "接続を確認してください。依頼と現在の状況は Work に保存されています。"; self?.mode = .idle
+270 |                     self?.requestInFlight = false
+    |                     `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+271 |                 }
+272 |             }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:364:37: warning: result of call to 'run(resultType:body:)' is unused [#no-usage]
+362 |                     }
+363 |                     outcome = recovered
+364 |                     await MainActor.run { self?.updateRequest(id) { $0.backendTaskID = recovered.taskId } }
+    |                                     `- warning: result of call to 'run(resultType:body:)' is unused [#no-usage]
+365 |                 } else {
+366 |                     outcome = TurnOutcome(needsClarification: false, answer: "", taskId: record.backendTaskID, notice: "", replyJson: "")
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:358:29: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+356 |                           let recovered = try GenieCoreBridge.recoverTurn(base, accessToken: token, conversationId: record.conversationID, requestId: receipt) else {
+357 |                         await MainActor.run {
+358 |                             self?.updateRequest(id) { $0.phase = .unknown; $0.message = "受付の処理結果はまだ確認できません。時間をおいて状況を確認してください。依頼は再送しません。" }
+    |                             `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+359 |                             self?.refreshingRequests.remove(id)
+360 |                         }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:359:29: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+357 |                         await MainActor.run {
+358 |                             self?.updateRequest(id) { $0.phase = .unknown; $0.message = "受付の処理結果はまだ確認できません。時間をおいて状況を確認してください。依頼は再送しません。" }
+359 |                             self?.refreshingRequests.remove(id)
+    |                             `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+360 |                         }
+361 |                         return
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:364:43: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+362 |                     }
+363 |                     outcome = recovered
+364 |                     await MainActor.run { self?.updateRequest(id) { $0.backendTaskID = recovered.taskId } }
+    |                                           `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+365 |                 } else {
+366 |                     outcome = TurnOutcome(needsClarification: false, answer: "", taskId: record.backendTaskID, notice: "", replyJson: "")
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:369:39: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+367 |                 }
+368 |                 let reply = try Self.followUp(outcome, base: base, token: token, waitMs: 12_000)
+369 |                 await MainActor.run { self?.applyReply(reply, to: id); self?.refreshingRequests.remove(id) }
+    |                                       `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+370 |             } catch {
+371 |                 await MainActor.run {
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:369:72: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+367 |                 }
+368 |                 let reply = try Self.followUp(outcome, base: base, token: token, waitMs: 12_000)
+369 |                 await MainActor.run { self?.applyReply(reply, to: id); self?.refreshingRequests.remove(id) }
+    |                                                                        `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+370 |             } catch {
+371 |                 await MainActor.run {
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:372:21: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+370 |             } catch {
+371 |                 await MainActor.run {
+372 |                     self?.updateRequest(id) { $0.message = "状況を取得できませんでした。接続を確認してから、もう一度状況を確認できます。" }
+    |                     `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+373 |                     self?.refreshingRequests.remove(id)
+374 |                 }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:373:21: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+371 |                 await MainActor.run {
+372 |                     self?.updateRequest(id) { $0.message = "状況を取得できませんでした。接続を確認してから、もう一度状況を確認できます。" }
+373 |                     self?.refreshingRequests.remove(id)
+    |                     `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+374 |                 }
+375 |             }
+
+[#SendableClosureCaptures]: <https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures>
+[15/31] Compiling GenieMac MeetingCanvasView.swift
+[16/31] Compiling GenieMac SessionDetailView.swift
+[17/31] Compiling GenieMac LocalStore.swift
+[18/31] Compiling GenieMac DockContentMeasure.swift
+[19/31] Compiling GenieMac RecordingWorkspaceState.swift
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/RecordingWorkspace/RecordingWorkspaceState.swift:273:34: warning: main actor-isolated property 'isRecording' can not be referenced from a Sendable closure
+ 59 |     static let shared = RecordingWorkspaceState()
+ 60 | 
+ 61 |     @Published var isRecording = false
+    |                    `- note: property declared here
+ 62 |     /// 録音を成り立たなくしている許可。無ければ nil。バナーで出す。
+ 63 |     @Published var permissionIssue: PermissionIssue?
+    :
+271 |         tickTimer?.invalidate()
+272 |         tickTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+273 |             guard let self, self.isRecording, !self.isPaused, !self.freezeClockForShot else { return }
+    |                                  `- warning: main actor-isolated property 'isRecording' can not be referenced from a Sendable closure
+274 |             self.elapsedSeconds += 1
+275 |         }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/RecordingWorkspace/RecordingWorkspaceState.swift:273:53: warning: main actor-isolated property 'isPaused' can not be referenced from a Sendable closure
+ 64 |     private var tickTimer: Timer?
+ 65 |     private var microphoneRequest: UUID?
+ 66 |     @Published var isPaused = false
+    |                    `- note: property declared here
+ 67 |     @Published var elapsedSeconds = 0
+ 68 |     /// 検査用: 撮影の間だけ経過時計を止める。**本番では false。** light と dark を別プロセスで撮るので、
+    :
+271 |         tickTimer?.invalidate()
+272 |         tickTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+273 |             guard let self, self.isRecording, !self.isPaused, !self.freezeClockForShot else { return }
+    |                                                     `- warning: main actor-isolated property 'isPaused' can not be referenced from a Sendable closure
+274 |             self.elapsedSeconds += 1
+275 |         }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/RecordingWorkspace/RecordingWorkspaceState.swift:273:69: warning: main actor-isolated property 'freezeClockForShot' can not be referenced from a Sendable closure
+ 68 |     /// 検査用: 撮影の間だけ経過時計を止める。**本番では false。** light と dark を別プロセスで撮るので、
+ 69 |     /// 動いたままだと同じ面が 05:21 / 05:23 とずれ、fixed（light == dark）の gate が運で通ったり落ちたりした（実測）。
+ 70 |     var freezeClockForShot = false
+    |         `- note: property declared here
+ 71 |     @Published var selectedTool: RecordingTool = .transcript
+ 72 |     @Published var ragOpen = false
+    :
+271 |         tickTimer?.invalidate()
+272 |         tickTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+273 |             guard let self, self.isRecording, !self.isPaused, !self.freezeClockForShot else { return }
+    |                                                                     `- warning: main actor-isolated property 'freezeClockForShot' can not be referenced from a Sendable closure
+274 |             self.elapsedSeconds += 1
+275 |         }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/RecordingWorkspace/RecordingWorkspaceState.swift:274:18: warning: main actor-isolated property 'elapsedSeconds' can not be mutated from a Sendable closure
+ 65 |     private var microphoneRequest: UUID?
+ 66 |     @Published var isPaused = false
+ 67 |     @Published var elapsedSeconds = 0
+    |                    `- note: mutation of this property is only permitted within the actor
+ 68 |     /// 検査用: 撮影の間だけ経過時計を止める。**本番では false。** light と dark を別プロセスで撮るので、
+ 69 |     /// 動いたままだと同じ面が 05:21 / 05:23 とずれ、fixed（light == dark）の gate が運で通ったり落ちたりした（実測）。
+    :
+272 |         tickTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+273 |             guard let self, self.isRecording, !self.isPaused, !self.freezeClockForShot else { return }
+274 |             self.elapsedSeconds += 1
+    |                  `- warning: main actor-isolated property 'elapsedSeconds' can not be mutated from a Sendable closure
+275 |         }
+276 |         // オンデバイス STT の途中経過/確定を transcript に反映する。
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/RecordingWorkspace/RecordingWorkspaceState.swift:422:64: warning: converting non-Sendable function value to '@MainActor @Sendable @convention(block) () -> Void' may introduce data races
+420 |             let pending = self.startAfterFinishing
+421 |             self.startAfterFinishing = nil
+422 |             if let pending { DispatchQueue.main.async(execute: pending) }
+    |                                                                `- warning: converting non-Sendable function value to '@MainActor @Sendable @convention(block) () -> Void' may introduce data races
+423 |         }
+424 |     }
+[20/31] Compiling GenieMac RecordingWorkspaceView.swift
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/RecordingWorkspace/RecordingWorkspaceState.swift:273:34: warning: main actor-isolated property 'isRecording' can not be referenced from a Sendable closure
+ 59 |     static let shared = RecordingWorkspaceState()
+ 60 | 
+ 61 |     @Published var isRecording = false
+    |                    `- note: property declared here
+ 62 |     /// 録音を成り立たなくしている許可。無ければ nil。バナーで出す。
+ 63 |     @Published var permissionIssue: PermissionIssue?
+    :
+271 |         tickTimer?.invalidate()
+272 |         tickTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+273 |             guard let self, self.isRecording, !self.isPaused, !self.freezeClockForShot else { return }
+    |                                  `- warning: main actor-isolated property 'isRecording' can not be referenced from a Sendable closure
+274 |             self.elapsedSeconds += 1
+275 |         }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/RecordingWorkspace/RecordingWorkspaceState.swift:273:53: warning: main actor-isolated property 'isPaused' can not be referenced from a Sendable closure
+ 64 |     private var tickTimer: Timer?
+ 65 |     private var microphoneRequest: UUID?
+ 66 |     @Published var isPaused = false
+    |                    `- note: property declared here
+ 67 |     @Published var elapsedSeconds = 0
+ 68 |     /// 検査用: 撮影の間だけ経過時計を止める。**本番では false。** light と dark を別プロセスで撮るので、
+    :
+271 |         tickTimer?.invalidate()
+272 |         tickTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+273 |             guard let self, self.isRecording, !self.isPaused, !self.freezeClockForShot else { return }
+    |                                                     `- warning: main actor-isolated property 'isPaused' can not be referenced from a Sendable closure
+274 |             self.elapsedSeconds += 1
+275 |         }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/RecordingWorkspace/RecordingWorkspaceState.swift:273:69: warning: main actor-isolated property 'freezeClockForShot' can not be referenced from a Sendable closure
+ 68 |     /// 検査用: 撮影の間だけ経過時計を止める。**本番では false。** light と dark を別プロセスで撮るので、
+ 69 |     /// 動いたままだと同じ面が 05:21 / 05:23 とずれ、fixed（light == dark）の gate が運で通ったり落ちたりした（実測）。
+ 70 |     var freezeClockForShot = false
+    |         `- note: property declared here
+ 71 |     @Published var selectedTool: RecordingTool = .transcript
+ 72 |     @Published var ragOpen = false
+    :
+271 |         tickTimer?.invalidate()
+272 |         tickTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+273 |             guard let self, self.isRecording, !self.isPaused, !self.freezeClockForShot else { return }
+    |                                                                     `- warning: main actor-isolated property 'freezeClockForShot' can not be referenced from a Sendable closure
+274 |             self.elapsedSeconds += 1
+275 |         }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/RecordingWorkspace/RecordingWorkspaceState.swift:274:18: warning: main actor-isolated property 'elapsedSeconds' can not be mutated from a Sendable closure
+ 65 |     private var microphoneRequest: UUID?
+ 66 |     @Published var isPaused = false
+ 67 |     @Published var elapsedSeconds = 0
+    |                    `- note: mutation of this property is only permitted within the actor
+ 68 |     /// 検査用: 撮影の間だけ経過時計を止める。**本番では false。** light と dark を別プロセスで撮るので、
+ 69 |     /// 動いたままだと同じ面が 05:21 / 05:23 とずれ、fixed（light == dark）の gate が運で通ったり落ちたりした（実測）。
+    :
+272 |         tickTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+273 |             guard let self, self.isRecording, !self.isPaused, !self.freezeClockForShot else { return }
+274 |             self.elapsedSeconds += 1
+    |                  `- warning: main actor-isolated property 'elapsedSeconds' can not be mutated from a Sendable closure
+275 |         }
+276 |         // オンデバイス STT の途中経過/確定を transcript に反映する。
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/RecordingWorkspace/RecordingWorkspaceState.swift:422:64: warning: converting non-Sendable function value to '@MainActor @Sendable @convention(block) () -> Void' may introduce data races
+420 |             let pending = self.startAfterFinishing
+421 |             self.startAfterFinishing = nil
+422 |             if let pending { DispatchQueue.main.async(execute: pending) }
+    |                                                                `- warning: converting non-Sendable function value to '@MainActor @Sendable @convention(block) () -> Void' may introduce data races
+423 |         }
+424 |     }
+[21/31] Compiling GenieMac MainWindowView.swift
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Main/ConnectionsPane.swift:8:57: warning: main actor-isolated static property 'shared' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+  6 |     let apps: [String]
+  7 |     @ObservedObject private var connections: ConnectorState
+  8 |     init(apps: [String], connections: ConnectorState = .shared) {
+    |                                                         `- warning: main actor-isolated static property 'shared' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+  9 |         self.apps = apps; self.connections = connections
+ 10 |     }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Context/ConnectorState.swift:6:16: note: static property declared here
+  4 | @MainActor
+  5 | final class ConnectorState: ObservableObject {
+  6 |     static let shared = ConnectorState()
+    |                `- note: static property declared here
+  7 |     struct Source: Identifiable, Equatable {
+  8 |         let pluginId: String
+[22/31] Compiling GenieMac WorkspacePanes.swift
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Main/ConnectionsPane.swift:8:57: warning: main actor-isolated static property 'shared' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+  6 |     let apps: [String]
+  7 |     @ObservedObject private var connections: ConnectorState
+  8 |     init(apps: [String], connections: ConnectorState = .shared) {
+    |                                                         `- warning: main actor-isolated static property 'shared' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+  9 |         self.apps = apps; self.connections = connections
+ 10 |     }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Context/ConnectorState.swift:6:16: note: static property declared here
+  4 | @MainActor
+  5 | final class ConnectorState: ObservableObject {
+  6 |     static let shared = ConnectorState()
+    |                `- note: static property declared here
+  7 |     struct Source: Identifiable, Equatable {
+  8 |         let pluginId: String
+[23/31] Compiling GenieMac VoiceHUDView.swift
+[24/31] Compiling GenieMac TaskTimelineView.swift
+[25/31] Compiling GenieMac InvocationGate.swift
+[26/31] Compiling GenieMac SelfTestScreenshotInput.swift
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTestWorkspaceUX.swift:46:36: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+44 |                     // NavigationSplitView renders through AppKit/layer-backed subviews;
+45 |                     // cacheDisplay produces an empty shell on macOS 26. Capture our window.
+46 |                     guard let cg = CGWindowListCreateImage(.null, .optionIncludingWindow,
+   |                                    `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+47 |                         CGWindowID(window.windowNumber), [.boundsIgnoreFraming, .nominalResolution]),
+48 |                         let png = NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:]) else { failures.append(name); return }
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[27/31] Compiling GenieMac SelfTestWorkspaceUX.swift
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTestWorkspaceUX.swift:46:36: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+44 |                     // NavigationSplitView renders through AppKit/layer-backed subviews;
+45 |                     // cacheDisplay produces an empty shell on macOS 26. Capture our window.
+46 |                     guard let cg = CGWindowListCreateImage(.null, .optionIncludingWindow,
+   |                                    `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+47 |                         CGWindowID(window.windowNumber), [.boundsIgnoreFraming, .nominalResolution]),
+48 |                         let png = NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:]) else { failures.append(name); return }
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[28/31] Compiling GenieMac SelfTest.swift
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:197:28: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 195 |             }
+ 196 |             guard let (winID, _, _) = best,
+ 197 |                   let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, winID, [.boundsIgnoreFraming, .bestResolution])
+     |                            `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 198 |             else { return nil }
+ 199 |             let rep = NSBitmapImageRep(cgImage: cg)
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:484:28: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 482 |                 ? [.bestResolution] : [.boundsIgnoreFraming, .nominalResolution]
+ 483 |             guard let (id, x, y, w, h) = found,
+ 484 |                   let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, id, opts),
+     |                            `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 485 |                   shadow || (cg.width == Int(w) && cg.height == Int(h))
+ 486 |             else { return nil }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:706:21: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 704 |         settle(0.8)
+ 705 |         if let big = workspaceWindow,
+ 706 |            let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, big.id, [.boundsIgnoreFraming, .nominalResolution]) {
+     |                     `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 707 |             let rep = NSBitmapImageRep(cgImage: cg)
+ 708 |             if let png = rep.representation(using: .png, properties: [:]) {
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:1158:28: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+1156 |             settle(0.6)
+1157 |             guard let win = NSApp.windows.first(where: { $0.isVisible && $0.frame.width > 900 }),
+1158 |                   let cg = CGWindowListCreateImage(
+     |                            `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+1159 |                     .null, .optionIncludingWindow, CGWindowID(win.windowNumber),
+1160 |                     [.boundsIgnoreFraming, .bestResolution]) else { return nil }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:2362:25: warning: call to main actor-isolated instance method 'shot(_:window:)' in a synchronous nonisolated context [#ActorIsolatedCall]
+2360 |                 surfaces = NSApp.windows.filter(\.isVisible).count - w0
+2361 |                 dockAnswerable = UIProbe.exists("confirmCancel")
+2362 |                 _ = rec.shot("04-confirm", window: JourneyRecorder.dockWindow())
+     |                         `- warning: call to main actor-isolated instance method 'shot(_:window:)' in a synchronous nonisolated context [#ActorIsolatedCall]
+2363 |                 _ = UIProbe.tap("confirmCancel")
+2364 |                 // 別の面が残っていたら、それも閉じる（残さないと 120 秒止まる）。
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/JourneyRecorder.swift:213:10: note: calls to instance method 'shot(_:window:)' from outside of its actor context are implicitly asynchronous
+211 |     /// 測っていた（開始直後の白紙を測ろうとして、地 91.9% と出たのがそれ）。
+212 |     @discardableResult
+213 |     func shot(_ name: String, window: NSWindow? = nil) -> Bool {
+    |          `- note: calls to instance method 'shot(_:window:)' from outside of its actor context are implicitly asynchronous
+214 |         let path = "\(outDir)/\(name).png"
+215 |         guard let win = window ?? Self.largestWindow(),
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:2362:68: warning: call to main actor-isolated static method 'dockWindow()' in a synchronous nonisolated context [#ActorIsolatedCall]
+2360 |                 surfaces = NSApp.windows.filter(\.isVisible).count - w0
+2361 |                 dockAnswerable = UIProbe.exists("confirmCancel")
+2362 |                 _ = rec.shot("04-confirm", window: JourneyRecorder.dockWindow())
+     |                                                                    `- warning: call to main actor-isolated static method 'dockWindow()' in a synchronous nonisolated context [#ActorIsolatedCall]
+2363 |                 _ = UIProbe.tap("confirmCancel")
+2364 |                 // 別の面が残っていたら、それも閉じる（残さないと 120 秒止まる）。
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/JourneyRecorder.swift:154:17: note: calls to static method 'dockWindow()' from outside of its actor context are implicitly asynchronous
+152 | 
+153 |     /// Dock（画面上端の常駐 panel）。level で見分ける。
+154 |     static func dockWindow() -> NSWindow? {
+    |                 `- note: calls to static method 'dockWindow()' from outside of its actor context are implicitly asynchronous
+155 |         NSApp.windows.first { $0.isVisible && $0.level == .statusBar }
+156 |     }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:2810:29: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+2808 |                 }
+2809 |                 // 窓 id 経由。dark へ切り替えた直後などに nil を返すことがある。
+2810 |                 var image = CGWindowListCreateImage(.null, .optionIncludingWindow, win.id,
+     |                             `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+2811 |                                                     [.boundsIgnoreFraming, .bestResolution])
+2812 |                 if image == nil {
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:2814:29: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+2812 |                 if image == nil {
+2813 |                     // 代わりに画面のその領域を撮る。窓の再描画中でもこちらは通ることが多い。
+2814 |                     image = CGWindowListCreateImage(rect, .optionOnScreenOnly, kCGNullWindowID, [.bestResolution])
+     |                             `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+2815 |                 }
+2816 |                 if let cg = image,
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:3446:24: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+3444 |                           width: f.width + pad * 2,
+3445 |                           height: f.height + pad * 2)
+3446 |         guard let cg = CGWindowListCreateImage(rect, .optionOnScreenOnly, kCGNullWindowID, [.bestResolution]),
+     |                        `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+3447 |               let png = NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:]) else {
+3448 |             print("SELFTEST_FAIL dockedge: 撮影できない"); exit(2)
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:3456:22: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+3454 |         settle(1.0)
+3455 |         let without = out.replacingOccurrences(of: ".png", with: "-without.png")
+3456 |         if let cg2 = CGWindowListCreateImage(rect, .optionOnScreenOnly, kCGNullWindowID, [.bestResolution]),
+     |                      `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+3457 |            let png2 = NSBitmapImageRep(cgImage: cg2).representation(using: .png, properties: [:]) {
+3458 |             try? png2.write(to: URL(fileURLWithPath: without))
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:4134:62: warning: conditional downcast from '(json: [String : Any], consumed: Int)?' to '(json: [String : Any], consumed: Int)' does nothing
+4132 |         // ① 1 通ぶん届いていなければ nil（エラーにしない）。
+4133 |         let full = frame(["type": "context", "payload": ["url": "https://example.com", "title": "T"]])
+4134 |         if (try? NativeMessagingHost.decode(full.prefix(3))) as? (json: [String: Any], consumed: Int) != nil {
+     |                                                              `- warning: conditional downcast from '(json: [String : Any], consumed: Int)?' to '(json: [String : Any], consumed: Int)' does nothing
+4135 |             fail.append("途中のバッファで復号した")
+4136 |         }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:4542:34: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+4540 |                 ids.removeAll(); texts.removeAll(); walk(app, 0)
+4541 |             } else { fail.append("会議と今日の状況を開けない") }
+4542 |             if let png, let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(w.windowNumber),
+     |                                  `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+4543 |                                                           [.boundsIgnoreFraming, .nominalResolution]) {
+4544 |                 try? NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:])?
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:4801:36: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+4799 |                     let until = Date().addingTimeInterval(0.4)
+4800 |                     while Date() < until { CFRunLoopRunInMode(.defaultMode, 0.05, true) }
+4801 |                     guard let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(window.windowNumber), [.boundsIgnoreFraming, .bestResolution]) else {
+     |                                    `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+4802 |                         throw CloudMeetingTranscription.Failure(message: "window capture failed")
+4803 |                     }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:4857:77: warning: backward matching of the unlabeled trailing closure is deprecated; label the argument with 'completion' to suppress this warning [#TrailingClosureMatching]
+4855 |                 }
+4856 |                 let passed = interim > 0 && final > 0 && texts.contains(where: { $0.contains("金曜日") }) && runtime.snapshot() != nil
+4857 |                 await withCheckedContinuation { continuation in runtime.end { continuation.resume() } }
+     |                                                                             `- warning: backward matching of the unlabeled trailing closure is deprecated; label the argument with 'completion' to suppress this warning [#TrailingClosureMatching]
+4858 |                 restore()
+4859 |                 guard passed else {
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/RecordingWorkspace/RecordingRuntime.swift:468:10: note: 'end(cloudCompletion:completion:)' declared here
+466 | 
+467 |     /// 停止して確定。書けた断片は残り、回復候補になる。
+468 |     func end(cloudCompletion: ((String, String?) -> Void)? = nil, completion: (() -> Void)? = nil) {
+    |          `- note: 'end(cloudCompletion:completion:)' declared here
+469 |         drainMixedAudio()
+470 |         mixTimer?.invalidate(); mixTimer = nil; mixClock = nil
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:5174:28: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+5172 |             }
+5173 |             guard winID != 0,
+5174 |                   let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, winID, [.boundsIgnoreFraming, .bestResolution])
+     |                            `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+5175 |             else { window.orderOut(nil); window.close(); return nil }
+5176 |             let rep = NSBitmapImageRep(cgImage: cg)
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:5579:28: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+5577 |         }
+5578 |         func shot(_ win: NSWindow) -> [UInt8]? {
+5579 |             guard let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(win.windowNumber),
+     |                            `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+5580 |                                                    [.boundsIgnoreFraming, .nominalResolution]),
+5581 |                   cg.width > 4, cg.height > 4 else { return nil }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:5849:21: warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+5847 |             .appendingPathComponent("meetings/screenshot-selftest").path
+5848 |         try? FileManager.default.removeItem(atPath: root)
+5849 |         guard (size ?? 0) > 1000, isPng else {
+     |                     `- warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+5850 |             print("SELFTEST_FAIL screenshot size=\(size ?? 0) isPng=\(isPng)"); exit(2)
+5851 |         }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:5850:57: warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+5848 |         try? FileManager.default.removeItem(atPath: root)
+5849 |         guard (size ?? 0) > 1000, isPng else {
+5850 |             print("SELFTEST_FAIL screenshot size=\(size ?? 0) isPng=\(isPng)"); exit(2)
+     |                                                         `- warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+5851 |         }
+5852 |         print("SELFTEST_OK screenshot: 実 PNG 保存 bytes=\(size ?? 0) isPng=\(isPng)")
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:5852:68: warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+5850 |             print("SELFTEST_FAIL screenshot size=\(size ?? 0) isPng=\(isPng)"); exit(2)
+5851 |         }
+5852 |         print("SELFTEST_OK screenshot: 実 PNG 保存 bytes=\(size ?? 0) isPng=\(isPng)")
+     |                                                              `- warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+5853 |         exit(0)
+5854 |     }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:6162:37: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+6160 |             settle(0.3)
+6161 |             let id = CGWindowID(max(0, win.windowNumber))
+6162 |             guard id != 0, let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, id, [.boundsIgnoreFraming, .bestResolution]),
+     |                                     `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+6163 |                   let png = NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:]) else {
+6164 |                 fail.append(name); return
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:6263:28: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+6261 |                   // golden は logical points で保存する。Retina の物理画素を使うと
+6262 |                   // 同じ 220x44pt の窓が 440x88px になり、別の寸法と誤判定される。
+6263 |                   let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, winID, [.boundsIgnoreFraming, .nominalResolution]),
+     |                            `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+6264 |                   cg.width == w, cg.height == h
+6265 |             else { return nil }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:6955:87: warning: mutation of captured var 'ready' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+6953 |         }
+6954 |         let readyLock = NSLock(); var ready = false
+6955 |         listener.stateUpdateHandler = { st in if case .ready = st { readyLock.lock(); ready = true; readyLock.unlock() } }
+     |                                                                                       `- warning: mutation of captured var 'ready' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+6956 |         listener.start(queue: q)
+6957 |         var waited = 0
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:7002:42: warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+7000 |         let recoverable = scanRecoverable(root: root, active: nil)
+7001 | 
+7002 |         guard closed == 1, exists, (size ?? 0) > 0, snap.elapsedLabel == "00:05",
+     |                                          `- warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+7003 |               recoverable.count == 1, recoverable[0].meetingId == "selftest"
+7004 |         else {
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:7005:80: warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+7003 |               recoverable.count == 1, recoverable[0].meetingId == "selftest"
+7004 |         else {
+7005 |             print("SELFTEST_FAIL closed=\(closed) exists=\(exists) size=\(size ?? 0) elapsed=\(snap.elapsedLabel) recoverable=\(recoverable.count)")
+     |                                                                                `- warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+7006 |             exit(3)
+7007 |         }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:7009:74: warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+7007 |         }
+7008 |         try? FileManager.default.removeItem(atPath: root)
+7009 |         print("SELFTEST_OK record: closed=\(closed) fragmentBytes=\(size ?? 0) elapsed=\(snap.elapsedLabel) recoverable=\(recoverable.count)")
+     |                                                                          `- warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+7010 |         exit(0)
+7011 |     }
+
+[#ActorIsolatedCall]: <https://docs.swift.org/compiler/documentation/diagnostics/actor-isolated-call>
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[#SendableClosureCaptures]: <https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures>
+[#TrailingClosureMatching]: <https://docs.swift.org/compiler/documentation/diagnostics/trailing-closure-matching>
+[29/31] Compiling GenieMac SelfTestConsumerJourney.swift
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:197:28: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 195 |             }
+ 196 |             guard let (winID, _, _) = best,
+ 197 |                   let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, winID, [.boundsIgnoreFraming, .bestResolution])
+     |                            `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 198 |             else { return nil }
+ 199 |             let rep = NSBitmapImageRep(cgImage: cg)
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:484:28: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 482 |                 ? [.bestResolution] : [.boundsIgnoreFraming, .nominalResolution]
+ 483 |             guard let (id, x, y, w, h) = found,
+ 484 |                   let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, id, opts),
+     |                            `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 485 |                   shadow || (cg.width == Int(w) && cg.height == Int(h))
+ 486 |             else { return nil }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:706:21: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 704 |         settle(0.8)
+ 705 |         if let big = workspaceWindow,
+ 706 |            let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, big.id, [.boundsIgnoreFraming, .nominalResolution]) {
+     |                     `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 707 |             let rep = NSBitmapImageRep(cgImage: cg)
+ 708 |             if let png = rep.representation(using: .png, properties: [:]) {
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:1158:28: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+1156 |             settle(0.6)
+1157 |             guard let win = NSApp.windows.first(where: { $0.isVisible && $0.frame.width > 900 }),
+1158 |                   let cg = CGWindowListCreateImage(
+     |                            `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+1159 |                     .null, .optionIncludingWindow, CGWindowID(win.windowNumber),
+1160 |                     [.boundsIgnoreFraming, .bestResolution]) else { return nil }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:2362:25: warning: call to main actor-isolated instance method 'shot(_:window:)' in a synchronous nonisolated context [#ActorIsolatedCall]
+2360 |                 surfaces = NSApp.windows.filter(\.isVisible).count - w0
+2361 |                 dockAnswerable = UIProbe.exists("confirmCancel")
+2362 |                 _ = rec.shot("04-confirm", window: JourneyRecorder.dockWindow())
+     |                         `- warning: call to main actor-isolated instance method 'shot(_:window:)' in a synchronous nonisolated context [#ActorIsolatedCall]
+2363 |                 _ = UIProbe.tap("confirmCancel")
+2364 |                 // 別の面が残っていたら、それも閉じる（残さないと 120 秒止まる）。
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/JourneyRecorder.swift:213:10: note: calls to instance method 'shot(_:window:)' from outside of its actor context are implicitly asynchronous
+211 |     /// 測っていた（開始直後の白紙を測ろうとして、地 91.9% と出たのがそれ）。
+212 |     @discardableResult
+213 |     func shot(_ name: String, window: NSWindow? = nil) -> Bool {
+    |          `- note: calls to instance method 'shot(_:window:)' from outside of its actor context are implicitly asynchronous
+214 |         let path = "\(outDir)/\(name).png"
+215 |         guard let win = window ?? Self.largestWindow(),
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:2362:68: warning: call to main actor-isolated static method 'dockWindow()' in a synchronous nonisolated context [#ActorIsolatedCall]
+2360 |                 surfaces = NSApp.windows.filter(\.isVisible).count - w0
+2361 |                 dockAnswerable = UIProbe.exists("confirmCancel")
+2362 |                 _ = rec.shot("04-confirm", window: JourneyRecorder.dockWindow())
+     |                                                                    `- warning: call to main actor-isolated static method 'dockWindow()' in a synchronous nonisolated context [#ActorIsolatedCall]
+2363 |                 _ = UIProbe.tap("confirmCancel")
+2364 |                 // 別の面が残っていたら、それも閉じる（残さないと 120 秒止まる）。
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/JourneyRecorder.swift:154:17: note: calls to static method 'dockWindow()' from outside of its actor context are implicitly asynchronous
+152 | 
+153 |     /// Dock（画面上端の常駐 panel）。level で見分ける。
+154 |     static func dockWindow() -> NSWindow? {
+    |                 `- note: calls to static method 'dockWindow()' from outside of its actor context are implicitly asynchronous
+155 |         NSApp.windows.first { $0.isVisible && $0.level == .statusBar }
+156 |     }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:2810:29: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+2808 |                 }
+2809 |                 // 窓 id 経由。dark へ切り替えた直後などに nil を返すことがある。
+2810 |                 var image = CGWindowListCreateImage(.null, .optionIncludingWindow, win.id,
+     |                             `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+2811 |                                                     [.boundsIgnoreFraming, .bestResolution])
+2812 |                 if image == nil {
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:2814:29: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+2812 |                 if image == nil {
+2813 |                     // 代わりに画面のその領域を撮る。窓の再描画中でもこちらは通ることが多い。
+2814 |                     image = CGWindowListCreateImage(rect, .optionOnScreenOnly, kCGNullWindowID, [.bestResolution])
+     |                             `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+2815 |                 }
+2816 |                 if let cg = image,
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:3446:24: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+3444 |                           width: f.width + pad * 2,
+3445 |                           height: f.height + pad * 2)
+3446 |         guard let cg = CGWindowListCreateImage(rect, .optionOnScreenOnly, kCGNullWindowID, [.bestResolution]),
+     |                        `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+3447 |               let png = NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:]) else {
+3448 |             print("SELFTEST_FAIL dockedge: 撮影できない"); exit(2)
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:3456:22: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+3454 |         settle(1.0)
+3455 |         let without = out.replacingOccurrences(of: ".png", with: "-without.png")
+3456 |         if let cg2 = CGWindowListCreateImage(rect, .optionOnScreenOnly, kCGNullWindowID, [.bestResolution]),
+     |                      `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+3457 |            let png2 = NSBitmapImageRep(cgImage: cg2).representation(using: .png, properties: [:]) {
+3458 |             try? png2.write(to: URL(fileURLWithPath: without))
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:4134:62: warning: conditional downcast from '(json: [String : Any], consumed: Int)?' to '(json: [String : Any], consumed: Int)' does nothing
+4132 |         // ① 1 通ぶん届いていなければ nil（エラーにしない）。
+4133 |         let full = frame(["type": "context", "payload": ["url": "https://example.com", "title": "T"]])
+4134 |         if (try? NativeMessagingHost.decode(full.prefix(3))) as? (json: [String: Any], consumed: Int) != nil {
+     |                                                              `- warning: conditional downcast from '(json: [String : Any], consumed: Int)?' to '(json: [String : Any], consumed: Int)' does nothing
+4135 |             fail.append("途中のバッファで復号した")
+4136 |         }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:4542:34: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+4540 |                 ids.removeAll(); texts.removeAll(); walk(app, 0)
+4541 |             } else { fail.append("会議と今日の状況を開けない") }
+4542 |             if let png, let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(w.windowNumber),
+     |                                  `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+4543 |                                                           [.boundsIgnoreFraming, .nominalResolution]) {
+4544 |                 try? NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:])?
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:4801:36: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+4799 |                     let until = Date().addingTimeInterval(0.4)
+4800 |                     while Date() < until { CFRunLoopRunInMode(.defaultMode, 0.05, true) }
+4801 |                     guard let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(window.windowNumber), [.boundsIgnoreFraming, .bestResolution]) else {
+     |                                    `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+4802 |                         throw CloudMeetingTranscription.Failure(message: "window capture failed")
+4803 |                     }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:4857:77: warning: backward matching of the unlabeled trailing closure is deprecated; label the argument with 'completion' to suppress this warning [#TrailingClosureMatching]
+4855 |                 }
+4856 |                 let passed = interim > 0 && final > 0 && texts.contains(where: { $0.contains("金曜日") }) && runtime.snapshot() != nil
+4857 |                 await withCheckedContinuation { continuation in runtime.end { continuation.resume() } }
+     |                                                                             `- warning: backward matching of the unlabeled trailing closure is deprecated; label the argument with 'completion' to suppress this warning [#TrailingClosureMatching]
+4858 |                 restore()
+4859 |                 guard passed else {
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/RecordingWorkspace/RecordingRuntime.swift:468:10: note: 'end(cloudCompletion:completion:)' declared here
+466 | 
+467 |     /// 停止して確定。書けた断片は残り、回復候補になる。
+468 |     func end(cloudCompletion: ((String, String?) -> Void)? = nil, completion: (() -> Void)? = nil) {
+    |          `- note: 'end(cloudCompletion:completion:)' declared here
+469 |         drainMixedAudio()
+470 |         mixTimer?.invalidate(); mixTimer = nil; mixClock = nil
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:5174:28: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+5172 |             }
+5173 |             guard winID != 0,
+5174 |                   let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, winID, [.boundsIgnoreFraming, .bestResolution])
+     |                            `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+5175 |             else { window.orderOut(nil); window.close(); return nil }
+5176 |             let rep = NSBitmapImageRep(cgImage: cg)
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:5579:28: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+5577 |         }
+5578 |         func shot(_ win: NSWindow) -> [UInt8]? {
+5579 |             guard let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(win.windowNumber),
+     |                            `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+5580 |                                                    [.boundsIgnoreFraming, .nominalResolution]),
+5581 |                   cg.width > 4, cg.height > 4 else { return nil }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:5849:21: warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+5847 |             .appendingPathComponent("meetings/screenshot-selftest").path
+5848 |         try? FileManager.default.removeItem(atPath: root)
+5849 |         guard (size ?? 0) > 1000, isPng else {
+     |                     `- warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+5850 |             print("SELFTEST_FAIL screenshot size=\(size ?? 0) isPng=\(isPng)"); exit(2)
+5851 |         }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:5850:57: warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+5848 |         try? FileManager.default.removeItem(atPath: root)
+5849 |         guard (size ?? 0) > 1000, isPng else {
+5850 |             print("SELFTEST_FAIL screenshot size=\(size ?? 0) isPng=\(isPng)"); exit(2)
+     |                                                         `- warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+5851 |         }
+5852 |         print("SELFTEST_OK screenshot: 実 PNG 保存 bytes=\(size ?? 0) isPng=\(isPng)")
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:5852:68: warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+5850 |             print("SELFTEST_FAIL screenshot size=\(size ?? 0) isPng=\(isPng)"); exit(2)
+5851 |         }
+5852 |         print("SELFTEST_OK screenshot: 実 PNG 保存 bytes=\(size ?? 0) isPng=\(isPng)")
+     |                                                              `- warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+5853 |         exit(0)
+5854 |     }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:6162:37: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+6160 |             settle(0.3)
+6161 |             let id = CGWindowID(max(0, win.windowNumber))
+6162 |             guard id != 0, let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, id, [.boundsIgnoreFraming, .bestResolution]),
+     |                                     `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+6163 |                   let png = NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:]) else {
+6164 |                 fail.append(name); return
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:6263:28: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+6261 |                   // golden は logical points で保存する。Retina の物理画素を使うと
+6262 |                   // 同じ 220x44pt の窓が 440x88px になり、別の寸法と誤判定される。
+6263 |                   let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, winID, [.boundsIgnoreFraming, .nominalResolution]),
+     |                            `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+6264 |                   cg.width == w, cg.height == h
+6265 |             else { return nil }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:6955:87: warning: mutation of captured var 'ready' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+6953 |         }
+6954 |         let readyLock = NSLock(); var ready = false
+6955 |         listener.stateUpdateHandler = { st in if case .ready = st { readyLock.lock(); ready = true; readyLock.unlock() } }
+     |                                                                                       `- warning: mutation of captured var 'ready' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+6956 |         listener.start(queue: q)
+6957 |         var waited = 0
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:7002:42: warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+7000 |         let recoverable = scanRecoverable(root: root, active: nil)
+7001 | 
+7002 |         guard closed == 1, exists, (size ?? 0) > 0, snap.elapsedLabel == "00:05",
+     |                                          `- warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+7003 |               recoverable.count == 1, recoverable[0].meetingId == "selftest"
+7004 |         else {
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:7005:80: warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+7003 |               recoverable.count == 1, recoverable[0].meetingId == "selftest"
+7004 |         else {
+7005 |             print("SELFTEST_FAIL closed=\(closed) exists=\(exists) size=\(size ?? 0) elapsed=\(snap.elapsedLabel) recoverable=\(recoverable.count)")
+     |                                                                                `- warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+7006 |             exit(3)
+7007 |         }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:7009:74: warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+7007 |         }
+7008 |         try? FileManager.default.removeItem(atPath: root)
+7009 |         print("SELFTEST_OK record: closed=\(closed) fragmentBytes=\(size ?? 0) elapsed=\(snap.elapsedLabel) recoverable=\(recoverable.count)")
+     |                                                                          `- warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+7010 |         exit(0)
+7011 |     }
+
+[#ActorIsolatedCall]: <https://docs.swift.org/compiler/documentation/diagnostics/actor-isolated-call>
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[#SendableClosureCaptures]: <https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures>
+[#TrailingClosureMatching]: <https://docs.swift.org/compiler/documentation/diagnostics/trailing-closure-matching>
+[29/32] Write Objects.LinkFileList
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[560](std-ddc72da0927e9db9.std.61a5f0013896dfb1-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[561](panic_unwind-63ea78ca2e1c0db3.panic_unwind.b9418b0471e31d36-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[562](object-c0adbf29d899f046.object.cf48ae80852c1dc4-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[564](addr2line-b92825ace6709456.addr2line.f3cce53e8c22052d-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[565](gimli-49cd0cae66d7f640.gimli.a9de2a852aa7a696-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[567](rustc_demangle-a5e20ae1249591d9.rustc_demangle.c8ddca633150ec1-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[569](hashbrown-7ef914ecbc5b3828.hashbrown.f3d328c4a0fd8a24-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[571](miniz_oxide-d817fa4718a8ef96.miniz_oxide.cf735aedbe58ef77-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[572](adler2-b603e41842b612c3.adler2.c400f6a6402c7116-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[576](alloc-7d19d4a84a64ec6c.alloc.650f235c7e2e357a-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[577](core-f186bd403406965f.core.aedb9fd4ead64aec-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[594](compiler_builtins-28935136ed986f39.compiler_builtins.bb8f0d37d096e781-cgu.016.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[722](compiler_builtins-28935136ed986f39.compiler_builtins.bb8f0d37d096e781-cgu.144.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[771](compiler_builtins-28935136ed986f39.compiler_builtins.bb8f0d37d096e781-cgu.193.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+[30/32] Linking GenieMac
+[31/32] Applying GenieMac
+Build complete! (10.37s)

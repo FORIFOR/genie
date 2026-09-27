@@ -1,0 +1,4 @@
+Evidence: /tmp/genie-background-native.C1gAOZ
+TEST capture
+TEST click
+FAIL Failure(code: "marker_not_visible")

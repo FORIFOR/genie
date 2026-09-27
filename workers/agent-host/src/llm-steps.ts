@@ -1,5 +1,8 @@
 import { compositionIssues } from './compose-quality.js';
 import { visionPromptFor } from './computer-vision-prompts.js';
+
+/** 画面の鮮度に間に合わせる必要がある仕事。 */
+const VISION_TOOLS = new Set(['llm.plan_computer_action', 'llm.verify_computer_action']);
 /**
  * 端末で言語モデルの依頼を走らせる。正本 §8・§21、UI/UX §22。
  *
@@ -408,7 +411,7 @@ export class LlmRuntime {
     }
 
     const options = await this.options();
-    const vision = ['llm.plan_computer_action', 'llm.verify_computer_action'].includes(step.toolId);
+    const vision = VISION_TOOLS.has(step.toolId);
     const pinned = vision ? step.args['vision_model_kind'] : null;
     const candidates = options.filter(
       (option) =>
@@ -530,6 +533,8 @@ export class LlmRuntime {
             'モデルから本文が返りませんでした。依頼を短くするか、別のモデルを選んでください。',
           timeout:
             'モデルの応答が制限時間に間に合いませんでした。依頼を分けるか、より軽いモデルを選んでください。',
+          quota_exhausted:
+            '選んだモデルの無料で使える分を使い切りました。自動では有料に切り替えません。時間をおくか、設定で上限を見直してください。',
         };
         return { ok: false, error: { code: `llm.${error.code}`, message: messages[error.code] } };
       }
@@ -603,7 +608,21 @@ export class LlmRuntime {
               signal,
             ),
           })
-        : (prompt, _allowedTools, images) => http.ask(prompt, readVisualImages(images), signal);
+        : (prompt, _allowedTools, images) =>
+            /*
+             * 画面操作の判断だけは、長い思考を求めない。
+             * 写真には 60 秒の鮮度があり、**それを過ぎた判断は使えない**ので、
+             * 考えが良くなっても間に合わなければ意味が無い。
+             * 実測（qwen3.5:9b / 同じ画面と問い）: 思考あり 36.9 秒・生成 1314 トークン、
+             * 思考なし 0.9 秒・32 トークン。画像は同じだけ読んでいる（入力 1207 対 1209 トークン）。
+             * 端末のモデルにだけ指定する。外の提供元は語彙が違い、測ってもいない。
+             */
+            http.ask(
+              prompt,
+              readVisualImages(images),
+              signal,
+              kind === 'local' && VISION_TOOLS.has(tool) ? 'none' : undefined,
+            );
     }
     if (kind === 'claude_code' && this.#deps.claudeCode) {
       const cli = this.#deps.claudeCode;

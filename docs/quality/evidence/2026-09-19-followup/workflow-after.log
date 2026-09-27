@@ -1,0 +1,12 @@
+
+ RUN  v3.2.7 /Users/shuhei/Projects/genie/services/task
+
+ ✓ test/terminal-workflow.test.ts (5 tests) 3ms
+ ✓ test/metered-workflow.test.ts (16 tests) 4ms
+ ✓ test/host-wait.test.ts (12 tests) 126ms
+
+ Test Files  3 passed (3)
+      Tests  33 passed (33)
+   Start at  18:47:18
+   Duration  606ms (transform 214ms, setup 0ms, collect 370ms, tests 134ms, environment 0ms, prepare 143ms)
+

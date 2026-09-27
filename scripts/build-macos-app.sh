@@ -8,6 +8,15 @@ APP="$PKG/build/Genie.app"
 # 版は package.json 1 か所から（release-macos.sh と同じ）。
 VERSION="$(node -p "require('$ROOT/package.json').version")"
 
+# A clean checkout has no Rust archive for Swift to link. Build it locally and
+# give both compilers the declared minimum OS instead of the build host's OS.
+export MACOSX_DEPLOYMENT_TARGET=14.0
+if [[ -z "${ASTRA_CORE_LIB_DIR:-}" ]]; then
+  command -v cargo >/dev/null || { echo "FAIL: Rust (cargo) is required; see docs/LOCAL_PREVIEW.md." >&2; exit 1; }
+  cargo build --manifest-path "$ROOT/core/genie-core/Cargo.toml" --lib
+  export ASTRA_CORE_LIB_DIR="$ROOT/core/genie-core/target/debug"
+fi
+
 cd "$PKG"
 swift build -c release >/dev/null
 BIN="$(swift build -c release --show-bin-path)/GenieMac"
@@ -15,6 +24,16 @@ BIN="$(swift build -c release --show-bin-path)/GenieMac"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/Genie"
+# SwiftPM's build-folder rpath is not portable. Ship the existing pinned runtime
+# with the app, so another developer can launch it outside this checkout.
+SPARKLE_FW="$PKG/Vendor/Sparkle/Sparkle.xcframework/macos-arm64_x86_64/Sparkle.framework"
+if [[ ! -d "$SPARKLE_FW" ]]; then
+  echo "FAIL: Sparkle runtime missing. Run bash scripts/fetch-sparkle.sh first." >&2
+  exit 1
+fi
+mkdir -p "$APP/Contents/Frameworks"
+cp -R "$SPARKLE_FW" "$APP/Contents/Frameworks/Sparkle.framework"
+install_name_tool -add_rpath '@executable_path/../Frameworks' "$APP/Contents/MacOS/Genie"
 mkdir -p "$APP/Contents/Resources/plugins"
 cp -R "$ROOT/plugins/builtin" "$APP/Contents/Resources/plugins/builtin"
 # Rust 静的ライブラリは実行ファイルに static link 済み（dylib 同梱不要）。
@@ -53,6 +72,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 PLIST
 
 # ad-hoc 署名（"-" は ad-hoc）。TCC はバンドル識別子で許可を覚える。
-codesign --force --sign - --timestamp=none "$APP" >/dev/null 2>&1 || codesign --force --sign - "$APP"
+codesign --force --deep --sign - --timestamp=none "$APP"
+codesign --verify --deep --strict "$APP"
 echo "built $APP"
 codesign -dv "$APP" 2>&1 | grep -E "Identifier|Signature" | head -2 || true

@@ -143,7 +143,10 @@ async function main(): Promise<void> {
   const domain = new DomainService({ db });
   const world = new WorldModelService({ db });
   const work = new WorkContextService({ db, world });
-  const conversations = new ConversationService({ db });
+  const conversations = new ConversationService({
+    db,
+    findAcceptedTask: tasks.findByConversationTurn.bind(tasks),
+  });
   const dataSources = composeDataSources(
     researchDataSources(db),
     meetingDataSources(db),

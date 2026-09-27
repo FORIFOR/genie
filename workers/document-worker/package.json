@@ -2,6 +2,7 @@
   "name": "@genie/worker-document",
   "version": "0.0.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "description": "Temporal worker hosting document generation and conversion activities.",
   "main": "./dist/index.js",

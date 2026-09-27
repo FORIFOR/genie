@@ -1,0 +1,26 @@
+{
+  "timestamp": "2026-09-19T21:14:09.725706+09:00",
+  "base_revision": "28f89f2636a3b780e813ea902e07d2e4900a6e3f",
+  "revision_note": "dirty working tree; file hashes identify tested increment",
+  "environment": "ProductName:\t\tmacOS\nProductVersion:\t\t26.6.2\nBuildVersion:\t\t25G83\n",
+  "arch": "arm64",
+  "node": "v26.5.0",
+  "files": {
+    "tools/computer-use/BackgroundAX.swift": "6783fe912f796e35fab1ed58d51f0ce71a973f7123afcc83fb6985125f0f4f30",
+    "tools/computer-use/BackgroundAXTests.swift": "9da60b4ab2172369652f66c385a5fe7685884b34c3a248dbff21adcd4d21dc30",
+    "tools/computer-use/BackgroundFixture.swift": "e5addd1b3dd15470b25630333b8107045a4946b6e5338395de672878624f6c8d",
+    "tools/computer-use/genie-computer.swift": "7766b5c33ce14b7468c77d8080f0b1d2afeed97de3381a7cc3e64297c35bc22f",
+    "scripts/test-background-computer.sh": "4507db2266e8baf54659cd388e63606b59cb7dfad94a44757497dfaaed0ba5fa",
+    "scripts/build-computer-helper.sh": "04bd37fdc910a05bc493365a0665650cd17c4dfa1feea1561a764749d4c8ebb4",
+    "scripts/start-local-preview.mjs": "21671b22015c0533bdd02cd33623b75a2b239c0f5b45f3f8359dcfc5341a6c53",
+    "scripts/computer-use.mjs": "9d14821b03ff583554ca0ff780f16fa1e5dc3e705301f35ded81d25d20ea577a",
+    "workers/agent-host/src/computer-vision-device.ts": "a1363c29460394bdd6dfdfc79978a7dc95bb3c87bd17ffcfaa103e07f633ed57",
+    "workers/agent-host/src/computer-vision-policy.ts": "ac0e45c5ec2e347a152d636d5e43dba2357ef6bac28b97993f474e6b2d296332",
+    "workers/agent-host/src/computer-vision-prompts.ts": "405a2a41447c93f71fc8f08ac1e579df2963a60a0d54c2120c8e46a30260f58f",
+    "workers/agent-host/src/computer-vision.ts": "fa49680285e39621314d1878e3a6cc32752f80cda221b10cc722e0ce85a5b980",
+    "workers/agent-host/test/background-vision.node.mjs": "7e1e938c9f50c5829eeae399b1bf30e9a578d13dd984b2108c68746bcbd0359b",
+    "docs/COMPUTER_VISION.md": "84cf996ef380e775bc684d5a23262867b1bd8c79e035b478e760153bc6593fc0",
+    "docs/COMPUTER_VISION_FOREGROUND.md": "19b9f4204ee4069d6b27df32d5457ae092c856e2e0d27512d7a9bcc1e96fbb4a",
+    "docs/quality/BACKGROUND_COMPUTER_USE.md": "a4b1b28f3ebdfd531ad007f3b9d87d44d2d8317bc385ec3da8d10f1d0b2ae711"
+  }
+}

@@ -2,11 +2,11 @@
 
 DBの準備とGateway・Task Worker・Agent Hostの起動を、ひとつの操作にまとめる開発者向けの起動方法です。**Node 22以降、Docker Desktop、Ollamaの導入済みモデル、Genie.appは必要です。** `psql`・`dbmate`・pnpmの手動インストール、SQL操作、3つのターミナルでの起動は不要です。
 
-この起動ツールはv0.1.4の配布後に追加されました。v0.1.4のDMGには含まれていません。現在のソースから実行し、同じバージョン番号のGenie.appを使用してください。番号が違う場合は、起動時に案内して停止します。既存の手動セットアップは[従来の手順](LOCAL_PREVIEW.ja.md)で引き続き使えます。
+この起動ツールはv0.1.4の配布後に追加されました。v0.1.4のDMGには含まれていません。アプリとサービスを同じソースrevisionからビルドして使用してください。番号が違う場合は起動を止めますが、同じ0.1.4でも異なるrevisionの互換性までは判定できません。既存の手動セットアップは[従来の手順](LOCAL_PREVIEW.ja.md)で引き続き使えます。
 
 ## 最初の起動
 
-1. [Macアプリ](https://github.com/FORIFOR/genie/releases)をApplicationsへコピーします。
+1. [ソースビルドの前提](LOCAL_PREVIEW.md)を準備し、`pnpm build:macos-app`で作成した`apps/genie-macos/build/Genie.app`を使います。ダブルクリック起動を使う場合は、この同じrevisionのアプリをApplicationsへコピーしてください。
 2. Docker DesktopとOllamaを導入し、使うモデルを用意します。Docker Desktopの初回設定は先に完了してください。モデルのダウンロード容量と必要なメモリはモデルによって異なります。
 3. このリポジトリのソースを取得し、フォルダ内の **`Start Genie.command`** を開きます。Nodeが見つからない場合は、その場に導入先を表示します。
 
@@ -15,7 +15,7 @@ Genieを既に単独起動している場合は、Genieのメニューから一�
 ターミナルからも、ソースのフォルダで次の1行を実行できます。
 
 ```sh
-node scripts/start-local-preview.mjs --model qwen3.5:9b
+node scripts/start-local-preview.mjs --app apps/genie-macos/build/Genie.app --model qwen3.5:9b
 ```
 
 既に`llama3.2`を導入している場合は、`--model llama3.2`で文章の依頼を試せます。画像の質問には画像対応モデルが必要です。モデルを指定せず起動し、複数のモデルがある場合は番号で選びます。選択は保存され、次回も同じモデルを使います。
@@ -81,3 +81,5 @@ node scripts/start-local-preview.mjs --state-dir "$HOME/Library/Application Supp
 設定ファイルにはこのプレビューの認証情報が含まれ、ログにも依頼内容が含まれる場合があります。公開Issueにはファイル全体を貼らず、工程名・エラーの要約・再現手順を伝えてください。`stop`はデータを削除しません。保存先の削除やDockerボリュームの削除は復旧操作には使わないでください。
 
 この改善は開発者プレビューの起動をまとめたものです。Node・Docker・モデルをアプリに同梱した一般利用者向けインストーラではありません。Google/Microsoft連携や録音には、別途その機能の設定と許可が必要です。
+
+最初の文章の作成・編集・保存は[First Run](FIRST_RUN.md)、今回の実行証拠と未達条件は[品質結果](quality/RESULTS.md)を参照してください。`pnpm doctor`は従来の.envを使う手動起動用で、managedの事前検査ではありません。

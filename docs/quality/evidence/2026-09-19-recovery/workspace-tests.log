@@ -1,0 +1,700 @@
+
+> genie@0.1.4 test /Users/shuhei/Projects/genie
+> pnpm -r --no-bail run test
+
+Scope: 37 of 38 workspace projects
+packages/contracts test$ vitest run --passWithNoTests
+packages/contracts test:  RUN  v3.2.7 /Users/shuhei/Projects/genie/packages/contracts
+packages/contracts test:  ✓ test/slo.test.ts (9 tests) 3ms
+packages/contracts test:  ✓ test/codec.test.ts (7 tests) 3ms
+packages/contracts test:  ✓ test/canonical.test.ts (15 tests) 12ms
+packages/contracts test:  ✓ test/uuid.test.ts (8 tests) 29ms
+packages/contracts test:  ✓ test/errors.test.ts (5 tests) 5ms
+packages/contracts test:  ✓ test/dashboard.test.ts (8 tests) 5ms
+packages/contracts test:  ✓ test/approval.test.ts (7 tests) 7ms
+packages/contracts test:  ✓ test/task.test.ts (12 tests) 7ms
+packages/contracts test:  ✓ test/workflow.test.ts (12 tests) 11ms
+packages/contracts test:  ✓ test/plugin.test.ts (23 tests) 8ms
+packages/contracts test:  ✓ test/events.test.ts (14 tests) 8ms
+packages/contracts test:  ✓ test/share.test.ts (13 tests) 4ms
+packages/contracts test:  ✓ test/artifact.test.ts (6 tests) 4ms
+packages/contracts test:  ✓ test/agent-host.test.ts (15 tests) 3ms
+packages/contracts test:  ✓ test/meeting.test.ts (9 tests) 5ms
+packages/contracts test:  ✓ test/standin.test.ts (15 tests) 6ms
+packages/contracts test:  ✓ test/data-handling.test.ts (7 tests) 3ms
+packages/contracts test:  ✓ test/escalation.test.ts (8 tests) 3ms
+packages/contracts test:  ✓ test/speaker.test.ts (10 tests) 2ms
+packages/contracts test:  ✓ test/language-model.test.ts (9 tests) 2ms
+packages/contracts test:  Test Files  20 passed (20)
+packages/contracts test:       Tests  212 passed (212)
+packages/contracts test:    Start at  19:18:20
+packages/contracts test:    Duration  670ms (transform 907ms, setup 0ms, collect 2.96s, tests 131ms, environment 2ms, prepare 1.09s)
+packages/contracts test: Done
+packages/api-client test$ vitest run --passWithNoTests
+packages/mcp test$ vitest run --passWithNoTests
+packages/db test$ vitest run --passWithNoTests
+packages/audio test$ vitest run --passWithNoTests
+packages/api-client test:  RUN  v3.2.7 /Users/shuhei/Projects/genie/packages/api-client
+packages/mcp test:  RUN  v3.2.7 /Users/shuhei/Projects/genie/packages/mcp
+packages/audio test:  RUN  v3.2.7 /Users/shuhei/Projects/genie/packages/audio
+packages/db test:  RUN  v3.2.7 /Users/shuhei/Projects/genie/packages/db
+packages/audio test:  ✓ test/frame.test.ts (17 tests) 4ms
+packages/audio test:  Test Files  1 passed (1)
+packages/audio test:       Tests  17 passed (17)
+packages/audio test:    Start at  19:18:22
+packages/audio test:    Duration  371ms (transform 42ms, setup 0ms, collect 45ms, tests 4ms, environment 0ms, prepare 80ms)
+packages/api-client test:  ✓ test/client.test.ts (32 tests) 38ms
+packages/api-client test:  Test Files  1 passed (1)
+packages/api-client test:       Tests  32 passed (32)
+packages/api-client test:    Start at  19:18:21
+packages/api-client test:    Duration  841ms (transform 348ms, setup 0ms, collect 605ms, tests 38ms, environment 0ms, prepare 51ms)
+packages/mcp test:  ✓ test/client.test.ts (18 tests) 7ms
+packages/audio test: Done
+packages/oauth test$ vitest run --passWithNoTests
+packages/api-client test: Done
+packages/plugin-sdk test$ vitest run --passWithNoTests
+packages/db test:  ↓ test/scopes.integration.test.ts (17 tests | 17 skipped)
+packages/db test:  Test Files  1 skipped (1)
+packages/db test:       Tests  17 skipped (17)
+packages/db test:    Start at  19:18:22
+packages/db test:    Duration  665ms (transform 115ms, setup 0ms, collect 340ms, tests 0ms, environment 0ms, prepare 43ms)
+packages/db test: Done
+packages/policy test$ vitest run --passWithNoTests
+packages/oauth test:  RUN  v3.2.7 /Users/shuhei/Projects/genie/packages/oauth
+packages/plugin-sdk test:  RUN  v3.2.7 /Users/shuhei/Projects/genie/packages/plugin-sdk
+packages/oauth test:  ✓ test/providers.test.ts (17 tests) 7ms
+packages/oauth test:  ✓ test/flow.test.ts (32 tests) 21ms
+packages/oauth test:  Test Files  2 passed (2)
+packages/oauth test:       Tests  49 passed (49)
+packages/oauth test:    Start at  19:18:23
+packages/oauth test:    Duration  333ms (transform 115ms, setup 0ms, collect 237ms, tests 28ms, environment 0ms, prepare 68ms)
+packages/oauth test: Done
+packages/stt test$ vitest run --passWithNoTests
+packages/policy test:  RUN  v3.2.7 /Users/shuhei/Projects/genie/packages/policy
+packages/mcp test:  ✓ test/transport.test.ts (7 tests) 917ms
+packages/mcp test:    ✓ stdio > gives up instead of hanging when the server never answers  302ms
+packages/mcp test:    ✓ stdio > reports a command that does not exist  502ms
+packages/mcp test:  Test Files  2 passed (2)
+packages/mcp test:       Tests  25 passed (25)
+packages/mcp test:    Start at  19:18:22
+packages/mcp test:    Duration  1.61s (transform 273ms, setup 0ms, collect 919ms, tests 924ms, environment 0ms, prepare 74ms)
+packages/mcp test: Done
+packages/tts test$ vitest run --passWithNoTests
+packages/stt test:  RUN  v3.2.7 /Users/shuhei/Projects/genie/packages/stt
+packages/plugin-sdk test:  ✓ test/manifest.test.ts (15 tests) 188ms
+packages/plugin-sdk test:  Test Files  1 passed (1)
+packages/plugin-sdk test:       Tests  15 passed (15)
+packages/plugin-sdk test:    Start at  19:18:23
+packages/plugin-sdk test:    Duration  793ms (transform 158ms, setup 0ms, collect 360ms, tests 188ms, environment 0ms, prepare 34ms)
+packages/policy test:  ✓ test/documents.test.ts (11 tests) 3ms
+packages/policy test:  ✓ test/risk.test.ts (30 tests) 5ms
+packages/stt test:  ✓ test/measurement.test.ts (12 tests) 2ms
+packages/policy test:  Test Files  2 passed (2)
+packages/policy test:       Tests  41 passed (41)
+packages/policy test:    Start at  19:18:23
+packages/policy test:    Duration  576ms (transform 186ms, setup 0ms, collect 680ms, tests 8ms, environment 0ms, prepare 77ms)
+packages/stt test:  ✓ test/stt.test.ts (15 tests) 8ms
+packages/stt test:  Test Files  2 passed (2)
+packages/stt test:       Tests  27 passed (27)
+packages/stt test:    Start at  19:18:23
+packages/stt test:    Duration  267ms (transform 79ms, setup 0ms, collect 93ms, tests 10ms, environment 0ms, prepare 81ms)
+packages/tts test:  RUN  v3.2.7 /Users/shuhei/Projects/genie/packages/tts
+packages/plugin-sdk test: Done
+packages/ui-kit test$ vitest run --passWithNoTests
+packages/stt test: Done
+services/connectors test$ vitest run --passWithNoTests
+packages/policy test: Done
+services/notification test$ vitest run --passWithNoTests
+packages/tts test:  ✓ test/provider.test.ts (14 tests) 3ms
+packages/tts test:  Test Files  1 passed (1)
+packages/tts test:       Tests  14 passed (14)
+packages/tts test:    Start at  19:18:24
+packages/tts test:    Duration  374ms (transform 32ms, setup 0ms, collect 33ms, tests 3ms, environment 0ms, prepare 36ms)
+packages/tts test: Done
+packages/ui-kit test:  RUN  v3.2.7 /Users/shuhei/Projects/genie/packages/ui-kit
+services/connectors test:  RUN  v3.2.7 /Users/shuhei/Projects/genie/services/connectors
+packages/ui-kit test:  ✓ test/shortcuts.test.ts (12 tests) 4ms
+packages/ui-kit test:  ✓ test/css-vars.test.ts (3 tests) 16ms
+services/notification test:  RUN  v3.2.7 /Users/shuhei/Projects/genie/services/notification
+services/connectors test:  ✓ test/mime.test.ts (11 tests) 3ms
+services/connectors test:  ✓ test/scopes.test.ts (13 tests) 3ms
+services/connectors test:  ✓ test/approval.test.ts (11 tests) 2ms
+services/connectors test:  ✓ test/calendar.test.ts (8 tests) 6ms
+services/connectors test:  ✓ test/microsoft.test.ts (11 tests) 9ms
+services/connectors test:  ✓ test/gmail.test.ts (16 tests) 11ms
+packages/ui-kit test:  ✓ test/tokens.test.ts (53 tests) 8ms
+packages/ui-kit test:  Test Files  3 passed (3)
+packages/ui-kit test:       Tests  68 passed (68)
+packages/ui-kit test:    Start at  19:18:24
+packages/ui-kit test:    Duration  794ms (transform 406ms, setup 0ms, collect 842ms, tests 28ms, environment 0ms, prepare 153ms)
+services/connectors test:  ✓ test/normalize.test.ts (9 tests) 6ms
+services/connectors test:  Test Files  7 passed (7)
+services/connectors test:       Tests  79 passed (79)
+services/connectors test:    Start at  19:18:24
+services/connectors test:    Duration  669ms (transform 427ms, setup 0ms, collect 809ms, tests 41ms, environment 1ms, prepare 441ms)
+packages/ui-kit test: Done
+services/notification test:  ✓ test/heartbeat.test.ts (17 tests) 5ms
+services/notification test:  Test Files  1 passed (1)
+services/notification test:       Tests  17 passed (17)
+services/notification test:    Start at  19:18:25
+services/notification test:    Duration  472ms (transform 105ms, setup 0ms, collect 207ms, tests 5ms, environment 0ms, prepare 53ms)
+services/connectors test: Done
+services/notification test: Done
+apps/share-web test$ vitest run --passWithNoTests
+packages/telemetry test$ vitest run --passWithNoTests
+apps/desktop test$ vitest run --passWithNoTests
+packages/agent-sdk test$ vitest run --passWithNoTests
+apps/share-web test:  RUN  v3.2.7 /Users/shuhei/Projects/genie/apps/share-web
+packages/telemetry test:  RUN  v3.2.7 /Users/shuhei/Projects/genie/packages/telemetry
+apps/desktop test:  RUN  v3.2.7 /Users/shuhei/Projects/genie/apps/desktop
+packages/agent-sdk test:  RUN  v3.2.7 /Users/shuhei/Projects/genie/packages/agent-sdk
+packages/telemetry test:  ✓ test/logger.test.ts (6 tests) 8ms
+packages/telemetry test:  ✓ test/audit.test.ts (10 tests) 16ms
+apps/desktop test: (node:41978) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+apps/desktop test: (Use `node --trace-warnings ...` to show where the warning was created)
+packages/telemetry test:  ↓ test/audit.integration.test.ts (7 tests | 7 skipped)
+apps/desktop test: (node:41981) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+apps/desktop test: (Use `node --trace-warnings ...` to show where the warning was created)
+packages/telemetry test:  Test Files  2 passed | 1 skipped (3)
+packages/telemetry test:       Tests  16 passed | 7 skipped (23)
+packages/telemetry test:    Start at  19:18:26
+packages/telemetry test:    Duration  993ms (transform 453ms, setup 0ms, collect 1.51s, tests 24ms, environment 0ms, prepare 108ms)
+apps/desktop test: (node:41985) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+apps/desktop test: (Use `node --trace-warnings ...` to show where the warning was created)
+apps/desktop test: (node:41990) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+apps/desktop test: (Use `node --trace-warnings ...` to show where the warning was created)
+apps/desktop test: (node:41989) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+apps/desktop test: (Use `node --trace-warnings ...` to show where the warning was created)
+apps/desktop test: (node:41980) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+apps/desktop test: (Use `node --trace-warnings ...` to show where the warning was created)
+apps/desktop test: (node:41991) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+apps/desktop test: (Use `node --trace-warnings ...` to show where the warning was created)
+apps/desktop test: (node:41984) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+apps/desktop test: (Use `node --trace-warnings ...` to show where the warning was created)
+apps/desktop test: (node:41988) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+apps/desktop test: (Use `node --trace-warnings ...` to show where the warning was created)
+apps/desktop test: (node:41992) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+apps/desktop test: (Use `node --trace-warnings ...` to show where the warning was created)
+apps/desktop test: (node:41983) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+apps/desktop test: (Use `node --trace-warnings ...` to show where the warning was created)
+apps/desktop test: (node:41979) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+apps/desktop test: (Use `node --trace-warnings ...` to show where the warning was created)
+apps/desktop test: (node:41987) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+apps/desktop test: (Use `node --trace-warnings ...` to show where the warning was created)
+packages/telemetry test: Done
+packages/agent-sdk test:  ✓ test/author.test.ts (12 tests) 13ms
+packages/agent-sdk test:  Test Files  1 passed (1)
+packages/agent-sdk test:       Tests  12 passed (12)
+packages/agent-sdk test:    Start at  19:18:26
+packages/agent-sdk test:    Duration  907ms (transform 359ms, setup 0ms, collect 585ms, tests 13ms, environment 0ms, prepare 151ms)
+packages/agent-sdk test: Done
+apps/desktop test:  ✓ test/artifact-actions.test.tsx (4 tests) 197ms
+apps/share-web test:  ✓ test/viewer.test.tsx (14 tests) 196ms
+apps/share-web test:  Test Files  1 passed (1)
+apps/share-web test:       Tests  14 passed (14)
+apps/share-web test:    Start at  19:18:26
+apps/share-web test:    Duration  1.67s (transform 278ms, setup 0ms, collect 825ms, tests 196ms, environment 427ms, prepare 49ms)
+apps/desktop test:  ✓ test/share-state.test.tsx (7 tests) 38ms
+apps/share-web test: Done
+apps/desktop test:  ✓ test/evidence.test.tsx (12 tests) 119ms
+apps/desktop test: (node:42013) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+apps/desktop test: (Use `node --trace-warnings ...` to show where the warning was created)
+apps/desktop test:  ✓ test/dock-pill.test.tsx (9 tests) 83ms
+apps/desktop test:  ✓ test/work-detail.test.tsx (15 tests) 177ms
+apps/desktop test:  ✓ test/apps.test.tsx (17 tests) 171ms
+apps/desktop test: (node:42017) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+apps/desktop test: (Use `node --trace-warnings ...` to show where the warning was created)
+apps/desktop test: stderr | test/meeting.test.tsx > MeetingProvider (§12) > records only after consent, then shows the minimal indicator
+apps/desktop test: In HTML, <button> cannot be a descendant of <button>.
+apps/desktop test: This will cause a hydration error.
+apps/desktop test:   <Harness client={{...}}>
+apps/desktop test:     <MeetingProvider client={{...}}>
+apps/desktop test:       <MeetingLayer>
+apps/desktop test:         <div className="astra-meet..." data-phase="live">
+apps/desktop test: >         <button
+apps/desktop test: >           type="button"
+apps/desktop test: >           className="astra-meeting-layer__collapsed"
+apps/desktop test: >           onClick={function onClick}
+apps/desktop test: >           aria-label="A社 新規提案 の画面を開く"
+apps/desktop test: >         >
+apps/desktop test:             <RecordingIndicator state="recording" title="A社 新規提案" elapsedMs={0} speakers={0} ...>
+apps/desktop test:               <div className="astra-rec" data-state="recording" role="status" aria-label="Recording ...">
+apps/desktop test:                 <span>
+apps/desktop test:                 <span>
+apps/desktop test:                 <span>
+apps/desktop test:                 <span>
+apps/desktop test:                 <span>
+apps/desktop test:                 <span>
+apps/desktop test: >               <button
+apps/desktop test: >                 type="button"
+apps/desktop test: >                 className="astra-rec__button"
+apps/desktop test: >                 aria-label="一時停止"
+apps/desktop test: >                 title="一時停止"
+apps/desktop test: >                 onClick={function togglePause}
+apps/desktop test: >               >
+apps/desktop test:                 ...
+apps/desktop test:           ...
+apps/desktop test:       ...
+apps/desktop test: <button> cannot contain a nested <button>.
+apps/desktop test: See this log for the ancestor stack trace.
+apps/desktop test:  ✓ test/home-library.test.tsx (32 tests) 280ms
+apps/desktop test: (node:42019) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+apps/desktop test: (Use `node --trace-warnings ...` to show where the warning was created)
+apps/desktop test:  ✓ test/ux-acceptance.test.tsx (22 tests) 281ms
+apps/desktop test:  ✓ test/meeting.test.tsx (26 tests) 340ms
+apps/desktop test:  ✓ test/session.test.tsx (5 tests) 297ms
+apps/desktop test:  ✓ test/receipts.test.tsx (9 tests) 72ms
+apps/desktop test:  ✓ test/shell.test.tsx (18 tests) 262ms
+apps/desktop test: (node:42021) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+apps/desktop test: (Use `node --trace-warnings ...` to show where the warning was created)
+apps/desktop test: (node:42022) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+apps/desktop test: (Use `node --trace-warnings ...` to show where the warning was created)
+apps/desktop test: (node:42023) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+apps/desktop test: (Use `node --trace-warnings ...` to show where the warning was created)
+apps/desktop test:  ✓ test/inspector.test.tsx (4 tests) 73ms
+apps/desktop test:  ✓ test/onboarding.test.tsx (12 tests) 619ms
+apps/desktop test: (node:42027) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+apps/desktop test: (Use `node --trace-warnings ...` to show where the warning was created)
+apps/desktop test:  ✓ test/permission-ask.test.tsx (7 tests) 78ms
+apps/desktop test: (node:42030) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+apps/desktop test: (Use `node --trace-warnings ...` to show where the warning was created)
+apps/desktop test: (node:42031) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+apps/desktop test: (Use `node --trace-warnings ...` to show where the warning was created)
+apps/desktop test: (node:42032) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+apps/desktop test: (Use `node --trace-warnings ...` to show where the warning was created)
+apps/desktop test: (node:42029) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+apps/desktop test: (Use `node --trace-warnings ...` to show where the warning was created)
+apps/desktop test: (node:42035) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+apps/desktop test: (Use `node --trace-warnings ...` to show where the warning was created)
+apps/desktop test:  ✓ test/dock.test.tsx (38 tests) 813ms
+apps/desktop test:  ✓ test/proactive.test.tsx (6 tests) 118ms
+apps/desktop test:  ✓ test/device-capabilities.test.tsx (5 tests) 52ms
+apps/desktop test: (node:42039) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+apps/desktop test: (Use `node --trace-warnings ...` to show where the warning was created)
+apps/desktop test:  ✓ test/a11y-live.test.tsx (8 tests) 34ms
+apps/desktop test:  ✓ test/launchable.test.ts (5 tests) 5ms
+apps/desktop test:  ✓ test/signin-providers.test.tsx (4 tests) 132ms
+apps/desktop test: (node:42040) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+apps/desktop test: (Use `node --trace-warnings ...` to show where the warning was created)
+apps/desktop test:  ✓ test/topbar.test.tsx (10 tests) 140ms
+apps/desktop test:  ✓ test/shortcut-settings.test.tsx (6 tests) 174ms
+apps/desktop test:  ✓ test/liquid-orb.test.ts (5 tests) 85ms
+apps/desktop test: (node:42043) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+apps/desktop test: (Use `node --trace-warnings ...` to show where the warning was created)
+apps/desktop test:  ✓ test/session-refresh.test.tsx (3 tests) 31ms
+apps/desktop test:  ✓ test/work.test.tsx (23 tests) 143ms
+apps/desktop test: (node:42048) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+apps/desktop test: (Use `node --trace-warnings ...` to show where the warning was created)
+apps/desktop test: (node:42046) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+apps/desktop test: (Use `node --trace-warnings ...` to show where the warning was created)
+apps/desktop test:  ✓ test/library-filters.test.ts (5 tests) 3ms
+apps/desktop test:  ✓ test/connect.test.ts (4 tests) 12ms
+apps/desktop test: (node:42058) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+apps/desktop test: (Use `node --trace-warnings ...` to show where the warning was created)
+apps/desktop test: (node:42047) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+apps/desktop test: (Use `node --trace-warnings ...` to show where the warning was created)
+apps/desktop test: (node:42057) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+apps/desktop test: (Use `node --trace-warnings ...` to show where the warning was created)
+apps/desktop test:  ✓ test/ux-metrics.test.ts (4 tests) 2ms
+apps/desktop test:  ✓ test/dock-voice-mode.test.ts (8 tests) 2ms
+apps/desktop test: (node:42059) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+apps/desktop test: (Use `node --trace-warnings ...` to show where the warning was created)
+apps/desktop test:  ✓ test/boot.test.tsx (3 tests) 35ms
+apps/desktop test:  ✓ test/response.test.tsx (3 tests) 2ms
+apps/desktop test: (node:42063) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+apps/desktop test: (Use `node --trace-warnings ...` to show where the warning was created)
+apps/desktop test:  ✓ test/voice-runtime.test.ts (6 tests) 3ms
+apps/desktop test:  ✓ test/seed-view.test.ts (3 tests) 4ms
+apps/desktop test: (node:42068) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+apps/desktop test: (Use `node --trace-warnings ...` to show where the warning was created)
+apps/desktop test:  ✓ test/work-view.test.ts (6 tests) 2ms
+apps/desktop test:  ✓ test/approval-outcome.test.ts (3 tests) 2ms
+apps/desktop test:  Test Files  36 passed (36)
+apps/desktop test:       Tests  357 passed (357)
+apps/desktop test:    Start at  19:18:26
+apps/desktop test:    Duration  2.84s (transform 1.46s, setup 167ms, collect 11.05s, tests 4.88s, environment 8.10s, prepare 1.99s)
+apps/desktop test: Done
+services/library test$ vitest run --passWithNoTests
+services/context test$ vitest run --passWithNoTests
+services/agent-host test$ vitest run --passWithNoTests
+services/research test$ vitest run --passWithNoTests
+services/library test:  RUN  v3.2.7 /Users/shuhei/Projects/genie/services/library
+services/library test: No test files found, exiting with code 0
+services/library test: include: **/*.{test,spec}.?(c|m)[jt]s?(x)
+services/library test: exclude:  **/node_modules/**, **/dist/**, **/cypress/**, **/.{idea,git,cache,output,temp}/**, **/{karma,rollup,webpack,vite,vitest,jest,ava,babel,nyc,cypress,tsup,build,eslint,prettier}.config.*
+services/library test: Done
+services/world-model test$ vitest run --passWithNoTests
+services/context test:  RUN  v3.2.7 /Users/shuhei/Projects/genie/services/context
+services/research test:  RUN  v3.2.7 /Users/shuhei/Projects/genie/services/research
+services/agent-host test:  RUN  v3.2.7 /Users/shuhei/Projects/genie/services/agent-host
+services/world-model test:  RUN  v3.2.7 /Users/shuhei/Projects/genie/services/world-model
+services/research test:  ✓ test/quality.test.ts (20 tests) 4ms
+services/research test:  ✓ test/search.test.ts (23 tests) 8ms
+services/research test:  ✓ test/general.test.ts (10 tests) 6ms
+services/research test:  ✓ test/anthropic.test.ts (16 tests) 28ms
+services/world-model test:  ✓ test/deadline.test.ts (12 tests) 18ms
+services/context test:  ✓ test/capsule.test.ts (11 tests) 4ms
+services/context test:  Test Files  1 passed (1)
+services/context test:       Tests  11 passed (11)
+services/context test:    Start at  19:18:30
+services/context test:    Duration  1.10s (transform 447ms, setup 0ms, collect 848ms, tests 4ms, environment 0ms, prepare 39ms)
+services/context test: Done
+workers/agent-host test$ vitest run --passWithNoTests
+services/research test:  ✓ test/host-search.test.ts (8 tests) 8ms
+services/research test:  ✓ test/factory.test.ts (4 tests) 2ms
+services/research test:  ✓ test/host-model.test.ts (15 tests) 10ms
+services/research test:  ✓ test/model-context.test.ts (1 test) 35ms
+services/world-model test:  ✓ test/memory.test.ts (12 tests) 6ms
+services/world-model test:  ✓ test/brief.test.ts (15 tests) 13ms
+services/agent-host test:  ↓ test/service.db.test.ts (15 tests | 15 skipped)
+services/agent-host test:  ↓ test/bridge.db.test.ts (16 tests | 16 skipped)
+services/research test:  ✓ test/report.test.ts (5 tests) 2ms
+services/research test:  Test Files  9 passed (9)
+services/research test:       Tests  102 passed (102)
+services/research test:    Start at  19:18:30
+services/research test:    Duration  1.28s (transform 1.09s, setup 0ms, collect 5.44s, tests 104ms, environment 1ms, prepare 535ms)
+services/agent-host test:  Test Files  2 skipped (2)
+services/agent-host test:       Tests  31 skipped (31)
+services/agent-host test:    Start at  19:18:30
+services/agent-host test:    Duration  1.03s (transform 280ms, setup 0ms, collect 1.15s, tests 0ms, environment 0ms, prepare 192ms)
+services/world-model test:  ↓ test/service.db.test.ts (11 tests | 11 skipped)
+services/world-model test:  ↓ test/work.db.test.ts (6 tests | 6 skipped)
+services/world-model test:  ✓ test/meeting-loop.test.ts (3 tests) 18ms
+services/agent-host test: Done
+services/world-model test:  ✓ test/initial-profile.db.test.ts (7 tests | 3 skipped) 22ms
+services/world-model test:  ✓ test/reply-brief.test.ts (13 tests) 9ms
+services/world-model test:  ✓ test/work.test.ts (27 tests) 18ms
+services/research test: Done
+services/world-model test:  Test Files  7 passed | 2 skipped (9)
+services/world-model test:       Tests  86 passed | 20 skipped (106)
+services/world-model test:    Start at  19:18:30
+services/world-model test:    Duration  1.15s (transform 678ms, setup 0ms, collect 4.99s, tests 104ms, environment 1ms, prepare 821ms)
+workers/agent-host test:  RUN  v3.2.7 /Users/shuhei/Projects/genie/workers/agent-host
+services/world-model test: Done
+workers/agent-host test:  ✓ test/api-session.test.ts (7 tests) 12ms
+workers/agent-host test:  ✓ test/claude-code.test.ts (18 tests) 5ms
+workers/agent-host test:  ✓ test/computer-planner.test.ts (3 tests) 4ms
+workers/agent-host test:  ✓ test/cloud.test.ts (1 test) 37ms
+workers/agent-host test:  ✓ test/live-harness.test.ts (4 tests) 10ms
+workers/agent-host test:  ✓ test/step-loop.test.ts (8 tests) 56ms
+workers/agent-host test:  ✓ test/instance-lock.test.ts (2 tests) 70ms
+workers/agent-host test:  ✓ test/connector-steps.test.ts (23 tests) 17ms
+workers/agent-host test:  ✓ test/live-fault-transport.test.ts (3 tests) 41ms
+workers/agent-host test:  ✓ test/connection-configuration.test.ts (1 test) 5ms
+workers/agent-host test:  ✓ test/live-seed.test.ts (12 tests) 10ms
+workers/agent-host test:  ✓ test/http-llm.test.ts (9 tests) 9ms
+workers/agent-host test:  ✓ test/visual-context.test.ts (6 tests) 4ms
+workers/agent-host test:  ✓ test/compose-quality.test.ts (8 tests) 6ms
+workers/agent-host test:  ✓ test/live-trust.test.ts (16 tests) 4ms
+workers/agent-host test:  ✓ test/computer-runtime.test.ts (5 tests) 3ms
+workers/agent-host test:  ✓ test/grants.test.ts (3 tests) 2ms
+workers/agent-host test:  ✓ test/work-sync.test.ts (17 tests) 16ms
+workers/agent-host test:  ✓ test/codex.test.ts (5 tests) 14ms
+workers/agent-host test:  ✓ test/initial-profile.test.ts (2 tests) 5ms
+workers/agent-host test:  ✓ test/llm-steps.test.ts (36 tests) 14ms
+workers/agent-host test:  ✓ test/host.test.ts (11 tests) 36ms
+workers/agent-host test:  Test Files  22 passed (22)
+workers/agent-host test:       Tests  200 passed (200)
+workers/agent-host test:    Start at  19:18:31
+workers/agent-host test:    Duration  866ms (transform 1.31s, setup 0ms, collect 4.05s, tests 377ms, environment 2ms, prepare 1.11s)
+workers/agent-host test: Done
+services/task test$ vitest run --passWithNoTests
+services/share test$ vitest run --passWithNoTests
+services/agent-runtime test$ vitest run --passWithNoTests
+services/share test:  RUN  v3.2.7 /Users/shuhei/Projects/genie/services/share
+services/task test:  RUN  v3.2.7 /Users/shuhei/Projects/genie/services/task
+services/agent-runtime test:  RUN  v3.2.7 /Users/shuhei/Projects/genie/services/agent-runtime
+services/task test:  ✓ test/queues.test.ts (6 tests) 1ms
+services/task test:  ✓ test/computer-plan.test.ts (4 tests) 3ms
+services/task test:  ✓ test/mail-plan.test.ts (1 test) 3ms
+services/task test:  ✓ test/terminal-workflow.test.ts (5 tests) 4ms
+services/task test:  ✓ test/metered-workflow.test.ts (16 tests) 5ms
+services/agent-runtime test:  ✓ test/stock.test.ts (13 tests) 3ms
+services/agent-runtime test:  ✓ test/architecture.test.ts (12 tests) 4ms
+services/agent-runtime test:  ✓ test/ehr.test.ts (12 tests) 3ms
+services/agent-runtime test:  ✓ test/care.test.ts (10 tests) 3ms
+services/agent-runtime test:  ✓ test/video.test.ts (13 tests) 10ms
+services/share test:  ✓ test/tokens.test.ts (10 tests) 95ms
+services/agent-runtime test:  ✓ test/sales-crm-executor.test.ts (6 tests) 21ms
+services/share test:  ✓ test/sensitivity.test.ts (3 tests) 6ms
+services/share test:  Test Files  2 passed (2)
+services/share test:       Tests  13 passed (13)
+services/share test:    Start at  19:18:32
+services/share test:    Duration  1.14s (transform 473ms, setup 0ms, collect 1.55s, tests 101ms, environment 0ms, prepare 80ms)
+services/task test:  ✓ test/agent-plan.test.ts (12 tests) 3ms
+services/task test:  ✓ test/policy-context.test.ts (10 tests) 3ms
+services/task test:  ✓ test/task-title.test.ts (1 test) 2ms
+services/task test: 2026-09-19T10:18:34.113Z [WARN] Activity failed {
+services/task test:   sdkComponent: 'worker',
+services/task test:   isLocal: false,
+services/task test:   attempt: 1,
+services/task test:   namespace: 'test',
+services/task test:   taskToken: 'dGVzdA==',
+services/task test:   activityId: 'test',
+services/task test:   activityType: 'unknown',
+services/task test:   taskQueue: 'test',
+services/task test:   workflowId: 'test',
+services/task test:   workflowRunId: '00000000-0000-0000-0000-000000000000',
+services/task test:   workflowType: 'test',
+services/task test:   error: Error: provider failed
+services/task test:       at /Users/shuhei/Projects/genie/services/task/test/activity-heartbeat.test.ts:32:15
+services/task test:       at withActivityHeartbeat (/Users/shuhei/Projects/genie/services/task/src/activity-heartbeat.ts:14:12)
+services/task test:       at Activity.execute (/Users/shuhei/Projects/genie/node_modules/.pnpm/@temporalio+worker@1.22.0/node_modules/@temporalio/worker/src/activity.ts:143:14)
+services/task test:       at /Users/shuhei/Projects/genie/services/task/test/activity-heartbeat.test.ts:27:3
+services/task test:       at file:///Users/shuhei/Projects/genie/node_modules/.pnpm/@vitest+runner@3.2.7/node_modules/@vitest/runner/dist/chunk-hooks.js:752:20,
+services/task test:   durationMs: 25
+services/task test: }
+services/task test:  ✓ test/activity-heartbeat.test.ts (2 tests) 171ms
+services/share test: Done
+services/agent-runtime test:  ✓ test/video-executor.test.ts (7 tests) 4ms
+services/agent-runtime test:  ✓ test/sales-crm.test.ts (15 tests) 5ms
+services/task test:  ✓ test/host-wait.test.ts (12 tests) 145ms
+services/agent-runtime test:  ✓ test/imagen.test.ts (13 tests) 6ms
+services/task test:  ↓ test/task.e2e.test.ts (15 tests | 15 skipped)
+services/agent-runtime test:  ↓ test/domain.db.test.ts (7 tests | 7 skipped)
+services/task test:  ↓ test/terminal-state.test.ts (9 tests | 9 skipped)
+services/agent-runtime test:  ✓ test/image.db.test.ts (9 tests | 6 skipped) 2ms
+services/agent-runtime test:  Test Files  10 passed | 1 skipped (11)
+services/agent-runtime test:       Tests  104 passed | 13 skipped (117)
+services/agent-runtime test:    Start at  19:18:33
+services/agent-runtime test:    Duration  1.02s (transform 751ms, setup 0ms, collect 3.41s, tests 62ms, environment 1ms, prepare 1.05s)
+services/agent-runtime test: Done
+services/task test: 2026-09-19T10:18:34.725Z [INFO] asset workflow-bundle-b4e436aea3e0faaf8a07.js 1.58 MiB [emitted] [immutable] (name: main)
+services/task test: runtime modules 1.34 KiB 4 modules
+services/task test: modules by path ../../node_modules/.pnpm/ 438 KiB
+services/task test:   modules by path ../../node_modules/.pnpm/@temporalio+common@1.22.0/node_modules/@temporal...(truncated) 161 KiB 35 modules
+services/task test:   modules by path ../../node_modules/.pnpm/@temporalio+workflow@1.22.0/node_modules/@tempor...(truncated) 202 KiB 26 modules
+services/task test:   modules by path ../../node_modules/.pnpm/nexus-rpc@0.0.2/node_modules/nexus-rpc/lib/ 22.3 KiB 13 modules
+services/task test:   ../../node_modules/.pnpm/long@5.3.2/node_modules/long/umd/index.js 49.8 KiB [built] [code generated]
+services/task test:   ../../node_modules/.pnpm/ms@3.0.0-canary.1/node_modules/ms/dist/index.cjs 3.41 KiB [built] [code generated]
+services/task test: modules by path ./src/ 32.5 KiB
+services/task test:   ./src/workflows-autogenerated-entrypoint.cjs 502 bytes [built] [code generated]
+services/task test:   ./src/workflows.ts 16.1 KiB [built] [code generated]
+services/task test:   ./src/plan.ts 15.9 KiB [built] [code generated]
+services/task test: optional modules 30 bytes [optional]
+services/task test:   __temporal_custom_payload_converter (ignored) 15 bytes [optional] [built] [code generated]
+services/task test:   __temporal_custom_failure_converter (ignored) 15 bytes [optional] [built] [code generated]
+services/task test: webpack 5.109.2 compiled successfully in 326 ms { sdkComponent: 'worker', taskQueue: 'fake_replay_queue-0' }
+services/task test: 2026-09-19T10:18:34.727Z [INFO] Workflow bundle created {
+services/task test:   sdkComponent: 'worker',
+services/task test:   taskQueue: 'fake_replay_queue-0',
+services/task test:   size: '1.58MB'
+services/task test: }
+services/task test: 2026-09-19T10:18:34.754Z [INFO] Worker state changed {
+services/task test:   sdkComponent: 'worker',
+services/task test:   taskQueue: 'fake_replay_queue-0',
+services/task test:   state: 'RUNNING'
+services/task test: }
+services/task test: 2026-09-19T10:18:34.783Z [INFO] Worker state changed {
+services/task test:   sdkComponent: 'worker',
+services/task test:   taskQueue: 'fake_replay_queue-0',
+services/task test:   state: 'STOPPING'
+services/task test: }
+services/task test: 2026-09-19T10:18:34.783Z [INFO] Worker state changed {
+services/task test:   sdkComponent: 'worker',
+services/task test:   taskQueue: 'fake_replay_queue-0',
+services/task test:   state: 'DRAINING'
+services/task test: }
+services/task test: 2026-09-19T10:18:34.783Z [INFO] Worker state changed {
+services/task test:   sdkComponent: 'worker',
+services/task test:   taskQueue: 'fake_replay_queue-0',
+services/task test:   state: 'DRAINED'
+services/task test: }
+services/task test: 2026-09-19T10:18:34.783Z [INFO] Worker state changed {
+services/task test:   sdkComponent: 'worker',
+services/task test:   taskQueue: 'fake_replay_queue-0',
+services/task test:   state: 'STOPPED'
+services/task test: }
+services/task test: 2026-09-19T10:18:34.943Z [INFO] asset workflow-bundle-b4e436aea3e0faaf8a07.js 1.58 MiB [emitted] [immutable] (name: main)
+services/task test: runtime modules 1.34 KiB 4 modules
+services/task test: modules by path ../../node_modules/.pnpm/ 438 KiB
+services/task test:   modules by path ../../node_modules/.pnpm/@temporalio+common@1.22.0/node_modules/@temporal...(truncated) 161 KiB 35 modules
+services/task test:   modules by path ../../node_modules/.pnpm/@temporalio+workflow@1.22.0/node_modules/@tempor...(truncated) 202 KiB 26 modules
+services/task test:   modules by path ../../node_modules/.pnpm/nexus-rpc@0.0.2/node_modules/nexus-rpc/lib/ 22.3 KiB 13 modules
+services/task test:   ../../node_modules/.pnpm/long@5.3.2/node_modules/long/umd/index.js 49.8 KiB [built] [code generated]
+services/task test:   ../../node_modules/.pnpm/ms@3.0.0-canary.1/node_modules/ms/dist/index.cjs 3.41 KiB [built] [code generated]
+services/task test: modules by path ./src/ 32.5 KiB
+services/task test:   ./src/workflows-autogenerated-entrypoint.cjs 502 bytes [built] [code generated]
+services/task test:   ./src/workflows.ts 16.1 KiB [built] [code generated]
+services/task test:   ./src/plan.ts 15.9 KiB [built] [code generated]
+services/task test: optional modules 30 bytes [optional]
+services/task test:   __temporal_custom_payload_converter (ignored) 15 bytes [optional] [built] [code generated]
+services/task test:   __temporal_custom_failure_converter (ignored) 15 bytes [optional] [built] [code generated]
+services/task test: webpack 5.109.2 compiled successfully in 145 ms { sdkComponent: 'worker', taskQueue: 'fake_replay_queue-1' }
+services/task test: 2026-09-19T10:18:34.944Z [INFO] Workflow bundle created {
+services/task test:   sdkComponent: 'worker',
+services/task test:   taskQueue: 'fake_replay_queue-1',
+services/task test:   size: '1.58MB'
+services/task test: }
+services/task test: 2026-09-19T10:18:34.956Z [INFO] Worker state changed {
+services/task test:   sdkComponent: 'worker',
+services/task test:   taskQueue: 'fake_replay_queue-1',
+services/task test:   state: 'RUNNING'
+services/task test: }
+services/task test: 2026-09-19T10:18:34.966Z [INFO] Worker state changed {
+services/task test:   sdkComponent: 'worker',
+services/task test:   taskQueue: 'fake_replay_queue-1',
+services/task test:   state: 'STOPPING'
+services/task test: }
+services/task test: 2026-09-19T10:18:34.966Z [INFO] Worker state changed {
+services/task test:   sdkComponent: 'worker',
+services/task test:   taskQueue: 'fake_replay_queue-1',
+services/task test:   state: 'DRAINING'
+services/task test: }
+services/task test: 2026-09-19T10:18:34.966Z [INFO] Worker state changed {
+services/task test:   sdkComponent: 'worker',
+services/task test:   taskQueue: 'fake_replay_queue-1',
+services/task test:   state: 'DRAINED'
+services/task test: }
+services/task test: 2026-09-19T10:18:34.966Z [INFO] Worker state changed {
+services/task test:   sdkComponent: 'worker',
+services/task test:   taskQueue: 'fake_replay_queue-1',
+services/task test:   state: 'STOPPED'
+services/task test: }
+services/task test:  ✓ test/replay-history.test.ts (3 tests | 1 skipped) 998ms
+services/task test:    ✓ previous-revision workflow replay with old void terminal activities > replays completed history without nondeterminism  815ms
+services/task test:  Test Files  11 passed | 2 skipped (13)
+services/task test:       Tests  71 passed | 25 skipped (96)
+services/task test:    Start at  19:18:33
+services/task test:    Duration  1.87s (transform 782ms, setup 0ms, collect 6.84s, tests 1.34s, environment 1ms, prepare 825ms)
+services/task test: Done
+services/conversation test$ vitest run --passWithNoTests
+services/plugin-registry test$ vitest run --passWithNoTests
+workers/document-worker test$ vitest run --passWithNoTests
+services/meeting test$ vitest run --passWithNoTests
+services/conversation test:  RUN  v3.2.7 /Users/shuhei/Projects/genie/services/conversation
+services/plugin-registry test:  RUN  v3.2.7 /Users/shuhei/Projects/genie/services/plugin-registry
+services/conversation test:  ✓ test/lane.test.ts (10 tests) 3ms
+workers/document-worker test:  RUN  v3.2.7 /Users/shuhei/Projects/genie/workers/document-worker
+workers/document-worker test: No test files found, exiting with code 0
+workers/document-worker test: include: **/*.{test,spec}.?(c|m)[jt]s?(x)
+workers/document-worker test: exclude:  **/node_modules/**, **/dist/**, **/cypress/**, **/.{idea,git,cache,output,temp}/**, **/{karma,rollup,webpack,vite,vitest,jest,ava,babel,nyc,cypress,tsup,build,eslint,prettier}.config.*
+workers/document-worker test: Done
+workers/domain-worker test$ vitest run --passWithNoTests
+services/meeting test:  RUN  v3.2.7 /Users/shuhei/Projects/genie/services/meeting
+services/conversation test:  ✓ test/reference.test.ts (18 tests) 4ms
+services/meeting test:  ✓ test/google.test.ts (16 tests) 5ms
+services/meeting test:  ✓ test/factory.test.ts (7 tests) 11ms
+workers/domain-worker test:  RUN  v3.2.7 /Users/shuhei/Projects/genie/workers/domain-worker
+workers/domain-worker test: No test files found, exiting with code 0
+workers/domain-worker test: include: **/*.{test,spec}.?(c|m)[jt]s?(x)
+workers/domain-worker test: exclude:  **/node_modules/**, **/dist/**, **/cypress/**, **/.{idea,git,cache,output,temp}/**, **/{karma,rollup,webpack,vite,vitest,jest,ava,babel,nyc,cypress,tsup,build,eslint,prettier}.config.*
+services/plugin-registry test:  ✓ test/compliance.test.ts (5 tests) 3ms
+workers/domain-worker test: Done
+workers/media-worker test$ vitest run --passWithNoTests
+services/meeting test:  ✓ test/google-tts.test.ts (10 tests) 29ms
+services/plugin-registry test:  ✓ test/connections.db.test.ts (15 tests | 11 skipped) 2ms
+services/meeting test:  ✓ test/summarize.test.ts (7 tests) 4ms
+services/plugin-registry test:  Test Files  2 passed (2)
+services/plugin-registry test:       Tests  9 passed | 11 skipped (20)
+services/plugin-registry test:    Start at  19:18:35
+services/meeting test:  ✓ test/stabilize.test.ts (15 tests) 3ms
+services/meeting test:  ✓ test/anthropic.test.ts (7 tests) 9ms
+services/plugin-registry test:    Duration  928ms (transform 335ms, setup 0ms, collect 1.19s, tests 4ms, environment 0ms, prepare 85ms)
+services/meeting test:  ✓ test/summary-cost.test.ts (1 test) 4ms
+services/conversation test:  ↓ test/service.db.test.ts (8 tests | 8 skipped)
+services/conversation test:  Test Files  2 passed | 1 skipped (3)
+services/conversation test:       Tests  28 passed | 8 skipped (36)
+services/conversation test:    Start at  19:18:35
+services/conversation test:    Duration  1.23s (transform 445ms, setup 0ms, collect 1.56s, tests 7ms, environment 0ms, prepare 228ms)
+services/meeting test:  ✓ test/google-rest.test.ts (20 tests) 348ms
+services/meeting test:    ✓ choosing real over stand-in > needs the recognizer as well before the batch path is real  303ms
+services/plugin-registry test: Done
+workers/research-worker test$ vitest run --passWithNoTests
+services/conversation test: Done
+workers/media-worker test:  RUN  v3.2.7 /Users/shuhei/Projects/genie/workers/media-worker
+workers/media-worker test: No test files found, exiting with code 0
+workers/media-worker test: include: **/*.{test,spec}.?(c|m)[jt]s?(x)
+workers/media-worker test: exclude:  **/node_modules/**, **/dist/**, **/cypress/**, **/.{idea,git,cache,output,temp}/**, **/{karma,rollup,webpack,vite,vitest,jest,ava,babel,nyc,cypress,tsup,build,eslint,prettier}.config.*
+workers/media-worker test: Done
+services/meeting test:  ↓ test/service.db.test.ts (11 tests | 11 skipped)
+workers/research-worker test:  RUN  v3.2.7 /Users/shuhei/Projects/genie/workers/research-worker
+workers/research-worker test: No test files found, exiting with code 0
+workers/research-worker test: include: **/*.{test,spec}.?(c|m)[jt]s?(x)
+workers/research-worker test: exclude:  **/node_modules/**, **/dist/**, **/cypress/**, **/.{idea,git,cache,output,temp}/**, **/{karma,rollup,webpack,vite,vitest,jest,ava,babel,nyc,cypress,tsup,build,eslint,prettier}.config.*
+workers/research-worker test: Done
+services/meeting test:  ✓ test/google-streaming.test.ts (21 tests) 4010ms
+services/meeting test:    ✓ the session > walks the lifecycle, and says so  2001ms
+services/meeting test:    ✓ the session > flushes what arrived after the end  2001ms
+services/meeting test:  Test Files  9 passed | 1 skipped (10)
+services/meeting test:       Tests  104 passed | 11 skipped (115)
+services/meeting test:    Start at  19:18:35
+services/meeting test:    Duration  4.34s (transform 735ms, setup 0ms, collect 2.98s, tests 4.42s, environment 1ms, prepare 682ms)
+services/meeting test: Done
+services/capabilities test$ vitest run --passWithNoTests
+services/capabilities test:  RUN  v3.2.7 /Users/shuhei/Projects/genie/services/capabilities
+services/capabilities test:  ✓ test/report.test.ts (16 tests) 6ms
+services/capabilities test:  Test Files  1 passed (1)
+services/capabilities test:       Tests  16 passed (16)
+services/capabilities test:    Start at  19:18:40
+services/capabilities test:    Duration  542ms (transform 178ms, setup 0ms, collect 366ms, tests 6ms, environment 0ms, prepare 45ms)
+services/capabilities test: Done
+workers/task-worker test$ vitest run --passWithNoTests
+services/api-gateway test$ vitest run --passWithNoTests
+workers/task-worker test:  RUN  v3.2.7 /Users/shuhei/Projects/genie/workers/task-worker
+services/api-gateway test:  RUN  v3.2.7 /Users/shuhei/Projects/genie/services/api-gateway
+services/api-gateway test:  ✓ test/errors.test.ts (5 tests) 3ms
+services/api-gateway test:  ✓ test/rate-limit.test.ts (8 tests | 1 skipped) 4ms
+services/api-gateway test:  ✓ test/idp.test.ts (6 tests) 220ms
+workers/task-worker test:  ↓ test/agent.e2e.test.ts (9 tests | 9 skipped)
+workers/task-worker test:  ↓ test/research.e2e.test.ts (9 tests | 9 skipped)
+workers/task-worker test:  ↓ test/meeting.e2e.test.ts (5 tests | 5 skipped)
+workers/task-worker test:  Test Files  3 skipped (3)
+workers/task-worker test:       Tests  23 skipped (23)
+workers/task-worker test:    Start at  19:18:41
+workers/task-worker test:    Duration  1.38s (transform 576ms, setup 0ms, collect 3.22s, tests 0ms, environment 0ms, prepare 177ms)
+services/api-gateway test:  ✓ test/sse.test.ts (9 tests) 5ms
+workers/task-worker test: Done
+services/api-gateway test:  ✓ test/meeting-audio-flush.test.ts (2 tests) 110ms
+services/api-gateway test:  ✓ test/live-transcription.test.ts (5 tests) 261ms
+services/api-gateway test:  ↓ test/meetings.integration.test.ts (9 tests | 9 skipped)
+services/api-gateway test:  ↓ test/conversations-recovery.integration.test.ts (9 tests | 9 skipped)
+services/api-gateway test:  ↓ test/conversations-stream.integration.test.ts (3 tests | 3 skipped)
+services/api-gateway test:  ↓ test/plugins.integration.test.ts (12 tests | 12 skipped)
+services/api-gateway test:  ↓ test/auth.integration.test.ts (18 tests | 18 skipped)
+services/api-gateway test:  ↓ test/idp.integration.test.ts (4 tests | 4 skipped)
+services/api-gateway test:  ↓ test/app.integration.test.ts (14 tests | 14 skipped)
+services/api-gateway test:  ↓ test/plugins-phase4.integration.test.ts (15 tests | 15 skipped)
+services/api-gateway test:  ↓ test/conversations-screenshot.integration.test.ts (4 tests | 4 skipped)
+services/api-gateway test:  ✓ test/host-bridge.test.ts (16 tests | 3 skipped) 27ms
+services/api-gateway test:  ↓ test/shares.integration.test.ts (16 tests | 16 skipped)
+services/api-gateway test:  ↓ test/tasks.integration.test.ts (24 tests | 24 skipped)
+services/api-gateway test:  ↓ test/work.integration.test.ts (10 tests | 10 skipped)
+services/api-gateway test:  Test Files  7 passed | 12 skipped (19)
+services/api-gateway test:       Tests  47 passed | 142 skipped (189)
+services/api-gateway test:    Start at  19:18:41
+services/api-gateway test:    Duration  2.27s (transform 1.09s, setup 0ms, collect 19.74s, tests 631ms, environment 2ms, prepare 1.21s)
+services/api-gateway test: Done
+evals test$ vitest run --passWithNoTests
+evals test:  RUN  v3.2.7 /Users/shuhei/Projects/genie/evals
+evals test:  ✓ actions/final/calendar-gmail-chain.test.ts (8 tests) 47ms
+evals test:  ✓ actions/connectors/oauth-e2e.test.ts (9 tests) 109ms
+evals test:  ✓ actions/research/quality.test.ts (12 tests) 4ms
+evals test:  ✓ actions/ehr/acceptance.test.ts (8 tests) 20ms
+evals test:  ✓ actions/connectors/acceptance.test.ts (35 tests) 67ms
+evals test:  ✓ actions/domain-agents/acceptance.test.ts (8 tests) 52ms
+evals test:  ↓ actions/final/approval-expiry.test.ts (1 test | 1 skipped)
+evals test:  ✓ actions/care/acceptance.test.ts (6 tests) 21ms
+evals test:  ✓ actions/connectors/tool-coverage.test.ts (2 tests) 29ms
+evals test:  ✓ actions/final/chaos.test.ts (12 tests) 43ms
+evals test:  ↓ actions/conversation/long.test.ts (7 tests | 7 skipped)
+evals test:  ✓ actions/slo/budgets.test.ts (5 tests | 3 skipped) 2ms
+evals test:  ↓ actions/final/e2e.test.ts (5 tests | 5 skipped)
+evals test:  ↓ actions/connectors/bridge.test.ts (8 tests | 8 skipped)
+evals test:  ↓ actions/agent-host/acceptance.test.ts (9 tests | 9 skipped)
+evals test:  ↓ actions/final/background-work.test.ts (6 tests | 6 skipped)
+evals test:  ↓ actions/phase4/acceptance.test.ts (14 tests | 14 skipped)
+evals test:  ↓ actions/phase0/acceptance.test.ts (15 tests | 15 skipped)
+evals test:  ↓ actions/phase3/acceptance.test.ts (12 tests | 12 skipped)
+evals test:  ↓ actions/phase2/acceptance.test.ts (12 tests | 12 skipped)
+evals test:  ↓ actions/phase5/acceptance.test.ts (8 tests | 8 skipped)
+evals test:  ↓ actions/phase6/acceptance.test.ts (12 tests | 12 skipped)
+evals test:  ↓ actions/phase7/acceptance.test.ts (13 tests | 13 skipped)
+evals test:  ↓ actions/product/case-a.test.ts (7 tests | 7 skipped)
+evals test:  ↓ actions/product/case-b.test.ts (9 tests | 9 skipped)
+evals test:  ↓ actions/security/adversarial.test.ts (16 tests | 16 skipped)
+evals test:  Test Files  10 passed | 16 skipped (26)
+evals test:       Tests  102 passed | 157 skipped (259)
+evals test:    Start at  19:18:44
+evals test:    Duration  2.36s (transform 2.08s, setup 0ms, collect 20.74s, tests 395ms, environment 2ms, prepare 1.35s)
+evals test: Done

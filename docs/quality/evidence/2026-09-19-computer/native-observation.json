@@ -1,0 +1,13 @@
+{
+  "second_run_selected_pid": 42652,
+  "selected_process": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+  "consent_file": "consent-42652-45823.json",
+  "consent_modified_local": "2026-09-19T20:07:09.084969",
+  "intended_target": "org.genie.computer-test",
+  "native_result_file_exists": false,
+  "verdict": "FAIL",
+  "task_errors": [
+    "computer.vision.planner_stopped",
+    "computer.vision.planner_stopped"
+  ]
+}

@@ -1,0 +1,34 @@
+Evidence: /tmp/genie-background-native.9G0VkZ
+TEST identity org.genie.background.target nil
+TEST capture
+TEST click
+TEST capture for text
+TEST AX AXStaticText nil Optional(Details open) Optional((211.0, 541.0, 518.0, 37.0))
+TEST AX AXButton nil nil Optional((209.0, 608.0, 202.0, 50.0))
+TEST AX AXTextArea nil Optional() Optional((210.0, 687.0, 520.0, 170.0))
+TEST AX AXButton Optional(AXCloseButton) nil Optional((188.0, 473.0, 16.0, 16.0))
+TEST AX AXButton Optional(AXZoomButton) nil Optional((234.0, 473.0, 16.0, 16.0))
+TEST AX AXButton Optional(AXMinimizeButton) nil Optional((211.0, 473.0, 16.0, 16.0))
+TEST AX AXStaticText nil Optional(Genie Background Target) Optional((262.0, 473.0, 167.0, 16.0))
+TEST type
+{
+  "clipboardUnchanged" : true,
+  "cursorUnchanged" : true,
+  "existingTextRefused" : true,
+  "foregroundUnchangedDuringActions" : true,
+  "humanTakeoverRefused" : true,
+  "inputSource" : "automated fixture; not human participant",
+  "keysRefused" : true,
+  "replayRefused" : true,
+  "sentinel" : {
+    "activations" : 1,
+    "clicks" : 0,
+    "text" : "human-input-continues"
+  },
+  "status" : "PASS",
+  "target" : {
+    "activations" : 1,
+    "clicks" : 1,
+    "text" : "背景入力 日本語 👩‍💻"
+  }
+}

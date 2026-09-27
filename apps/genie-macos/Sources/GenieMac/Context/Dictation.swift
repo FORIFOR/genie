@@ -11,7 +11,7 @@ import ApplicationServices
 enum Dictation {
     /// フォーカス中の要素が「テキストを受け取れる」か。
     /// AX の role と、値の設定可否（`AXUIElementIsAttributeSettable`）で判定する。
-    static func focusedTextTarget() -> AXUIElement? {
+    static func focusedTextTarget(excludingOwnProcess: Bool = false) -> AXUIElement? {
         guard AXIsProcessTrusted() else { return nil }
         let system = AXUIElementCreateSystemWide()
         var focused: CFTypeRef?
@@ -19,6 +19,13 @@ enum Dictation {
               let element = focused
         else { return nil }
         let axElement = element as! AXUIElement
+
+        if excludingOwnProcess {
+            var pid: pid_t = 0
+            if AXUIElementGetPid(axElement, &pid) == .success, pid == getpid() {
+                return nil
+            }
+        }
 
         // 値を書き換えられない要素（ボタン等）は対象外。
         var settable: DarwinBoolean = false
@@ -41,8 +48,8 @@ enum Dictation {
     ///
     /// 選択範囲があればそこを置換、無ければキャレット位置へ挿入する（既存の文章を壊さない）。
     @discardableResult
-    static func insert(_ text: String) -> Bool {
-        guard !text.isEmpty, let target = focusedTextTarget() else { return false }
+    static func insert(_ text: String, excludingOwnProcess: Bool = false) -> Bool {
+        guard !text.isEmpty, let target = focusedTextTarget(excludingOwnProcess: excludingOwnProcess) else { return false }
         return insert(text, into: target)
     }
 

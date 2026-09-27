@@ -48,7 +48,7 @@ Check `http://127.0.0.1:3000/healthz`. Temporal's local UI is at `http://127.0.0
 
 ## 3. Open the Mac app and connect the local model
 
-Install the Mac build from the release matching this checkout, or build with `pnpm build:macos-app` and open `dist/Genie.app`. Open Home once while the gateway is running; this establishes the desktop's local development identity.
+Install the Mac build from the release matching this checkout, or build with `pnpm build:macos-app` and open `apps/genie-macos/build/Genie.app`. The build script prepares the Rust archive for macOS 14 and bundles Sparkle. If the pinned Sparkle runtime is missing, first run `bash scripts/fetch-sparkle.sh`; a full Xcode and Rust toolchain are still prerequisites. Open Home once while the gateway is running; this establishes the desktop's local development identity.
 
 In another terminal:
 

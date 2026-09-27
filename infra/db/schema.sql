@@ -267,6 +267,28 @@ ALTER TABLE ONLY public.connector_connections FORCE ROW LEVEL SECURITY;
 
 
 --
+-- Name: conversation_requests; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.conversation_requests (
+    tenant_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    conversation_id uuid NOT NULL,
+    request_id uuid NOT NULL,
+    body_hash text NOT NULL,
+    turn_id uuid NOT NULL,
+    response jsonb,
+    response_status integer,
+    prepared_response jsonb,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT conversation_requests_check CHECK (((response IS NULL) = (response_status IS NULL))),
+    CONSTRAINT conversation_requests_response_status_check CHECK ((response_status = ANY (ARRAY[200, 202])))
+);
+
+ALTER TABLE ONLY public.conversation_requests FORCE ROW LEVEL SECURITY;
+
+
+--
 -- Name: conversation_states; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1214,6 +1236,14 @@ ALTER TABLE ONLY public.audit_sequences
 
 ALTER TABLE ONLY public.connector_connections
     ADD CONSTRAINT connector_connections_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: conversation_requests conversation_requests_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.conversation_requests
+    ADD CONSTRAINT conversation_requests_pkey PRIMARY KEY (tenant_id, user_id, conversation_id, request_id);
 
 
 --
@@ -2277,6 +2307,30 @@ ALTER TABLE ONLY public.connector_connections
 
 
 --
+-- Name: conversation_requests conversation_requests_conversation_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.conversation_requests
+    ADD CONSTRAINT conversation_requests_conversation_id_fkey FOREIGN KEY (conversation_id) REFERENCES public.conversations(id) ON DELETE CASCADE;
+
+
+--
+-- Name: conversation_requests conversation_requests_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.conversation_requests
+    ADD CONSTRAINT conversation_requests_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: conversation_requests conversation_requests_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.conversation_requests
+    ADD CONSTRAINT conversation_requests_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
 -- Name: conversation_states conversation_states_active_artifact_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3178,6 +3232,19 @@ CREATE POLICY connector_connections_tenant_isolation ON public.connector_connect
 
 
 --
+-- Name: conversation_requests; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.conversation_requests ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: conversation_requests conversation_requests_tenant; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY conversation_requests_tenant ON public.conversation_requests USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
+
+
+--
 -- Name: conversation_states; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -3699,3 +3766,4 @@ INSERT INTO schema_migrations (version) VALUES ('20260907090000');
 INSERT INTO schema_migrations (version) VALUES ('20260907170000');
 INSERT INTO schema_migrations (version) VALUES ('20260909120000');
 INSERT INTO schema_migrations (version) VALUES ('20260910003000');
+INSERT INTO schema_migrations (version) VALUES ('20260919090000');

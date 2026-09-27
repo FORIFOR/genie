@@ -86,6 +86,7 @@ test('service environment does not inherit paid credentials, remote infrastructu
   assert.equal(env.ASTRA_WORK_SYNC, 'off');
   assert.equal(env.ASTRA_LLM_CLI, 'local');
   assert.equal(env.ASTRA_API_HOST, '127.0.0.1');
+  assert.equal(env.ASTRA_DATA_ROOT, join(root, 'app'));
   assert.ok(env.DATABASE_URL.includes('@127.0.0.1:'));
   assert.equal(systemEnvironment(source).DATABASE_URL, undefined);
 });

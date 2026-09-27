@@ -1,0 +1,6 @@
+   Compiling ring v0.17.14
+   Compiling rustls v0.23.43
+   Compiling rustls-webpki v0.103.15
+   Compiling ureq v2.12.1
+   Compiling genie-core v0.1.4 (/Users/shuhei/Projects/genie/core/genie-core)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 9.80s

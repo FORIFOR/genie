@@ -1,0 +1,56 @@
+   Compiling ring v0.17.14
+   Compiling rustls v0.23.43
+   Compiling rustls-webpki v0.103.15
+   Compiling ureq v2.12.1
+   Compiling genie-core v0.1.4 (/Users/shuhei/Projects/genie/core/genie-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 5.92s
+     Running unittests src/lib.rs (core/genie-core/target/debug/deps/genie_core-2f3162ee37251ff2)
+
+running 44 tests
+test api::tests::dev_sign_in_then_me_round_trips_through_the_real_gateway ... ok
+test connector::tests::callback_requires_matching_state_and_code ... ok
+test api::work_tests::evidence_ids_with_colons_are_escaped_in_the_path ... ok
+test connector::tests::configured_providers_only_lists_those_with_a_client_id ... ok
+test connector::tests::a_token_error_is_surfaced_not_swallowed ... ok
+test api::tests::turn_body_carries_ids_and_labels_but_never_pixels ... ok
+test connector::tests::parses_a_token_response_without_guessing_scope_or_expiry ... ok
+test connector::tests::authorize_url_refuses_non_loopback_and_missing_client_id ... ok
+test connector::tests::only_loopback_redirects_are_allowed ... ok
+test api::receipt_tests::clarification_object_and_legacy_string_preserve_the_answer ... ok
+test connector::tests::token_exchange_body_carries_code_and_pkce_verifier ... ok
+test connector::tests::authorize_url_carries_pkce_and_state_and_extras ... ok
+test context::tests::limit_truncates_and_order_is_deterministic ... ok
+test context::tests::lexical_match_ranks_above_unrelated ... ok
+test context::tests::recency_breaks_ties_between_equal_text ... ok
+test oauth::tests::opens_only_https_and_loopback ... ok
+test oauth::tests::decodes_a_code_that_was_escaped ... ok
+test oauth::tests::ignores_anything_it_does_not_know ... ok
+test oauth::tests::reads_a_literal_plus_as_a_space ... ok
+test oauth::tests::reads_a_refusal ... ok
+test oauth::tests::reads_the_code_and_the_state ... ok
+test oauth::tests::survives_a_callback_with_no_query ... ok
+test connector::tests::pkce_matches_the_rfc7636_test_vector ... ok
+test recording::tests::elapsed_gains_hours_only_when_needed ... ok
+test recording::tests::snapshot_paused_is_not_offline ... ok
+test recording::tests::snapshot_says_offline_while_the_link_is_down_but_stays_recording ... ok
+test recording::tests::wire_is_16bit_little_endian_mono ... ok
+test session::tests::resamples_toward_the_wire_rate ... ok
+test transcript::tests::refuses_a_window_with_no_overlap ... ok
+test transcript::tests::refuses_a_zero_window ... ok
+test transcript::tests::the_default_window_is_shorter_than_deepnote ... ok
+test transcript::tests::folds_the_overlap_between_windows ... ok
+test transcript::tests::the_partial_event_serializes_with_a_camelcase_tag ... ok
+test connector::tests::configured_desktop_exchange_preserves_pkce_and_google_parameter ... ok
+test connector::tests::exchange_code_posts_and_parses_against_a_local_token_endpoint ... ok
+test session::tests::snapshot_reflects_link_state ... ok
+test recording::tests::manifest_survives_a_partial_write ... ok
+test api::receipt_tests::lost_response_is_recovered_by_get_without_a_second_post ... ok
+test recording::tests::a_crashed_recording_is_recoverable_until_it_is_uploaded ... ok
+test recording::tests::journal_closes_a_fragment_every_five_seconds_and_keeps_the_rest_on_finish ... ok
+test session::tests::a_session_writes_real_fragments_and_is_recoverable ... ok
+test api::tests::task_poll_recovers_transient_read_failure_without_resubmitting ... ok
+test api::tests::waiting_for_a_long_task_leaves_rate_limit_headroom ... ok
+test api::tests::task_poll_bounds_failure_retries_and_does_not_retry_auth ... ok
+
+test result: ok. 44 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.02s
+

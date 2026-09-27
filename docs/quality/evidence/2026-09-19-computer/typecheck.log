@@ -1,0 +1,4 @@
+
+> genie@0.1.4 typecheck /Users/shuhei/Projects/genie
+> tsc -b tsconfig.build.json && tsc -p tsconfig.tests.json
+

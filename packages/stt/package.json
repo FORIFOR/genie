@@ -2,6 +2,7 @@
   "name": "@genie/stt",
   "version": "0.0.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "description": "Task Dock の音声入力。VAD / endpointing / provider 差し替え口。正本 §11.1。",
   "main": "./dist/index.js",

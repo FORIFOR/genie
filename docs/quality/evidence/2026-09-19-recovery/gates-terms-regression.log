@@ -1,0 +1,20 @@
+release-only: expected=0 actual=0
+TERMS_OK: 画面の語は 1 語ずつ
+
+meeting-note: expected=1 actual=1
+FAIL: 「ノート」ではなく「メモ」と言う:
+  /var/folders/xn/mdmvpkwd0yx4tcr7rvn_3xv80000gn/T/genie-terms-fixture-3nww56bs/apps/genie-macos/Sources/GenieMac/Fixture.swift:1:Text("ノートを開く")
+
+same-literal: expected=1 actual=1
+FAIL: 「ノート」ではなく「メモ」と言う:
+  /var/folders/xn/mdmvpkwd0yx4tcr7rvn_3xv80000gn/T/genie-terms-fixture-pjojnz1d/apps/genie-macos/Sources/GenieMac/Fixture.swift:1:Text("リリースノートとノート")
+
+same-line-other-literal: expected=1 actual=1
+FAIL: 「ノート」ではなく「メモ」と言う:
+  /var/folders/xn/mdmvpkwd0yx4tcr7rvn_3xv80000gn/T/genie-terms-fixture-ge7vxjvo/apps/genie-macos/Sources/GenieMac/Fixture.swift:1:Text("リリースノート"); Text("ノート")
+
+other-banned-word: expected=1 actual=1
+FAIL: 「決定事項」ではなく「決まったこと」と言う:
+  /var/folders/xn/mdmvpkwd0yx4tcr7rvn_3xv80000gn/T/genie-terms-fixture-knlmlxs7/apps/genie-macos/Sources/GenieMac/Fixture.swift:1:Text("リリースノートと決定事項")
+
+PASS: exact compound accepted; standalone and same-line forbidden terms rejected

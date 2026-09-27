@@ -1,0 +1,79 @@
+   Compiling genie-core v0.1.4 (/Users/shuhei/Projects/genie/core/genie-core)
+   Compiling genie-desktop v0.1.4 (/Users/shuhei/Projects/genie/apps/desktop/src-tauri)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 8.57s
+     Running unittests src/lib.rs (apps/desktop/src-tauri/target/debug/deps/genie_desktop_lib-89769e206d2d0aea)
+
+running 70 tests
+test audio::resample::tests::refuses_a_rate_it_cannot_handle ... ok
+test audio::frame::tests::measures_a_frame_from_its_samples ... ok
+test audio::capture::tests::every_failure_has_a_distinct_name ... ok
+test audio::frame::tests::reports_silence_as_zero ... ok
+test audio::frame::tests::pads_the_shorter_side_when_mixing ... ok
+test audio::frame::tests::clamps_before_rounding_so_a_loud_sample_keeps_its_sign ... ok
+test audio::frame::tests::clamps_a_loud_mix ... ok
+test audio::resample::tests::passes_through_when_the_rate_already_matches ... ok
+test audio::capture::tests::an_error_says_which_kind_it_is ... ok
+test audio::frame::tests::averages_channels_instead_of_taking_one ... ok
+test audio::frame::tests::round_trips_through_16_bit ... ok
+test audio::frame::tests::leaves_mono_alone ... ok
+test context::tests::reports_what_it_could_not_reach_instead_of_guessing ... ok
+test capability::tests::separates_a_missing_model_from_a_broken_one ... ok
+test dock::geometry::tests::centers_horizontally_on_the_work_area ... ok
+test dock::geometry::tests::falls_back_to_primary_when_the_remembered_display_is_gone ... ok
+test dock::geometry::tests::leaves_a_dragged_dock_alone_when_it_is_already_inside ... ok
+test dock::geometry::tests::only_recording_states_go_to_the_bottom ... ok
+test dock::geometry::tests::positions_on_a_secondary_display_using_its_own_origin ... ok
+test dock::geometry::tests::pulls_a_dragged_dock_back_inside_the_work_area ... ok
+test dock::geometry::tests::respects_a_work_area_that_does_not_start_at_zero ... ok
+test dock::geometry::tests::ready_uses_the_size_the_spec_fixes ... ok
+test dock::geometry::tests::sits_between_48_and_72_px_from_the_bottom ... ok
+test dock::geometry::tests::stays_on_screen_when_the_work_area_is_smaller_than_the_dock ... ok
+test dock::geometry::tests::the_idle_pill_touches_the_top_of_the_work_area ... ok
+test dock::geometry::tests::typing_grows_only_within_its_range ... ok
+test dock::morph_tests::eases_out_so_the_first_step_moves_the_most ... ok
+test dock::morph_tests::ends_exactly_on_the_target ... ok
+test dock::state::tests::drops_displays_that_went_away ... ok
+test dock::state::tests::remembers_a_position_per_display ... ok
+test dock::state::tests::tracks_the_display_the_user_last_touched ... ok
+test notify::tests::accepts_the_two_that_may_interrupt ... ok
+test notify::tests::refuses_a_severity_it_does_not_know ... ok
+test notify::tests::refuses_the_severities_that_belong_on_home ... ok
+test permission::tests::every_permission_points_somewhere_specific ... ok
+test permission::tests::knows_every_permission_the_contract_names ... ok
+test oauth::tests::opens_on_a_port_the_os_chose ... ok
+test permission::tests::refuses_a_permission_it_does_not_know ... ok
+test secrets::tests::scopes_entries_to_this_application ... ok
+test shortcut::tests::a_rebind_round_trips_through_the_flags ... ok
+test shortcut::tests::alternates_are_not_the_default ... ok
+test shortcut::tests::every_row_in_the_table_has_a_handler ... ok
+test stt::library::tests::honours_an_explicit_directory_first ... ok
+test shortcut::tests::an_unknown_key_is_refused_rather_than_guessed ... ok
+test stt::library::tests::looks_in_more_than_one_place ... ok
+test stt::library::tests::says_where_it_looked_when_nothing_is_there ... ok
+test stt::library::version_tests::a_different_minor_is_refused_before_it_can_crash ... ok
+test stt::library::version_tests::same_major_minor_is_fine ... ok
+test stt::recognizer::real::measures_the_first_partial ... ignored, requires the sherpa-onnx library and the Japanese model
+test stt::recognizer::real::shows_what_a_shorter_window_costs ... ignored, requires the sherpa-onnx library and the Japanese model
+test stt::recognizer::real::transcribes_a_real_recording ... ignored, requires the sherpa-onnx library and the Japanese model
+test stt::model::tests::does_not_look_inside_another_application ... ok
+test stt::recognizer::tests::refuses_to_work_before_it_is_loaded ... ok
+test stt::recognizer::tests::reports_a_missing_model_rather_than_crashing ... ok
+test voice::tests::a_dock_utterance_is_bounded_to_one_minute ... ok
+test stt::model::tests::an_empty_directory_is_not_installed ... ok
+test voice::tests::loud_input_is_capped ... ok
+test voice::tests::ordinary_speech_moves_the_orb ... ok
+test voice::tests::silence_is_zero_not_noise ... ok
+test stt::library::tests::refuses_a_file_that_is_not_a_library ... ok
+test voice::tests::stopping_without_starting_is_harmless ... ok
+test stt::model::tests::a_half_installed_directory_is_broken ... ok
+test stt::model::tests::a_zero_length_file_does_not_count_as_present ... ok
+test audio::resample::tests::keeps_the_remainder_instead_of_padding_it ... ok
+test stt::model::tests::a_complete_directory_is_ready ... ok
+test audio::resample::tests::produces_roughly_a_third_of_the_samples_from_48k ... ok
+test secrets::tests::reading_an_unknown_key_is_not_an_error ... ok
+test capability::tests::always_gives_a_reason_when_something_is_unavailable ... ok
+test capability::tests::answers_for_every_capability_it_names ... ok
+test capability::tests::does_not_claim_system_audio_it_has_not_built ... ok
+
+test result: ok. 67 passed; 0 failed; 3 ignored; 0 measured; 0 filtered out; finished in 0.39s
+

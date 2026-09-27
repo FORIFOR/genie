@@ -1,0 +1,5 @@
+
+> genie@0.1.4 check:conventions /Users/shuhei/Projects/genie
+> node scripts/check-conventions.mjs
+
+convention check passed

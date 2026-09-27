@@ -18,21 +18,21 @@
     "その時刻の音声へ戻る（再生が未実装。飾りは置かない判断）"
   ],
   "observations" : [
-    "全体の連続感（層 C）: 面は Dock → Workspace → Library の 3 枚。同じ id meeting-f2e154b9-b7b0-4cb3-ae82-e3eb6b16adbe が通ったか: true"
+    "全体の連続感（層 C）: 面は Dock → Workspace → Library の 3 枚。同じ id meeting-ee05e25f-205b-4d4a-897b-dcba01b41c99 が通ったか: true"
   ],
-  "product" : "Astra",
-  "startedAt" : "2026-09-11T16:57:42Z",
+  "product" : "Genie",
+  "startedAt" : "2026-09-26T19:04:00Z",
   "steps" : [
     {
-      "front" : "com.apple.finder",
+      "front" : "com.apple.Terminal",
       "ids" : {
-        "dock" : "meeting-f2e154b9-b7b0-4cb3-ae82-e3eb6b16adbe",
-        "recording" : "meeting-f2e154b9-b7b0-4cb3-ae82-e3eb6b16adbe",
-        "session" : "meeting-f2e154b9-b7b0-4cb3-ae82-e3eb6b16adbe"
+        "dock" : "meeting-ee05e25f-205b-4d4a-897b-dcba01b41c99",
+        "recording" : "meeting-ee05e25f-205b-4d4a-897b-dcba01b41c99",
+        "session" : "meeting-ee05e25f-205b-4d4a-897b-dcba01b41c99"
       },
       "interactions" : 1,
       "keyWindow" : false,
-      "ms" : 1163,
+      "ms" : 1155,
       "name" : "Meeting",
       "surface" : {
         "h" : 108,
@@ -41,18 +41,18 @@
         "x" : 454,
         "y" : 1009
       },
-      "transitionMs" : 180,
+      "transitionMs" : 183,
       "windows" : 1
     },
     {
-      "front" : "com.apple.finder",
+      "front" : "com.apple.Terminal",
       "ids" : {
         "decision.at" : "642",
         "decision.speaker" : "Ken"
       },
       "interactions" : 1,
       "keyWindow" : false,
-      "ms" : 1218,
+      "ms" : 1189,
       "name" : "Notes",
       "surface" : {
         "h" : 227,
@@ -61,18 +61,18 @@
         "x" : 454,
         "y" : 890
       },
-      "transitionMs" : 180,
+      "transitionMs" : 189,
       "windows" : 1
     },
     {
-      "front" : "com.apple.finder",
+      "front" : "com.apple.Terminal",
       "ids" : {
-        "session" : "meeting-f2e154b9-b7b0-4cb3-ae82-e3eb6b16adbe",
-        "workspace" : "meeting-f2e154b9-b7b0-4cb3-ae82-e3eb6b16adbe"
+        "session" : "meeting-ee05e25f-205b-4d4a-897b-dcba01b41c99",
+        "workspace" : "meeting-ee05e25f-205b-4d4a-897b-dcba01b41c99"
       },
       "interactions" : 1,
       "keyWindow" : true,
-      "ms" : 1283,
+      "ms" : 1294,
       "name" : "Workspace",
       "surface" : {
         "h" : 680,
@@ -81,18 +81,18 @@
         "x" : 324,
         "y" : 239
       },
-      "transitionMs" : 96,
+      "transitionMs" : 94,
       "windows" : 2
     },
     {
-      "front" : "com.apple.finder",
+      "front" : "com.apple.Terminal",
       "ids" : {
         "decisions" : "1",
-        "session" : "meeting-f2e154b9-b7b0-4cb3-ae82-e3eb6b16adbe"
+        "session" : "meeting-ee05e25f-205b-4d4a-897b-dcba01b41c99"
       },
       "interactions" : 1,
       "keyWindow" : true,
-      "ms" : 2545,
+      "ms" : 2560,
       "name" : "終える",
       "surface" : {
         "h" : 161,
@@ -101,17 +101,17 @@
         "x" : 604,
         "y" : 956
       },
-      "transitionMs" : 201,
+      "transitionMs" : 197,
       "windows" : 1
     },
     {
       "ids" : {
-        "opened" : "meeting-f2e154b9-b7b0-4cb3-ae82-e3eb6b16adbe",
-        "session" : "meeting-f2e154b9-b7b0-4cb3-ae82-e3eb6b16adbe"
+        "opened" : "meeting-ee05e25f-205b-4d4a-897b-dcba01b41c99",
+        "session" : "meeting-ee05e25f-205b-4d4a-897b-dcba01b41c99"
       },
       "interactions" : 1,
       "keyWindow" : true,
-      "ms" : 1189,
+      "ms" : 1829,
       "name" : "Library",
       "surface" : {
         "h" : 820,
@@ -129,7 +129,7 @@
       },
       "interactions" : 1,
       "keyWindow" : true,
-      "ms" : 662,
+      "ms" : 693,
       "name" : "Source",
       "surface" : {
         "h" : 820,
@@ -147,7 +147,7 @@
       },
       "interactions" : 1,
       "keyWindow" : true,
-      "ms" : 1904,
+      "ms" : 2033,
       "name" : "読み戻す",
       "surface" : {
         "h" : 820,
@@ -160,6 +160,6 @@
     }
   ],
   "success" : true,
-  "totalMs" : 9966,
+  "totalMs" : 10757,
   "windowsOpened" : 0
 }

@@ -1,0 +1,5 @@
+
+> genie@0.1.4 lint:type-literals /Users/shuhei/Projects/genie
+> node scripts/lint-type-literals.mjs
+
+TYPE_LITERALS_OK: 6 つの型の view に字の大きさの直書きは無い（5 scope）

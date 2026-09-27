@@ -52,6 +52,7 @@ final class SpeechTranscriber {
     private var pendingPartial: String?
     /// 音がこの秒数来なければ、その発話は終わったとみなして閉じる。
     static let utteranceGap: TimeInterval = 0.9
+    let utteranceGap: TimeInterval
     /// 閉じた request の final を待つ上限。
     static let closeTimeout: TimeInterval = 1.5
     /// 1 本の request の上限（連続認識は 1 分前後で止まる。切れる前に取り直す）。
@@ -60,7 +61,8 @@ final class SpeechTranscriber {
     private(set) var finalsEmitted = 0
     private(set) var partialsSeen = 0
 
-    init(localeId: String = "ja-JP") {
+    init(localeId: String = "ja-JP", utteranceGap: TimeInterval = SpeechTranscriber.utteranceGap) {
+        self.utteranceGap = utteranceGap
         recognizer = SFSpeechRecognizer(locale: Locale(identifier: localeId))
         format = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: 16_000,
                                channels: 1, interleaved: false)!
@@ -177,7 +179,7 @@ final class SpeechTranscriber {
         }
         guard closing == nil, !lastText.isEmpty else { return }
         requestLock.lock(); let audioAt = lastAudioAt; requestLock.unlock()
-        if now.timeIntervalSince(audioAt) >= Self.utteranceGap
+        if now.timeIntervalSince(audioAt) >= utteranceGap
             || now.timeIntervalSince(segmentStartedAt) >= Self.requestMaxSeconds {
             beginClose(reopen: true)
         }

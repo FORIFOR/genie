@@ -110,7 +110,7 @@ struct HomeView: View {
                     Text(hasScreenshot ? "この画像について質問" : "今日は、何を形にしますか。")
                         .font(.system(size: S.type(TypeScale.pageTitleSize), weight: TypeScale.pageTitleWeight))
                         .foregroundStyle(Palette.text(dark))
-                    Text(hasScreenshot ? "知りたいことや、してほしいことを書いてください。" : "つくりたいものと、実現したいことを教えてください。")
+                    Text(hasScreenshot ? "知りたいことや、してほしいことを書いてください。" : "メモから文章をつくり、Workで編集・Markdown保存できます。")
                         .font(.system(size: S.type(TypeScale.secondarySize)))
                         .foregroundStyle(Palette.muted(dark))
                 }
@@ -255,6 +255,12 @@ struct HomeView: View {
                 .font(.system(size: S.type(TypeScale.bodySize)))
                 .foregroundStyle(Palette.text(dark))
                 .frame(height: S.metric(Metrics.homeComposerEditorHeight))
+            Text(ProcessInfo.processInfo.environment["ASTRA_MODEL_DISCLOSURE"]
+                 ?? "送信先: 接続先で設定されたモデル。外部モデルは内容を受信し、利用料金が発生する場合があります。接続設定を確認してから送信してください。")
+                .font(.system(size: S.type(TypeScale.microSize)))
+                .foregroundStyle(Palette.muted(dark))
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("homeModelDisclosure")
             HStack(spacing: 10) {
                 Button { voice.beginListening() } label: {
                     Image(systemName: "mic").frame(width: 28, height: 28)
@@ -343,8 +349,8 @@ struct HomeView: View {
 
     private var starterRequests: some View {
         HStack(alignment: .top, spacing: 12) {
-            starter("動画の構成案", detail: "冒頭から、最後の一言まで", icon: "film",
-                prompt: "短い動画の構成を3案つくってください。\nテーマ: \n届けたい相手: \n各案に、冒頭3秒の見せ方、展開、最後の一言を入れてください。")
+            starter("メモをチェックリストに", detail: "例文を編集して、最初の成果物へ", icon: "checklist",
+                prompt: TaskRequestRecord.firstExample)
             starter("Webの改善提案", detail: "課題を、伝わる提案に", icon: "rectangle.and.text.magnifyingglass",
                 prompt: "Webサイトの改善提案をまとめてください。\n会社・サービス: \n現在の内容と課題: \n目的: \n優先順位と、変更前後の文言案を含めてください。")
             starter("アイデアを具体化", detail: "検証できる計画をつくる", icon: "pencil.and.outline",
@@ -369,7 +375,7 @@ struct HomeView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(GenieControlStyle(radius: Metrics.paletteRadius, base: 0.0))
-        .accessibilityLabel(title + "の依頼文を入力")
+        .accessibilityLabel(title + "：依頼文を入力")
     }
 
     /// 節の見出し。**中身より小さく静かに**する。以前は 22pt で、行より目立っていた。
