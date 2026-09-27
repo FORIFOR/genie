@@ -88,7 +88,10 @@ final class VoiceHUDState: ObservableObject {
     @Published private(set) var inputLevel: Float = 0
 
     func receiveInputLevel(_ level: Float) {
-        guard case .listening = mode, !listeningAwaitingAudio else { return }
+        // 会話で聞いている間は、面が答えのカードでもオーブへ大きさを渡す（オーブが声に反応する）。
+        let conversationListening = conversation.isActive && conversation.phase == .listening
+        if !conversationListening { guard case .listening = mode else { return } }
+        guard !listeningAwaitingAudio else { return }
         inputLevel = LiquidOrbMotion.clampedLevel(level)
     }
 
@@ -152,6 +155,12 @@ final class VoiceHUDState: ObservableObject {
     /// 音声入力（一回）。言い終えた文を前面のアプリの入力欄へ入れる。**Genie には送らない**。
     /// 入力欄が無ければ「会話」を案内する（推測で質問にしない）。
     func beginDictation() {
+        // 他のアプリの欄へ文字を入れるにはアクセシビリティの許可が要る。無いまま聞き始めると、
+        // 話し終えてから「欄が見つからない」と本当の理由と違うことを言うことになる。使う直前に求める。
+        guard Permissions.accessibility == .granted || Dictation.dryRun != nil else {
+            PermissionGuideCoordinator.shared.explain(.accessibility) { [weak self] in self?.beginDictation() }
+            return
+        }
         listenPurpose = .dictation
         beginListening()
     }
@@ -535,9 +544,11 @@ final class VoiceHUDState: ObservableObject {
     @discardableResult
     private func openConversationMicrophone(generation g: Int? = nil) -> Bool {
         let g = g ?? conversation.generation
-        // 割り込めない提供元でも、エコー除去は頼む（効かなければ従来の取り込み。半二重なので読み上げ中は閉じている）。
+        // エコー除去（voice processing）は使わない。この Mac で測ると、有効にしたマイクは完全な無音（最大振幅 0.000、
+        // 除去なしは 0.206）で、会話で話しても文字にならなかった（--selftest micprobe）。半二重なので、
+        // 読み上げの間はマイクを閉じていて、Genie の声は入らない。
         return conversationProvider.openInput(
-            echoCancellation: true,
+            echoCancellation: false,
             onFirstFrame: { [weak self] in
                 guard let self else { return }
                 self.run(self.conversation.firstFrame(generation: g))
@@ -622,7 +633,7 @@ final class VoiceHUDState: ObservableObject {
                 answer = ""
                 return true
             }
-            answer = Facts.dictationNoField
+            answer = (AXIsProcessTrusted() || Dictation.dryRun != nil) ? Facts.dictationNoField : Facts.dictationNeedsAccessibility
             mode = .answer(answer)
             return false
         case .meetingAsk:

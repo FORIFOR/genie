@@ -74,6 +74,10 @@ struct VoiceTaskDockView: View {
         case .idle: IdleDock()
         case .appContext(let summary): AppContextDock(summary: summary, expanded: false)
         case .appContextExpanded(let summary): AppContextDock(summary: summary, expanded: true)
+        // 会話の間は、聞く・考える・文の答えをオーブの面にする（文字起こし・答えの文は出さない。答えは声で返る）。
+        case .listening where VoiceHUDState.shared.conversation.isActive: ConversationOrbView()
+        case .thinking where VoiceHUDState.shared.conversation.isActive: ConversationOrbView()
+        case .answer where VoiceHUDState.shared.conversation.isActive: ConversationOrbView()
         case .listening(let partial): ListeningDock(partial: partial)
         case .thinking: ThinkingDock()
         case .agent: AgentDock()

@@ -44,6 +44,10 @@ enum DockContentMeasure {
         let body: AnyView
         switch dock {
         case .appContextExpanded(let summary): body = AnyView(AppContextDock(summary: summary, expanded: true))
+        case .listening where VoiceHUDState.shared.conversation.isActive,
+             .thinking where VoiceHUDState.shared.conversation.isActive,
+             .answer where VoiceHUDState.shared.conversation.isActive:
+            body = AnyView(ConversationOrbView())
         case .listening(let partial): body = AnyView(ListeningDock(partial: partial))
         case .thinking: body = AnyView(ThinkingDock())
         case .agent: body = AnyView(AgentDock())

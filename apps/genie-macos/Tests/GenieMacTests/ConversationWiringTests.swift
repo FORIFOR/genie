@@ -50,7 +50,7 @@ final class ConversationWiringTests: XCTestCase {
         let fake = FakeProvider()
         let t0 = Date()
         hud.startConversation(using: fake, now: t0)
-        XCTAssertEqual(fake.log, ["open(echo:true)"])
+        XCTAssertEqual(fake.log, ["open(echo:false)"])
         XCTAssertEqual(hud.mode, .listening(partial: ""))
         fake.firstFrame?()
         XCTAssertEqual(hud.conversation.phase, .listening)
@@ -61,7 +61,7 @@ final class ConversationWiringTests: XCTestCase {
         XCTAssertEqual(fake.log.last, "speak(明日は雨です。)")
         XCTAssertEqual(hud.conversation.phase, .speaking)
         fake.finish?()
-        XCTAssertEqual(fake.log.last, "open(echo:true)", "読み終えてから次を聞く")
+        XCTAssertEqual(fake.log.last, "open(echo:false)", "読み終えてから次を聞く")
 
         fake.utterance?("週末は？")
         fake.reply?(.working)
@@ -108,7 +108,7 @@ final class ConversationWiringTests: XCTestCase {
         hud.mode = .answer("明日は雨です。")          // 答えが面に出た（ask が出す姿）
         fake.reply?(.settled("明日は雨です。"))
         fake.finish?()
-        XCTAssertEqual(fake.log.last, "open(echo:true)", "読み終えたら次を聞く")
+        XCTAssertEqual(fake.log.last, "open(echo:false)", "読み終えたら次を聞く")
         XCTAssertEqual(hud.mode, .answer("明日は雨です。"), "カードは残す（見返せる）")
         hud.updatePartial("週末は")
         XCTAssertEqual(hud.mode, .listening(partial: "週末は"), "話し始めたら聞く面へ")

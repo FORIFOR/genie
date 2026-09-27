@@ -24,7 +24,9 @@ extension SelfTest {
         do {
             if let path = ProcessInfo.processInfo.environment["ASTRA_SELFTEST_AGENT_TOKEN_PATH"], path.hasPrefix("/tmp/") {
                 token = try String(contentsOfFile: path, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines)
-            } else if let identity = UserDefaults(suiteName: "com.astra.mac")?.string(forKey: "astra.dev.identity.\(base)") {
+            } else if let identity = (Bundle.main.bundleIdentifier == "com.astra.mac"
+                                        ? UserDefaults.standard      // アプリとして動いているとき（自分の ID の suite は開けない）
+                                        : UserDefaults(suiteName: "com.astra.mac"))?.string(forKey: "astra.dev.identity.\(base)") {
                 // アプリと**同じ本人**で通す（GatewaySession と同じ作り方）。別の本人で通すと、host が
                 // 付いていない本人の失敗（端末待ちのまま止まる）を見逃す。実際に一度そうなった。
                 token = try GenieCoreBridge.devSignIn(base, email: "main-\(identity)@astra.local", displayName: "Genie").accessToken
@@ -58,9 +60,19 @@ extension SelfTest {
             try? png.write(to: URL(fileURLWithPath: "\(shotDir)/\(shots.count)-\(name).png"))
             shots.append("\(name)=\(w)x\(h)")
         }
+        /// 大きさを待たずに、いまの窓をそのまま撮る。
+        func shootNow(_ name: String) {
+            guard let shotDir, let (id, w, h) = dockWindow(),
+                  let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, id, [.boundsIgnoreFraming, .nominalResolution]),
+                  let png = NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:]) else { return }
+            try? png.write(to: URL(fileURLWithPath: "\(shotDir)/\(shots.count)-\(name).png"))
+            shots.append("\(name)=\(w)x\(h)")
+        }
         let hud = VoiceHUDState.shared
         hud.configureBackend(base: base, token: token)
-        RecordingRuntime.shared.voiceInjection = frames
+        // --mic: 流し込まず、スピーカーから鳴らして本物のマイクで聞く（許可のあるアプリとして動かす）。
+        let realMic = args.contains("--mic")
+        if !realMic { RecordingRuntime.shared.voiceInjection = frames }
         if args.contains("--listen") { await listenE2E(hud) }
         let started = Date()
         func t() -> String { String(format: "%.1fs", Date().timeIntervalSince(started)) }
@@ -69,10 +81,19 @@ extension SelfTest {
         var sawSpeaking = false, sawCard = false
 
         hud.beginConversation()
+        if realMic {
+            try? await Task.sleep(nanoseconds: 1_200_000_000)
+            let play = Process(); play.executableURL = URL(fileURLWithPath: "/usr/bin/afplay"); play.arguments = [file]
+            try? play.run()
+        }
         try? await Task.sleep(nanoseconds: 600_000_000)
         shoot("listening")
         try? await Task.sleep(nanoseconds: 1_400_000_000)
         shoot("listening-2s")
+        // 聞いている最中を短い間隔で撮る（声に合わせてオーブが動く間に、面が黒くちらつかないか）。
+        if args.contains("--burst") {
+            for k in 0..<8 { shootNow("burst\(k)"); try? await Task.sleep(nanoseconds: 100_000_000) }
+        }
         guard hud.conversation.isActive else { print("SELFTEST_FAIL voicee2e: stage=start conversation did not start (mode=\(hud.mode))"); exit(2) }
         log.append("start@\(t())")
 
