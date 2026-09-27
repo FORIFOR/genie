@@ -538,7 +538,9 @@ enum SelfTest {
             let contentSize = store.dock.size(agentRows: store.state.activeTask?.steps.count ?? 0)
             let expect = CGSize(width: contentSize.width, height: contentSize.height + WindowCoordinator.shared.dockTopInset)
             guard let r = capture(name, expect: expect) else {
-                failures.append("\(name)=撮影不可(期待 \(Int(expect.width))x\(Int(expect.height)))")
+                // 実際に出ていた窓も書く（期待だけでは、何が違ったのかを推測するしかない）。
+                let actual = windows().map { "\(Int($0.w))x\(Int($0.h))" }.joined(separator: ",")
+                failures.append("\(name)=撮影不可(期待 \(Int(expect.width))x\(Int(expect.height)) 実際 [\(actual)])")
                 return
             }
             topEdges.insert(Int(r.y.rounded()))
@@ -592,7 +594,9 @@ enum SelfTest {
         hud.mode = .idle
 
         // 4'. 答えている途中に届いた発話を預かった姿（黙って消さない。段階 1）。
-        shoot("05b-thinking-held", { hud.hold("明日の天気教えて") })
+        // 本番と同じ順で作る: 聞いている間に言い終えた発話を、答えている途中なので預かる（hold が考え中へ戻す）。
+        // 前の撮影は Dock を待機に戻しているので、聞いている姿から始める。
+        shoot("05b-thinking-held", { hud.mode = .listening(partial: ""); hud.hold("明日の天気教えて") })
         _ = hud.takeHeldUtterance()
 
         // 5. Agent（startTask が Dock を agent の姿にする＝実遷移）
@@ -6095,9 +6099,14 @@ enum SelfTest {
                 print("SELFTEST_FAIL voiceask: request not accepted"); exit(2)
             }
             let wasThinking = hud.mode == .thinking
+            // 答え（記録の結果）が入るまで待つ。送信中（requestInFlight）は受け付けた時点で解けるので、
+            // それだけを待つと、12 秒を超える答えの前に待つのをやめてしまう。
             let deadline = Date().addingTimeInterval(60)
-            while hud.requestInFlight && Date() < deadline { RunLoop.current.run(until: Date().addingTimeInterval(0.2)) }
-            let record = LocalStore.shared.loadTasks().first { $0.id == id }?.requestRecord
+            func current() -> TaskRequestRecord? { LocalStore.shared.loadTasks().first { $0.id == id }?.requestRecord }
+            while Date() < deadline, current()?.hasResult != true {
+                RunLoop.current.run(until: Date().addingTimeInterval(0.2))
+            }
+            let record = current()
             // Settled short answers remain visible in the TaskDock so the user
             // can read them immediately; older builds returned to idle here.
             let settled = switch hud.mode {

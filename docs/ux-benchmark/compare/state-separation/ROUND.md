@@ -14,3 +14,12 @@ gate      : 1) 機械: `StateSeparationTests`（元の実装に戻すと 3 か�
 - 最初の撮影で行が切れていた（560×100 のまま）。高さの測定の鍵に `heldUtterance` が入っておらず、前の高さを使い回していた。鍵に入れ、行の増減で `syncDockPanels` を呼ぶよう直した。
 - 表示は活動状態を決めない: `GenieStateStore.activity(showing:)` が 確認待ち → 会議 → 聞き取り・考え中 → 動いている仕事 → 表示 の順に決める。回答を出しても、動いている仕事は「完了」にならない。
 - 聞き取りの世代（`VoiceGeneration`）: 閉じた後に遅れて届いた確定文では依頼を送らない。Esc は表示に関わらずマイクを閉じる。
+
+## 追記（2026-09-27）: 預かった発話が測った瞬間に消えていた
+
+- ListeningDock の onAppear が預かり（heldUtterance）を取り出していた。面の高さを測る `DockContentMeasure` は
+  同じ ListeningDock を画面の外で組み立てるので、聞いている最中に預かると、測った瞬間に onAppear が走って
+  預かりが消え、「未送信」の行も消えた。dock8 の 05b が 560x100（行なし）で撮れず見つかった。
+- 直し: 預かりを入力欄へ戻すのは状態の側（`beginListening` → `listeningPrefill`）。面は読むだけ。
+- 検査: 単体テストでは再現しない（窓に載らない NSHostingView では onAppear が走らない）ので置かない。
+  実窓で撮る `--selftest dock8` の 05b（聞いている姿から預かる、本番と同じ順）が、元の実装で落ちることを確かめた。

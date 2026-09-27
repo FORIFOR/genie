@@ -106,6 +106,10 @@ final class VoiceHUDState: ObservableObject {
     @Published var isListeningMuted = false
     /// 前の依頼に答えている間に届いた発話。**黙って捨てない。**考え中の面に「まだ送っていない」と出し、
     /// 次に Listening を開いたとき入力欄へ戻す（送るのは本人）。送れたら消える。
+    /// 次の Listening の入力欄に入れておく文（預かっていた発話）。**面は読むだけ**で、動かすのは状態の側。
+    /// 以前は ListeningDock の onAppear で預かりを取り出していたが、面の高さを測るために画面の外で
+    /// 組み立てるたびに onAppear が走り、預かった発話が測った瞬間に消えていた。
+    @Published private(set) var listeningPrefill: String?
     @Published private(set) var heldUtterance: String? {
         // 行が増減すると考え中の面の高さも変わる（高さは中身で決まる。DS-01）。
         didSet { if heldUtterance != oldValue { WindowCoordinator.shared.syncDockPanels() } }
@@ -153,6 +157,8 @@ final class VoiceHUDState: ObservableObject {
             Permissions.requestSpeechRecognition { _ in }
         }
         listeningAwaitingAudio = true
+        // 預かっていた発話は、この Listening の入力欄へ（送るのは本人）。
+        listeningPrefill = takeHeldUtterance()
         mode = .listening(partial: "")
         WindowCoordinator.shared.focusListeningDock()
         GenieEventBus.shared.publish(.voiceStarted)
@@ -276,6 +282,7 @@ final class VoiceHUDState: ObservableObject {
         if conversation.isActive { endConversation(.user); return }
         // 表示が何であっても、開いているマイクは閉じる（遅れて届く確定文も捨てる）。
         closeMicrophone()
+        listeningPrefill = nil
         guard case .listening = mode else { return }
         listeningAwaitingAudio = true
         isListeningMuted = false
@@ -634,6 +641,7 @@ final class VoiceHUDState: ObservableObject {
         latestRequestID = task.id
         requestInFlight = true
         if heldUtterance == text { heldUtterance = nil }
+        listeningPrefill = nil
         // 「これ返して」: 開いているメール → 選択 → 前面の窓 を、この順で候補として添える（題名だけ）。
         let replyCandidates = ReplyContextResolver.isReplyUtterance(text)
             ? ReplyContextResolver.json(ReplyContextResolver.candidates()) : ""

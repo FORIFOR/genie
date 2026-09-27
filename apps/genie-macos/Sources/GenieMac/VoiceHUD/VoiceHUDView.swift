@@ -444,8 +444,9 @@ struct ListeningDock: View {
         .onAppear {
             if !partial.isEmpty {
                 textInput = partial
-            } else if let held = voice.takeHeldUtterance() {
+            } else if let held = voice.listeningPrefill {
                 // 前の依頼の途中で送れなかった発話。送るのは本人（↩ か送信ボタン）。
+                // ここでは読むだけ（面の高さを測るときにも onAppear は走る）。
                 textInput = held
             }
             isFieldFocused = true
