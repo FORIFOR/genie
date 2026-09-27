@@ -261,9 +261,12 @@ import GenieCore
         var started = 0
         let token = GenieEventBus.shared.subscribe { e in if case .voiceStarted = e { started += 1 } }
         defer { GenieEventBus.shared.unsubscribe(token) }
-        voice.beginListening()
+        voice.beginDictation()
         XCTAssertEqual(store.dock, .confirmation(c), "声を始めただけでカードが隠れた")
         XCTAssertEqual(started, 0, "カードの間に聞き始めた")
+        voice.beginConversation()
+        XCTAssertFalse(voice.conversation.isActive, "カードの間に会話を始めた")
+        XCTAssertEqual(store.dock, .confirmation(c), "会話を始めてカードが隠れた")
         voice.mode = .answer("別の依頼の答え")
         XCTAssertEqual(store.dock, .confirmation(c), "回答がカードを隠した")
         store.resolveConfirmation(id: c.id, approved: false)

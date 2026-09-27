@@ -24,3 +24,11 @@ gate      : 1) 機械: `ConversationLoopTests` 9 件（空の答え・コード�
 - 実測 `--selftest selfecho`（実スピーカー・実マイク・実音声認識）: **判定できない（SKIP）**。除去なしの対照が読み上げを 1 文字も拾わなかった。この Mac の出力音量が 6% で、スピーカーの声がマイクに届いていない。対照が拾えないときに PASS と名乗らないよう、検査は SKIP を返す。音量を上げた状態で測り直す。
 - 会話の提供元（`ConversationProvider`）: いまの経路を `PipelineConversationProvider` として包んだ（Local とは呼ばない）。割り込み・外部送信・外部合成・応答なしを `capabilities` で宣言する。Gemini Live は未実装（本人の同意・API キー・予算の上限が要る）。
 - 追加指示（段階 5）: 「あと／それと／それから／ついでに／追加で、」で始まり、直前の仕事が動いている間だけ、その仕事への追加指示（`POST /v1/tasks/:id/instructions`）。受け取った（RECEIVED）と反映した（APPLIED・段）を分け、間に合わなければ NOT_APPLIED、終わった仕事は 409。
+
+## 入口の一本化と、答えのカードを残す（2026-09-27、本人の決定）
+
+reference : Apple Human Interface Guidelines — Voice interactions / Feedback（2026-09-27）。同じ見た目の入口に違う結果を持たせない。音声で得た答えは、聞き逃しても見返せるように残す。
+hypothesis: 「聞く」（一回で、入力欄があればそこへ入れ、無ければ Genie に聞く）と「会話」（Genie と何ターンも話す）は、どちらもマイクを開く入口で違いが見えない。「聞く」が前面のターミナルへ質問を入れ、答えが返らなかった（夜中の天気の件）。Genie に話しかける入口を「会話」だけにし、一回の入口は「音声入力」（欄へ文章を入れるだけ、欄が無ければ「会話」を案内）に改めれば、押す前に結果が分かる。読み終えたカードを残せば、読み上げを聞き逃しても見返せる。
+measured  : クイック操作 560×68「聞く／会話／録音／開く」。会話で読み終えるとカードが消え、聞く面（600×134）へ切り替わっていた（voicee2e の画面撮影で確認）。
+candidates: A = いま / B = 「会話」に一本化し「音声入力」は欄へ入れるだけ、読み終えたカードを残して下の行で「聞いています」を示す（本人が選択） / C = ボタンを 1 つにまとめ、欄へ入れる機能を Dock から外す
+gate      : 1) 機械: ConversationWiringTests（カードが残る・話し始めたら聞く面・音声入力は Genie に送らない）、ApprovalBoundaryTests と PermissionExperienceTests を会話の入口にも広げた、swift test 218。2) `--selftest voicee2e --shots`（実画面: 聞いている→考えている→読み上げ中→カードを残して次を待つ）、`--listen`（音声入力は欄へ回し、送らない）。3) golden: task-dock 01b / 04b / 04c を更新。盲検は未実施。

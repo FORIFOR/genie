@@ -287,7 +287,7 @@ enum SurfaceMotionGate {
         // ⓪ Idle → Preparing → Listening: ⌥Space の直後。面は先に出て、見出しは最初の音声フレームまで
         //    「準備中…」。実マイクを開く（本番と同じ経路）。窓は 1 枚のまま、上辺は動かない。
         let t0 = observe("T0-idle-to-listening", expectedWindows: 1, outDir: outDir) {
-            VoiceHUDState.shared.beginListening()
+            VoiceHUDState.shared.beginDictation()
         }
         result.transitions.append(t0)
         settle(0.4)

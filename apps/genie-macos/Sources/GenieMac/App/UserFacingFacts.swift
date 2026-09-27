@@ -117,6 +117,12 @@ enum UserFacingFacts {
     static let conversationExtend = "延長"
     static let conversationEnding = "まもなく終了"
     static let conversationStopSpeech = "読み上げを止める"
+    static let conversationListening = "聞いています"
+    static let conversationThinking = "考えています"
+    static let conversationSpeaking = "読み上げ中"
+    /// 一回の音声入力（文章を入れるだけ）。Genie に話しかけるのは「会話」。
+    static let dockDictation = "音声入力"
+    static let dictationNoField = "文字を入れる欄が見つかりませんでした。Genie に聞くときは「会話」から話してください。"
     static let menuShowControls = "録音コントロールを表示"
     static let menuHideControls = "録音コントロールを隠す"
     static let translationTarget = "翻訳先"
@@ -294,6 +300,13 @@ enum UserFacingFacts {
             f("conversation.extend", conversationExtend),
             f("conversation.ending", conversationEnding),
             f("conversation.stopSpeech", conversationStopSpeech),
+            f("conversation.listening", conversationListening),
+            f("conversation.thinking", conversationThinking),
+            f("conversation.speaking", conversationSpeaking),
+            // 「音声入力」は macOS の設定（キーボード → 音声入力）の名前でもある。ガイドがその設定を指す文を
+            // この文言で縛らない（protected にしない）。
+            f("dock.dictation", dockDictation, false),
+            f("dictation.noField", dictationNoField),
             f("menu.showControls", menuShowControls),
             f("menu.hideControls", menuHideControls),
             f("translation.target", translationTarget),

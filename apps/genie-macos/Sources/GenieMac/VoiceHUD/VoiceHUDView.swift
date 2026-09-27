@@ -1546,9 +1546,9 @@ struct QuickActionsDock: View {
 
     private var items: [Item] {
         var actions = [
-            Item(icon: "sparkles", title: "聞く") { state.beginListening() },
-            // 一回の音声入力（聞く）とは別の入口。明示的に始め、5 分で終わる。
+            // Genie に話しかけるのは「会話」。音声入力は前面のアプリの欄へ文章を入れるだけ（Genie へは送らない）。
             Item(icon: "bubble.left.and.bubble.right", title: Facts.dockConversation) { state.beginConversation() },
+            Item(icon: "mic", title: Facts.dockDictation) { state.beginDictation() },
             Item(icon: "record.circle", title: Facts.dockRecord) { WindowCoordinator.shared.toggleRecording() },
             Item(icon: "square.grid.2x2", title: Facts.resultOpen) { MainWindowController.shared.show() },
         ]

@@ -108,10 +108,10 @@ extension SelfTest {
     @MainActor
     private static func listenE2E(_ hud: VoiceHUDState) async {
         var dictated: String?
-        Dictation.dryRun = { dictated = $0 }
+        Dictation.dryRun = { dictated = $0; return true }
         let before = hud.latestRequestID
         let started = Date()
-        hud.beginListening()
+        hud.beginDictation()
         let dockKey = WindowCoordinator.shared.isListeningDockKey
         var answer = ""
         let deadline = Date().addingTimeInterval(60)

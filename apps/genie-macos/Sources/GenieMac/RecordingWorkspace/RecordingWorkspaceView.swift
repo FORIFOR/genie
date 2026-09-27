@@ -672,7 +672,7 @@ private struct AskGenieBar: View {
                 .accessibilityIdentifier("askGenieField")
             // よく頼むこと。入力欄と同じ場所に置く（右レールの別の箱にしない）。
             AIActionsPalette(state: state)
-            Button { VoiceHUDState.shared.beginListening() } label: {
+            Button { VoiceHUDState.shared.beginMeetingAsk() } label: {
                 Image(systemName: "mic")
                     .font(.system(size: 12))
                     .foregroundStyle(Palette.muted(dark))

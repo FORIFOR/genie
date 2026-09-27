@@ -14,6 +14,16 @@ struct ConversationBar: View {
         return String(format: "%d:%02d", s / 60, s % 60)
     }
 
+    /// いま何をしているか。答えのカードを残して次を聞いている間も、聞いていることが分かるように。
+    private var phaseLabel: String {
+        switch voice.conversation.phase {
+        case .listening: Facts.conversationListening
+        case .waiting: Facts.conversationThinking
+        case .speaking: Facts.conversationSpeaking
+        case .preparing, .inactive: "\(Facts.dockConversation)中"
+        }
+    }
+
     var body: some View {
         if voice.conversation.isActive {
             HStack(spacing: 8) {
@@ -21,7 +31,7 @@ struct ConversationBar: View {
                     .fill(voice.conversation.phase == .listening ? Palette.accent(dark) : Palette.muted(dark))
                     .frame(width: 6, height: 6)
                     .accessibilityHidden(true)
-                Text(voice.conversationEnding ? "\(Facts.conversationEnding) · \(remaining)" : "\(Facts.dockConversation)中 · \(remaining)")
+                Text(voice.conversationEnding ? "\(Facts.conversationEnding) · \(remaining)" : "\(phaseLabel) · \(remaining)")
                     .font(.system(size: S.type(Metrics.dockMetaSize)).monospacedDigit())
                     .foregroundStyle(voice.conversationEnding ? Palette.text(dark) : Palette.muted(dark))
                     .accessibilityIdentifier("conversationRemaining")

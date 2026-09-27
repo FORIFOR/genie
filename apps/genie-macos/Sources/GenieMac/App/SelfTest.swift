@@ -2152,7 +2152,7 @@ enum SelfTest {
             rec.step("Home（Dock は待機）", interactions: 0, surface: dockWin())
 
             // ② Listening。⌥Space と同じ入口。
-            let t1 = rec.transition { VoiceHUDState.shared.beginListening() }
+            let t1 = rec.transition { VoiceHUDState.shared.beginDictation() }
             settle(0.4)
             _ = rec.shot("02-listening", window: dockWin())
             // 逃げ道: マイクが開いている面で Esc が効くか。
@@ -2165,7 +2165,7 @@ enum SelfTest {
             rec.step("Listening", interactions: 1, transitionMs: t1, keys: keys, surface: dockWin())
 
             // ③ Running。
-            VoiceHUDState.shared.beginListening(); settle(0.3)
+            VoiceHUDState.shared.beginDictation(); settle(0.3)
             let task = AgentTask(
                 id: UUID(), title: "リリース予定を Ken に送る", status: .running,
                 steps: [AgentStep(title: "予定を読む", tool: "calendar", state: .success),

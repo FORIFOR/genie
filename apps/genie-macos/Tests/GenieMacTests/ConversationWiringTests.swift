@@ -101,6 +101,34 @@ final class ConversationWiringTests: XCTestCase {
         XCTAssertEqual(hud.mode, .idle, "聞いている姿を片付ける")
     }
 
+    func testTheAnswerCardStaysWhileListeningForTheNextTurn() {
+        let fake = FakeProvider()
+        hud.startConversation(using: fake)
+        fake.firstFrame?(); fake.utterance?("明日の天気は？")
+        hud.mode = .answer("明日は雨です。")          // 答えが面に出た（ask が出す姿）
+        fake.reply?(.settled("明日は雨です。"))
+        fake.finish?()
+        XCTAssertEqual(fake.log.last, "open(echo:true)", "読み終えたら次を聞く")
+        XCTAssertEqual(hud.mode, .answer("明日は雨です。"), "カードは残す（見返せる）")
+        hud.updatePartial("週末は")
+        XCTAssertEqual(hud.mode, .listening(partial: "週末は"), "話し始めたら聞く面へ")
+    }
+
+    func testDictationNeverAsksGenieAndPointsToConversation() {
+        var inserted: [String] = []
+        Dictation.dryRun = { _ in false }            // 入れる欄が無い
+        defer { Dictation.dryRun = nil }
+        hud.beginDictation()
+        let before = hud.latestRequestID
+        _ = hud.speak("明日の天気教えて")
+        XCTAssertEqual(hud.latestRequestID, before, "音声入力は Genie に送らない")
+        XCTAssertEqual(hud.mode, .answer(Facts.dictationNoField))
+        Dictation.dryRun = { inserted.append($0); return true }
+        _ = hud.speak("議事録に追記")
+        XCTAssertEqual(inserted, ["議事録に追記"])
+        XCTAssertEqual(hud.mode, .idle)
+    }
+
     enum Spoken: Equatable { case speak(String), none }
     static func lastSpeak(_ log: [String]) -> Spoken {
         guard let entry = log.last(where: { $0.hasPrefix("speak(") }) else { return .none }

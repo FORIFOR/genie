@@ -142,7 +142,24 @@ final class VoiceHUDState: ObservableObject {
     ///
     /// **実際に取り込む。**面は先に出すが、見出しは最初の音声フレームが届くまで「準備中…」で、
     /// 「聞いています…」と名乗るのはそれからにする（UI の意味と実装状態を一致させる）。
-    func beginListening() {
+    /// 一回の音声入力の使い道。Genie に話しかけるのは「会話」（`beginConversation`）。
+    enum ListenPurpose { case dictation, meetingAsk }
+    private(set) var listenPurpose: ListenPurpose = .dictation
+
+    /// 音声入力（一回）。言い終えた文を前面のアプリの入力欄へ入れる。**Genie には送らない**。
+    /// 入力欄が無ければ「会話」を案内する（推測で質問にしない）。
+    func beginDictation() {
+        listenPurpose = .dictation
+        beginListening()
+    }
+
+    /// 録音の作業画面の問いの欄のマイク。言い終えた文を、そのまま Genie への問いにする（従来どおり）。
+    func beginMeetingAsk() {
+        listenPurpose = .meetingAsk
+        beginListening()
+    }
+
+    private func beginListening() {
         // 確認カードに答えを待っている間は聞き始めない。**Listening でカードを隠さない**
         // （隠すと見えないカードが待ち続け、声を始めただけで承認が宙に浮く）。声でカードには答えない。
         guard GenieStateStore.shared.state.confirmation == nil else { return }
@@ -291,6 +308,13 @@ final class VoiceHUDState: ObservableObject {
 
     /// 認識の途中経過。**確定を待たずに** Dock へ出す（§Listening）。
     func updatePartial(_ text: String) {
+        // 会話で答えのカードを残したまま次を聞いているとき、話し始めたら聞いている面へ移る。
+        if conversation.isActive, !text.isEmpty {
+            switch mode {
+            case .answer, .info: mode = .listening(partial: "")
+            default: break
+            }
+        }
         guard case .listening = mode else { return }
         mode = .listening(partial: text)
         GenieEventBus.shared.publish(.voicePartial(text))
@@ -456,7 +480,9 @@ final class VoiceHUDState: ObservableObject {
             case .openMicrophone(let g):
                 inputLevel = 0
                 listeningAwaitingAudio = true
-                if GenieStateStore.shared.state.confirmation == nil { mode = .listening(partial: "") }
+                // 答えのカードは残したまま次を聞く（読み上げを聞き逃しても見返せる）。話し始めたら聞く面へ。
+                let showingAnswer: Bool = switch mode { case .answer, .info: true; default: false }
+                if GenieStateStore.shared.state.confirmation == nil, !showingAnswer { mode = .listening(partial: "") }
                 if !openConversationMicrophone(generation: g) { run(conversation.end(.microphoneLost)) }
             case .closeMicrophone:
                 conversationProvider.closeInput()
@@ -576,17 +602,26 @@ final class VoiceHUDState: ObservableObject {
         // 聞き終えたらマイクを閉じる（開きっぱなしにしない）。
         closeMicrophone()
         listeningAwaitingAudio = true
-        if WindowCoordinator.shared.isListeningDockKey {
-            submitText(text)
+        switch listenPurpose {
+        case .dictation:
+            // 音声入力は文章を入れるだけ。入れる先が無ければ、送らずに「会話」を案内する。
+            if Dictation.insert(text, excludingOwnProcess: true) {
+                mode = .idle
+                answer = ""
+                return true
+            }
+            answer = Facts.dictationNoField
+            mode = .answer(answer)
+            return false
+        case .meetingAsk:
+            if Dictation.insert(text, excludingOwnProcess: true) {
+                mode = .idle
+                answer = ""
+                return true
+            }
+            ask(text)
             return false
         }
-        if Dictation.insert(text, excludingOwnProcess: true) {
-            mode = .idle
-            answer = ""
-            return true
-        }
-        ask(text)
-        return false
     }
 
     /// 声/テキストの依頼を Agent に投げる。listening→thinking→answer→idle と状態を進める。

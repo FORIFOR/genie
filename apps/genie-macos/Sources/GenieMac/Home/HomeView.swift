@@ -262,7 +262,8 @@ struct HomeView: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("homeModelDisclosure")
             HStack(spacing: 10) {
-                Button { voice.beginListening() } label: {
+                // 声で依頼する = Genie と会話（音声入力は文章を入れるだけなので、ここでは使わない）。
+                Button { voice.beginConversation() } label: {
                     Image(systemName: "mic").frame(width: 28, height: 28)
                 }
                 .buttonStyle(GenieControlStyle(radius: 8, filled: false))

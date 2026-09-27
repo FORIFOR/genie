@@ -18,8 +18,8 @@ enum ResultActionRunner {
             if let sessionId { MainNav.shared.openSession = sessionId }
             store.workspaceOpened()
         case .ask:
-            VoiceHUDState.shared.beginListening()
-            return   // listening へ移るので結果面は畳まれる
+            VoiceHUDState.shared.beginConversation()
+            return   // 会話の聞く面へ移るので結果面は畳まれる
         case .copy:
             NSPasteboard.general.clearContents()
             NSPasteboard.general.setString(title, forType: .string)
