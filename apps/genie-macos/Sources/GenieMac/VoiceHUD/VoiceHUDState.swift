@@ -86,6 +86,9 @@ final class VoiceHUDState: ObservableObject {
     /// 最初の音声フレームが届いてから名乗る。タイマーでは切り替えない。
     @Published private(set) var listeningAwaitingAudio = true
     @Published private(set) var inputLevel: Float = 0
+    /// 会話で聞いている間の波形。届いた音量の新しい順に最大 `inputLevelHistory` 個（古いものから捨てる）。
+    @Published private(set) var inputLevels: [CGFloat] = []
+    static let inputLevelHistory = 14
 
     func receiveInputLevel(_ level: Float) {
         // 会話で聞いている間は、面が答えのカードでもオーブへ大きさを渡す（オーブが声に反応する）。
@@ -93,6 +96,7 @@ final class VoiceHUDState: ObservableObject {
         if !conversationListening { guard case .listening = mode else { return } }
         guard !listeningAwaitingAudio else { return }
         inputLevel = LiquidOrbMotion.clampedLevel(level)
+        inputLevels = Array((inputLevels + [CGFloat(inputLevel)]).suffix(Self.inputLevelHistory))
     }
 
     /// 検査・golden 用。実マイクを開けない撮影で「取り込めている姿」を作る
@@ -100,7 +104,7 @@ final class VoiceHUDState: ObservableObject {
     func markVoiceCaptureLive() { listeningAwaitingAudio = false }
 
     /// 検査・golden 用。「まだ取り込めていない姿（準備中…）」を作る。
-    func beginPreparingForShot() { listeningAwaitingAudio = true; inputLevel = 0 }
+    func beginPreparingForShot() { listeningAwaitingAudio = true; inputLevel = 0; inputLevels = [] }
 
     @Published private(set) var latestRequestID: UUID?
     @Published private(set) var refreshingRequests: Set<UUID> = []
@@ -177,6 +181,7 @@ final class VoiceHUDState: ObservableObject {
         guard GenieStateStore.shared.state.confirmation == nil else { return }
         GenieSpeechOutput.shared.stop()
         inputLevel = 0
+        inputLevels = []
         isListeningMuted = false
         guard Permissions.microphone == .granted else {
             PermissionGuideCoordinator.shared.explain(.microphone) { [weak self] in self?.beginListening() }
@@ -232,6 +237,7 @@ final class VoiceHUDState: ObservableObject {
             // 会話では、音を運んでいるのは提供元（Gemini は自前のマイクで送る）。そちらを止める。
             if conversation.isActive { conversationProvider.closeInput() } else { closeMicrophone() }
             inputLevel = 0
+            inputLevels = []
         } else {
             listeningAwaitingAudio = true
             if conversation.isActive { openConversationMicrophone() } else { openMicrophone() }
@@ -308,6 +314,7 @@ final class VoiceHUDState: ObservableObject {
     /// 聞くのをやめる（Esc）。マイクが開いている面に逃げ道の鍵が無いのは危ない。
     func cancelListening() {
         inputLevel = 0
+        inputLevels = []
         // 会話中の Esc は会話を終える（仕事は取り消さない）。
         if conversation.isActive { endConversation(.user); return }
         // 表示が何であっても、開いているマイクは閉じる（遅れて届く確定文も捨てる）。
@@ -500,6 +507,7 @@ final class VoiceHUDState: ObservableObject {
             switch effect {
             case .openMicrophone(let g):
                 inputLevel = 0
+                inputLevels = []
                 listeningAwaitingAudio = true
                 // 答えのカードは残したまま次を聞く（読み上げを聞き逃しても見返せる）。話し始めたら聞く面へ。
                 let showingAnswer: Bool = switch mode { case .answer, .info: true; default: false }
@@ -508,6 +516,7 @@ final class VoiceHUDState: ObservableObject {
             case .closeMicrophone:
                 conversationProvider.closeInput()
                 inputLevel = 0
+                inputLevels = []
             case .send(let text):
                 conversationProvider.send(text) { [weak self] reply in
                     guard let self else { return }

@@ -66,7 +66,7 @@ final class ConversationWiringTests: XCTestCase {
         fake.utterance?("週末は？")
         fake.reply?(.working)
         guard case .speak(let ack) = ConversationWiringTests.lastSpeak(fake.log) else { return XCTFail() }
-        XCTAssertTrue(ack.contains("受け付けました"))
+        XCTAssertTrue(ack.contains("かしこまりました"))
     }
 
     func testEndingStopsSpeechAndIgnoresTheLateFinish() {

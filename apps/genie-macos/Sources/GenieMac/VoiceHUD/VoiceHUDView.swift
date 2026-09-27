@@ -74,10 +74,6 @@ struct VoiceTaskDockView: View {
         case .idle: IdleDock()
         case .appContext(let summary): AppContextDock(summary: summary, expanded: false)
         case .appContextExpanded(let summary): AppContextDock(summary: summary, expanded: true)
-        // 会話の間は、聞く・考える・文の答えをオーブの面にする（文字起こし・答えの文は出さない。答えは声で返る）。
-        case .listening where VoiceHUDState.shared.conversation.isActive: ConversationOrbView()
-        case .thinking where VoiceHUDState.shared.conversation.isActive: ConversationOrbView()
-        case .answer where VoiceHUDState.shared.conversation.isActive: ConversationOrbView()
         case .listening(let partial): ListeningDock(partial: partial)
         case .thinking: ThinkingDock()
         case .agent: AgentDock()
@@ -390,6 +386,18 @@ struct ListeningDock: View {
                 GenieOrb(mode: voice.isListeningMuted ? .idle : (voice.listeningAwaitingAudio ? .preparing : .listening),
                          level: voice.isListeningMuted ? 0 : voice.inputLevel)
 
+                // 会話では、声が届いていることを波形でも見せる（文字は右の欄に出る）。
+                // 届く値は振幅の peak で、話し声でも 0.05〜0.3 に集まり、そのままでは 1〜5pt の棒にしかならない
+                // （実マイクの voicee2e で確認）。平方根で見える高さに広げる（静か 0.07→0.26、声 0.33→0.57）。
+                if voice.conversation.isActive {
+                    Waveform(levels: voice.isListeningMuted ? [] : voice.inputLevels.map { $0.squareRoot() },
+                             color: Palette.accent(dark),
+                             barWidth: 2, spacing: 2,
+                             awaitingInput: voice.listeningAwaitingAudio)
+                        .frame(width: CGFloat(VoiceHUDState.inputLevelHistory) * 4, height: 18)
+                        .accessibilityIdentifier("dockListeningWaveform")
+                }
+
                 TextField(placeholderText, text: $textInput)
                     .textFieldStyle(.plain)
                     .font(.system(size: S.type(Metrics.dockSpeechSize)))
@@ -627,9 +635,11 @@ struct AgentDock: View {
                 Text(elapsedLabel(task))
                     .font(.system(size: S.type(Metrics.dockMetaSize), design: .monospaced))
                     .foregroundStyle(Palette.muted(dark))
-                Text("\(Int(task.progress * 100))%")
+                if !task.steps.isEmpty {
+                    Text("\(task.doneSteps)/\(task.steps.count) 段")
                     .font(.system(size: S.type(Metrics.dockMetaSize), design: .monospaced))
                     .foregroundStyle(Palette.muted(dark))
+                }
             }
         }
     }
@@ -647,7 +657,7 @@ struct AgentDock: View {
             .frame(height: 3)
             .animation(.easeOut(duration: Motion.drawerMs), value: task.progress)
             .accessibilityIdentifier("agentProgress")
-            .accessibilityLabel("進み具合 \(Int(task.progress * 100))%")
+            .accessibilityLabel("\(task.steps.count) 段のうち \(task.doneSteps) 段が終わりました")
         }
     }
 

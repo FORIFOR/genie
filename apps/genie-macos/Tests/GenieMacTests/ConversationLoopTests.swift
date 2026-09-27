@@ -42,7 +42,7 @@ final class ConversationLoopTests: XCTestCase {
         var (loop, g) = started()
         _ = loop.utterance("この資料を直して", generation: g)
         guard case .speak(let text, _) = loop.reply(.working).first else { return XCTFail("受付を知らせない") }
-        XCTAssertTrue(text.contains("受け付けました"))
+        XCTAssertTrue(text.contains("かしこまりました"))
         XCTAssertFalse(text.contains("完了"), "受け付けただけで完了とは言わない")
     }
 

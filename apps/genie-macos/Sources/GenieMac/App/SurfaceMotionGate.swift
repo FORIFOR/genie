@@ -44,6 +44,13 @@ enum SurfaceMotionGate {
         var maxGapMs = 0.0
         var sameDockIdPct = 0.0
         var unexpectedWindows = 0
+        /// 増えた窓の中身（題・段・寸法・NSWindow の型）。「何が出たか」が分からないと直せない。
+        var unexpectedWindowNames: [String] = []
+        /// 数えなかった窓。OS の部品（AppKit 以外の Apple のフレームワーク）で、撮ると 1 画素も描いていないものだけ。
+        /// 文字欄に焦点を移すと、AutoFill（SafariPlatformSupport の SPRoundedWindow 312x237）が
+        /// 透明のまま出ることがある（10 回に 1 回ほど）。利用者には見えず、Genie は止められない（公開の手段が無い）。
+        /// 1 画素でも描けば数える。
+        var ignoredSystemWindows: [String] = []
         var focusTheft = 0
         var topDriftPt = 0.0
         var centerDriftPt = 0.0
@@ -95,6 +102,24 @@ enum SurfaceMotionGate {
     }
 
     private struct Shot { let win: Win; let image: CGImage }
+
+    /// OS の部品が出した、何も描いていない窓なら、その説明を返す。Genie の窓・AppKit の窓・描いている窓は nil。
+    private static func invisibleSystemHelper(_ w: Win) -> String? {
+        guard let ns = NSApp.windows.first(where: { $0.windowNumber == Int(w.id) }),
+              let from = Bundle(for: type(of: ns)).bundleIdentifier,
+              from.hasPrefix("com.apple."), from != "com.apple.AppKit", from != Bundle.main.bundleIdentifier,
+              let image = CGWindowListCreateImage(.null, .optionIncludingWindow, w.id, [.boundsIgnoreFraming, .nominalResolution]),
+              image.width > 0, image.height > 0 else { return nil }
+        // 全画素の alpha を見る（間引かない。1 画素でも描いていれば数える）。
+        let width = image.width, height = image.height
+        var pixels = [UInt8](repeating: 0, count: width * height * 4)
+        guard let ctx = CGContext(data: &pixels, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4,
+                                  space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+        else { return nil }
+        ctx.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+        for k in stride(from: 3, to: pixels.count, by: 4) where pixels[k] != 0 { return nil }
+        return "\(String(describing: type(of: ns)))(\(from)) \(Int(w.w))x\(Int(w.h)) 透明"
+    }
 
     /// 自分の窓だけを 1 枚ずつ撮る。他アプリの中身は入らない。
     private static func capture(_ wins: [Win]) -> [Shot] {
@@ -173,7 +198,20 @@ enum SurfaceMotionGate {
             tr.maxGapMs = max(tr.maxGapMs, now.timeIntervalSince(lastTick) * 1000)
             lastTick = now
 
-            let wins = ownWindows()
+            var wins = ownWindows()
+            wins.removeAll { w in
+                guard w.id != dock0?.id, let label = invisibleSystemHelper(w) else { return false }
+                if !tr.ignoredSystemWindows.contains(label) { tr.ignoredSystemWindows.append(label) }
+                return true
+            }
+            if wins.count > tr.expectedWindows {
+                for w in wins where w.id != dock0?.id {
+                    let ns = NSApp.windows.first { $0.windowNumber == Int(w.id) }
+                    let from = ns.flatMap { Bundle(for: type(of: $0)).bundleIdentifier } ?? "?"
+                    let label = "\(ns.map { String(describing: type(of: $0)) } ?? "?")(\(from))「\(ns?.title ?? "")」layer=\(w.layer) \(Int(w.w))x\(Int(w.h))"
+                    if !tr.unexpectedWindowNames.contains(label) { tr.unexpectedWindowNames.append(label) }
+                }
+            }
             let dock = wins.first { $0.id == dock0?.id } ?? wins.max(by: { $0.layer < $1.layer })
             let other = wins.first { $0.id != dock?.id && !baseIds.contains($0.id) }
                 ?? wins.first { $0.id != dock?.id && $0.w >= 600 }
@@ -257,7 +295,9 @@ enum SurfaceMotionGate {
 
         // 判定（層 A のみ）。
         if tr.sameDockIdPct < 100 { tr.verdict.append("Dock の窓 id が途中で変わった (\(Int(tr.sameDockIdPct))%)") }
-        if tr.unexpectedWindows > 0 { tr.verdict.append("宣言していない窓が \(tr.unexpectedWindows) 枚増えた") }
+        if tr.unexpectedWindows > 0 {
+            tr.verdict.append("宣言していない窓が \(tr.unexpectedWindows) 枚増えた [\(tr.unexpectedWindowNames.joined(separator: ", "))]")
+        }
         if tr.focusTheft > 0 { tr.verdict.append("前面のアプリが変わった") }
         if tr.topDriftPt > 2 { tr.verdict.append(String(format: "上辺が %.1fpt 動いた", tr.topDriftPt)) }
         if tr.centerDriftPt > 2 { tr.verdict.append(String(format: "中心が %.1fpt 動いた", tr.centerDriftPt)) }
@@ -373,6 +413,7 @@ enum SurfaceMotionGate {
                          t.heightReversals, t.maxHeightStepRatio, t.maxContentDelta, t.otherLayoutShiftPt,
                          t.otherAlphaReversals, t.settledMs))
             for v in t.verdict { print("    ^ \(v)") }
+            for w in t.ignoredSystemWindows { print("    · 数えなかった OS の窓: \(w)") }
         }
         for n in result.notMeasured { print("  NOT_MEASURED \(n)") }
         for o in result.observations { print("  SEE \(o)") }

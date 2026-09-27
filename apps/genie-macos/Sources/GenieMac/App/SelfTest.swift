@@ -93,6 +93,7 @@ enum SelfTest {
         case "selfecho": Task { await selfEcho() }; return true
         case "inputfocus": Task { await inputFocus() }; return true
         case "micprobe": Task { await micProbe() }; return true
+        case "glassshots": Task { await glassShots(Array(args[(i + 2)...])) }; return true
         case "voicee2e": Task { await voiceE2E(args) }; return true
         case "geminismoke": Task { await geminiSmoke() }; return true
         case "brief": briefGate(); return true
@@ -6094,7 +6095,11 @@ enum SelfTest {
             ? args[args.firstIndex(of: "--selftest")! + 2] : "http://127.0.0.1:3000"
         guard GenieCoreBridge.reachable(base) else { print("SELFTEST_SKIP voiceask: gateway unreachable"); exit(0) }
         do {
-            let accessToken = try preparedTestToken(base: base, email: "voiceask-\(getpid())@astra.local")
+            // aiaction と同じ: 新しい PID の利用者には host も General Assistant も無く、答えが返らない。
+            // 指定された試験用の利用者（host と General Assistant がある）を使える。判定は変えない。
+            let configured = ProcessInfo.processInfo.environment["ASTRA_SELFTEST_AGENT_EMAIL"]
+            let email = configured?.hasSuffix("@astra.local") == true ? configured! : "voiceask-\(getpid())@astra.local"
+            let accessToken = try preparedTestToken(base: base, email: email)
             guard LocalStore.shared.open() else { print("SELFTEST_FAIL voiceask: storage unavailable"); exit(2) }
             let hud = VoiceHUDState.shared
             hud.configureBackend(base: base, token: accessToken)
@@ -6118,7 +6123,10 @@ enum SelfTest {
             }
             guard wasThinking, record?.hasResult == true, settled,
                   hud.answer.contains("金曜"), hud.answer.contains("15") || hud.answer.contains("3時") else {
-                print("SELFTEST_FAIL voiceask: no completed, persisted answer with fixture facts"); exit(2)
+                // 何を見て落ちたかを残す（判定は変えない）。
+                print("SELFTEST_FAIL voiceask: no completed, persisted answer with fixture facts "
+                      + "thinking=\(wasThinking) hasResult=\(record?.hasResult == true) mode=\(hud.mode) "
+                      + "answer=\"\(hud.answer.prefix(60))\""); exit(2)
             }
             let preview = String(hud.answer.prefix(36)).replacingOccurrences(of: "\n", with: " ")
             print("SELFTEST_OK voiceask: thinking=\(wasThinking)→settled Agent 応答=\"\(preview)…\"")

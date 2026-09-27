@@ -96,6 +96,9 @@ recovery / keyboard safety / perceived complexity）。ここには **決まっ�
 
 - `DockSurface`: fill black 0.80、hairline white 0.14、上辺の内側光 0.10。
   gradient / graphite は付けない。
+  - 例外（2026-09-27、本人の決定）: macOS 26 以上で「透明度を下げる」がオフのときだけ、
+    外殻を Liquid Glass（`glassEffect(.regular)`）にし、その上に黒 0.62 を重ねる。
+    中身は変えない。面の輝度は平らな黒と同じ帯（`compare/liquid-glass`）。
 - 画面の縁に接した面（Dock）は **影で浮かせない**（造形⑧、3/3）。
   Task Dock の pill は Workspace の凹みに食い込むので影あり（別の面ではない）。
 - 根拠: 縦 gradient（0.72→0.88）と graphite（0.17→0.07）を 3 名が盲検で

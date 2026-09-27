@@ -256,12 +256,12 @@ struct AgentStep: Identifiable, Equatable {
 
 struct AgentTask: Identifiable, Equatable {
     var requestRecord: TaskRequestRecord? = nil
-    /// 進み具合（0–1）。段の状態から出す。持たせると必ずずれるので、計算にする。
+    /// 終わった段の数。進み具合は段の数でだけ言う（作った割合は出さない。途中の段を半分と数えていた）。
+    var doneSteps: Int { steps.filter { $0.state == .success }.count }
+    /// 進み具合（0–1）。終わった段 ÷ 段の数。持たせると必ずずれるので、計算にする。
     var progress: Double {
         guard !steps.isEmpty else { return 0 }
-        let done = steps.filter { $0.state == .success }.count
-        let running = steps.contains { $0.state == .running } ? 0.5 : 0
-        return min(1, (Double(done) + running) / Double(steps.count))
+        return min(1, Double(doneSteps) / Double(steps.count))
     }
 
     let id: UUID

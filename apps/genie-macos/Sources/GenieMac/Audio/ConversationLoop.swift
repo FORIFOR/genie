@@ -117,7 +117,8 @@ struct ConversationLoop: Equatable {
         let spoken: String
         switch reply {
         case .settled(let text): spoken = text
-        case .working: spoken = "受け付けました。進めています。結果は Work に届きます。"
+        // 受け付けた（仕事が作られた）ときだけ。受け付けられなかったものは .failed で理由を言う。
+        case .working: spoken = "かしこまりました。進めています。結果は Work に届きます。"
         case .failed(let reason): spoken = reason
         case .held: spoken = "前の依頼に答えている途中です。いまの内容はまだ送っていません。"
         }
