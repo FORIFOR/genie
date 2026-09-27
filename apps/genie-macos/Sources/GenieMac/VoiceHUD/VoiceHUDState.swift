@@ -155,6 +155,8 @@ final class VoiceHUDState: ObservableObject {
     /// 一回の音声入力の使い道。Genie に話しかけるのは「会話」（`beginConversation`）。
     enum ListenPurpose { case dictation, meetingAsk }
     private(set) var listenPurpose: ListenPurpose = .dictation
+    /// 音声入力で文字を入れる先のアプリ（始めたときの前面）。
+    private(set) var dictationTargetPID: pid_t?
 
     /// 音声入力（一回）。言い終えた文を前面のアプリの入力欄へ入れる。**Genie には送らない**。
     /// 入力欄が無ければ「会話」を案内する（推測で質問にしない）。
@@ -166,6 +168,8 @@ final class VoiceHUDState: ObservableObject {
             return
         }
         listenPurpose = .dictation
+        // 入れる先は、始めたときに前面にあったアプリ（Dock を押しても前面のアプリは変わらない）。
+        dictationTargetPID = Dictation.frontmostOtherAppPID()
         beginListening()
     }
 
@@ -199,7 +203,9 @@ final class VoiceHUDState: ObservableObject {
         // 預かっていた発話は、この Listening の入力欄へ（送るのは本人）。
         listeningPrefill = takeHeldUtterance()
         mode = .listening(partial: "")
-        WindowCoordinator.shared.focusListeningDock()
+        // 音声入力では Dock にキーを取らない（入れる先は前面のアプリの欄。キーを奪うと、そのアプリの
+        // 入力中の状態を崩し、欄の判定も Genie 自身を指していた）。会議の問いは Dock の欄で受ける。
+        if listenPurpose != .dictation { WindowCoordinator.shared.focusListeningDock() }
         GenieEventBus.shared.publish(.voiceStarted)
         openMicrophone()
     }
@@ -720,7 +726,7 @@ final class VoiceHUDState: ObservableObject {
         switch listenPurpose {
         case .dictation:
             // 音声入力は文章を入れるだけ。入れる先が無ければ、送らずに「会話」を案内する。
-            if Dictation.insert(text, excludingOwnProcess: true) {
+            if Dictation.insert(text, excludingOwnProcess: true, appPID: dictationTargetPID) {
                 mode = .idle
                 answer = ""
                 return true

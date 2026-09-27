@@ -11,11 +11,15 @@ import ApplicationServices
 enum Dictation {
     /// フォーカス中の要素が「テキストを受け取れる」か。
     /// AX の role と、値の設定可否（`AXUIElementIsAttributeSettable`）で判定する。
-    static func focusedTextTarget(excludingOwnProcess: Bool = false) -> AXUIElement? {
+    ///
+    /// `appPID`: 音声入力を始めたときに前面にあったアプリ。渡されたら**そのアプリの**フォーカス中の欄を見る。
+    /// system-wide で聞くと、Dock（Genie の窓）がキーになっている間は Genie 自身の欄が返り、
+    /// 「欄が見つからない」になっていた（2026-09-28 実機。前面のアプリの欄は開いていた）。
+    static func focusedTextTarget(excludingOwnProcess: Bool = false, appPID: pid_t? = nil) -> AXUIElement? {
         guard AXIsProcessTrusted() else { return nil }
-        let system = AXUIElementCreateSystemWide()
+        let owner = appPID.map { AXUIElementCreateApplication($0) } ?? AXUIElementCreateSystemWide()
         var focused: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(system, kAXFocusedUIElementAttribute as CFString, &focused) == .success,
+        guard AXUIElementCopyAttributeValue(owner, kAXFocusedUIElementAttribute as CFString, &focused) == .success,
               let element = focused
         else { return nil }
         let axElement = element as! AXUIElement
@@ -53,13 +57,22 @@ enum Dictation {
     @MainActor static var dryRun: ((String) -> Bool)?
 
     @discardableResult
-    static func insert(_ text: String, excludingOwnProcess: Bool = false) -> Bool {
+    static func insert(_ text: String, excludingOwnProcess: Bool = false, appPID: pid_t? = nil) -> Bool {
         if let dryRun = MainActor.assumeIsolated({ Self.dryRun }) {
             guard !text.isEmpty else { return false }
             return MainActor.assumeIsolated { dryRun(text) }
         }
-        guard !text.isEmpty, let target = focusedTextTarget(excludingOwnProcess: excludingOwnProcess) else { return false }
+        guard !text.isEmpty,
+              let target = focusedTextTarget(excludingOwnProcess: excludingOwnProcess, appPID: appPID)
+                ?? (appPID != nil ? focusedTextTarget(excludingOwnProcess: excludingOwnProcess) : nil)
+        else { return false }
         return insert(text, into: target)
+    }
+
+    /// 音声入力を始めたときの前面のアプリ（Genie 自身は除く）。入れる先はここで決める。
+    @MainActor static func frontmostOtherAppPID() -> pid_t? {
+        guard let app = NSWorkspace.shared.frontmostApplication, app.processIdentifier != getpid() else { return nil }
+        return app.processIdentifier
     }
 
     /// Use an explicitly verified target when a local practice field owns the operation.
