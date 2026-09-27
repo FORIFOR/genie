@@ -42,6 +42,8 @@ final class MicCapture {
             throw NSError(domain: "MicCapture", code: 2)
         }
 
+        // 前の取り込みの tap が残っていたら外す（同じ bus に二重に付けると例外で落ちる）。
+        input.removeTap(onBus: 0)
         input.installTap(onBus: 0, bufferSize: 1024, format: inFormat) { [weak self] buffer, _ in
             guard let self else { return }
             let capacity = AVAudioFrameCount(

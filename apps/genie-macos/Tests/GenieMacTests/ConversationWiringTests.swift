@@ -129,6 +129,18 @@ final class ConversationWiringTests: XCTestCase {
         XCTAssertEqual(hud.mode, .idle)
     }
 
+    func testClosingTheCardDuringAConversationKeepsTheListeningView() {
+        let fake = FakeProvider()
+        hud.startConversation(using: fake)
+        hud.mode = .answer("明日は雨です。")
+        GenieStateStore.shared.dismissResult()
+        XCTAssertEqual(hud.mode, .listening(partial: ""), "会話中はカードを閉じてもマイクの姿を隠さない")
+        hud.endConversation(.user)
+        hud.mode = .answer("答え")
+        GenieStateStore.shared.dismissResult()
+        XCTAssertEqual(hud.mode, .idle, "会話でなければ従来どおり閉じる")
+    }
+
     enum Spoken: Equatable { case speak(String), none }
     static func lastSpeak(_ log: [String]) -> Spoken {
         guard let entry = log.last(where: { $0.hasPrefix("speak(") }) else { return .none }

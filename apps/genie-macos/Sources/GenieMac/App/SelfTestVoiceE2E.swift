@@ -41,7 +41,18 @@ extension SelfTest {
         if let shotDir { try? FileManager.default.createDirectory(atPath: shotDir, withIntermediateDirectories: true) }
         var shots: [String] = []
         func shoot(_ name: String) {
-            guard let shotDir, let (id, w, h) = dockWindow() else { return }
+            guard let shotDir else { return }
+            // 窓の大きさが、いまの状態の大きさになってから撮る（大きさが変わる途中の絵を撮らない）。
+            let want = GenieStateStore.shared.dock.size(agentRows: 0)
+            let until = Date().addingTimeInterval(2)
+            var found = dockWindow()
+            while Date() < until {
+                if let f = found, abs(CGFloat(f.1) - want.width) <= 2, abs(CGFloat(f.2) - want.height - WindowCoordinator.shared.dockTopInset) <= 2 { break }
+                RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+                found = dockWindow()
+            }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.3))
+            guard let (id, w, h) = dockWindow() else { return }
             guard let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, id, [.boundsIgnoreFraming, .nominalResolution]),
                   let png = NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:]) else { return }
             try? png.write(to: URL(fileURLWithPath: "\(shotDir)/\(shots.count)-\(name).png"))
@@ -60,6 +71,8 @@ extension SelfTest {
         hud.beginConversation()
         try? await Task.sleep(nanoseconds: 600_000_000)
         shoot("listening")
+        try? await Task.sleep(nanoseconds: 1_400_000_000)
+        shoot("listening-2s")
         guard hud.conversation.isActive else { print("SELFTEST_FAIL voicee2e: stage=start conversation did not start (mode=\(hud.mode))"); exit(2) }
         log.append("start@\(t())")
 

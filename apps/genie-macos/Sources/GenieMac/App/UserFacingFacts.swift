@@ -114,7 +114,12 @@ enum UserFacingFacts {
     /// 「Genie と会話」の入口。一回の音声入力（聞く）とは別。
     static let dockConversation = "会話"
     static let conversationEnd = "会話を終了"
-    static let conversationExtend = "延長"
+    static let conversationExtend = "5分延長"
+    static let conversationRemaining = "残り"
+    /// 音声入力で聞いている間の欄の案内（Genie には送らない、と押した後にも分かるように）。
+    static let dictationPlaceholder = "前面のアプリに入力します…"
+    static let quickConversationHelp = "Genie と話します。答えが返ります"
+    static let quickDictationHelp = "前面のアプリに文字を入れます。Genie には送りません"
     static let conversationEnding = "まもなく終了"
     static let conversationStopSpeech = "読み上げを止める"
     static let conversationListening = "聞いています"
@@ -122,6 +127,7 @@ enum UserFacingFacts {
     static let conversationSpeaking = "読み上げ中"
     /// 一回の音声入力（文章を入れるだけ）。Genie に話しかけるのは「会話」。
     static let dockDictation = "音声入力"
+    static let conversationDuringRecording = "録音中は会話を始められません。録音を止めてから、もう一度どうぞ。"
     static let dictationNoField = "文字を入れる欄が見つかりませんでした。Genie に聞くときは「会話」から話してください。"
     static let menuShowControls = "録音コントロールを表示"
     static let menuHideControls = "録音コントロールを隠す"
@@ -298,6 +304,11 @@ enum UserFacingFacts {
             f("dock.conversation", dockConversation),
             f("conversation.end", conversationEnd),
             f("conversation.extend", conversationExtend),
+            // 「残り」は普通の言葉（ガイドの本文でも別の意味で使う）。画面の固有の語として縛らない。
+            f("conversation.remaining", conversationRemaining, false),
+            f("dictation.placeholder", dictationPlaceholder),
+            f("quick.conversationHelp", quickConversationHelp),
+            f("quick.dictationHelp", quickDictationHelp),
             f("conversation.ending", conversationEnding),
             f("conversation.stopSpeech", conversationStopSpeech),
             f("conversation.listening", conversationListening),
@@ -307,6 +318,7 @@ enum UserFacingFacts {
             // この文言で縛らない（protected にしない）。
             f("dock.dictation", dockDictation, false),
             f("dictation.noField", dictationNoField),
+            f("conversation.duringRecording", conversationDuringRecording),
             f("menu.showControls", menuShowControls),
             f("menu.hideControls", menuHideControls),
             f("translation.target", translationTarget),

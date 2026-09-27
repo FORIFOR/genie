@@ -65,7 +65,7 @@ describe('info.lookup weather', () => {
     expect(body).toMatchObject({ schema: 'genie.info/v1', kind: 'weather' });
     expect(body.data.place).toBe('大阪府');
     expect(body.data.days).toEqual([
-      { date: '2026-09-27', label: '明日', code: 63, summary: '雨', high: 22, low: 19.5, precipitation: 80 },
+      { date: '2026-09-27', label: '明日(日)', code: 63, summary: '雨', high: 22, low: 19.5, precipitation: 80 },
     ]);
     expect(body.text).toBe('明日の大阪府は雨。最高22℃、最低20℃、降水確率80%です。');
     expect(body.sources[0]?.name).toBe('Open-Meteo.com');
@@ -94,7 +94,7 @@ describe('info.lookup weather', () => {
     const none = envelope(await new CurrentInfoRunner({ fetch: missing.fetch, region: () => '東京都', now }).run(step({ kind: 'weather', when: 'today', place: 'ほげ' })));
     expect(none.data).toBeNull();
     expect(none.text).toContain('「ほげ」の場所が見つかりませんでした');
-    expect(missing.urls).toHaveLength(2);
+    expect(missing.urls).toHaveLength(3); // 日本で「ほげ」「ほげ市」、無ければ世界で「ほげ」
   });
 
   it('fails instead of guessing when the forecast cannot be fetched', async () => {

@@ -394,7 +394,8 @@ export function createTaskActivities(deps: ActivityDeps): TaskActivities {
           .set({ status: 'APPLIED', applied_step_index: stepIndex, resolved_at: now() })
           .where('task_id', '=', input.taskId)
           .where('request_id', 'in', [...requestIds])
-          .where('status', '=', 'RECEIVED')
+          // 合図の返事が失われて「反映できなかった」と記録した後に、実際には届いて反映した場合も直す。
+          .where('status', 'in', ['RECEIVED', 'NOT_APPLIED'])
           .execute(),
       );
     },

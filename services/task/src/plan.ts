@@ -43,7 +43,8 @@ export function withInstructions(step: TaskStep, texts: readonly string[]): Task
   if (texts.length === 0) return step;
   const note = `\n\n追加の指示:\n${texts.map((t) => `- ${t}`).join('\n')}`;
   const args: Record<string, unknown> = { ...step.args, follow_up_instructions: [...texts] };
-  for (const key of ['request', 'question', 'message', 'instruction', 'goal']) {
+  // 依頼文の引数だけに足す。`message` は外へ送る本文になり得る（投稿・返信）ので足さない。
+  for (const key of ['request', 'question', 'instruction', 'goal']) {
     if (typeof args[key] === 'string') args[key] = `${args[key] as string}${note}`;
   }
   return { ...step, args };

@@ -121,6 +121,8 @@ struct AnswerDock: View {
                 }
                 .buttonStyle(GenieControlStyle(radius: 7, base: 0.06))
                 .accessibilityIdentifier("answerCopy")
+                // 会話中は ✕ を出さない（カードを閉じるのか会話を終えるのかが分からない。終えるのは下の行）。
+                if !VoiceHUDState.shared.conversation.isActive {
                 Button { GenieStateStore.shared.dismissResult() } label: {
                     Image(systemName: "xmark")
                         .font(.system(size: 11))
@@ -130,6 +132,7 @@ struct AnswerDock: View {
                 .buttonStyle(GenieControlStyle(radius: 7, base: 0.0))
                 .accessibilityIdentifier("answerDismiss")
                 .accessibilityLabel("回答を閉じる")
+                }
             }
             ScrollView {
                 Text(text)
@@ -373,6 +376,7 @@ struct ListeningDock: View {
         if isSpeechDenied {
             return "音声認識が未許可です · 入力して ↩"
         }
+        if voice.listenPurpose == .dictation, !voice.conversation.isActive { return Facts.dictationPlaceholder }
         return voice.listeningAwaitingAudio ? Facts.recordingHeroPreparing : Facts.listeningPlaceholder
     }
 
@@ -435,7 +439,7 @@ struct ListeningDock: View {
                 }
             }
             ContextStrip()
-            ConversationBar()
+            ConversationBar(showsPhase: false)
         }
         .padding(.horizontal, S.metric(Metrics.dockPadH))
         .padding(.vertical, S.metric(Metrics.dockPadV))
@@ -521,14 +525,14 @@ struct ThinkingDock: View {
             }
             // 答えている途中に届いた発話。消さずに見せ、次に聞くとき入力欄へ戻す。
             if let held = voice.heldUtterance {
-                Text("「\(held)」は未送信です。次に話すと入力欄に戻ります。")
+                Text("「\(held)」はまだ送っていません。答えのあと入力欄から送れます。")
                     .font(.system(size: S.type(Metrics.dockMetaSize)))
                     .foregroundStyle(Palette.muted(scheme == .dark))
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("dockHeldUtterance")
             }
-            ConversationBar()
+            ConversationBar(showsPhase: false)
         }
         .padding(.horizontal, S.metric(Metrics.dockPadH))
         .padding(.vertical, S.metric(Metrics.dockPadV))
@@ -1541,14 +1545,16 @@ struct QuickActionsDock: View {
         let id = UUID()
         let icon: String
         let title: String
+        var help: String? = nil
         let run: () -> Void
     }
 
     private var items: [Item] {
         var actions = [
             // Genie に話しかけるのは「会話」。音声入力は前面のアプリの欄へ文章を入れるだけ（Genie へは送らない）。
-            Item(icon: "bubble.left.and.bubble.right", title: Facts.dockConversation) { state.beginConversation() },
-            Item(icon: "mic", title: Facts.dockDictation) { state.beginDictation() },
+            Item(icon: "bubble.left.and.bubble.right", title: Facts.dockConversation, help: Facts.quickConversationHelp) { state.beginConversation() },
+            // 絵もマイクにしない（Dock の欄のマイクは「Genie へ」の印なので、逆の意味に見える）。
+            Item(icon: "character.cursor.ibeam", title: Facts.dockDictation, help: Facts.quickDictationHelp) { state.beginDictation() },
             Item(icon: "record.circle", title: Facts.dockRecord) { WindowCoordinator.shared.toggleRecording() },
             Item(icon: "square.grid.2x2", title: Facts.resultOpen) { MainWindowController.shared.show() },
         ]
@@ -1571,6 +1577,8 @@ struct QuickActionsDock: View {
                     .frame(height: 36)
                 }
                 .buttonStyle(GenieControlStyle(radius: 7, base: 0.0))
+                .help(item.help ?? "")
+                .accessibilityHint(item.help ?? "")
                 .accessibilityIdentifier("quick-\(item.title)")
             }
         }

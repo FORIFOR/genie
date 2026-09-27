@@ -8,69 +8,73 @@ struct ConversationBar: View {
     @Environment(\.colorScheme) private var scheme
     private var dark: Bool { scheme == .dark }
     @ObservedObject private var voice = VoiceHUDState.shared
+    /// いまの状態（聞いています など）を書くか。見出しがすでに状態を言っている面（聞いている・考え中）では
+    /// 重ねて書かない。答えのカードを残している間は、ここだけが状態を伝える。
+    var showsPhase = true
 
     private var remaining: String {
         let s = max(0, Int(voice.conversationRemaining.rounded(.up)))
-        return String(format: "%d:%02d", s / 60, s % 60)
+        return "\(Facts.conversationRemaining) " + String(format: "%d:%02d", s / 60, s % 60)
     }
 
-    /// いま何をしているか。答えのカードを残して次を聞いている間も、聞いていることが分かるように。
+    /// マイクが開いている（開けている途中を含む）。カードを残して次を待つ間も「聞いています」と言う。
+    private var micOpen: Bool { voice.conversation.phase == .listening || voice.conversation.phase == .preparing }
+
     private var phaseLabel: String {
         switch voice.conversation.phase {
-        case .listening: Facts.conversationListening
+        case .listening, .preparing: Facts.conversationListening
         case .waiting: Facts.conversationThinking
         case .speaking: Facts.conversationSpeaking
-        case .preparing, .inactive: "\(Facts.dockConversation)中"
+        case .inactive: ""
         }
     }
 
     var body: some View {
         if voice.conversation.isActive {
-            HStack(spacing: 8) {
-                Circle()
-                    .fill(voice.conversation.phase == .listening ? Palette.accent(dark) : Palette.muted(dark))
-                    .frame(width: 6, height: 6)
-                    .accessibilityHidden(true)
-                Text(voice.conversationEnding ? "\(Facts.conversationEnding) · \(remaining)" : "\(phaseLabel) · \(remaining)")
-                    .font(.system(size: S.type(Metrics.dockMetaSize)).monospacedDigit())
-                    .foregroundStyle(voice.conversationEnding ? Palette.text(dark) : Palette.muted(dark))
-                    .accessibilityIdentifier("conversationRemaining")
-                Spacer(minLength: 0)
-                // 読み上げだけを止める（会話は続く）。「会話を終了」とは別の操作。
-                if voice.conversation.phase == .speaking {
-                    Button { voice.stopConversationSpeech() } label: {
-                        Text(Facts.conversationStopSpeech)
-                            .font(.system(size: S.type(Metrics.dockMetaSize), weight: .medium))
-                            .foregroundStyle(Palette.text(dark))
-                            .frame(height: 24)
-                            .padding(.horizontal, 8)
+            VStack(alignment: .leading, spacing: 8) {
+                // カードの出所の行と混ざらないよう、面の区切りは hairline で（影や地は使わない）。
+                Rectangle().fill(Color.hairline(dark)).frame(height: 0.5)
+                HStack(spacing: 8) {
+                    Circle()
+                        .fill(micOpen ? Palette.accent(dark) : Palette.muted(dark))
+                        .frame(width: 6, height: 6)
+                        .accessibilityHidden(true)
+                    if showsPhase {
+                        Text(phaseLabel)
+                            .font(.system(size: S.type(Metrics.dockMetaSize)))
+                            .foregroundStyle(micOpen ? Palette.text(dark) : Palette.muted(dark))
+                            .accessibilityIdentifier("conversationPhase")
                     }
-                    .buttonStyle(GenieControlStyle(radius: 7, base: 0.06))
-                    .accessibilityIdentifier("conversationStopSpeech")
-                }
-                if voice.conversationEnding, voice.conversation.canExtend {
-                    Button { voice.extendConversation() } label: {
-                        Text(Facts.conversationExtend)
-                            .font(.system(size: S.type(Metrics.dockMetaSize), weight: .medium))
-                            .foregroundStyle(Palette.text(dark))
-                            .frame(height: 24)
-                            .padding(.horizontal, 8)
+                    // 残り時間。終わり際（30 秒前）は時間だけを目立たせ、状態は消さない。
+                    Text(voice.conversationEnding ? "\(Facts.conversationEnding) \(remaining)" : remaining)
+                        .font(.system(size: S.type(Metrics.dockMetaSize)).monospacedDigit())
+                        .foregroundStyle(voice.conversationEnding ? Palette.warning(dark) : Palette.muted(dark))
+                        .accessibilityIdentifier("conversationRemaining")
+                    Spacer(minLength: 0)
+                    // 読み上げだけを止める（会話は続く）。「会話を終了」とは別の操作。
+                    if voice.conversation.phase == .speaking {
+                        barButton(Facts.conversationStopSpeech, id: "conversationStopSpeech") { voice.stopConversationSpeech() }
                     }
-                    .buttonStyle(GenieControlStyle(radius: 7, base: 0.06))
-                    .accessibilityIdentifier("conversationExtend")
+                    if voice.conversationEnding, voice.conversation.canExtend {
+                        barButton(Facts.conversationExtend, id: "conversationExtend") { voice.extendConversation() }
+                    }
+                    barButton(Facts.conversationEnd, id: "conversationEnd") { voice.endConversation(.user) }
                 }
-                Button { voice.endConversation(.user) } label: {
-                    Text(Facts.conversationEnd)
-                        .font(.system(size: S.type(Metrics.dockMetaSize), weight: .medium))
-                        .foregroundStyle(Palette.text(dark))
-                        .frame(height: 24)
-                        .padding(.horizontal, 8)
-                }
-                .buttonStyle(GenieControlStyle(radius: 7, base: 0.06))
-                .accessibilityIdentifier("conversationEnd")
             }
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("conversationBar")
         }
+    }
+
+    private func barButton(_ title: String, id: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: S.type(Metrics.dockMetaSize), weight: .medium))
+                .foregroundStyle(Palette.text(dark))
+                .frame(height: 24)
+                .padding(.horizontal, 8)
+        }
+        .buttonStyle(GenieControlStyle(radius: 7, base: 0.06))
+        .accessibilityIdentifier(id)
     }
 }

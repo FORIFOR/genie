@@ -23,6 +23,7 @@ describe('classifyCurrentInfo', () => {
     expect(classifyCurrentInfo('今日の東京の天気')).toMatchObject({ place: '東京' });
     expect(classifyCurrentInfo('札幌は明日雨降る？')).toMatchObject({ place: '札幌', when: 'tomorrow' });
     expect(classifyCurrentInfo('福岡で明日傘いる？')).toMatchObject({ place: '福岡' });
+    expect(classifyCurrentInfo('明日、札幌って雪降る？')).toMatchObject({ kind: 'weather', when: 'tomorrow', place: '札幌' });
   });
 
   it('finds news questions and their topic', () => {
@@ -37,8 +38,13 @@ describe('classifyCurrentInfo', () => {
     expect(classifyCurrentInfo('日経平均いくら？')).toMatchObject({ kind: 'quote' });
   });
 
-  it('leaves everything else alone', () => {
+  it('leaves statements and other work alone', () => {
     for (const text of [
+      '天気がいいので散歩した',
+      '傘を忘れた',
+      '気温と売上の相関を分析して',
+      'ニュースを翻訳して',
+      '日経平均について教えて',
       '雨宮さんにメールの下書きを作って',
       '天気予報アプリの企画書を作って',
       'ニュース記事を書いて',

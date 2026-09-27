@@ -62,6 +62,8 @@ struct InfoDock: View {
             }
             .buttonStyle(GenieControlStyle(radius: 7, base: 0.06))
             .accessibilityIdentifier("infoCopy")
+            // 会話中は ✕ を出さない（カードを閉じるのか会話を終えるのかが分からない。終えるのは下の行）。
+            if !VoiceHUDState.shared.conversation.isActive {
             Button { GenieStateStore.shared.dismissResult() } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 11))
@@ -71,6 +73,7 @@ struct InfoDock: View {
             .buttonStyle(GenieControlStyle(radius: 7, base: 0.0))
             .accessibilityIdentifier("infoDismiss")
             .accessibilityLabel("回答を閉じる")
+            }
         }
     }
 
@@ -161,7 +164,7 @@ private struct WeatherBody: View {
                 .font(.system(size: S.type(Metrics.dockRowSize)))
                 .foregroundStyle(Palette.text(dark))
                 .lineLimit(1)
-            Text(day.precipitation.map { "\($0)%" } ?? "—")
+            Text(day.precipitation.map { "降水 \($0)%" } ?? "—")
                 .font(.system(size: S.type(Metrics.dockLabelSize)))
                 .foregroundStyle(Palette.muted(dark))
         }

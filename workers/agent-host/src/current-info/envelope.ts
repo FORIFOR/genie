@@ -9,7 +9,7 @@ export const INFO_SCHEMA = 'genie.info/v1';
 export interface WeatherDay {
   /** YYYY-MM-DD（その場所の日付） */
   readonly date: string;
-  /** 今日 / 明日 / 明後日 / 9/28(日) */
+  /** 今日(日) / 明日(月) / 明後日(火) / 9/30(水)。どの日も曜日をそろえて付ける。 */
   readonly label: string;
   /** WMO weather code。絵はアプリが決める。 */
   readonly code: number;

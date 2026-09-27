@@ -89,12 +89,15 @@ interface GeocodeResponse {
 export async function resolvePlace(name: string, get: InfoFetch): Promise<Place | null> {
   const known = knownPlace(name);
   if (known) return known;
-  const tries = /[市町村区都道府県]$/.test(name) ? [name] : [name, `${name}市`];
-  for (const query of tries) {
+  // まず日本の中で探す（同じ名前の海外の町を黙って選ばない）。無ければ世界で（「ニューヨーク」など）。
+  const names = /[市町村区都道府県]$/.test(name) ? [name] : [name, `${name}市`];
+  const tries: [string, string | null][] = [...names.map((n) => [n, 'JP'] as [string, string]), [name, null]];
+  for (const [query, country] of tries) {
     const url = `https://geocoding-api.open-meteo.com/v1/search?${new URLSearchParams({
       name: query,
       count: '1',
       language: 'ja',
+      ...(country ? { countryCode: country } : {}),
     }).toString()}`;
     const found = (JSON.parse(await get(url)) as GeocodeResponse).results?.[0];
     if (found && typeof found.latitude === 'number' && typeof found.longitude === 'number')

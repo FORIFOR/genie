@@ -91,6 +91,9 @@ enum DockPresentation: Equatable {
                                 + CGFloat(summary.suggestions.count) * Metrics.dockAgentRowHeight)
         case .listening:
             return measured(Metrics.dockListeningWidth, fallback: Metrics.dockListeningHeight)
+        case .thinking where VoiceHUDState.shared.conversation.isActive:
+            // 会話の間は幅を一つにそろえる（「会話を終了」がターンのたびに動かないように）。
+            return measured(Metrics.dockListeningWidth, fallback: Metrics.dockThinkingHeight)
         case .thinking, .enteringRecording, .quickActions:
             return measured(Metrics.dockThinkingWidth, fallback: Metrics.dockThinkingHeight)
         case .agent:
@@ -114,11 +117,13 @@ enum DockPresentation: Equatable {
             let s = measured(Metrics.dockMeetingWidth, fallback: Metrics.dockMeetingExpandedHeight)
             return CGSize(width: s.width, height: min(Metrics.dockMeetingExpandedHeight, s.height))
         case .answer:
-            // 短い回答は結果面と同じ幅で測る。長い回答も Dock 内でスクロールできる。
-            return measured(Metrics.dockResultWidth, fallback: Metrics.dockResultHeight)
+            // 短い回答は結果面と同じ幅で測る。長い回答も Dock 内でスクロールできる。会話の間は聞く面と同じ幅。
+            return measured(VoiceHUDState.shared.conversation.isActive ? Metrics.dockListeningWidth : Metrics.dockResultWidth,
+                            fallback: Metrics.dockResultHeight)
         case .info:
             // 回答面と同じ幅。高さは中身で、確認面と同じ理由で上限を置く（作業面ほど大きくしない）。
-            let s = measured(Metrics.dockResultWidth, fallback: Metrics.dockResultHeight)
+            let s = measured(VoiceHUDState.shared.conversation.isActive ? Metrics.dockListeningWidth : Metrics.dockResultWidth,
+                             fallback: Metrics.dockResultHeight)
             return CGSize(width: s.width, height: min(Metrics.dockInfoMaxHeight, s.height))
         case .result:
             return measured(Metrics.dockResultWidth, fallback: Metrics.dockResultHeight)

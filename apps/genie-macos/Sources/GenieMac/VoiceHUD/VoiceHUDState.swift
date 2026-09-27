@@ -101,6 +101,9 @@ final class VoiceHUDState: ObservableObject {
 
     @Published private(set) var latestRequestID: UUID?
     @Published private(set) var refreshingRequests: Set<UUID> = []
+    /// ask の裏の待ち（受付の後も最大 120 秒）が続いている依頼。「状況を確認」が同じ仕事を二重に追わないため
+    /// （送信中の requestInFlight は受付で解けるので、それだけでは防げない）。
+    private(set) var followingRequests: Set<UUID> = []
     /// Keep failed writes available for export/retry; never pretend they survived a restart.
     @Published private(set) var unsavedRequests: [UUID: AgentTask] = [:]
     @Published var isListeningMuted = false
@@ -217,7 +220,8 @@ final class VoiceHUDState: ObservableObject {
     func toggleListeningMute() {
         isListeningMuted.toggle()
         if isListeningMuted {
-            closeMicrophone()
+            // 会話では、音を運んでいるのは提供元（Gemini は自前のマイクで送る）。そちらを止める。
+            if conversation.isActive { conversationProvider.closeInput() } else { closeMicrophone() }
             inputLevel = 0
         } else {
             listeningAwaitingAudio = true
@@ -415,6 +419,14 @@ final class VoiceHUDState: ObservableObject {
     /// 許可を確かめた後の本体。提供元を差し替えられる（検査では偽の提供元を渡す）。
     func startConversation(using provider: ConversationProvider, now: Date = Date()) {
         guard !conversation.isActive else { return }
+        // 会議の録音中は、マイクを録音が使っている（会話は何も聞けないまま 5 分待つことになる）。始めずに言う。
+        if RecordingWorkspaceState.shared.isRecording {
+            answer = Facts.conversationDuringRecording
+            mode = .answer(answer)
+            return
+        }
+        // 音声入力で聞いている途中なら、そのマイクを閉じてから始める（開いたままだと会話のマイクが開けない）。
+        closeMicrophone()
         conversationProvider = provider
         isListeningMuted = false
         observeSleep()
@@ -675,6 +687,7 @@ final class VoiceHUDState: ObservableObject {
         }
         latestRequestID = task.id
         requestInFlight = true
+        followingRequests.insert(task.id)
         if heldUtterance == text { heldUtterance = nil }
         listeningPrefill = nil
         // 「これ返して」: 開いているメール → 選択 → 前面の窓 を、この順で候補として添える（題名だけ）。
@@ -719,8 +732,20 @@ final class VoiceHUDState: ObservableObject {
                     self?.answer = reply.text
                     // 短い確定回答や聞き返しは、その場で確認できるよう Dock に残す。
                     // 作業中・待機中は従来どおり静かな入口へ戻し、Work で追える状態にする。
-                    self?.mode = reply.settled && !reply.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                        ? Self.presentation(for: reply) : .idle
+                    // 会話が次のターンを聞いている間は、聞いている面を消さない（Gemini に頼んだ仕事の答えが後から来る）。
+                    let conversationListening = (self?.conversation.isActive ?? false) && self?.conversation.phase != .waiting
+                    if !conversationListening {
+                        let hasText = !reply.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                        if reply.settled && hasText {
+                            self?.mode = Self.presentation(for: reply)
+                        } else if self?.conversation.isActive == true, hasText {
+                            // 会話中は静かな入口へ戻さない（会話の行＝状態と「会話を終了」が消え、マイクが開いたまま
+                            // 何をしているか見えなくなる）。受け付けたことを面に出したまま次を聞く。
+                            self?.mode = .answer(reply.text)
+                        } else {
+                            self?.mode = .idle
+                        }
+                    }
                     if reply.settled { VisualContextStore.shared.markRecent(attached) }
                     // 受け付けた（または答えた）。以降の待ちは記録の更新だけで、次の依頼を塞がない。
                     // 同じ依頼の二重送信は、ここまで（送信〜受付）を塞げば防げる。
@@ -754,6 +779,7 @@ final class VoiceHUDState: ObservableObject {
                     }
                     if let laterDraft { await ReplyFlow.shared.present(laterDraft) }
                 }
+                await MainActor.run { _ = self?.followingRequests.remove(task.id) }
             } catch {
                 await MainActor.run {
                     self?.updateRequest(task.id) {
@@ -769,7 +795,11 @@ final class VoiceHUDState: ObservableObject {
                         if !self.conversation.isActive { self.mode = .idle }
                         self.requestInFlight = false
                     }
-                    self?.conversationReply(nil, failed: "接続できませんでした。依頼は Work に残っています。")
+                    // 会話へ返すのは、この依頼がまだいまの依頼のとき（後から始まったターンの答えにしない）。
+                    if self?.latestRequestID == task.id {
+                        self?.conversationReply(nil, failed: "接続できませんでした。依頼は Work に残っています。")
+                    }
+                    self?.followingRequests.remove(task.id)
                 }
             }
         }
@@ -985,7 +1015,7 @@ final class VoiceHUDState: ObservableObject {
             return
         }
         // The initial submit is already waiting for this job; don't start another poll.
-        guard !(requestInFlight && latestRequestID == id) else { return }
+        guard !(requestInFlight && latestRequestID == id), !followingRequests.contains(id) else { return }
         refreshingRequests.insert(id)
         Task.detached { [weak self] in
             do {

@@ -280,8 +280,10 @@ final class GenieStateStore: ObservableObject {
 
     /// §23 起動時に、走っていた task を読み戻す（Dock を開き直したら状態が戻る）。
     func restoreRunningTask() {
+        // 声・文字の依頼の記録（requestRecord）は、段で進む仕事ではない。戻すと誰も終わらせないので、
+        // 活動状態がずっと「実行中」のままになる（Work で追える）。段で進む仕事だけを戻す。
         guard state.activeTask == nil,
-              let task = LocalStore.shared.loadTasks(status: .running).first else { return }
+              let task = LocalStore.shared.loadTasks(status: .running).first(where: { $0.requestRecord == nil }) else { return }
         state.activeTask = task
         setMode(.acting)
     }
@@ -289,7 +291,9 @@ final class GenieStateStore: ObservableObject {
     /// 結果面を閉じる。
     func dismissResult() {
         switch state.dock {
-        case .answer, .info, .result: setDock(.idle)
+        case .answer, .info, .result:
+            // 会話の途中なら、カードを閉じても会話は続いている。マイクが開いている姿を隠さない。
+            setDock(VoiceHUDState.shared.conversation.isActive ? .listening(partial: "") : .idle)
         default: break
         }
     }

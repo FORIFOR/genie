@@ -43,12 +43,18 @@ function weekday(date: string): number {
   return new Date(`${date}T00:00:00Z`).getUTCDay();
 }
 
-function label(date: string, index: number): string {
+/** 読み上げる文で使う言い方（今日・明日・明後日・9/30）。 */
+function relative(date: string, index: number): string {
   if (index === 0) return '今日';
   if (index === 1) return '明日';
   if (index === 2) return '明後日';
   const [, month, day] = date.split('-');
-  return `${Number(month)}/${Number(day)}(${WEEKDAYS[weekday(date)]})`;
+  return `${Number(month)}/${Number(day)}`;
+}
+
+/** カードの見出し。どの日も曜日をそろえて付ける（今日(日)・9/30(水)）。 */
+function label(date: string, index: number): string {
+  return `${relative(date, index)}(${WEEKDAYS[weekday(date)]})`;
 }
 
 /** 聞かれた日を、予報の何日目かにする。 */
@@ -76,16 +82,16 @@ function degrees(value: number | null): string {
   return value === null ? '—' : `${Math.round(value)}℃`;
 }
 
-function sentence(place: string, days: readonly WeatherDay[], current: { temperature: number } | null): string {
+function sentence(place: string, days: readonly (WeatherDay & { spoken: string })[], current: { temperature: number } | null): string {
   if (days.length === 1) {
     const d = days[0]!;
     const now = current ? `いまは${degrees(current.temperature)}。` : '';
     const rain = d.precipitation === null ? '' : `、降水確率${d.precipitation}%`;
-    return `${d.label}の${place}は${d.summary}。${now}最高${degrees(d.high)}、最低${degrees(d.low)}${rain}です。`;
+    return `${d.spoken}の${place}は${d.summary}。${now}最高${degrees(d.high)}、最低${degrees(d.low)}${rain}です。`;
   }
   const lines = days.map(
     (d) =>
-      `${d.label} ${d.summary} ${degrees(d.high)}/${degrees(d.low)}${d.precipitation === null ? '' : ` 降水${d.precipitation}%`}`,
+      `${d.spoken} ${d.summary} ${degrees(d.high)}/${degrees(d.low)}${d.precipitation === null ? '' : ` 降水${d.precipitation}%`}`,
   );
   return `${place}の天気: ${lines.join('、')}。`;
 }
@@ -126,11 +132,12 @@ export async function lookupWeather(
   const daily = forecast.daily ?? {};
   const dates = daily.time ?? [];
   const picked = selectDays(query.when, dates);
-  const days: WeatherDay[] = picked
+  const spokenDays = picked
     .filter((i) => typeof daily.weather_code?.[i] === 'number')
     .map((i) => {
       const code = daily.weather_code![i]!;
       return {
+        spoken: relative(dates[i]!, i),
         date: dates[i]!,
         label: label(dates[i]!, i),
         code,
@@ -140,16 +147,17 @@ export async function lookupWeather(
         precipitation: daily.precipitation_probability_max?.[i] ?? null,
       };
     });
+  const days: WeatherDay[] = spokenDays.map(({ spoken: _spoken, ...day }) => day);
   if (days.length === 0)
     return { ...base, text: `${place.name}の、その日の予報はまだ出ていません。`, data: null };
   const c = forecast.current;
   const current =
-    days[0]!.label === '今日' && days.length === 1 && typeof c?.temperature_2m === 'number' && typeof c.weather_code === 'number'
+    picked[0] === 0 && days.length === 1 && typeof c?.temperature_2m === 'number' && typeof c.weather_code === 'number'
       ? { temperature: c.temperature_2m, code: c.weather_code, summary: weatherSummary(c.weather_code) }
       : null;
   return {
     ...base,
-    text: sentence(place.name, days, current),
+    text: sentence(place.name, spokenDays, current),
     data: { place: place.name, current, days },
   };
 }

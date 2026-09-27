@@ -190,8 +190,12 @@ export async function TaskWorkflow(input: TaskWorkflowInput): Promise<TaskResult
   // 受け取った追加指示（まだ反映していない）と、反映済みの指示の本文（以後のすべての段に持ち越す）。
   const pendingInstructions: InstructionSignal[] = [];
   const instructionTexts: string[] = [];
+  const seenInstructions = new Set<string>();
   setHandler(instructSignal, (signal) => {
-    if (!pendingInstructions.some((p) => p.requestId === signal.requestId)) pendingInstructions.push(signal);
+    // 送り直された同じ指示は一度だけ（保存と合図の間で落ちたときの送り直し）。
+    if (seenInstructions.has(signal.requestId)) return;
+    seenInstructions.add(signal.requestId);
+    pendingInstructions.push(signal);
   });
 
   let plan: TaskPlan;

@@ -344,7 +344,10 @@ export class TaskService {
       if (existing) {
         if (existing.text !== text)
           throw new GenieError('task.idempotency_conflict', 'この request_id は別の指示に使われています');
-        return { row: existing as InstructionRow, fresh: false, workflowId: task.workflow_id };
+        // 保存の後、合図を送る前に落ちていたかもしれない。まだ受け取ったままで仕事が動いていれば送り直す
+        // （workflow は同じ request_id を二度反映しない）。
+        const resend = existing.status === 'RECEIVED' && !isTerminal(task.status as TaskStatus) && task.status !== 'CANCELLING';
+        return { row: existing as InstructionRow, fresh: resend, workflowId: task.workflow_id };
       }
       if (isTerminal(task.status as TaskStatus) || task.status === 'CANCELLING') {
         throw new GenieError(
@@ -370,7 +373,10 @@ export class TaskService {
       try {
         await this.#runtime.instruct(workflowId, { requestId: request.request_id, text });
       } catch {
-        // 渡せなかった（workflow が既に終わっていた等）。受け取ったままにせず、反映できなかったと残す。
+        // 渡せなかった。**仕事がもう終わっている**ときだけ「反映できなかった」と残す。通信の途中で返事が
+        // 失われただけなら、合図は届いていて後で反映されるかもしれないので、受け取ったままにする。
+        const now = await this.get(tenantId, taskId);
+        if (!isTerminal(now.status as TaskStatus)) return toInstruction(row, false);
         await withTenant(this.#db, tenantId, (tx) =>
           tx
             .updateTable('task_instructions')

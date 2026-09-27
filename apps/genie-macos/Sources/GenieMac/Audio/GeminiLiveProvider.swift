@@ -144,7 +144,19 @@ final class GeminiLiveProvider: ConversationProvider {
     func speak(_ text: String, onFinish: @escaping () -> Void) {
         let chunks = audio
         audio = []
-        guard !chunks.isEmpty else { onFinish(); return }
+        guard !chunks.isEmpty else {
+            // Gemini が声を作っていない知らせ（受付・失敗・預かり）は、Mac の読み上げで伝える。黙らない。
+            let spoken = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !spoken.isEmpty else { onFinish(); return }
+            let id = UUID()
+            playing = id
+            GenieSpeechOutput.shared.read(spoken, owner: id) { [weak self] in
+                guard let self, self.playing == id else { return }
+                self.playing = nil
+                onFinish()
+            }
+            return
+        }
         let id = UUID()
         playing = id
         do {
@@ -172,6 +184,7 @@ final class GeminiLiveProvider: ConversationProvider {
     }
 
     func stopSpeaking() {
+        if let id = playing { GenieSpeechOutput.shared.stop(owner: id) }
         playing = nil
         player.stop()
     }
@@ -302,8 +315,18 @@ final class GeminiLiveProvider: ConversationProvider {
         socket?.send(.string(GeminiLive.json(object))) { _ in }
     }
 
+    /// 切れた・上限に達した。**必ず片付けてから**会話を終える（答えを待っている途中でも）。
+    /// 以前は待っている答えに失敗を返すだけで、会話は切れた接続のまま・上限を超えて続いていた。
     private func lose(_ reason: String) {
-        if let reply = onReply { onReply = nil; reply(.failed(reason)); return }
+        guard socket != nil || ready else { return }
+        onReply = nil
+        closeInput()
+        ready = false
+        budgetTimer?.cancel(); budgetTimer = nil
+        if let connectedAt { settings.record(seconds: Date().timeIntervalSince(connectedAt)) }
+        connectedAt = nil
+        socket?.cancel(with: .goingAway, reason: nil)
+        socket = nil
         onLost(reason)
     }
 
