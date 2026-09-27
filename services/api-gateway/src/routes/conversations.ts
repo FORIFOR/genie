@@ -534,7 +534,9 @@ async function startWork(
     return {
       taskId: null,
       notice:
-        error instanceof Error && /install|not installed|permission|scope/i.test(error.message)
+        // 追加していない plugin の kind は task.unknown_kind（"unknown task kind: plugin:…"）で断られる。
+        error instanceof Error &&
+        /install|not installed|permission|scope|unknown task kind: plugin:/i.test(error.message)
           ? 'General Assistant が追加されていません。Apps から追加してください。'
           : '仕事を始められませんでした。',
     };

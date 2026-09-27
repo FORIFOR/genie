@@ -91,6 +91,7 @@ enum SelfTest {
         case "replyflow": Task { await replyFlowGate() }; return true
         case "approval-press": Task { await approvalPress() }; return true
         case "selfecho": Task { await selfEcho() }; return true
+        case "inputfocus": Task { await inputFocus() }; return true
         case "voicee2e": Task { await voiceE2E(args) }; return true
         case "geminismoke": Task { await geminiSmoke() }; return true
         case "brief": briefGate(); return true

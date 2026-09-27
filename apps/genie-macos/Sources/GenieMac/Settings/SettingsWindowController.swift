@@ -6,6 +6,8 @@ final class SettingsWindowController {
     static let shared = SettingsWindowController()
     static let didShow = Notification.Name("GenieSettingsDidShow")
     private var window: NSWindow?
+    /// 検査専用: 設定の窓（キー入力を受けられるかを確かめる）。
+    var windowForTest: NSWindow? { window }
     func show() {
         if window == nil {
             let win = NSWindow(

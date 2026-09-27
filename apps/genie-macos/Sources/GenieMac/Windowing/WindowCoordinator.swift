@@ -166,6 +166,9 @@ final class WindowCoordinator {
         panel.makeKeyAndOrderFront(nil)
     }
 
+    /// 検査専用: Dock の窓（キー入力を受けられるかを確かめる）。
+    var hudPanelForTest: NSWindow? { hudPanel }
+
     /// Listening 面を開いたとき、直接キーボード入力できるよう Dock にキー入力を渡す。
     func focusListeningDock() {
         guard !Self.headless, !PresentationGuard.shared.isSharing,
