@@ -29,6 +29,18 @@ enum UserFacingFacts {
     static let taskStop = "止める"
     /// 止めるを押した段に書く。音声を止めたのではなく、仕事を取り消した。
     static let taskCancelled = "取り消しました"
+    /// 工程名が取れない仕事の段（割合は作らない）。
+    static let taskWorking = "作業中"
+    /// 止めた仕事の結果の 2 行目。
+    static let taskStoppedDetail = "仕事を取り消しました。途中までの内容は使いません。"
+    /// 受付の応答。**受け付けた（仕事ができた）ときだけ**言う・出す。
+    static let taskAccepted = "かしこまりました"
+    static let taskAcceptedSub = "作業中も元のアプリを使えます"
+    static let taskRejected = "この依頼は実行できません"
+    /// 結果の種類（「<種類>ができました」）。
+    static let resultKindAnswer = "回答"
+    static func resultLength(_ n: Int) -> String { "\(n)字 · Work に保存しました" }
+    static func resultSources(_ n: Int) -> String { n > 0 ? "\(n) 件のソースから作成しました" : "Work に保存しました" }
     static let recordingCannotStart = "録音を始められません"
     static let meetingNotes = "メモ"
     static let meetingNotesOpen = "ライブメモを開く"
@@ -61,6 +73,7 @@ enum UserFacingFacts {
     static let confirmationEditReturn = "修正内容を確認画面に戻します"
     static let resultOpen = "開く"
     static let resultCopy = "コピー"
+    static let resultClose = "閉じる"
     static let resultOpenSettings = "設定を開く"
     static let recoveryResume = "続きから"
     // Home の Work Context（気にすること・待ち・返すもの・今週の負荷）と Personalization。
@@ -233,6 +246,13 @@ enum UserFacingFacts {
             f("recording.stop", recordingStop, false),
             f("task.stop", taskStop, false),
             f("task.cancelled", taskCancelled, false),
+            f("task.working", taskWorking, false),
+            f("result.close", resultClose, false),
+            f("task.stoppedDetail", taskStoppedDetail, false),
+            f("task.accepted", taskAccepted, false),
+            f("task.acceptedSub", taskAcceptedSub, false),
+            f("task.rejected", taskRejected, false),
+            f("result.kindAnswer", resultKindAnswer, false),
             f("recording.cannotStart", recordingCannotStart),
             f("meeting.notes", meetingNotes, false),
             f("meeting.notes.open", meetingNotesOpen),

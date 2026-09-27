@@ -2176,7 +2176,10 @@ enum SelfTest {
                 steps: [AgentStep(title: "予定を読む", tool: "calendar", state: .success),
                         AgentStep(title: "文面を作る", tool: "compose", state: .running)],
                 startedAt: Date(), context: ContextBundle(items: []))
-            let t2 = rec.transition { store.startTask(task) }
+            // 言い終えた発話を Genie が受け取る（聞く面を離れ、マイクを閉じる）→ 仕事が始まる。
+            // One Continuous Surface では、本人の聞き取りは動いている仕事より前に出る（仕事は聞く面の
+            // 「実行中 n件」になる）ので、聞いている最中に仕事の面へ差し替わることはない。
+            let t2 = rec.transition { store.setDock(.idle); store.startTask(task) }
             settle(0.4)
             _ = rec.shot("03-running", window: dockWin())
             rec.step("Running", interactions: 0, transitionMs: t2,

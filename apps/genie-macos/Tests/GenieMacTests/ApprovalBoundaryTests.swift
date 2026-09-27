@@ -261,9 +261,18 @@ import GenieCore
         var started = 0
         let token = GenieEventBus.shared.subscribe { e in if case .voiceStarted = e { started += 1 } }
         defer { GenieEventBus.shared.unsubscribe(token) }
+        // One Continuous Surface: 本人が始めた聞き取りはカードより前に出て、やめたら同じカードへ戻る。
+        // カードは答えを待ったまま（聞いている間に承認も却下もされない）。
+        let previousDryRun = Dictation.dryRun
+        Dictation.dryRun = { _ in true }
+        defer { Dictation.dryRun = previousDryRun }
         voice.beginDictation()
-        XCTAssertEqual(store.dock, .confirmation(c), "声を始めただけでカードが隠れた")
-        XCTAssertEqual(started, 0, "カードの間に聞き始めた")
+        if started > 0 {
+            XCTAssertEqual(store.dock, .listening(partial: ""), "本人が始めた聞き取りが前に出ない")
+            XCTAssertEqual(store.state.confirmation, c, "聞き始めただけでカードに答えが付いた")
+        }
+        voice.cancelListening()
+        XCTAssertEqual(store.dock, .confirmation(c), "聞き取りをやめたのにカードへ戻らない")
         voice.beginConversation()
         XCTAssertFalse(voice.conversation.isActive, "カードの間に会話を始めた")
         XCTAssertEqual(store.dock, .confirmation(c), "会話を始めてカードが隠れた")

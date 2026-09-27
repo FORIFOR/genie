@@ -178,7 +178,9 @@ final class VoiceHUDState: ObservableObject {
     private func beginListening() {
         // 確認カードに答えを待っている間は聞き始めない。**Listening でカードを隠さない**
         // （隠すと見えないカードが待ち続け、声を始めただけで承認が宙に浮く）。声でカードには答えない。
-        guard GenieStateStore.shared.state.confirmation == nil else { return }
+        // 確認カードに答えを待っている間も、本人が始めた聞き取りは前に出る。終われば同じカードへ戻る
+        // （`DockComposer`。カードは 120 秒待ち、答えが無ければ承認しないまま残す＝勝手に承認・却下しない）。
+        // 声でカードには答えない。
         // 会話の途中で音声入力を始めたら、会話を先に終える。持ち主の無い stop() は会話の読み上げの
         // 終わりの合図を鳴らし、会話がマイクを開き直して音声入力とぶつかっていた。
         if conversation.isActive { endConversation(.replaced) }
@@ -343,6 +345,43 @@ final class VoiceHUDState: ObservableObject {
         GenieEventBus.shared.publish(.voicePartial(text))
     }
 
+    // MARK: - Dock の仕事の一覧（声・文字の依頼）
+
+    /// backend に仕事ができた依頼を、Dock の一覧の 1 行にする。止めるは backend の取り消し。
+    func trackOnDock(_ id: UUID, title: String, backendTaskId: String, base: String, token: String) {
+        let store = GenieStateStore.shared
+        store.apply(store.event(id, .started(title: title, step: Facts.taskWorking)))
+        store.setStopHandler(id) { [weak self] in
+            self?.updateRequest(id) { $0.phase = .cancelled; $0.message = Facts.taskStoppedDetail }
+            Task.detached {
+                do { _ = try GenieCoreBridge.cancelTask(base, accessToken: token, taskId: backendTaskId) }
+                catch { NSLog("dock: cancel not delivered: \(error)") }
+            }
+        }
+    }
+
+    func dockEvent(_ id: UUID, _ kind: DockTaskEvent.Kind) {
+        let store = GenieStateStore.shared
+        store.apply(store.event(id, kind))
+    }
+
+    /// すぐ答えが出た・追うのをやめた依頼を一覧から外す（Work には残る）。
+    func dropFromDock(_ id: UUID) { GenieStateStore.shared.discardTask(id) }
+
+    /// 依頼の結果を一覧の結果にする。**成果物を確かめられた完了だけが完了**（`taskReply` が本文を読んでいる）。
+    func finishOnDock(_ id: UUID, reply: TaskReply, title: String) {
+        switch reply.phase {
+        case .complete where !reply.artifactID.isEmpty:
+            dockEvent(id, .succeeded(DockArtifact(kind: Facts.resultKindAnswer, title: title,
+                                                  detail: Facts.resultLength(reply.text.count),
+                                                  actions: [.openWorkspace, .copy])))
+        case .cancelled: dockEvent(id, .cancelled(reply.text))
+        case .working, .submitting: break
+        case .waiting: dockEvent(id, .awaitingApproval)
+        default: dockEvent(id, .failed(reply.text))
+        }
+    }
+
     /// いま聞く面を出しているか（遅れて届いた答えで、聞いている途中を消さないため）。
     var isListeningSurface: Bool { if case .listening = mode { return true }; return false }
 
@@ -355,7 +394,7 @@ final class VoiceHUDState: ObservableObject {
     func dockChanged(to dock: DockPresentation) {
         if conversation.isActive {
             switch dock {
-            case .listening, .thinking, .answer, .info: return
+            case .listening, .thinking, .answer, .info, .ack: return
             default: endConversation(.replaced)
             }
             return
@@ -783,14 +822,23 @@ final class VoiceHUDState: ObservableObject {
                 }
                 await MainActor.run {
                     self?.updateRequest(task.id) { $0.backendTaskID = outcome.taskId; $0.phase = .working }
+                    // backend に仕事ができた。Dock の一覧の 1 行になる（止めるは backend の取り消し）。
+                    if !outcome.taskId.isEmpty {
+                        self?.trackOnDock(task.id, title: task.title, backendTaskId: outcome.taskId, base: base, token: token)
+                    }
                 }
                 // 承認待ちで止まったら、この依頼をいま出した本人に確認カードで聞く。
                 // 押されたカードの承認だけを中継する。「やめる」なら REJECTED で、実行しない。
                 // 答えが無い（時間切れ・カードが見えない）なら何も送らず、承認を待ったまま残す。
-                let first = try await Self.settleApprovals(
-                    Self.follow(outcome, base: base, token: token, waitMs: 12_000),
+                let followed = try Self.follow(outcome, base: base, token: token, waitMs: 12_000)
+                if !followed.pendingApprovals.isEmpty {
+                    await MainActor.run { self?.dockEvent(task.id, .awaitingApproval) }
+                }
+                let first = try await Self.settleApprovals(followed,
                     taskId: outcome.taskId, base: base, token: token, waitMs: 12_000)
                 let reply = first.reply
+                // 受け付けられなかった（仕事ができず、答えも無く、知らせだけが返った）。
+                let rejected = outcome.taskId.isEmpty && outcome.answer.isEmpty && !outcome.needsClarification
                 let draft: ReplyFlow.Draft? = await MainActor.run {
                     self?.applyReply(reply, to: task.id)
                     self?.answer = reply.text
@@ -800,9 +848,23 @@ final class VoiceHUDState: ObservableObject {
                     let conversationListening = (self?.conversation.isActive ?? false) && self?.conversation.phase != .waiting
                     // 音声入力で聞いている間も面を差し替えない（差し替えるとマイクを閉じ、話している途中が消える）。
                     // 答えは `answer` と Work に残る。
+                    let inConversation = self?.conversation.isActive == true
+                    if reply.settled {
+                        // すぐ答えが出た依頼は、答えの面で見せる（一覧の行にはしない）。
+                        self?.dropFromDock(task.id)
+                    } else if !rejected {
+                        // 受け付けた（仕事ができて動いている）ときだけ「かしこまりました」。
+                        GenieStateStore.shared.showAck(DockAck(id: task.id, title: task.title))
+                        if first.leftPending { self?.dockEvent(task.id, .awaitingApproval) }
+                        else if !followed.pendingApprovals.isEmpty { self?.dockEvent(task.id, .step(Facts.taskWorking)) }
+                    }
                     if !conversationListening, self?.isListeningSurface != true {
                         let hasText = !reply.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                        if reply.settled && hasText {
+                        if rejected, !inConversation, hasText {
+                            // 受け付けたようには見せない。同じ面で理由と「閉じる」（会話では声で理由を言う）。
+                            self?.mode = .idle
+                            GenieStateStore.shared.showAck(DockAck(id: task.id, title: task.title, rejected: reply.text))
+                        } else if reply.settled && hasText {
                             self?.mode = Self.presentation(for: reply)
                         } else if self?.conversation.isActive == true, hasText {
                             // 会話中は静かな入口へ戻さない（会話の行＝状態と「会話を終了」が消え、マイクが開いたまま
@@ -825,19 +887,36 @@ final class VoiceHUDState: ObservableObject {
                 // 12 秒で終わらない仕事は、裏で待ち続けて届いたら差し替える（Dock は idle に戻す）。
                 // カードに答えが無かったときは待ち続けない（同じカードを自動で出し直さない）。
                 if !reply.settled, !first.leftPending, !outcome.taskId.isEmpty {
-                    let later = try await Self.settleApprovals(
-                        Self.follow(outcome, base: base, token: token, waitMs: 120_000),
-                        taskId: outcome.taskId, base: base, token: token, waitMs: 120_000).reply
+                    // 終わるまで追う（2 分ずつ、合計 30 分まで）。Dock の行を止めたら追うのもやめる。
+                    var later = reply
+                    var waited: UInt64 = 0
+                    while !later.settled, waited < 1_800_000 {
+                        let stillShown = await MainActor.run { GenieStateStore.shared.state.board.task(task.id)?.isActive ?? false }
+                        guard stillShown else { break }
+                        later = try await Self.settleApprovals(
+                            Self.follow(outcome, base: base, token: token, waitMs: 120_000),
+                            taskId: outcome.taskId, base: base, token: token, waitMs: 120_000).reply
+                        waited += 120_000
+                    }
                     let laterDraft: ReplyFlow.Draft? = await MainActor.run {
                         self?.applyReply(later, to: task.id)
-                        guard later.settled else { return nil }
-                        // 後から届いた結果は Work に残る。Dock に出すのは、これがいちばん新しい依頼で、
-                        // 会話が次のターンを聞いていないときだけ（聞いている面・新しい答えを上書きしない）。
-                        if let self, self.latestRequestID == task.id, !self.conversation.isActive, !self.isListeningSurface {
-                            self.answer = later.text
-                            if !later.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                                self.mode = Self.presentation(for: later)
+                        guard later.settled else {
+                            // 30 分で追うのをやめる。終わったとは言わない（状況は Work で確かめられる）。
+                            self?.dropFromDock(task.id)
+                            return nil
+                        }
+                        // 後から届いた結果は Work に残る。天気・ニュースのカードは、これがいちばん新しい依頼で、
+                        // 会話が次のターンを聞いていないときだけ出す（聞いている面・新しい答えを上書きしない）。
+                        // それ以外は Dock の結果（何ができたかと、開く・コピー）になる。
+                        if let card = later.info, card.hasContent {
+                            self?.dropFromDock(task.id)
+                            if let self, self.latestRequestID == task.id, !self.conversation.isActive, !self.isListeningSurface {
+                                self.answer = later.text
+                                self.mode = .info(card)
                             }
+                        } else {
+                            self?.finishOnDock(task.id, reply: later, title: task.title)
+                            if let self, self.latestRequestID == task.id { self.answer = later.text }
                         }
                         VisualContextStore.shared.markRecent(attached)
                         guard !outcome.replyJson.isEmpty else { return nil }
@@ -856,6 +935,8 @@ final class VoiceHUDState: ObservableObject {
                     }
                     // 解くのは、この依頼がまだ「いまの依頼」のときだけ。受付の後に後追いで失敗しても、
                     // その間に始まった新しい依頼の送信中を解かない（二重送信を防げなくなる）。
+                    // 行は外す（仕事が失敗したとは言えない。状況は Work で確かめられる）。
+                    self?.dropFromDock(task.id)
                     if let self, self.latestRequestID == task.id {
                         self.answer = "接続を確認してください。依頼と現在の状況は Work に保存されています。"
                         if !self.conversation.isActive, !self.isListeningSurface { self.mode = .idle }

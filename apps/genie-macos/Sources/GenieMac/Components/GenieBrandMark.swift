@@ -1,0 +1,46 @@
+import AppKit
+import SwiftUI
+
+/// Genie の印（ランプと G、右上の星）。元の絵は `apps/genie-macos/Resources/GenieMark-source.png`。
+///
+/// 黒の形だけを alpha に持つ **template 画像**（色は使う側が決める）。資源の束ねを持たない
+/// SwiftPM の target なので、小さな PNG（96px 高）をここに埋める。app icon は同じ絵から作った
+/// `Resources/AppIcon.icns`。
+enum GenieBrandMark {
+    /// 横 ÷ 縦（964 × 582）。
+    static let aspect: CGFloat = 964.0 / 582.0
+
+    static let image: NSImage = {
+        let data = Data(base64Encoded: png) ?? Data()
+        let image = NSImage(data: data) ?? NSImage()
+        image.isTemplate = true
+        return image
+    }()
+
+    /// 高さ `height` pt の template 画像（メニューバー用）。
+    static func image(height: CGFloat) -> NSImage {
+        let copy = image.copy() as? NSImage ?? image
+        copy.size = NSSize(width: (height * aspect).rounded(), height: height)
+        copy.isTemplate = true
+        return copy
+    }
+
+    private static let png = "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"
+}
+
+/// SwiftUI で色を付けて描く印。
+struct GenieBrandMarkView: View {
+    var height: CGFloat = 12
+    var color: Color = .genieAccent
+
+    var body: some View {
+        Image(nsImage: GenieBrandMark.image)
+            .renderingMode(.template)
+            .resizable()
+            .interpolation(.high)
+            .aspectRatio(GenieBrandMark.aspect, contentMode: .fit)
+            .frame(height: height)
+            .foregroundStyle(color)
+            .accessibilityHidden(true)
+    }
+}

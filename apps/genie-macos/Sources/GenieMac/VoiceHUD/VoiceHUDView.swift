@@ -85,6 +85,7 @@ struct VoiceTaskDockView: View {
         case .result(let result): ResultDock(result: result)
         case .contextDetail: ContextDetailDock()
         case .quickActions: QuickActionsDock()
+        case .ack(let ack): AckDock(ack: ack)
         case .enteringRecording: SimpleDock(icon: "record.circle", text: "録音を始めます…", tint: .recordingRed)
         }
     }
@@ -1454,7 +1455,7 @@ struct ResultDock: View {
             HStack(spacing: 6) {
                 ForEach(result.actions, id: \.self) { action in
                     ProbeButton(id: "result-\(action.rawValue)",
-                                action: { ResultActionRunner.run(action, title: result.title, sessionId: result.sessionId) }) {
+                                action: { ResultActionRunner.run(action, title: result.title, sessionId: result.sessionId, taskID: result.taskID) }) {
                         Text(action.title)
                     }
                         .font(.system(size: S.type(Metrics.dockRowSize), weight: .medium))

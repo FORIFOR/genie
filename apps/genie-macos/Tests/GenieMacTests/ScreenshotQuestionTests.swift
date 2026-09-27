@@ -101,7 +101,17 @@ final class ScreenshotQuestionTests: XCTestCase {
                 .result(AgentResult(title: "作業結果", actions: [.copy]))
             ]
             for (index, mode) in protected.enumerated() {
-                VoiceHUDState.shared.mode = mode
+                // 仕事の面と確認は頼むものではなく、仕事・確認の状態から出る（One Continuous Surface）。
+                let genie = GenieStateStore.shared
+                genie.reset()
+                switch mode {
+                case .agent:
+                    genie.apply(genie.event(UUID(), .started(title: "作業", step: "作業中")))
+                case .confirmation(let c):
+                    genie.requireConfirmation(c)
+                default:
+                    VoiceHUDState.shared.mode = mode
+                }
                 let shot = try capture(store, directory, "protected-\(index)")
                 XCTAssertEqual(VoiceHUDState.shared.mode, mode)
                 XCTAssertEqual(store.offeredCapture?.id, shot.id)

@@ -41,7 +41,7 @@ cp -R "$ROOT/plugins/builtin" "$APP/Contents/Resources/plugins/builtin"
 if [[ -n "${ASTRA_CONNECTIONS_CONFIG:-}" ]]; then
   node "$ROOT/scripts/prepare-connection-config.mjs" "$ASTRA_CONNECTIONS_CONFIG" "$APP/Contents/Resources/connections.json"
 fi
-ICON_SRC="$ROOT/apps/desktop/src-tauri/icons/icon.icns"
+ICON_SRC="$ROOT/apps/genie-macos/Resources/AppIcon.icns"   # ランプの印（Resources/GenieMark-source.png から作った）
 [[ -f "$ICON_SRC" ]] || { echo "FAIL: アイコン ($ICON_SRC) が無い" >&2; exit 1; }
 cp "$ICON_SRC" "$APP/Contents/Resources/AppIcon.icns"
 

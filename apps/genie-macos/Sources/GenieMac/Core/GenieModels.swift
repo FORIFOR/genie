@@ -42,6 +42,8 @@ enum DockPresentation: Equatable {
     case contextDetail
     /// 旧 Quick Actions（Dock を押したとき）。
     case quickActions
+    /// 受付の応答（「かしこまりました」/ 受け付けられません）。受け付けた後にだけ出す。
+    case ack(DockAck)
     /// 録音へ移る途中。
     case enteringRecording
 
@@ -127,6 +129,10 @@ enum DockPresentation: Equatable {
             return CGSize(width: s.width, height: min(Metrics.dockInfoMaxHeight, s.height))
         case .result:
             return measured(Metrics.dockResultWidth, fallback: Metrics.dockResultHeight)
+        case .ack:
+            // 会話の間は聞く面と同じ幅（「会話を終了」を動かさない）。
+            return measured(VoiceHUDState.shared.conversation.isActive ? Metrics.dockListeningWidth : Metrics.dockConfirmWidth,
+                            fallback: Metrics.dockThinkingHeight)
         case .contextDetail:
             return measured(Metrics.dockContextExpandedWidth, fallback: Metrics.dockContextExpandedBase + 180)
         }
@@ -149,6 +155,12 @@ struct AgentResult: Equatable {
     var detail: String? = nil
     /// できなかった結果。印を ✓ にしない。
     var failed: Bool = false
+    /// 何ができたか（「下書き」「回答」）。見出しは「<種類>ができました」。
+    var kind: String? = nil
+    /// 本人が止めた（失敗とは別。再試行は出さない）。
+    var cancelled: Bool = false
+    /// 仕事の結果なら、その仕事（`DockTaskBoard`）。会議の結果・始められなかった知らせは nil。
+    var taskID: UUID? = nil
 
     enum Action: String, Equatable {
         case openWorkspace, openNotes, ask, copy, openSettings, retry
@@ -487,7 +499,18 @@ struct MeetingCanvas: Equatable {
 
 struct GenieState: Equatable {
     var mode: GenieMode = .idle
+    /// 面に出ている一枚（`DockComposer` が下の状態から決める）。
     var dock: DockPresentation = .idle
+    /// 本人・声が頼んだ面（聞く・考える・答え・Quick Actions・会議など）。仕事の面は含めない。
+    var requested: DockPresentation = .idle
+    /// 動いている / 終わった仕事（複数）。
+    var board = DockTaskBoard()
+    /// 面に出している結果（1 件）。縮めたら nil（履歴は Work に残る）。
+    var focusedResultID: UUID?
+    /// 受付の応答（短い間だけ）。
+    var ack: DockAck?
+    /// ポインタが Dock の上にある（結果を縮めない）。
+    var hoveringDock = false
     var context = ContextBundle()
     var activeTask: AgentTask?
     var meeting = MeetingState()

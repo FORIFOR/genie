@@ -28,17 +28,28 @@ final class GenieStateStore: ObservableObject {
 
     var dock: DockPresentation { state.dock }
 
-    /// Dock の表示を変える。**活動状態も合わせて動かす**ので、両者がずれない。
+    /// 本人・声が頼んだ面を変える。出る一枚は `DockComposer` が決める（`recompose`）。
     ///
-    /// **確認カードが出ている間は、ほかの表示でカードを隠さない。**以前は Listening・回答・
-    /// 会議の開始がカードを上書きし、見えないカードが 120 秒待って「承認しない」になっていた。
-    /// 頼まれた表示は覚えておき、カードに答えが済んだらそこへ戻す。
+    /// **確認カードは、ほかの表示で隠さない。**以前は Listening・回答・会議の開始がカードを上書きし、
+    /// 見えないカードが 120 秒待って「承認しない」になっていた。頼まれた面は覚えておくだけで、
+    /// カードに答えが済むと自然にそこへ戻る。仕事の面（`.agent` / 仕事の結果）は頼むものではなく、
+    /// 仕事の状態から出る（`apply(_:)`）。
     func setDock(_ presentation: DockPresentation) {
-        if let shown = state.confirmation, presentation != .confirmation(shown) {
-            dockBehindConfirmation = presentation
-            return
+        switch presentation {
+        case .agent: state.requested = .idle
+        case .confirmation: break   // カードは `requireConfirmation` からだけ出す
+        default: state.requested = presentation
         }
-        applyDock(presentation)
+        recompose()
+    }
+
+    /// 音声・仕事・確認から、いま出す一枚を決めて出す。
+    func recompose() {
+        let focused = state.focusedResultID.flatMap { state.board.task($0) }
+        applyDock(DockComposer.compose(requested: state.requested, confirmation: state.confirmation,
+                                       ack: state.ack, focusedResult: focused,
+                                       activeCount: state.board.active.count,
+                                       conversationActive: VoiceHUDState.shared.conversation.isActive))
     }
 
     private func applyDock(_ presentation: DockPresentation) {
@@ -63,7 +74,7 @@ final class GenieStateStore: ObservableObject {
         case .listening, .thinking: return Self.mode(for: dock, current: state.mode)
         default: break
         }
-        if state.activeTask?.status == .running { return .acting }
+        if state.activeTask?.status == .running || !state.board.active.isEmpty { return .acting }
         return Self.mode(for: dock, current: state.mode)
     }
 
@@ -76,6 +87,7 @@ final class GenieStateStore: ObservableObject {
         case .confirmation: return .awaitingConfirmation
         case .meeting, .enteringRecording: return .meeting
         case .answer, .info: return .completed
+        case .ack: return .acting
         case .result: return .completed
         case .idle, .appContext, .appContextExpanded, .contextDetail, .quickActions:
             // 会議中や workspace 表示中は、Dock が idle でも活動は続いている。
@@ -105,9 +117,112 @@ final class GenieStateStore: ObservableObject {
         state.activeTask = task
         // §23 UI lifecycle ≠ Task lifecycle。Dock を閉じても task は消えない。
         LocalStore.shared.save(task)
-        setDock(.agent)
+        // 段で進む仕事も、Dock には一覧の 1 行として出る（面は仕事の状態から決まる）。
+        let step = task.steps.first(where: { $0.state == .running })?.title ?? Facts.taskWorking
+        apply(event(task.id, .started(title: task.title, step: step)))
         setMode(.acting)
         bus.publish(.agentStarted(taskId: task.id))
+    }
+
+    // MARK: - 仕事の一覧（One Continuous Surface）
+
+    /// 仕事ごとの出来事の番号。出来事を**作った時**に振る（遅れて届いても順番が分かる）。
+    private var revs: [UUID: Int] = [:]
+
+    /// 出来事を作る。番号はこの仕事で単調に増える。
+    func event(_ taskId: UUID, _ kind: DockTaskEvent.Kind) -> DockTaskEvent {
+        let rev = (revs[taskId] ?? 0) + 1
+        revs[taskId] = rev
+        return DockTaskEvent(taskId: taskId, rev: rev, kind: kind)
+    }
+
+    /// 仕事の出来事を当てる。古い出来事・終わった仕事への出来事は捨てる（false）。
+    @discardableResult
+    func apply(_ event: DockTaskEvent) -> Bool {
+        guard state.board.apply(event) else { return false }
+        if let task = state.board.task(event.taskId), task.isTerminal {
+            stopHandlers[task.id] = nil
+            // 前に出していた結果は縮める（履歴は Work に残る）。動いている他の仕事は消さない。
+            if let previous = state.focusedResultID, previous != task.id { state.board.forget(previous) }
+            state.focusedResultID = task.id
+            // 文脈の棚は作業中の面から開く棚。その仕事が終わったら、棚ではなく結果へ移る。
+            if state.requested == .contextDetail { state.requested = .idle }
+            scheduleResultHold()
+        }
+        if state.board.active.isEmpty, state.activeTask?.status != .running, state.mode == .acting {
+            setMode(.idle)
+        }
+        recompose()
+        return true
+    }
+
+    /// 動いている仕事を止める（行の「止める」）。**音声の停止とは別**。仕事を動かしている側に止めさせ
+    /// （backend の取り消しを含む）、止めた結果として残す。
+    func stopTask(_ id: UUID) {
+        guard let task = state.board.task(id), task.isActive else { return }
+        if state.activeTask?.id == id { stopTask(); return }
+        stopHandlers.removeValue(forKey: id)?()
+        apply(event(id, .cancelled(Facts.taskStoppedDetail)))
+    }
+
+    /// 一覧から外す（動いていても）。すぐ答えが出た依頼・追うのをやめた依頼用。Work には残る。
+    func discardTask(_ id: UUID) {
+        guard state.board.task(id) != nil else { return }
+        stopHandlers[id] = nil
+        state.board.discard(id)
+        if state.focusedResultID == id { state.focusedResultID = nil }
+        if state.ack?.id == id, state.ack?.rejected == nil { state.ack = nil }
+        recompose()
+    }
+
+    /// 仕事を止める手を登録する（声の依頼は ask が backend の取り消しを渡す）。
+    func setStopHandler(_ id: UUID, _ handler: @escaping () -> Void) { stopHandlers[id] = handler }
+
+    /// 受付の応答を短く出す。受け付けたときは 1.7 秒で、動いている仕事の面へ移る。
+    /// 受け付けられなかったときは、閉じるまで残す（理由を読む前に消さない）。
+    func showAck(_ ack: DockAck) {
+        state.ack = ack
+        ackGeneration += 1
+        let generation = ackGeneration
+        recompose()
+        guard ack.rejected == nil else { return }
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: 1_700_000_000)
+            guard let self, self.ackGeneration == generation else { return }
+            self.dismissAck()
+        }
+    }
+    private var ackGeneration = 0
+
+    func dismissAck() {
+        guard state.ack != nil else { return }
+        state.ack = nil
+        ackGeneration += 1
+        recompose()
+    }
+
+    /// ポインタが Dock に乗った / 離れた。乗っている間は結果を縮めない。離れたら数え直す。
+    func setHovering(_ hovering: Bool) {
+        guard state.hoveringDock != hovering else { return }
+        state.hoveringDock = hovering
+        scheduleResultHold()
+    }
+
+    private var holdGeneration = 0
+    /// 完了は 8 秒・停止は 3 秒で縮める。失敗は閉じるまで。**業務の完了判定には使わない**（表示だけ）。
+    private func scheduleResultHold() {
+        holdGeneration += 1
+        let generation = holdGeneration
+        guard !state.hoveringDock, let id = state.focusedResultID, let task = state.board.task(id),
+              let seconds = DockResultPolicy.holdSeconds(for: task.status) else { return }
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+            guard let self, self.holdGeneration == generation, !self.state.hoveringDock,
+                  self.state.focusedResultID == id else { return }
+            self.state.focusedResultID = nil
+            self.state.board.forget(id)
+            self.recompose()
+        }
     }
 
     func updateStep(_ stepId: UUID, to newState: AgentRunState) {
@@ -118,6 +233,7 @@ final class GenieStateStore: ObservableObject {
         let title = task.steps[index].title
         state.activeTask = task
         LocalStore.shared.save(task)
+        if newState == .running { apply(event(task.id, .step(title))) }
         // 段が増減すると Dock の高さも変わる。
         WindowCoordinator.shared.syncDockPanels()
         switch newState {
@@ -137,8 +253,10 @@ final class GenieStateStore: ObservableObject {
             task.steps[i].state = .failed
             task.steps[i].detail = Facts.taskCancelled
         }
+        task.status = .failed
         state.activeTask = task
-        finishTask(.failed)
+        LocalStore.shared.save(task)
+        apply(event(task.id, .cancelled(Facts.taskStoppedDetail)))
     }
 
     func finishTask(_ status: AgentRunState) {
@@ -149,17 +267,16 @@ final class GenieStateStore: ObservableObject {
         state.activeTask = task
         LocalStore.shared.save(task)
         setMode(status == .success ? .completed : .failed)
-        // 会議中は会議へ戻す。そうでなければ、消さずに**後始末を出したまま**残す。
-        if state.meeting.isRecording {
-            setDock(.meeting(expanded: nil))
-        } else if status == .success {
+        // 会議中は会議の面が前に出る（頼まれた面が仕事の結果より強い）。結果は消さずに残す。
+        if status == .success {
             // 題は仕事の名前そのまま。語尾を足すと題によって日本語が崩れる。
-            setDock(.result(AgentResult(title: task.title, actions: [.openWorkspace, .copy],
-                                        sourceCount: task.steps.filter { $0.state == .success }.count)))
+            let sources = task.steps.filter { $0.state == .success }.count
+            apply(event(task.id, .succeeded(DockArtifact(kind: Facts.resultKindAnswer, title: task.title,
+                                                          detail: Facts.resultSources(sources),
+                                                          actions: [.openWorkspace, .copy]))))
         } else {
             // できなかったときも黙って消えない。どこで止まったかと、やり直す道を出す（Atlas dock.result-failed）。
-            setDock(.result(AgentResult(title: task.title, actions: [.retry],
-                                        detail: task.failureReason ?? "途中で止まりました", failed: true)))
+            apply(event(task.id, .failed(task.failureReason ?? "途中で止まりました")))
         }
     }
 
@@ -171,8 +288,6 @@ final class GenieStateStore: ObservableObject {
     /// Dock のボタンは描いたカードではなく store の現在値に答えていた。読んでいたカードへの
     /// 「実行する」が、押す直前に差し替わった別の承認に付き得た。いまは 1 枚ずつ、出た順に出す。
     private var confirmationQueue: [ActionConfirmation] = []
-    /// カードが出ている間に頼まれた Dock の表示（`setDock`）。最後のカードに答えが済んだら戻す。
-    private var dockBehindConfirmation: DockPresentation?
 
     /// R2/R3 のときだけカードを出す。R0/R1 は黙って通す（毎回聞くと確認が意味を失う）。
     /// 戻り値は「カードを出したか」（ほかのカードの後ろで順番を待つ場合も true）。
@@ -190,10 +305,9 @@ final class GenieStateStore: ObservableObject {
     }
 
     private func showConfirmation(_ confirmation: ActionConfirmation) {
-        if dockBehindConfirmation == nil { dockBehindConfirmation = state.dock }
         state.confirmation = confirmation
         // §Confirmation Dock 自身が下へ伸びて聞く。
-        applyDock(.confirmation(confirmation))
+        recompose()
         bus.publish(.confirmationRequired(confirmation))
     }
 
@@ -242,12 +356,8 @@ final class GenieStateStore: ObservableObject {
             showConfirmation(confirmationQueue.removeFirst())
             return true
         }
-        let behind = dockBehindConfirmation
-        dockBehindConfirmation = nil
-        switch behind {
-        case nil, .confirmation?: applyDock(state.meeting.isRecording ? .meeting(expanded: nil) : .idle)
-        case let dock?: applyDock(dock)
-        }
+        // カードの間に頼まれた面へ戻る（頼まれた面は `requested` に残っている）。
+        recompose()
         return true
     }
 
@@ -313,6 +423,15 @@ final class GenieStateStore: ObservableObject {
 
     /// 結果面を閉じる。
     func dismissResult() {
+        if case .ack = state.dock { dismissAck(); return }
+        if case .result(let r) = state.dock, let id = r.taskID {
+            // 仕事の結果を閉じる（履歴は Work に残る）。動いている他の仕事は残る。
+            state.focusedResultID = nil
+            state.board.forget(id)
+            holdGeneration += 1
+            recompose()
+            return
+        }
         switch state.dock {
         case .answer, .info, .result:
             // 会話の途中なら、カードを閉じても会話は続いている。マイクが開いている姿を隠さない。
@@ -324,6 +443,8 @@ final class GenieStateStore: ObservableObject {
     /// テスト用に初期化する。
     func reset() {
         state = GenieState()
+        revs = [:]; stopHandlers = [:]; confirmationQueue = []
+        ackGeneration += 1; holdGeneration += 1
         bus.reset()
     }
 }
