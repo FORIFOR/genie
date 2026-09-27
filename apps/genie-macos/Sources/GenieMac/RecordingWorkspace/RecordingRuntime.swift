@@ -327,7 +327,9 @@ final class RecordingRuntime {
                 // 開いている間に end() が来ていたら、いま止める（開きっぱなしにしない）。
                 DispatchQueue.main.async { [weak self] in
                     guard let self else { mic.stop(); return }
-                    if !self.micActive || self.micGeneration != gen { self.micQueue.async { mic.stop() } }
+                    // 止めるのは、この開始がまだ最新で、もう要らないときだけ。世代が進んでいれば、
+                    // 進めた側（end の stop → 次の start）が同じ列に並んでいる。ここで止めると次の取り込みを殺す。
+                    if self.micGeneration == gen, !self.micActive { self.micQueue.async { mic.stop() } }
                 }
             }
         }
@@ -482,7 +484,8 @@ final class RecordingRuntime {
             }
             DispatchQueue.main.async { [weak self] in
                 guard let self else { mic.stop(); return }
-                if !self.voiceListening || self.micGeneration != gen { self.micQueue.async { mic.stop() } }
+                // 上の録音側と同じ: 世代が進んでいたら止めない（素早く閉じて開き直すと、新しい取り込みを殺していた）。
+                if self.micGeneration == gen, !self.voiceListening { self.micQueue.async { mic.stop() } }
             }
         }
         return true

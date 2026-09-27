@@ -163,6 +163,10 @@ enum GenieCoreBridge {
     static func taskReject(_ baseUrl: String, accessToken: String, taskId: String, approvalId: String) throws {
         try ApprovalRelay.reject(baseUrl, accessToken: accessToken, taskId: taskId, approvalId: approvalId)
     }
+    /// 仕事を取り消す（本人が「止める」を押したとき）。返すのは取り消し後の状態。終わった仕事は 409。
+    static func cancelTask(_ baseUrl: String, accessToken: String, taskId: String, reason: String = "user_requested") throws -> String {
+        try apiCancelTask(baseUrl: baseUrl, accessToken: accessToken, taskId: taskId, reason: reason)
+    }
     static func taskGet(_ baseUrl: String, accessToken: String, taskId: String) throws -> String {
         try apiTaskJson(baseUrl: baseUrl, accessToken: accessToken, taskId: taskId)
     }

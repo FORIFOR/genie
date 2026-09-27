@@ -44,6 +44,8 @@ final class GenieStateStore: ObservableObject {
     private func applyDock(_ presentation: DockPresentation) {
         guard state.dock != presentation else { return }
         state.dock = presentation
+        // マイクが開いたまま、止める手の無い面にしない（会話を終える / 音声入力のマイクを閉じる）。
+        VoiceHUDState.shared.dockChanged(to: presentation)
         setMode(activity(showing: presentation))
         // 見た目の大きさは状態から導く。ここで必ず合わせる。
         WindowCoordinator.shared.syncDockPanels()
@@ -94,7 +96,12 @@ final class GenieStateStore: ObservableObject {
 
     // MARK: - Agent（§15）
 
-    func startTask(_ task: AgentTask) {
+    /// 仕事を動かしている側の「止める」。Dock の止めるボタンは、表示を変えるだけでなくこれを呼ぶ。
+    private var stopHandlers: [UUID: () -> Void] = [:]
+
+    /// `onStop`: 本人が「止める」を押したときに、実際に仕事を止める処理（待ちの取り消し・backend の取り消し）。
+    func startTask(_ task: AgentTask, onStop: (() -> Void)? = nil) {
+        stopHandlers[task.id] = onStop
         state.activeTask = task
         // §23 UI lifecycle ≠ Task lifecycle。Dock を閉じても task は消えない。
         LocalStore.shared.save(task)
@@ -104,7 +111,8 @@ final class GenieStateStore: ObservableObject {
     }
 
     func updateStep(_ stepId: UUID, to newState: AgentRunState) {
-        guard var task = state.activeTask,
+        // 終わった（止めた）仕事の段は動かさない。後から届いた更新で止めた仕事が進んで見えていた。
+        guard var task = state.activeTask, !task.status.isTerminal,
               let index = task.steps.firstIndex(where: { $0.id == stepId }) else { return }
         task.steps[index].state = newState
         let title = task.steps[index].title
@@ -120,8 +128,23 @@ final class GenieStateStore: ObservableObject {
         }
     }
 
+    /// 本人が Dock の「止める」を押した。仕事を動かしている側に止めさせ（backend の取り消しを含む）、
+    /// 動いていた段に「取り消しました」と書いて、できなかった結果として残す。音声の停止とは別の操作。
+    func stopTask() {
+        guard var task = state.activeTask, !task.status.isTerminal else { return }
+        stopHandlers.removeValue(forKey: task.id)?()
+        if let i = task.steps.firstIndex(where: { $0.state == .running }) ?? task.steps.firstIndex(where: { $0.state == .pending }) {
+            task.steps[i].state = .failed
+            task.steps[i].detail = Facts.taskCancelled
+        }
+        state.activeTask = task
+        finishTask(.failed)
+    }
+
     func finishTask(_ status: AgentRunState) {
-        guard var task = state.activeTask else { return }
+        // 一度終わった仕事の結果は変えない（止めた後に届いた成功で ✓ にしない）。
+        guard var task = state.activeTask, !task.status.isTerminal else { return }
+        stopHandlers[task.id] = nil
         task.status = status
         state.activeTask = task
         LocalStore.shared.save(task)

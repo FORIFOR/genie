@@ -2726,6 +2726,20 @@ public func apiArtifactContent(baseUrl: String, accessToken: String, artifactId:
 })
 }
 /**
+ * 仕事を取り消す（POST /v1/tasks/:id/cancel）。返すのは取り消し後の状態（CANCELLING / CANCELLED）。
+ * 終わった仕事は 409（task.invalid_state）。呼ぶのは人が「止める」を押したときだけ。
+ */
+public func apiCancelTask(baseUrl: String, accessToken: String, taskId: String, reason: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeApiError_lift) {
+    uniffi_genie_core_fn_func_api_cancel_task(
+        FfiConverterString.lower(baseUrl),
+        FfiConverterString.lower(accessToken),
+        FfiConverterString.lower(taskId),
+        FfiConverterString.lower(reason),$0
+    )
+})
+}
+/**
  * 会議（POST /v1/meetings）。同意確認済みでのみ開始する。
  */
 public func apiCreateMeeting(baseUrl: String, accessToken: String, title: String, language: String)throws  -> String  {
@@ -3305,6 +3319,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_genie_core_checksum_func_api_artifact_content() != 17228) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_genie_core_checksum_func_api_cancel_task() != 16874) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_genie_core_checksum_func_api_create_meeting() != 33132) {

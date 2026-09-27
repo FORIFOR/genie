@@ -114,6 +114,11 @@ OUTCE="$("$BIN" --selftest connectorexchange)"; echo "$OUTCE"
 [[ "$OUTCE" == SELFTEST_OK* ]] || { echo "FAIL: macOS connector exchange (mock token endpoint)" >&2; exit 1; }
 OUTVA="$("$BIN" --selftest voiceask http://127.0.0.1:3000)" || { echo "$OUTVA"; exit 1; }; echo "$OUTVA"
 [[ "$OUTVA" == SELFTEST_OK* || "$OUTVA" == SELFTEST_SKIP* ]] || { echo "FAIL: macOS voice ask via Agent" >&2; exit 1; }
+# Dock の止めるが backend の仕事を取り消し、後から届いた成功で ✓ にならない（2026-09-28）。
+OUTAS="$("$BIN" --selftest aistop http://127.0.0.1:3000)" || { echo "$OUTAS"; exit 1; }; echo "$OUTAS"
+[[ "$OUTAS" == SELFTEST_OK* || "$OUTAS" == SELFTEST_SKIP* ]] || { echo "FAIL: Dock stop cancels the backend task" >&2; exit 1; }
+# やめたらマイクが閉じる（面を差し替えても、裏でマイクを回し続けない）。実マイクなので app として動かす。
+OUTMR="$(run_app_selftest micrelease)" || { echo "$OUTMR"; exit 1; }; echo "$OUTMR" | grep -E '^SELFTEST_'
 OUTRO="$("$BIN" --selftest recoveryoffline http://127.0.0.1:3000)" || { echo "$OUTRO"; exit 1; }; echo "$OUTRO"
 [[ "$OUTRO" == SELFTEST_OK* || "$OUTRO" == SELFTEST_SKIP* ]] || { echo "FAIL: macOS offline recovery" >&2; exit 1; }
 OUTFL="$(run_app_selftest fulllifecycle http://127.0.0.1:3000)" || { echo "$OUTFL"; exit 1; }; echo "$OUTFL"

@@ -179,6 +179,9 @@ final class VoiceHUDState: ObservableObject {
         // 確認カードに答えを待っている間は聞き始めない。**Listening でカードを隠さない**
         // （隠すと見えないカードが待ち続け、声を始めただけで承認が宙に浮く）。声でカードには答えない。
         guard GenieStateStore.shared.state.confirmation == nil else { return }
+        // 会話の途中で音声入力を始めたら、会話を先に終える。持ち主の無い stop() は会話の読み上げの
+        // 終わりの合図を鳴らし、会話がマイクを開き直して音声入力とぶつかっていた。
+        if conversation.isActive { endConversation(.replaced) }
         GenieSpeechOutput.shared.stop()
         inputLevel = 0
         inputLevels = []
@@ -340,8 +343,46 @@ final class VoiceHUDState: ObservableObject {
         GenieEventBus.shared.publish(.voicePartial(text))
     }
 
+    /// いま聞く面を出しているか（遅れて届いた答えで、聞いている途中を消さないため）。
+    var isListeningSurface: Bool { if case .listening = mode { return true }; return false }
+
+    /// Dock の面が変わったとき（`GenieStateStore.applyDock` から）。
+    ///
+    /// マイクを開いている間は、それを示して止められる面（会話なら会話の行がある面、音声入力なら聞く面）
+    /// だけにする。以前は遅れて届いた答え・メニューの「操作を出す」・Dock のクリックが面だけを差し替え、
+    /// 面は待機なのにマイクが回り続けた（2026-09-28 実機。メニューバーのマイクの印が消えない）。
+    /// 面の方が変わったら、声の側を合わせて閉じる。仕事は取り消さない。
+    func dockChanged(to dock: DockPresentation) {
+        if conversation.isActive {
+            switch dock {
+            case .listening, .thinking, .answer, .info: return
+            default: endConversation(.replaced)
+            }
+            return
+        }
+        if case .listening = dock { return }
+        guard RecordingRuntime.shared.voiceListening else { return }
+        closeMicrophone()
+        inputLevel = 0
+        inputLevels = []
+        listeningAwaitingAudio = true
+        isListeningMuted = false
+        listeningPrefill = nil
+    }
+
+    /// 考え中の面で Esc。声（会話）は止め、面は静かな入口へ戻す。依頼は取り消さない
+    /// （答えは届けば Dock と Work に出る。二重送信を防ぐため送信中の印はそのまま）。
+    func leaveThinking() {
+        if conversation.isActive { endConversation(.user) }
+        if case .thinking = mode { mode = .idle }
+    }
+
     /// Dock 本体のクリック。窓は増やさず、Dock 自身が Quick Actions の姿になる。
     func toggleQuickActions() {
+        // Quick Actions の面には「聞いています」も止める手も無い。マイクや会話を開いたまま
+        // 面だけ差し替えると、メニューバーにマイクの印が出たまま止め方が消える（2026-09-28 実機）。
+        // 先に閉じてから開く（`--selftest micrelease`）。
+        if conversation.isActive || RecordingRuntime.shared.voiceListening { cancelListening() }
         mode = mode == .quickActions ? .idle : .quickActions
     }
 
@@ -512,6 +553,9 @@ final class VoiceHUDState: ObservableObject {
                 // 答えのカードは残したまま次を聞く（読み上げを聞き逃しても見返せる）。話し始めたら聞く面へ。
                 let showingAnswer: Bool = switch mode { case .answer, .info: true; default: false }
                 if GenieStateStore.shared.state.confirmation == nil, !showingAnswer { mode = .listening(partial: "") }
+                // 消音中は開かない（面は「消音中」なのにマイクが開き、Gemini では声が送られていた）。
+                // 消音を解いた時に `toggleListeningMute` が開く。
+                if isListeningMuted { break }
                 if !openConversationMicrophone(generation: g) { run(conversation.end(.microphoneLost)) }
             case .closeMicrophone:
                 conversationProvider.closeInput()
@@ -754,7 +798,9 @@ final class VoiceHUDState: ObservableObject {
                     // 作業中・待機中は従来どおり静かな入口へ戻し、Work で追える状態にする。
                     // 会話が次のターンを聞いている間は、聞いている面を消さない（Gemini に頼んだ仕事の答えが後から来る）。
                     let conversationListening = (self?.conversation.isActive ?? false) && self?.conversation.phase != .waiting
-                    if !conversationListening {
+                    // 音声入力で聞いている間も面を差し替えない（差し替えるとマイクを閉じ、話している途中が消える）。
+                    // 答えは `answer` と Work に残る。
+                    if !conversationListening, self?.isListeningSurface != true {
                         let hasText = !reply.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                         if reply.settled && hasText {
                             self?.mode = Self.presentation(for: reply)
@@ -787,7 +833,7 @@ final class VoiceHUDState: ObservableObject {
                         guard later.settled else { return nil }
                         // 後から届いた結果は Work に残る。Dock に出すのは、これがいちばん新しい依頼で、
                         // 会話が次のターンを聞いていないときだけ（聞いている面・新しい答えを上書きしない）。
-                        if let self, self.latestRequestID == task.id, !self.conversation.isActive {
+                        if let self, self.latestRequestID == task.id, !self.conversation.isActive, !self.isListeningSurface {
                             self.answer = later.text
                             if !later.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                                 self.mode = Self.presentation(for: later)
@@ -812,7 +858,7 @@ final class VoiceHUDState: ObservableObject {
                     // その間に始まった新しい依頼の送信中を解かない（二重送信を防げなくなる）。
                     if let self, self.latestRequestID == task.id {
                         self.answer = "接続を確認してください。依頼と現在の状況は Work に保存されています。"
-                        if !self.conversation.isActive { self.mode = .idle }
+                        if !self.conversation.isActive, !self.isListeningSurface { self.mode = .idle }
                         self.requestInFlight = false
                     }
                     // 会話へ返すのは、この依頼がまだいまの依頼のとき（後から始まったターンの答えにしない）。

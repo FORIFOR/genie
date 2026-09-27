@@ -129,6 +129,8 @@ final class GeminiLiveProvider: ConversationProvider {
     }
 
     func closeInput() {
+        // 接続の準備が済む前に閉じられたら、済んだ時にマイクを開く約束も取り消す（消音が効かなかった）。
+        pendingOpen = nil
         guard streaming else { return }
         streaming = false
         micQueue.async { [mic] in mic.stop() }

@@ -311,6 +311,11 @@ RustBuffer uniffi_genie_core_fn_func_api_add_task_instruction(RustBuffer base_ur
 RustBuffer uniffi_genie_core_fn_func_api_artifact_content(RustBuffer base_url, RustBuffer access_token, RustBuffer artifact_id, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_FN_FUNC_API_CANCEL_TASK
+#define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_FN_FUNC_API_CANCEL_TASK
+RustBuffer uniffi_genie_core_fn_func_api_cancel_task(RustBuffer base_url, RustBuffer access_token, RustBuffer task_id, RustBuffer reason, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_FN_FUNC_API_CREATE_MEETING
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_FN_FUNC_API_CREATE_MEETING
 RustBuffer uniffi_genie_core_fn_func_api_create_meeting(RustBuffer base_url, RustBuffer access_token, RustBuffer title, RustBuffer language, RustCallStatus *_Nonnull out_status
@@ -831,6 +836,12 @@ uint16_t uniffi_genie_core_checksum_func_api_add_task_instruction(void
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_ARTIFACT_CONTENT
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_ARTIFACT_CONTENT
 uint16_t uniffi_genie_core_checksum_func_api_artifact_content(void
+
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_CANCEL_TASK
+#define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_CANCEL_TASK
+uint16_t uniffi_genie_core_checksum_func_api_cancel_task(void
 
 );
 #endif

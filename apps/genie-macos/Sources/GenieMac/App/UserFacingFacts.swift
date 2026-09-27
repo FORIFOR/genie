@@ -27,6 +27,8 @@ enum UserFacingFacts {
     static let recordingStop = "止める"
     /// Agent の面。録音と同じ字だが意味が別なので key は分ける。
     static let taskStop = "止める"
+    /// 止めるを押した段に書く。音声を止めたのではなく、仕事を取り消した。
+    static let taskCancelled = "取り消しました"
     static let recordingCannotStart = "録音を始められません"
     static let meetingNotes = "メモ"
     static let meetingNotesOpen = "ライブメモを開く"
@@ -230,6 +232,7 @@ enum UserFacingFacts {
             f("recording.menu.stop", recordingMenuStop),
             f("recording.stop", recordingStop, false),
             f("task.stop", taskStop, false),
+            f("task.cancelled", taskCancelled, false),
             f("recording.cannotStart", recordingCannotStart),
             f("meeting.notes", meetingNotes, false),
             f("meeting.notes.open", meetingNotesOpen),

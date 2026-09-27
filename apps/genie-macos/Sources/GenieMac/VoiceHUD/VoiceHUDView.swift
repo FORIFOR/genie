@@ -548,6 +548,8 @@ struct ThinkingDock: View {
         }
         .padding(.horizontal, S.metric(Metrics.dockPadH))
         .padding(.vertical, S.metric(Metrics.dockPadV))
+        // 考え中にも逃げ道の鍵を置く（以前は無く、答えが来るまで面を閉じられなかった）。
+        .escapeKey { VoiceHUDState.shared.leaveThinking() }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("dockThinking")
     }
@@ -733,7 +735,7 @@ struct AgentDock: View {
                 // 178x28）。**止める操作がいちばん小さい**のは、あってはならない。
                 StopButton(label: Facts.taskStop,
                            font: .system(size: S.type(Metrics.dockMetaSize), weight: .medium)) {
-                    GenieStateStore.shared.finishTask(.failed)
+                    GenieStateStore.shared.stopTask()
                 }
                 .accessibilityIdentifier("stopAgent")
             }
@@ -1600,7 +1602,7 @@ struct QuickActionsDock: View {
         .frame(maxHeight: .infinity)
         // クイック操作が作業領域に重なるときは、Escape で一手で静かな Dock に戻す。
         // ボタンを増やして閉じる専用の面を作らず、Genie 全体の逃げ道の鍵に揃える。
-        .escapeKey { state.mode = .idle }
+        .escapeKey { state.cancelListening(); state.mode = .idle }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("dockQuickActions")
     }

@@ -243,7 +243,11 @@ struct ContextBundle: Equatable {
 // MARK: - §15 Agent
 
 /// 進行状態。`GenieCore.TaskStatus` とは別物なので名前を分ける。
-enum AgentRunState: String, Equatable { case pending, running, success, failed }
+enum AgentRunState: String, Equatable {
+    case pending, running, success, failed
+    /// もう動かない（結果が決まった）。
+    var isTerminal: Bool { self == .success || self == .failed }
+}
 
 struct AgentStep: Identifiable, Equatable {
     let id = UUID()

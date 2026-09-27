@@ -890,6 +890,23 @@ pub fn api_add_task_instruction(
     Ok(resp.status)
 }
 
+/// 仕事を取り消す（POST /v1/tasks/:id/cancel）。返すのは取り消し後の状態（CANCELLING / CANCELLED）。
+/// 終わった仕事は 409（task.invalid_state）。呼ぶのは人が「止める」を押したときだけ。
+#[uniffi::export]
+pub fn api_cancel_task(base_url: String, access_token: String, task_id: String, reason: String) -> Result<String, ApiError> {
+    #[derive(Deserialize)]
+    struct Resp {
+        status: String,
+    }
+    let resp: Resp = ureq::post(&format!("{}/v1/tasks/{}/cancel", base(&base_url), path_segment(&task_id)))
+        .set("Authorization", &format!("Bearer {access_token}"))
+        .send_json(ureq::json!({ "reason": reason }))
+        .map_err(map_transport)?
+        .into_json()
+        .map_err(|e| ApiError::Decode { message: e.to_string() })?;
+    Ok(resp.status)
+}
+
 /// 仕事そのもの（GET /v1/tasks/:id）。JSON 本文。失敗の理由（error.code）を読むために使う。
 #[uniffi::export]
 pub fn api_task_json(base_url: String, access_token: String, task_id: String) -> Result<String, ApiError> {
