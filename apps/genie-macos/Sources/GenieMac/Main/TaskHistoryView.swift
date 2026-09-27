@@ -40,7 +40,7 @@ enum TaskHistoryFilter: String, CaseIterable {
         let query = query.trimmingCharacters(in: .whitespacesAndNewlines)
         return stateMatches && (query.isEmpty || task.title.localizedStandardContains(query)
             || (task.requestRecord?.request.localizedStandardContains(query) ?? false)
-            || (task.requestRecord?.result.localizedStandardContains(query) ?? false)
+            || (task.requestRecord?.documentText.localizedStandardContains(query) ?? false)
             || task.steps.contains { $0.title.localizedStandardContains(query) || $0.detail.localizedStandardContains(query) })
     }
 }
@@ -76,10 +76,11 @@ struct TaskDetailView: View {
     @State private var copied = false
     @State private var exportMessage = ""
     @State private var showRequest = false
+    @State private var editingDraft: TaskDocumentDraft?
     @ObservedObject private var voice = VoiceHUDState.shared
     @Environment(\.colorScheme) private var scheme
     private var dark: Bool { scheme == .dark }
-    private var shown: AgentTask { current ?? task }
+    private var shown: AgentTask { voice.unsavedRequests[task.id] ?? current ?? task }
 
     var body: some View {
         ScrollView {
@@ -101,6 +102,12 @@ struct TaskDetailView: View {
                         .font(.system(size: TypeScale.pageTitleSize, weight: TypeScale.pageTitleWeight))
                         .fixedSize(horizontal: false, vertical: true)
                 }
+                if voice.unsavedRequests[task.id] != nil {
+                    Text("未保存です。終了前にコピー・書き出すか、空き容量を確認して再試行してください。")
+                        .foregroundStyle(Palette.warning(dark))
+                    Button("保存を再試行") { voice.savePendingRequest(task.id); reload() }
+                        .accessibilityIdentifier("taskRetryLocalSave")
+                }
                 if let record = shown.requestRecord {
                     if record.hasResult { resultDocument(record) }
                     else {
@@ -113,7 +120,8 @@ struct TaskDetailView: View {
                             }
                             if !record.message.isEmpty { Text(record.message).textSelection(.enabled) }
                             if record.canRefresh {
-                                Button { voice.refreshRequest(shown.id) } label: {
+                                // 押したときだけ、承認待ちの確認カードを出せる（答えるのはカードだけ）。
+                                Button { voice.refreshRequest(shown.id, interactive: true) } label: {
                                     Label(voice.refreshingRequests.contains(shown.id) ? "確認中…" : "状況を確認", systemImage: "arrow.clockwise")
                                 }
                                 .disabled(voice.refreshingRequests.contains(shown.id) || (voice.requestInFlight && voice.latestRequestID == shown.id))
@@ -142,7 +150,8 @@ struct TaskDetailView: View {
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("taskDetail")
         .onChange(of: shown.requestRecord?.hasResult) { _, ready in if ready == true { showRequest = false } }
-        .onAppear { reload(); showRequest = shown.requestRecord?.hasResult != true; voice.refreshRequest(task.id) }
+        // 開いただけでは読むだけ。承認待ちでもカードは出さない（出すのは「状況を確認」を押したときだけ）。
+        .onAppear { reload(); showRequest = shown.requestRecord?.hasResult != true; voice.refreshRequest(task.id, interactive: false) }
         .onReceive(NotificationCenter.default.publisher(for: LocalStore.tasksChanged).receive(on: RunLoop.main)) { _ in reload() }
     }
 
@@ -156,22 +165,40 @@ struct TaskDetailView: View {
                 Spacer()
                 Button {
                     NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(record.result, forType: .string)
+                    NSPasteboard.general.setString(record.documentText, forType: .string)
                     copied = true
                 } label: { Label(copied ? "コピー済み" : "コピー", systemImage: copied ? "checkmark" : "doc.on.doc") }
                 .accessibilityIdentifier("taskResultCopy")
-                GenieReadAloudButton(text: record.result, owner: shown.id)
+                GenieReadAloudButton(text: record.documentText, owner: shown.id)
+                Button("編集") { editingDraft = TaskDocumentDraft(text: record.documentText) }
+                    .disabled(voice.unsavedRequests[task.id] != nil)
+                    .accessibilityIdentifier("taskResultEdit")
                 Button { exportDocument() } label: { Label("保存…", systemImage: "square.and.arrow.down") }
                     .accessibilityIdentifier("taskResultSave")
             }.padding(Space.cardPadding)
             Divider()
-            TaskDocumentView(text: record.result).padding(Space.largePadding)
+            TaskDocumentView(text: record.documentText).padding(Space.largePadding)
+            Text("保存するMarkdownには、文章・題名・元の依頼を含みます。")
+                .font(.system(size: TypeScale.microSize)).foregroundStyle(Palette.muted(dark))
+                .padding(Space.cardPadding)
             if !exportMessage.isEmpty { Text(exportMessage).foregroundStyle(Palette.muted(dark)).padding(Space.cardPadding) }
         }
         .background(Palette.surface(dark), in: RoundedRectangle(cornerRadius: Metrics.paletteRadius))
         .overlay(RoundedRectangle(cornerRadius: Metrics.paletteRadius).stroke(Palette.border(dark)))
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("taskResultDocument")
+        .sheet(item: $editingDraft) { draft in
+            TaskDocumentEditor(draft: draft, dark: dark) { text in
+                guard let edited = shown.editingDocument(text) else {
+                    return "空の文章は保存できません。内容を入力してください。"
+                }
+                guard LocalStore.shared.save(edited) else {
+                    return "保存できませんでした。入力は残しています。空き容量を確認してください。"
+                }
+                current = edited; copied = false; exportMessage = "編集をこのMacに保存しました。"
+                return nil
+            }
+        }
     }
 
     private func exportDocument() {
@@ -239,5 +266,45 @@ struct TaskDocumentView: View {
         .textSelection(.enabled)
         .frame(maxWidth: .infinity, alignment: .leading)
         .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+
+/// The sheet's identity carries its initial content, including its first presentation.
+private struct TaskDocumentDraft: Identifiable {
+    let id = UUID()
+    let text: String
+}
+
+private struct TaskDocumentEditor: View {
+    @State private var text: String
+    @State private var issue = ""
+    @Environment(\.dismiss) private var dismiss
+    let dark: Bool
+    let save: (String) -> String?
+
+    init(draft: TaskDocumentDraft, dark: Bool, save: @escaping (String) -> String?) {
+        _text = State(initialValue: draft.text)
+        self.dark = dark
+        self.save = save
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Space.cardPadding) {
+            Text("文章を編集").font(.system(size: TypeScale.sectionTitleSize))
+            Text("このMacに保存します。モデルへの再送はありません。元の生成文は保持されます。")
+            TextEditor(text: $text).accessibilityLabel("成果物の文章")
+                .accessibilityIdentifier("taskResultEditor")
+            if !issue.isEmpty { Text(issue).foregroundStyle(Palette.warning(dark)) }
+            HStack {
+                Button("やめる") { dismiss() }.keyboardShortcut(.cancelAction)
+                Spacer()
+                Button("編集を保存") {
+                    if let error = save(text) { issue = error }
+                    else { dismiss() }
+                }.accessibilityIdentifier("taskResultEditSave")
+            }
+        }.padding(Space.largePadding)
+            .frame(minWidth: Metrics.homeContentWidth, minHeight: Metrics.workspaceHeight)
     }
 }

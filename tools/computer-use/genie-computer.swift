@@ -15,10 +15,26 @@ struct Bounds: Codable, Equatable {
 struct Frame: Codable {
     let id: String; let bundleId: String; let windowId: UInt32; let pid: Int32
     let capturedAt: Double; let width: Int; let height: Int; let bounds: Bounds; let sha256: String
+    var deliveryMode: String? = nil
+    var backgroundSession: String? = nil
+    /*
+     * この写真を撮った時点の**実行世代**。人が割り込むたびに 1 つ進む。
+     * 進んだあとに古い世代の写真で操作を送ろうとしても通らない——
+     * モデルが考えている間に人が画面を変えていれば、その判断はもう当てにならない。
+     * 無い場合は 0 として扱う（前面経路の写真には世代が無い）。
+     */
+    var backgroundEpoch: Int? = nil
 }
 struct Action: Decodable {
-    let action: String; let frameId: String; let target: [Double]; let expectation: String
+    let action: String; let frameId: String; let expectation: String
     let confidence: Double; let risk: String; let text: String?; let key: String?
+    /*
+     * 操作対象の指定は 2 通り。**要素で指せるなら、そちらを使う。**
+     * 座標はモデルに当てさせる値で、実測では 224x68 のボタンを 95px 外した。
+     * 要素の位置は撮影時にこちらが取っているので、推測させる理由が無い。
+     */
+    let elementId: String?
+    let target: [Double]?
 }
 struct Request: Decodable {
     let op: String; let id: String?; let outputPath: String?; let referencePath: String?
@@ -28,24 +44,236 @@ struct Target {
     let bundleId: String; let windowId: UInt32; let pid: Int32; let bounds: Bounds
 }
 let navigationKeys: [String: CGKeyCode] = ["TAB": 48, "ESC": 53, "LEFT": 123, "RIGHT": 124, "UP": 126, "DOWN": 125]
+/** 失敗した段階だけを stderr に残す。画面の中身・入力文字・座標は書かない。 */
+func stage(_ name: String) { FileHandle.standardError.write(Data("STAGE \(name)\n".utf8)) }
 func digest(_ data: Data) -> String { SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined() }
-func point(_ a: Action, _ f: Frame) throws -> CGPoint {
-    guard a.frameId == f.id, a.target.count == 4, a.target.allSatisfy({ $0.isFinite }),
+func point(_ a: Action, _ f: Frame) throws -> CGPoint { try point(a, f, f.bounds) }
+/// 要素の枠（ウィンドウ内座標）から操作点を出す。座標推測を挟まない経路。
+func point(_ rect: CGRect, _ b: Bounds) -> CGPoint {
+    CGPoint(x: b.x + rect.midX, y: b.y + rect.midY)
+}
+/// 操作対象の矩形（画面座標）。印を出す位置に使う。判定には使わない。
+func screenRect(_ a: Action, _ f: Frame, _ b: Bounds) -> CGRect {
+    guard let box = a.target, box.count == 4, f.width > 0, f.height > 0 else { return .zero }
+    let sx = b.width / Double(f.width), sy = b.height / Double(f.height)
+    return CGRect(x: b.x + box[0] * sx, y: b.y + box[1] * sy,
+                  width: (box[2] - box[0]) * sx, height: (box[3] - box[1]) * sy)
+}
+/// 窓が動いただけなら、同じ画像のまま座標を作り直して続ける。大きさは呼ぶ側が固定する。
+func point(_ a: Action, _ f: Frame, _ bounds: Bounds) throws -> CGPoint {
+    guard let box = a.target else { throw Failure("invalid_target") }
+    guard a.frameId == f.id, box.count == 4, box.allSatisfy({ $0.isFinite }),
           f.width > 0, f.height > 0, f.bounds.width > 0, f.bounds.height > 0,
           f.bounds.x.isFinite, f.bounds.y.isFinite,
-          a.target[0] >= 0, a.target[1] >= 0,
-          a.target[2] <= Double(f.width), a.target[3] <= Double(f.height),
-          a.target[2] - a.target[0] >= 2, a.target[3] - a.target[1] >= 2,
+          box[0] >= 0, box[1] >= 0,
+          box[2] <= Double(f.width), box[3] <= Double(f.height),
+          box[2] - box[0] >= 2, box[3] - box[1] >= 2,
           a.confidence >= 0.9, a.confidence <= 1,
-          ["navigation", "draft"].contains(a.risk) else { throw Failure("invalid_target") }
-    return CGPoint(x: f.bounds.x + (a.target[0] + a.target[2]) / 2 / Double(f.width) * f.bounds.width,
-                   y: f.bounds.y + (a.target[1] + a.target[3]) / 2 / Double(f.height) * f.bounds.height)
+          ["navigation", "draft"].contains(a.risk),
+          bounds.width == f.bounds.width, bounds.height == f.bounds.height,
+          bounds.x.isFinite, bounds.y.isFinite else { throw Failure("invalid_target") }
+    return CGPoint(x: bounds.x + (box[0] + box[2]) / 2 / Double(f.width) * bounds.width,
+                   y: bounds.y + (box[1] + box[3]) / 2 / Double(f.height) * bounds.height)
+}
+
+/*
+ * 操作中の印。**AI がいまどこを触っているか**をその場に出す。
+ *
+ * reference : 並走運用の指針（2026-09-19 受領）「AI 専用カーソルは操作の可視化として
+ *             実装する。普段は邪魔にならないようにする」。
+ * hypothesis: いまの印は地の色が windowBackgroundColor（輝度 1.000）で、白い Web ページの
+ *             上では地と同値。出ていても気づけない。対象の矩形を accent で囲み、
+ *             操作の前後に少し留めれば、どこで何が起きたか分かる。
+ * measured  : 初回 = 46x14pt / 11pt 文字 / 地 windowBackgroundColor（白との輝度差 0/255）。
+ *             採用 B = accent 2pt 囲み + 11pt 札 / 保持 600ms。実機では、覆われた窓では
+ *             出ず、出ても小さくて気づけなかった。
+ * candidates: A = B のまま。
+ *             C = 3pt の accent 囲み + 白 5pt の裏線 + 14% の塗り + 操作点を指す矢印
+ *                 + 12pt semibold の札、保持 900ms。
+ *             D = C に影を足す。
+ * gate      : 機械が測る。① 白地との輝度差 > 16/255 ② 入力を横取りしない
+ *             ③ 前面アプリ・クリップボードを変えない ④ 対象点が覆われていたら出さない。
+ *             D は DESIGN.md §0「分離に影を使わない」に反するため候補から落とした。採用 = C。
+ *             白の裏線は影の代わりで、暗い面でも縁が消えないようにするためのもの。
+ */
+@available(macOS 14.4, *)
+@MainActor
+enum Marker {
+    /// 操作の後も印を残す時間。人が目で追えるだけの長さにする。
+    static let hold: UInt64 = 900_000_000
+    static var accent: NSColor {
+        let dark = NSApp.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+        return dark ? NSColor(srgbRed: 0x8A / 255.0, green: 0x7D / 255.0, blue: 0xFF / 255.0, alpha: 1)
+                    : NSColor(srgbRed: 0x5B / 255.0, green: 0x4C / 255.0, blue: 0xF0 / 255.0, alpha: 1)
+    }
+    final class Panel: NSPanel {
+        override var canBecomeKey: Bool { false }
+        override var canBecomeMain: Bool { false }
+    }
+    final class Ring: NSView {
+        /// 対象が他の窓に覆われているとき。人の画面を塞がないよう、指し示すものだけ描く。
+        var compact = false
+        /*
+         * 札に出す文字。**どのアプリを操作しているかを書く。**
+         * 隠れた対象の印を手前の別アプリの上に描くので、「Genie」とだけ出すと
+         * 今使っているアプリが操作されていると誤解されうる。
+         */
+        var label = "Genie"
+        /*
+         * 対象そのものの位置（このビュー座標）。**窓の枠と対象の枠を分ける。**
+         * 以前は窓＝対象にしていたため、寿司の絵のような小さな対象では
+         * 札が枠に入らず黙って消えていた（`drawBadge` の guard）。
+         * 札と矢印のぶんだけ窓を広げ、対象はこの `focus` で描く。
+         */
+        var focus = NSRect.zero
+        /// 札の位置（このビュー座標）。対象の外側に出すので呼ぶ側が決める。
+        var badge = NSRect.zero
+        static let badgeAttributes: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: 14, weight: .semibold),
+            .foregroundColor: NSColor.white,
+        ]
+        /// 札に要る大きさ。白の裏線（太さ 3）のぶんも含める。
+        static func badgeSize(_ text: String) -> NSSize {
+            let size = (text as NSString).size(withAttributes: badgeAttributes)
+            return NSSize(width: ceil(size.width) + 12 + 3, height: ceil(size.height) + 6 + 3)
+        }
+        /// 矢印が必要とする範囲（中心からの張り出し）。小さな対象でも切れないように。
+        static func pointerBox(_ center: NSPoint) -> NSRect {
+            NSRect(x: center.x - 8, y: center.y - 20, width: 30, height: 44)
+        }
+        override func draw(_ dirty: NSRect) {
+            let color = Marker.accent
+            if !compact, focus.width > 2, focus.height > 2 {
+                // 白の裏線を先に置く。暗い面でも明るい面でも縁が消えない（影の代わり）。
+                let outline = NSBezierPath(roundedRect: focus.insetBy(dx: 2, dy: 2), xRadius: 10, yRadius: 10)
+                outline.lineWidth = 7
+                NSColor.white.withAlphaComponent(0.9).setStroke()
+                outline.stroke()
+                let ring = NSBezierPath(roundedRect: focus.insetBy(dx: 2, dy: 2), xRadius: 10, yRadius: 10)
+                ring.lineWidth = 4
+                color.setStroke()
+                ring.stroke()
+                // 対象をうっすら塗る。枠だけだと背景に紛れる。
+                color.withAlphaComponent(0.14).setFill()
+                NSBezierPath(roundedRect: focus.insetBy(dx: 3, dy: 3), xRadius: 8, yRadius: 8).fill()
+            }
+            drawPointer(at: NSPoint(x: focus.midX, y: focus.midY), color: color)
+            drawBadge(color: color)
+        }
+        /// 操作点そのものを指す矢印。どこを触ったかが一目で分かるようにする。
+        /// 通常のカーソルより一回り大きく描く。人のカーソルと見間違えないため。
+        private func drawPointer(at p: NSPoint, color: NSColor) {
+            let k: CGFloat = 1.7
+            let arrow = NSBezierPath()
+            arrow.move(to: NSPoint(x: p.x, y: p.y + 13 * k))
+            arrow.line(to: NSPoint(x: p.x, y: p.y - 9 * k))
+            arrow.line(to: NSPoint(x: p.x + 4.5 * k, y: p.y - 4.5 * k))
+            arrow.line(to: NSPoint(x: p.x + 8 * k, y: p.y - 11 * k))
+            arrow.line(to: NSPoint(x: p.x + 11 * k, y: p.y - 9.5 * k))
+            arrow.line(to: NSPoint(x: p.x + 7.5 * k, y: p.y - 3 * k))
+            arrow.line(to: NSPoint(x: p.x + 13 * k, y: p.y - 2 * k))
+            arrow.close()
+            NSColor.white.setStroke()
+            arrow.lineWidth = 4
+            arrow.stroke()
+            color.setFill()
+            arrow.fill()
+        }
+        private func drawBadge(color: NSColor) {
+            guard badge.width > 1, badge.height > 1 else { return }
+            let edge = NSBezierPath(roundedRect: badge.insetBy(dx: 1.5, dy: 1.5), xRadius: 7, yRadius: 7)
+            edge.lineWidth = 3
+            NSColor.white.withAlphaComponent(0.9).setStroke()
+            edge.stroke()
+            color.setFill()
+            NSBezierPath(roundedRect: badge.insetBy(dx: 1.5, dy: 1.5), xRadius: 7, yRadius: 7).fill()
+            (label as NSString).draw(at: NSPoint(x: badge.minX + 1.5 + 6, y: badge.minY + 1.5 + 3),
+                                     withAttributes: Ring.badgeAttributes)
+        }
+    }
+    /*
+     * どこを操作しているかは、**対象が隠れていても分かるようにする。**
+     * 背景操作では対象が他の窓の後ろにあるのが普通で、そこで何も出さないと
+     * 「AI がどこを触っているか」が誰にも分からない。
+     * ただし人の画面を塞がないよう、隠れているときは矢印と札だけにする。
+     * どちらの形でも入力は透過し（当たり判定を持たない）、焦点も奪わない。
+     */
+    /*
+     * `from` を渡すと、そこから対象まで滑って移動する。**動きが見えないと、
+     * どこからどこへ動いたのかが分からない。**ヘルパーは 1 操作ごとに起動し直されるので、
+     * 前回の操作点は呼ぶ側が覚えて渡す。
+     */
+    static func show(around rect: CGRect, window: UInt32, from: CGPoint? = nil,
+                     target: String? = nil) -> Panel? {
+        guard let primary = NSScreen.screens.first, rect.width > 2, rect.height > 2 else { return nil }
+        let covered = !Helper.topmost(at: CGPoint(x: rect.midX, y: rect.midY), is: window)
+        let area = rect.insetBy(dx: -6, dy: -6)
+        // 対象の枠（AppKit 座標）。Quartz は上が 0、AppKit は下が 0。
+        let spot = NSRect(x: area.origin.x, y: primary.frame.maxY - area.origin.y - area.height,
+                          width: area.width, height: area.height)
+        let text = (target?.isEmpty == false) ? "Genie → \(target!)" : "Genie"
+        let size = Ring.badgeSize(text)
+        // 札は対象の上に出す。上端に余地が無ければ下へ、右端を越えるなら左へ寄せる。
+        var plate = NSRect(x: spot.minX, y: spot.maxY + 4, width: size.width, height: size.height)
+        if plate.maxY > primary.frame.maxY { plate.origin.y = spot.minY - 4 - size.height }
+        if plate.maxX > primary.frame.maxX { plate.origin.x = primary.frame.maxX - size.width }
+        if plate.minX < primary.frame.minX { plate.origin.x = primary.frame.minX }
+        let frame = spot.union(Ring.pointerBox(NSPoint(x: spot.midX, y: spot.midY))).union(plate)
+        let panel = Panel(contentRect: frame, styleMask: [.borderless, .nonactivatingPanel],
+                          backing: .buffered, defer: false)
+        let ring = Ring(frame: NSRect(origin: .zero, size: frame.size))
+        ring.compact = covered
+        ring.label = text
+        ring.focus = NSRect(x: spot.minX - frame.minX, y: spot.minY - frame.minY,
+                            width: spot.width, height: spot.height)
+        ring.badge = NSRect(x: plate.minX - frame.minX, y: plate.minY - frame.minY,
+                            width: plate.width, height: plate.height)
+        panel.contentView = ring
+        panel.isOpaque = false
+        panel.backgroundColor = .clear
+        panel.ignoresMouseEvents = true
+        panel.hidesOnDeactivate = false
+        panel.isReleasedWhenClosed = false
+        panel.hasShadow = false
+        panel.level = .floating
+        panel.order(.above, relativeTo: Int(window))
+        if let from {
+            // 前回の点から始めて、そこへ寄せる。だいたい 0.35 秒で着く速さにする。
+            // 動かす基準は窓の中心ではなく**矢印の先（対象の中心）**。窓は札のぶん偏っている。
+            let start = NSRect(x: from.x - ring.focus.midX,
+                               y: primary.frame.maxY - from.y - ring.focus.midY,
+                               width: frame.width, height: frame.height)
+            panel.setFrame(start, display: true)
+            let steps = 14
+            for step in 1...steps {
+                let t = Double(step) / Double(steps)
+                let eased = t * t * (3 - 2 * t)   // 端がなめらかになるよう補間する
+                panel.setFrame(NSRect(x: start.origin.x + (frame.origin.x - start.origin.x) * eased,
+                                      y: start.origin.y + (frame.origin.y - start.origin.y) * eased,
+                                      width: frame.width, height: frame.height), display: true)
+                RunLoop.current.run(until: Date().addingTimeInterval(0.025))
+            }
+            panel.setFrame(frame, display: true)
+        }
+        return panel
+    }
+}
+
+/*
+ * 画像の送信先を、人に見せる名前にする。前面の選択ダイアログと背景の同意ダイアログ
+ * （BackgroundAX）が**同じ対応表**を使う。内部の種別名（`openai_api` など）は見せず、
+ * 画像が届く提供元の名前にする。
+ */
+func imageDestinationLabel(_ recipient: String?) -> String {
+    let providers = ["openai_api": "OpenAI", "codex": "OpenAI（Codex）", "anthropic_api": "Anthropic", "gemini_api": "Google（Gemini）"]
+    guard let recipient, !recipient.isEmpty else { return "不明" }
+    return recipient == "local" ? "このMacのモデル" : "外部のモデル（\(providers[recipient] ?? recipient)）"
 }
 
 @available(macOS 14.4, *)
 @MainActor
 struct Helper {
-    static func selectTarget(goal: String, recipient: String) async throws -> Target {
+    static func selectTarget(goal: String, recipient: String, dir: URL) async throws -> Target {
         let apps = NSWorkspace.shared.runningApplications.filter {
             $0.activationPolicy == .regular && $0.processIdentifier != getpid() &&
             $0.localizedName != "Genie" && $0.bundleIdentifier != nil
@@ -55,10 +283,26 @@ struct Helper {
         for app in apps { choice.addItem(withTitle: "\(app.localizedName ?? "App") (\(app.bundleIdentifier ?? ""))") }
         if let front = NSWorkspace.shared.frontmostApplication,
            let index = apps.firstIndex(where: { $0.processIdentifier == front.processIdentifier }) { choice.selectItem(at: index) }
-        let destination = recipient == "local" ? "端末内の選択したモデル" : "外部の選択したモデル（\(recipient)）"
+        /*
+         * 送信先は、ここに来て初めて決まっている（host が実行の直前に選ぶ）。
+         * サーバの承認カードは「端末で設定したモデル」としか言えないので、**ここで名指しする。**
+         * 内部の種別名（`openai_api` など）は見せず、画像が届く提供元の名前にする。
+         */
+        let destination = imageDestinationLabel(recipient)
         let alert = NSAlert()
-        alert.messageText = "画像で確認するアプリを選んでください"
-        alert.informativeText = "目的: \(goal)\n画像の送信先: \(destination)\n選択したアプリの前面ウィンドウだけを扱います。各操作は別途確認し、画像は実行終了時に削除します。"
+        alert.messageText = "操作するアプリを選んでください"
+        /*
+         * **人の関門はここではない。**この走行を許すかどうかは、ここへ来る前に
+         * Genie の確認カード（サーバの承認）で本人が決めている。このダイアログは
+         * 対象のアプリを選ぶ画面で、ここで初めて分かる画像の送信先を見せる。
+         * 以前は 1 操作ごとに確認を出していたが、実用にならないという持ち主の判断で
+         * 選択のこの 1 回にまとめた（実行中の許可 `grantRunConsent`）。
+         * 代わりに効かせ続けるもの: 対象は選んだ 1 枚の窓に固定、操作点に
+         * その窓が見えていること、対象要素の同一性、12 操作・5 分の上限、
+         * タスク承認の有効期限、Enter・Space・修飾キー・shell を持たないこと。
+         * NSAlert は Markdown を解さない。強調の記号を文面に入れない（そのまま出る）。
+         */
+        alert.informativeText = "目的: \(goal)\n画像の送信先: \(destination)\n選んだアプリの前面ウィンドウだけを、最大12操作・5分まで操作します。1操作ごとの確認はありません。画像は実行終了時に削除します。"
         alert.accessoryView = choice
         alert.addButton(withTitle: "このアプリで始める"); alert.addButton(withTitle: "中止")
         NSApp.activate(ignoringOtherApps: true)
@@ -66,46 +310,234 @@ struct Helper {
         else { throw Failure("user_cancelled") }
         let selected = apps[choice.indexOfSelectedItem]
         selected.activate(options: [.activateIgnoringOtherApps])
-        try await Task.sleep(nanoseconds: 300_000_000)
+        for _ in 0..<20 {
+            try await Task.sleep(nanoseconds: 100_000_000)
+            if NSWorkspace.shared.frontmostApplication?.processIdentifier == selected.processIdentifier { break }
+        }
         let target = try currentTarget()
         guard target.pid == selected.processIdentifier else { throw Failure("target_changed") }
+        grantRunConsent(dir, target)
         return target
     }
+    /*
+     * 一度だけの許可。**helper は 1 操作ごとに起動し直される**ので、状態はプロセスに残せない。
+     * 選んだ窓に紐づけて、所有者だけが読める 0600 のファイルに 5 分の期限付きで置く。
+     * 期限・窓の同一性・承認の有効期限は、これがあっても素通りしない。
+     */
+    static func consentPath(_ dir: URL, _ t: Target) -> String {
+        dir.appendingPathComponent("consent-\(t.pid)-\(t.windowId).json").path
+    }
+    static func grantRunConsent(_ dir: URL, _ t: Target) {
+        let until = Date().timeIntervalSince1970 * 1000 + 5 * 60 * 1000
+        let path = consentPath(dir, t)
+        unlink(path)
+        let fd = open(path, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW, 0o600)
+        guard fd >= 0 else { return }
+        defer { close(fd) }
+        let body = "{\"expiresAt\":\(until)}"
+        _ = body.withCString { write(fd, $0, strlen($0)) }
+    }
+    static func runConsented(_ dir: URL, _ t: Target) -> Bool {
+        let path = consentPath(dir, t)
+        var info = stat()
+        guard lstat(path, &info) == 0, (info.st_mode & S_IFMT) == S_IFREG,
+              info.st_uid == getuid(), (info.st_mode & 0o077) == 0,
+              let data = FileManager.default.contents(atPath: path),
+              let parsed = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let until = parsed["expiresAt"] as? Double, until.isFinite else { return false }
+        guard until > Date().timeIntervalSince1970 * 1000 else { unlink(path); return false }
+        return true
+    }
+    /*
+     * 前面アプリの「主ウィンドウ」。以前は layer 0 の**最初の1件**を取っていたため、
+     * Safari の高さ 90pt のツールバー窓や Chrome のリンク表示窓を掴むことがあった。
+     * AX の main/focused window の矩形を CG の一覧と突き合わせて選ぶ。
+     * 大きさの閾値では選ばない（正当な小さいダイアログを落とすため）。
+     */
     static func currentTarget() throws -> Target {
         guard let app = NSWorkspace.shared.frontmostApplication, app.processIdentifier != getpid(),
               let bundle = app.bundleIdentifier else { throw Failure("no_target_window") }
         let denied = ["com.apple.loginwindow", "com.apple.SecurityAgent", "com.apple.keychainaccess"]
         guard !denied.contains(bundle), !bundle.hasPrefix("com.1password"),
               !bundle.hasPrefix("com.agilebits.onepassword") else { throw Failure("protected_application") }
-        guard let windows = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]],
-              let w = windows.first(where: {
-                  ($0[kCGWindowOwnerPID as String] as? Int32) == app.processIdentifier &&
-                  ($0[kCGWindowLayer as String] as? Int) == 0
-              }),
-              let id = w[kCGWindowNumber as String] as? UInt32,
-              let bounds = w[kCGWindowBounds as String] as? [String: Double],
-              let x = bounds["X"], let y = bounds["Y"], let width = bounds["Width"], let height = bounds["Height"],
-              x.isFinite, y.isFinite, width.isFinite, height.isFinite, width > 0, height > 0
-        else { throw Failure("no_target_window") }
-        return Target(bundleId: bundle, windowId: id, pid: app.processIdentifier,
-                      bounds: Bounds(x: x, y: y, width: width, height: height))
+        let windows = onScreenWindows(pid: app.processIdentifier)
+        guard !windows.isEmpty else { throw Failure("no_target_window") }
+        let preferred = axWindowRect(pid: app.processIdentifier).flatMap { rect in
+            windows.first { $0.1.rect.equalTo(rect) }
+        }
+        let chosen = preferred ?? windows[0]
+        return Target(bundleId: bundle, windowId: chosen.0, pid: app.processIdentifier, bounds: chosen.1)
+    }
+    /** layer 0 の可視ウィンドウを手前から。位置・大きさはここで取り直す。 */
+    static func onScreenWindows(pid: Int32) -> [(UInt32, Bounds)] {
+        guard let windows = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]]
+        else { return [] }
+        return windows.compactMap { w in
+            guard (w[kCGWindowOwnerPID as String] as? Int32) == pid,
+                  (w[kCGWindowLayer as String] as? Int) == 0,
+                  let id = w[kCGWindowNumber as String] as? UInt32,
+                  let b = w[kCGWindowBounds as String] as? [String: Double],
+                  let x = b["X"], let y = b["Y"], let width = b["Width"], let height = b["Height"],
+                  x.isFinite, y.isFinite, width.isFinite, height.isFinite, width > 0, height > 0
+            else { return nil }
+            return (id, Bounds(x: x, y: y, width: width, height: height))
+        }
+    }
+    /** AX が言う main window（無ければ focused window）の矩形。公開 API だけで照合する。 */
+    static func axWindowRect(pid: Int32) -> CGRect? {
+        let app = AXUIElementCreateApplication(pid)
+        for attribute in [kAXMainWindowAttribute, kAXFocusedWindowAttribute] {
+            var value: CFTypeRef?
+            guard AXUIElementCopyAttributeValue(app, attribute as CFString, &value) == .success,
+                  let value, CFGetTypeID(value) == AXUIElementGetTypeID() else { continue }
+            if let rect = elementRect(value as! AXUIElement) { return rect }
+        }
+        return nil
+    }
+    /** AX 要素の画面上の矩形。Quartz 座標（左上原点）。 */
+    static func elementRect(_ element: AXUIElement) -> CGRect? {
+        var pos: CFTypeRef?; var size: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(element, kAXPositionAttribute as CFString, &pos) == .success,
+              AXUIElementCopyAttributeValue(element, kAXSizeAttribute as CFString, &size) == .success,
+              let pos, let size, CFGetTypeID(pos) == AXValueGetTypeID(), CFGetTypeID(size) == AXValueGetTypeID()
+        else { return nil }
+        var origin = CGPoint.zero; var dimensions = CGSize.zero
+        guard AXValueGetValue(pos as! AXValue, .cgPoint, &origin), AXValueGetValue(size as! AXValue, .cgSize, &dimensions)
+        else { return nil }
+        return CGRect(origin: origin, size: dimensions)
+    }
+    /** 固定した 1 枚のウィンドウを id で引き直す。前面かどうかはここでは問わない。 */
+    static func windowBounds(pid: Int32, windowId: UInt32) throws -> Bounds {
+        guard let found = onScreenWindows(pid: pid).first(where: { $0.0 == windowId })?.1 else {
+            stage("window-missing want=\(windowId) have=\(onScreenWindows(pid: pid).map { String($0.0) }.joined(separator: ","))")
+            throw Failure("target_changed")
+        }
+        return found
+    }
+    /*
+     * 操作点に実際に見えているのが、固定したウィンドウであること。覆われていたら断る。
+     * 見るのは通常ウィンドウ（layer 0）だけ。Dock やメニューバーは中身が透けている
+     * 画面全体の窓を持っていて、点を含むかで数えるとどの点でも「覆われている」になる。
+     */
+    static func topmost(at p: CGPoint, is windowId: UInt32) -> Bool {
+        guard let windows = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]]
+        else { return false }
+        for w in windows {
+            guard (w[kCGWindowLayer as String] as? Int) == 0,
+                  (w[kCGWindowOwnerPID as String] as? Int32) != getpid(),
+                  let b = w[kCGWindowBounds as String] as? [String: Double],
+                  let x = b["X"], let y = b["Y"], let width = b["Width"], let height = b["Height"],
+                  CGRect(x: x, y: y, width: width, height: height).contains(p)
+            else { continue }
+            return (w[kCGWindowNumber as String] as? UInt32) == windowId
+        }
+        return false
     }
     static func checkPermissions() throws {
         guard AXIsProcessTrusted() else { throw Failure("accessibility_required") }
         guard CGPreflightScreenCaptureAccess() else { throw Failure("screen_capture_required") }
     }
-    static func checkScope(_ f: Frame) throws -> Target {
+    /*
+     * 固定するのは app / PID / windowID。**位置は動いてよい**——窓を動かしただけで
+     * 中身は同じだから、座標を作り直して続ける。大きさが変われば中身も変わるので作り直す。
+     * 前面かどうかはここでは見ない。入力の直前に `topmost(at:is:)` で見る。
+     */
+    static func rescope(_ f: Frame) throws -> Target {
         try checkPermissions()
-        let t = try currentTarget()
-        guard t.bundleId == f.bundleId, t.windowId == f.windowId, t.pid == f.pid else { throw Failure("target_changed") }
-        guard t.bounds == f.bounds else { throw Failure("stale_frame") }
-        return t
+        let bounds = try windowBounds(pid: f.pid, windowId: f.windowId)
+        guard bounds.width == f.bounds.width, bounds.height == f.bounds.height else { throw Failure("stale_frame") }
+        return Target(bundleId: f.bundleId, windowId: f.windowId, pid: f.pid, bounds: bounds)
     }
+    /*
+     * 対象の窓が画面に無いときだけ、いちど前に出してから引き直す。
+     * 許可を実行単位の 1 回にまとめた以上、人は自分の作業へ戻る——別の Space に移る、
+     * ⌘H で隠す、最小化する。そのたびに黙って止まるのでは、任せられない。
+     * 戻すのは**選んだ 1 つのアプリ**だけで、対象が変わるわけではない。
+     */
+    static func rescopeActivating(_ f: Frame) async throws -> Target {
+        if let found = try? rescope(f) { return found }
+        guard let app = NSRunningApplication(processIdentifier: f.pid), !app.isTerminated
+        else { throw Failure("target_changed") }
+        stage("reveal")
+        if app.isHidden { app.unhide() }
+        app.activate(options: [.activateIgnoringOtherApps])
+        for _ in 0..<20 {
+            try await Task.sleep(nanoseconds: 100_000_000)
+            if let found = try? rescope(f) { return found }
+        }
+        return try rescope(f)
+    }
+    /*
+     * 操作対象そのものの同一性。**画面全体の画素一致の代わりに使う。**
+     * 全体一致は、テキスト欄のカーソルが点滅するだけで成立しない——
+     * つまり一番やりたい「入力」で必ず落ちる。ここでは対象を絞って見る。
+     * 位置はウィンドウ原点からの相対で持つ（窓が動いても同じ対象と分かるように）。
+     */
+    struct ElementIdentity {
+        let role: String; let subrole: String; let identifier: String; let title: String
+        let offsetX: Double; let offsetY: Double; let width: Double; let height: Double
+        /*
+         * 役割と、窓の中での位置・大きさは厳密に見る。ここが違えば別の対象。
+         * subrole / identifier / title は**片方が空なら判断材料にしない**——
+         * AX ツリーの作り直しで一時的に落ちることがあり（実測: AXEmptyGroup → 空）、
+         * 「属性が無い」は「別物である」証拠にならない。埋まっている同士が食い違えば断る。
+         */
+        func matches(_ other: ElementIdentity) -> Bool {
+            func agrees(_ a: String, _ b: String) -> Bool { a.isEmpty || b.isEmpty || a == b }
+            func close(_ a: Double, _ b: Double) -> Bool { abs(a - b) <= 1 }
+            return role == other.role && agrees(subrole, other.subrole)
+                && agrees(identifier, other.identifier) && agrees(title, other.title)
+                && close(offsetX, other.offsetX) && close(offsetY, other.offsetY)
+                && close(width, other.width) && close(height, other.height)
+        }
+    }
+    /*
+     * AX ツリーを遅れて作り込むアプリでは、同じ点でも 1 回目は粗い入れ物
+     * （実測: AXGroup/AXLandmarkSearch）、少し後に本来の要素（AXTextArea）が返る。
+     * **比べる前に、両側とも落ち着かせる。**片側だけ再試行しても噛み合わない。
+     * 2 回続けて同じものが返ったらそれを採る。落ち着かなければ nil を返し、
+     * 画素の完全一致に任せる（緩めるのではなく、判断材料を変えない）。
+     */
+    static func settledIdentity(at p: CGPoint, origin: Bounds) async -> ElementIdentity? {
+        var previous = identity(at: p, origin: origin)
+        for _ in 0..<5 {
+            try? await Task.sleep(nanoseconds: 150_000_000)
+            let now = identity(at: p, origin: origin)
+            if let now, let previous, now.matches(previous) { return now }
+            previous = now
+        }
+        return nil
+    }
+    static func identity(at p: CGPoint, origin: Bounds) -> ElementIdentity? {
+        var raw: AXUIElement?
+        guard AXUIElementCopyElementAtPosition(AXUIElementCreateSystemWide(), Float(p.x), Float(p.y), &raw) == .success,
+              let element = raw, let rect = elementRect(element) else { return nil }
+        func text(_ attribute: String) -> String {
+            var value: CFTypeRef?
+            guard AXUIElementCopyAttributeValue(element, attribute as CFString, &value) == .success else { return "" }
+            return (value as? String) ?? ""
+        }
+        let role = text(kAXRoleAttribute as String)
+        guard !role.isEmpty else { return nil }
+        return ElementIdentity(role: role, subrole: text(kAXSubroleAttribute as String),
+                               identifier: text(kAXIdentifierAttribute as String), title: text(kAXTitleAttribute as String),
+                               offsetX: rect.origin.x - origin.x, offsetY: rect.origin.y - origin.y,
+                               width: rect.width, height: rect.height)
+    }
+    /*
+     * 秘匿欄（パスワード等）に触れないための判定。
+     * **「焦点が無い」と「判定できない」を分ける。**以前はどちらも「秘匿欄」として
+     * 止めていたので、ページを開いた直後やアプリを前に出した直後——まだどこにも
+     * 焦点が無いだけの状態——で正当な操作が止まっていた。
+     * 焦点が無いのは既知の状態であって、秘匿欄がある証拠ではない。
+     * 問い合わせ自体が失敗したときは、これまでどおり断る。
+     */
     static func secureFocus() -> Bool {
         let system = AXUIElementCreateSystemWide()
         var focus: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(system, kAXFocusedUIElementAttribute as CFString, &focus) == .success,
-              let focus else { return true }
+        let status = AXUIElementCopyAttributeValue(system, kAXFocusedUIElementAttribute as CFString, &focus)
+        if status == .noValue || status == .attributeUnsupported { return false }
+        guard status == .success, let focus else { return true }
         var subrole: CFTypeRef?
         guard AXUIElementCopyAttributeValue(focus as! AXUIElement, kAXSubroleAttribute as CFString, &subrole) == .success
         else { return false }
@@ -145,14 +577,39 @@ struct Helper {
         NSApp.activate(ignoringOtherApps: true)
         guard alert.runModal() == .alertFirstButtonReturn else { throw Failure("user_cancelled") }
     }
+    /*
+     * 承認画面から対象アプリへ戻す。300ms 固定では activation が間に合わず、
+     * 利用者が何もしていないのに `target_changed` になっていた。実際に前面になるまで待つ。
+     */
     static func restore(_ t: Target) async throws {
         guard let app = NSRunningApplication(processIdentifier: t.pid), !app.isTerminated else { throw Failure("target_changed") }
         app.activate(options: [.activateIgnoringOtherApps])
-        try await Task.sleep(nanoseconds: 300_000_000)
-        let now = try currentTarget()
-        guard now.pid == t.pid, now.windowId == t.windowId, now.bounds == t.bounds else { throw Failure("target_changed") }
+        for _ in 0..<20 {
+            try await Task.sleep(nanoseconds: 100_000_000)
+            if NSWorkspace.shared.frontmostApplication?.processIdentifier == t.pid { return }
+        }
+        throw Failure("target_changed")
     }
+    /*
+     * ScreenCaptureKit は一時的に落ちることがある。以前はその例外が `Failure` でないため
+     * すべて `helper_failed` に潰れ、何が起きたか分からないまま実行が終わっていた。
+     * こちらの判断（`Failure`）はそのまま通し、それ以外は少し待って撮り直す。
+     */
     static func capture(_ t: Target) async throws -> (CGImage, Data) {
+        var last: Error?
+        for attempt in 0..<3 {
+            if attempt > 0 { try await Task.sleep(nanoseconds: 300_000_000) }
+            do { return try await captureOnce(t) }
+            catch let error as Failure { throw error }
+            catch {
+                last = error
+                stage("capture-retry \(String(describing: type(of: error)))")
+            }
+        }
+        stage("capture-failed \(last.map { String(describing: type(of: $0)) } ?? "unknown")")
+        throw Failure("capture_failed")
+    }
+    static func captureOnce(_ t: Target) async throws -> (CGImage, Data) {
         try checkPermissions()
         guard !secureFocus() else { throw Failure("protected_field") }
         let content = try await SCShareableContent.excludingDesktopWindows(true, onScreenWindowsOnly: true)
@@ -166,16 +623,34 @@ struct Helper {
         config.showsCursor = false
         config.ignoreShadowsSingleWindow = true
         let image = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
-        let latest = try currentTarget()
-        guard latest.pid == t.pid, latest.windowId == t.windowId, latest.bounds == t.bounds else { throw Failure("stale_frame") }
+        // 撮っている間に窓が動いていないこと。前面かどうかはここでは問わない。
+        guard try windowBounds(pid: t.pid, windowId: t.windowId) == t.bounds else { throw Failure("stale_frame") }
         guard let data = NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:]), data.count <= 10 * 1024 * 1024
         else { throw Failure("capture_failed") }
         return (image, data)
     }
+    /*
+     * 書き出し先が**symlink 越しでない**ことを確かめる。狙いは、渡された道の途中を
+     * すり替えて別の場所へ書かせないこと。
+     *
+     * 判定に `resolvingSymlinksInPath()` を使ってはいけない。**あれは symlink を
+     * 解くだけでなく、documented な仕様として `/private` 接頭辞も取り除く。**
+     * そのため `/private/tmp/...` を渡すと `/tmp/...` が返り、symlink が 1 つも
+     * 無いのに不一致になる（実測 2026-09-22: 状態ディレクトリを /tmp 以下に置いた
+     * プレビューが、写真を 1 枚も書けずに `invalid_cache` で止まった）。
+     * POSIX の `realpath(3)` は `/private/tmp` をそのまま返し、`/tmp` を渡されたときは
+     * `/private/tmp` に直す——こちらが欲しいのはその挙動で、host 側の `realpath` と同じ。
+     */
+    static func canonicalDirectory(_ path: String) -> Bool {
+        let dir = URL(fileURLWithPath: path).deletingLastPathComponent().path
+        var buffer = [CChar](repeating: 0, count: Int(PATH_MAX))
+        guard realpath(dir, &buffer) != nil else { return false }
+        return String(cString: buffer) == dir
+    }
     static func privateWrite(_ data: Data, id: String, path: String) throws {
         guard id.hasPrefix("cv-"), UUID(uuidString: String(id.dropFirst(3))) != nil,
               URL(fileURLWithPath: path).lastPathComponent == "\(id).png",
-              URL(fileURLWithPath: path).deletingLastPathComponent().resolvingSymlinksInPath().path == URL(fileURLWithPath: path).deletingLastPathComponent().path
+              canonicalDirectory(path)
         else { throw Failure("invalid_cache") }
         let fd = open(path, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW, 0o600)
         guard fd >= 0 else { throw Failure("cache_write_failed") }
@@ -193,13 +668,16 @@ struct Helper {
     }
     static func respond(_ request: Request) async throws -> Data {
         try checkPermissions()
+        stage("op-\(request.op)")
         if request.op == "begin" || request.op == "capture" {
             let t: Target
             if request.op == "begin" {
-                t = try await selectTarget(goal: request.goal ?? "", recipient: request.recipient ?? "unknown")
+                guard let out = request.outputPath else { throw Failure("invalid_request") }
+                t = try await selectTarget(goal: request.goal ?? "", recipient: request.recipient ?? "unknown",
+                                           dir: URL(fileURLWithPath: out).deletingLastPathComponent())
             } else {
                 guard let scope = request.scope else { throw Failure("invalid_scope") }
-                t = try checkScope(scope)
+                t = try await rescopeActivating(scope)
             }
             let (image, png) = try await capture(t)
             guard let id = request.id, let path = request.outputPath else { throw Failure("invalid_request") }
@@ -213,9 +691,19 @@ struct Helper {
         else { throw Failure("invalid_request") }
         guard let expires = request.authorizationExpiresAt, expires.isFinite,
               expires > Date().timeIntervalSince1970 * 1000 else { throw Failure("approval_expired") }
-        let t = try checkScope(f)
+        stage("rescope")
+        var t = try await rescopeActivating(f)
+        /*
+         * **決める前に前へ出す。**対象が背面にある間、アプリは中身を変える——
+         * 実測では、Chrome が前面でない Google の検索欄が、同じ座標で
+         * プレースホルダの静的テキストに見え、前面に戻すと入力欄に戻った。
+         * 背面の姿で決めて前面で実行すれば、判断と実行がずれる。順序で直す。
+         */
+        stage("restore-first")
+        try await restore(t)
+        t = try rescope(f)
         guard Date().timeIntervalSince1970 * 1000 - f.capturedAt <= 60_000 else { throw Failure("stale_frame") }
-        let p = try point(a, f)
+        var p = try point(a, f, t.bounds)
         guard ["click", "type", "key"].contains(a.action), !secureFocus() else { throw Failure("protected_field") }
         if a.action == "type" {
             guard let text = a.text, !text.isEmpty, text.utf16.count <= 2000,
@@ -223,18 +711,57 @@ struct Helper {
             else { throw Failure("invalid_text_target") }
         }
         if a.action == "key", navigationKeys[a.key ?? ""] == nil { throw Failure("invalid_key") }
-        // Exact pixel equality is intentionally conservative. Animation/caret changes can require replanning.
+        /*
+         * 画像ハッシュは「どの画像で判断したか」の記録。**操作の可否はそれでは決めない。**
+         * 画面全体の画素一致は、テキスト欄のカーソルが点滅するだけで成立せず、
+         * 一番やりたい入力が必ず落ちる。AX で対象を特定できたときはその同一性で判断し、
+         * できなかったときだけ従来どおり画素の完全一致に戻す。
+         */
+        stage("capture-before")
         let (_, before) = try await capture(t)
-        guard digest(before) == f.sha256 else { throw Failure("stale_frame") }
+        let known = await settledIdentity(at: p, origin: t.bounds)
+        stage(known == nil ? "identity-none" : "identity-known")
+        if known == nil { guard digest(before) == f.sha256 else { throw Failure("stale_frame") } }
         let detail = a.action == "type" ? "入力内容: \(a.text ?? "")" : "操作: \(a.action) \(a.key ?? "")\n位置: \(Int(p.x)), \(Int(p.y))"
         let preview = NSImage(data: before)
-        try consent("この1操作を実行しますか？", "対象: \(t.bundleId)\n\(detail)\n期待する結果: \(a.expectation)", image: preview)
+        let dir = URL(fileURLWithPath: reference).deletingLastPathComponent()
+        if runConsented(dir, t) { stage("consent-once") }
+        else { try consent("この1操作を実行しますか？", "対象: \(t.bundleId)\n\(detail)\n期待する結果: \(a.expectation)", image: preview) }
+        stage("restore")
         try await restore(t)
-        _ = try checkScope(f)
-        let (_, fresh) = try await capture(t)
-        guard digest(fresh) == f.sha256 else { throw Failure("stale_frame") }
+        stage("rescope-back")
+        let back = try await rescopeActivating(f)
+        p = try point(a, f, back.bounds)
+        // 承認画面が前面だった遷移と、利用者が別へ移った遷移を分ける。見えているのが対象の窓か。
+        stage("topmost")
+        guard topmost(at: p, is: f.windowId) else { throw Failure("target_changed") }
+        if let known {
+            stage("identity-recheck")
+            /*
+             * Chrome など AX ツリーを遅延構築するアプリでは、最初の問い合わせが
+             * 入れ物（WebArea/Group）を返し、少し後に本来の要素が返ることがある。
+             * 窓と点は既に固定されているので、落ち着くまで数回だけ見直す。
+             * それでも別物なら断る——「同じ対象か」を緩めはしない。
+             */
+            let settled = await settledIdentity(at: p, origin: back.bounds)
+            guard settled?.matches(known) == true else {
+                stage("identity-diff want=\(known.role)/\(known.subrole) have=\(settled?.role ?? "none")/\(settled?.subrole ?? "none")")
+                throw Failure("target_changed")
+            }
+        } else {
+            let (_, fresh) = try await capture(back)
+            guard digest(fresh) == f.sha256 else { throw Failure("stale_frame") }
+        }
         guard expires > Date().timeIntervalSince1970 * 1000 else { throw Failure("approval_expired") }
+        stage("cantype")
         if a.action == "type", !canType(at: p) { throw Failure("invalid_text_target") }
+        stage("post")
+        /*
+         * この経路は**人のカーソルを奪って**動かす。奪う側こそ、どこで何をしたかを
+         * その場に残す必要がある。印は入力を横取りしない（当たり判定を持たない）。
+         */
+        let marker = Marker.show(around: screenRect(a, f, back.bounds), window: f.windowId)
+        defer { marker?.orderOut(nil) }
         guard let source = CGEventSource(stateID: .hidSystemState) else { throw Failure("input_failed") }
         if a.action == "click" {
             guard let down = CGEvent(mouseEventSource: source, mouseType: .leftMouseDown, mouseCursorPosition: p, mouseButton: .left),
@@ -264,40 +791,82 @@ struct Helper {
             }
         }
         try await Task.sleep(nanoseconds: 300_000_000)
+        // 操作が済んだあとも印を残す。100ms では目で追えない。
+        if marker != nil { try await Task.sleep(nanoseconds: Marker.hold) }
         return Data("{\"status\":\"applied\"}".utf8)
     }
 }
 
+#if !GENIE_BACKGROUND && !GENIE_BACKGROUND_TEST
 @main struct Main {
-    @MainActor static func main() async {
+    /*
+     * `async main` にしない。AppKit を使う以上、main actor の継続を回すのは
+     * `NSApplication.run()` であって Swift の async main ではない。
+     * async main のままだと、同意ダイアログのモーダルが閉じた直後の
+     * 最初の suspension（`Task.sleep`）でプロセスが exit 0・無出力のまま畳まれ、
+     * 画面を撮って返す前に死ぬ。ホスト側はそれを `helper_unavailable` として受け取る。
+     * 自己テストは AppKit を起こさない（window server の無い CI で走らせるため）。
+     */
+    static func main() {
+        if CommandLine.arguments.contains("--self-test") { selfTest(); return }
+        // Read-only setup probe: never capture a screen or request TCC authorization.
+        if CommandLine.arguments.contains("--status") {
+            let supported: Bool
+            if #available(macOS 14.4, *) { supported = true } else { supported = false }
+            let ax = AXIsProcessTrusted()
+            let screen = CGPreflightScreenCaptureAccess()
+            let data = try! JSONSerialization.data(withJSONObject: [
+                "supported": supported, "accessibility": ax, "screenRecording": screen,
+                "ready": supported && ax && screen
+            ], options: [.sortedKeys])
+            FileHandle.standardOutput.write(data)
+            print("")
+            return
+        }
+        let app = NSApplication.shared
+        app.setActivationPolicy(.accessory)
+        Task { @MainActor in await respond() }
+        app.run()
+    }
+    static func selfTest() {
         do {
-            if CommandLine.arguments.contains("--self-test") {
-                let f = Frame(id: "test", bundleId: "test", windowId: 1, pid: 1, capturedAt: 0, width: 1000, height: 500,
-                    bounds: Bounds(x: -1920, y: 200, width: 2000, height: 1000), sha256: "")
-                let a = Action(action: "click", frameId: "test", target: [100, 50, 200, 100], expectation: "open",
-                    confidence: 0.95, risk: "navigation", text: nil, key: nil)
-                let p = try point(a, f)
-                guard p.x == -1620, p.y == 350 else { throw Failure("coordinate_test_failed") }
-                let bad = Action(action: "click", frameId: "other", target: [-1, 0, 20, 20], expectation: "open",
-                    confidence: 1, risk: "navigation", text: nil, key: nil)
-                do { _ = try point(bad, f); throw Failure("rejection_test_failed") }
-                catch let error as Failure where error.code == "invalid_target" { }
-                print("GENIE_COMPUTER_SELF_TEST_OK"); return
-            }
+            let f = Frame(id: "test", bundleId: "test", windowId: 1, pid: 1, capturedAt: 0, width: 1000, height: 500,
+                bounds: Bounds(x: -1920, y: 200, width: 2000, height: 1000), sha256: "")
+            let a = Action(action: "click", frameId: "test", expectation: "open",
+                confidence: 0.95, risk: "navigation", text: nil, key: nil, elementId: nil,
+                target: [100, 50, 200, 100])
+            let p = try point(a, f)
+            guard p.x == -1620, p.y == 350 else { throw Failure("coordinate_test_failed") }
+            let bad = Action(action: "click", frameId: "other", expectation: "open",
+                confidence: 1, risk: "navigation", text: nil, key: nil, elementId: nil,
+                target: [-1, 0, 20, 20])
+            do { _ = try point(bad, f); throw Failure("rejection_test_failed") }
+            catch let error as Failure where error.code == "invalid_target" { }
+            print("GENIE_COMPUTER_SELF_TEST_OK")
+        } catch {
+            fail(error)
+        }
+    }
+    /** 応答を書いたら必ず終える。run loop は自分では止まらない。 */
+    @MainActor static func respond() async {
+        do {
             let input = FileHandle.standardInput.readDataToEndOfFile()
             guard input.count <= 128 * 1024 else { throw Failure("invalid_request") }
             let request = try JSONDecoder().decode(Request.self, from: input)
-            _ = NSApplication.shared
-            NSApp.setActivationPolicy(.accessory)
             if #available(macOS 14.4, *) {
                 let data = try await Helper.respond(request)
                 FileHandle.standardOutput.write(data)
+                exit(0)
             } else { throw Failure("macos_14_4_required") }
         } catch {
-            let code = (error as? Failure)?.code ?? "helper_failed"
-            let data = (try? JSONSerialization.data(withJSONObject: ["error": code])) ?? Data()
-            FileHandle.standardOutput.write(data)
-            exit(1)
+            fail(error)
         }
     }
+    static func fail(_ error: Error) -> Never {
+        let code = (error as? Failure)?.code ?? "helper_failed"
+        let data = (try? JSONSerialization.data(withJSONObject: ["error": code])) ?? Data()
+        FileHandle.standardOutput.write(data)
+        exit(1)
+    }
 }
+#endif

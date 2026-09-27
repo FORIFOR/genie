@@ -51,6 +51,14 @@ run "permission JIT"             bash scripts/verify-permission-jit.sh
 run "privacy egress"             bash scripts/verify-privacy-egress.sh
 run "no contradiction"           bash scripts/verify-no-contradiction.sh
 run "confirmation surface"       bash scripts/verify-confirmation.sh
+# 声・会話・自動の経路から backend の承認を通せないこと（承認は確認カードで押された 1 回だけ）。
+run "approval boundary"          bash scripts/verify-approval-boundary.sh
+run "approval boundary selfcheck" bash scripts/verify-approval-boundary.sh --selfcheck
+# 承認カードに**本物のキー**（OS のイベントの列）で答えられるか。待つ間に run loop を空回しすると届かない。
+# 以前は固定の 0.8 秒待ちの後に送っていたので、起動直後は Dock が key になる前に送って 8 回に 1 回落ちた。
+# いまはカード・「実行する」・key の窓が揃うのを確かめてから送り、揃わなければ NOT_READY と理由を出す
+# （2026-09-26 に build 直後から 25 回続けて実行し 25 回通過）。落ちたら再実行で通さず、理由を読む。
+run "approval boundary (real key)" bash scripts/verify-approval-boundary.sh --runtime
 run "screen terms (one word each)" bash scripts/lint-terms.sh
 # 操作ガイドの語は、アプリが今表示している語（UserFacingFacts）からしか来ない。写し違いは落ちる。
 run "guide facts (app words only)" bash scripts/verify-guide-facts.sh

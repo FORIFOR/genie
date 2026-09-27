@@ -7,6 +7,8 @@ import SwiftUI
 struct ConfirmationCardView: View {
     let confirmation: ActionConfirmation
     var onResolve: (Bool) -> Void
+    /// 面が出た時刻。出た直後の「実行する」は受け付けない（Dock の確認面と同じ）。
+    @State private var shownAt = Date()
 
     @Environment(\.colorScheme) private var scheme
     private var dark: Bool { scheme == .dark }
@@ -52,7 +54,10 @@ struct ConfirmationCardView: View {
                     .foregroundStyle(Palette.muted(dark))
                     .frame(height: 28).padding(.horizontal, 12)
                     .buttonStyle(GenieControlStyle(radius: 8, base: 0.0))
-                ProbeButton(id: "cardProceed", action: { onResolve(true) }) { Text(confirmation.confirmLabel) }
+                ProbeButton(id: "cardProceed", action: {
+                    guard Date().timeIntervalSince(shownAt) >= ActionConfirmation.proceedArmDelay else { return }
+                    onResolve(true)
+                }) { Text(confirmation.confirmLabel) }
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(riskTint)
                     .frame(height: 28).padding(.horizontal, 14)
