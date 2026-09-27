@@ -199,7 +199,11 @@ for f in src.rglob('*.swift'):
     rel = str(f.relative_to(src))
     if 'generativelanguage.googleapis.com' in text and rel != 'Audio/GeminiLiveProtocol.swift':
         problems.append(f'{rel}: Gemini endpoint outside GeminiLiveProtocol.swift')
-    if 'GeminiLive.endpoint' in text and rel != 'Audio/GeminiLiveProvider.swift':
+    # 接続の自己検査（geminismoke）だけは例外。本人の同意・キー・上限（settings.active）を確かめてからつなぐこと。
+    if rel == 'App/SelfTestGeminiSmoke.swift':
+        if 'GeminiLive.endpoint' in text and 'settings.active' not in text:
+            problems.append(f'{rel}: connects to Gemini without checking settings.active')
+    elif 'GeminiLive.endpoint' in text and rel != 'Audio/GeminiLiveProvider.swift':
         problems.append(f'{rel}: connects to Gemini outside GeminiLiveProvider.swift')
     if 'GeminiLiveProvider(' in text and rel not in ('VoiceHUD/VoiceHUDState.swift', 'Audio/GeminiLiveProvider.swift'):
         problems.append(f'{rel}: GeminiLiveProvider created outside beginConversation')
