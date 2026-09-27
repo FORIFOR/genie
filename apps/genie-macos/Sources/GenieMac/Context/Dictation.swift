@@ -47,8 +47,17 @@ enum Dictation {
     /// 認識文字をフォーカス中の入力欄へ入れる。入れられたら true。
     ///
     /// 選択範囲があればそこを置換、無ければキャレット位置へ挿入する（既存の文章を壊さない）。
+    /// 検査専用: 設定すると、前面のアプリの欄へは**打ち込まず**、入れようとした文を知らせるだけにする。
+    /// 自動検査が本人のターミナルやエディタへ文字を打ち込まないため。本番では nil。
+    @MainActor static var dryRun: ((String) -> Void)?
+
     @discardableResult
     static func insert(_ text: String, excludingOwnProcess: Bool = false) -> Bool {
+        if let dryRun = MainActor.assumeIsolated({ Self.dryRun }) {
+            guard !text.isEmpty else { return false }
+            MainActor.assumeIsolated { dryRun(text) }
+            return true
+        }
         guard !text.isEmpty, let target = focusedTextTarget(excludingOwnProcess: excludingOwnProcess) else { return false }
         return insert(text, into: target)
     }

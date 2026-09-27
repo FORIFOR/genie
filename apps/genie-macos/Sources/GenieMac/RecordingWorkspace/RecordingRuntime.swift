@@ -109,6 +109,11 @@ final class RecordingRuntime {
     private var onVoiceFinal: ((String) -> Void)?
     private var voiceVad = VoiceActivityDetector()
     private(set) var voiceListening = false
+    /// 検査専用: 次の 1 回の聞き取りで、マイクの代わりに流す音（16 kHz mono）。本番では nil。
+    /// 流した音は本物のマイクの音と同じ道（VAD → オンデバイス STT）を通る。
+    var voiceInjection: [Float]?
+    /// オンデバイス STT を始められなかったか（取り込みは続くが文字は出ない）。画面と検査が読む。
+    private(set) var voiceTranscriptionUnavailable = false
 
     private func startVoiceSpeechTranscriber() {
         guard SpeechTranscriber.authorization == .authorized, voiceSpeech == nil else { return }
@@ -130,6 +135,7 @@ final class RecordingRuntime {
         } catch {
             // オンデバイス資産が無い。取り込みは続けるが文字は出ない（サーバへは落とさない）。
             NSLog("voice listening: on-device STT unavailable: \(error)")
+            voiceTranscriptionUnavailable = true
         }
     }
     /// 文字起こしを頼まれたのに、この Mac ではオンデバイス STT が始められなかった。
@@ -416,8 +422,11 @@ final class RecordingRuntime {
                              onFinal: @escaping (String) -> Void) -> Bool {
         // 会議の録音中はマイクを二重に開かない。その間の partial は録音側の STT から流れる。
         guard session == nil, !voiceListening else { return false }
-        guard Permissions.microphone == .granted else { return false }
+        let injected = voiceInjection
+        voiceInjection = nil
+        guard injected != nil || Permissions.microphone == .granted else { return false }
         voiceListening = true
+        voiceTranscriptionUnavailable = false
         voiceVad.reset()
         onVoicePartial = onPartial
         onVoiceFinal = onFinal
@@ -437,6 +446,23 @@ final class RecordingRuntime {
         let mic = micCapture
         micGeneration += 1
         let gen = micGeneration
+        if let injected {
+            // 検査: マイクの代わりに、実時間で 0.1 秒ずつ流す（最後に 4 秒の無音）。
+            let chunk = 1_600
+            let frames = injected + [Float](repeating: 0, count: 64_000)
+            micQueue.async { [weak self] in
+                var offset = 0
+                while offset < frames.count {
+                    guard let self, self.voiceListening, self.micGeneration == gen else { return }
+                    let frame = Array(frames[offset..<min(offset + chunk, frames.count)])
+                    if offset == 0 { DispatchQueue.main.async { onFirstFrame() } }
+                    if self.voiceVad.accept(frame) { self.voiceSpeech?.append(frame, sampleRate: 16_000) }
+                    offset += chunk
+                    Thread.sleep(forTimeInterval: 0.1)
+                }
+            }
+            return true
+        }
         micQueue.async { [weak self] in
             do {
                 try mic.start(echoCancellation: echoCancellation) { frame in

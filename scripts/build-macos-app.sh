@@ -71,8 +71,15 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 </plist>
 PLIST
 
-# ad-hoc 署名（"-" は ad-hoc）。TCC はバンドル識別子で許可を覚える。
-codesign --force --deep --sign - --timestamp=none "$APP"
+# 署名。ad-hoc（"-"）だと TCC は実行ファイルの cdhash で許可を覚えるので、作り直すたびに
+# マイク・音声認識・画面収録の許可が消える（本人がまた許可し直すことになる）。
+# 手元に Apple Development の証明書があればそれで署名し、識別子と証明書で覚えてもらう。
+# GENIE_SIGN_IDENTITY で指定でき、"-" なら従来の ad-hoc。証明書が無ければ ad-hoc。
+IDENTITY="${GENIE_SIGN_IDENTITY:-}"
+if [[ -z "$IDENTITY" ]]; then
+  IDENTITY="$(security find-identity -v -p codesigning 2>/dev/null | sed -n 's/.*"\(Apple Development: [^"]*\)".*/\1/p' | head -1)"
+fi
+codesign --force --deep --sign "${IDENTITY:--}" --timestamp=none "$APP"
 codesign --verify --deep --strict "$APP"
 echo "built $APP"
-codesign -dv "$APP" 2>&1 | grep -E "Identifier|Signature" | head -2 || true
+codesign -dv "$APP" 2>&1 | grep -E "Identifier|Signature|^Authority" | head -3 || true
