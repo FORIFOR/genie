@@ -208,6 +208,10 @@ for f in src.rglob('*.swift'):
     if 'GeminiLiveProvider(' in text and rel not in ('VoiceHUD/VoiceHUDState.swift', 'Audio/GeminiLiveProvider.swift'):
         problems.append(f'{rel}: GeminiLiveProvider created outside beginConversation')
 provider = (src / 'Audio/GeminiLiveProvider.swift').read_text()
+# 検査用の差し替え先は、この Mac の中（ループバック）だけ。外の宛先へ向ける口を作らない。
+if 'endpointOverride' in provider:
+    if 'private static var endpointOverride' not in provider or '"127.0.0.1"' not in provider:
+        problems.append('GeminiLiveProvider.swift: endpointOverride must be private and loopback-only')
 if 'x-goog-api-key' not in provider or re.search(r'[?&]key=', provider):
     problems.append('GeminiLiveProvider.swift: API key must go in the x-goog-api-key header, not the URL')
 state = (src / 'VoiceHUD/VoiceHUDState.swift').read_text()

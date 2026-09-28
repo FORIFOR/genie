@@ -18,17 +18,44 @@ enum GeminiLive {
 
     // MARK: - 送る
 
-    static func setup(model: String = defaultModel, instruction: String) -> [String: Any] {
-        [
+    /// 話し終わりの判定（ミリ秒）。公式の推奨は 500〜800ms（100〜200ms に縮めると一つの発話が分かれる）。
+    /// 言い直し（「木曜……いや、金曜」）を待てるよう、推奨の中ほどから始める。実機の日本語で詰める。
+    static let silenceDurationMs = 650
+    /// 話し始めの直前も拾う（語頭の欠け防止）。
+    static let prefixPaddingMs = 200
+
+    /// 接続の設定。**3.8 Live で送ってはいけない設定を入れない**（`thinkingConfig`・`enableAffectiveDialog`・
+    /// `proactivity`・`languageCode`。3.8 では proactive audio が常に有効で、false はエラー。言語は指示で決める）。
+    /// 公式: ai.google.dev/gemini-api/docs/models/gemini-3.8-live、live-api/capabilities、session-management（2026-09-29 確認）。
+    /// `resumeHandle`: 前の接続が渡した再開の鍵（接続は約 10 分で切れる。鍵は切れてから 2 時間有効）。
+    static func setup(model: String = defaultModel, instruction: String, resumeHandle: String? = nil) -> [String: Any] {
+        var resumption: [String: Any] = [:]
+        if let resumeHandle { resumption["handle"] = resumeHandle }
+        return [
             "setup": [
                 "model": "models/\(model)",
                 "generationConfig": ["responseModalities": ["AUDIO"]],
                 "systemInstruction": ["parts": [["text": instruction]]],
                 "inputAudioTranscription": [String: Any](),
                 "outputAudioTranscription": [String: Any](),
+                // 話し終わりはサーバーの自動判定に任せ、独自の区切りを重ねない。話し始めたら出力を止める（割り込み）。
+                "realtimeInputConfig": [
+                    "automaticActivityDetection": [
+                        "disabled": false,
+                        "prefixPaddingMs": prefixPaddingMs,
+                        "silenceDurationMs": silenceDurationMs,
+                        "endOfSpeechSensitivity": "END_SENSITIVITY_LOW",
+                    ],
+                    "activityHandling": "START_OF_ACTIVITY_INTERRUPTS",
+                ],
+                // 接続が切れても同じ会話へ戻る（goAway・回線の切断）。長い会話は履歴を圧縮する（音声だけなら無いと 15 分）。
+                "sessionResumption": resumption,
+                "contextWindowCompression": ["slidingWindow": [String: Any]()],
                 "tools": [[
                     "functionDeclarations": [[
                         "name": delegateTool,
+                        // 仕事の完了を待たずに会話を続ける（3.8 の既定だが、意図として明示する）。
+                        "behavior": "NON_BLOCKING",
                         "description": "利用者が作業・操作・調べものを頼んだときに、その依頼文を Genie に渡す。受け付けたかどうかだけが返る。完了を待たない。",
                         "parameters": [
                             "type": "OBJECT",
@@ -54,8 +81,11 @@ enum GeminiLive {
 
     static let audioStreamEnd: [String: Any] = ["realtimeInput": ["audioStreamEnd": true]]
 
-    static func toolResponse(id: String, name: String, response: [String: Any]) -> [String: Any] {
-        ["toolResponse": ["functionResponses": [["id": id, "name": name, "response": response]]]]
+    /// 仕事の受付を返す。話の途中に割り込ませず、区切りで伝える（`scheduling` は response の中）。
+    static func toolResponse(id: String, name: String, response: [String: Any], scheduling: String = "WHEN_IDLE") -> [String: Any] {
+        var body = response
+        body["scheduling"] = scheduling
+        return ["toolResponse": ["functionResponses": [["id": id, "name": name, "response": body]]]]
     }
 
     // MARK: - 受ける
@@ -72,7 +102,10 @@ enum GeminiLive {
         case toolCall(id: String, name: String, request: String)
         case toolCallCancelled([String])
         case usage(totalTokens: Int)
-        case goAway
+        /// もうすぐ接続が切れる（残り時間。読めなければ nil）。
+        case goAway(timeLeft: String?)
+        /// 再開の鍵。`resumable` が false の間（生成・道具の途中）は、その鍵では戻れない。
+        case resumption(handle: String, resumable: Bool)
     }
 
     /// 1 つのメッセージから出来事を取り出す（1 通に複数入ることがある）。知らない形は無視する。
@@ -108,7 +141,11 @@ enum GeminiLive {
         if let usage = root["usageMetadata"] as? [String: Any], let total = usage["totalTokenCount"] as? Int {
             events.append(.usage(totalTokens: total))
         }
-        if root["goAway"] != nil { events.append(.goAway) }
+        if let update = root["sessionResumptionUpdate"] as? [String: Any], let handle = update["newHandle"] as? String, !handle.isEmpty {
+            events.append(.resumption(handle: handle, resumable: update["resumable"] as? Bool ?? false))
+        }
+        if let away = root["goAway"] as? [String: Any] { events.append(.goAway(timeLeft: away["timeLeft"] as? String)) }
+        else if root["goAway"] != nil { events.append(.goAway(timeLeft: nil)) }
         return events
     }
 

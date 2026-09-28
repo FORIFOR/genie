@@ -65,10 +65,12 @@ final class GeminiLiveSettings: ObservableObject {
 ///
 /// - 聞く: マイクの 16 kHz を送り続ける。Gemini が相手の区切りを判断して答え始めたら、
 ///   そこまでの文字起こしを「言い終えた」として返す。
-/// - 考える: マイクを閉じ、答えの声と文字起こしを turnComplete まで溜める。
-/// - 読み上げる: 溜めた Gemini 自身の声を再生し、再生し終えたら次を聞く。答えが無ければすぐ次を聞く。
-/// - 仕事: `delegate_task` を受けたら Genie の既存の経路に渡し、受け付けたかだけを返す。
-/// - 止まる: 切断・上限到達は `onLost` で会話を終える。**ほかの有料の提供元へは切り替えない。**
+/// - 答える: 答えの声は**届いた順にすぐ流す**（以前は turnComplete まで溜めてから一度に流し、そのぶん返事が遅れた）。
+///   読み上げの合図（`speak`）では、まだ流れている分が終わるのを待つだけ。
+/// - 割り込み（`interrupted`）: 再生中と再生待ちの声を捨てる。世代を進め、遅れて届いた古い声も流さない。
+/// - 仕事: `delegate_task` を受けたら Genie の既存の経路に渡し、受け付けたかだけを返す（区切りで伝える WHEN_IDLE）。
+/// - 切れる: 接続は約 10 分で切れる（goAway）。再開の鍵があれば同じ会話へつなぎ直す（最大 3 回）。
+///   鍵が無い・つなげないときだけ `onLost` で会話を終える。**ほかの有料の提供元へは切り替えない。**
 @MainActor
 final class GeminiLiveProvider: ConversationProvider {
     let name = "gemini-live"
@@ -95,12 +97,30 @@ final class GeminiLiveProvider: ConversationProvider {
     private var heard = ""
     private var said = ""
     private var answered = false
-    private var audio: [(Data, Int)] = []
+    /// このターンで Gemini の声を流したか（流していなければ、読み上げは Mac の声で伝える）。
+    private var streamedThisTurn = false
 
     private let engine = AVAudioEngine()
     private let player = AVAudioPlayerNode()
     private var playing: UUID?
+    /// 再生の世代。割り込み・停止で進める。古い世代の再生完了・遅れた声は捨てる。
+    private var playbackGeneration = 0
+    /// まだ流し終えていない声の数（この世代）。
+    private var queuedBuffers = 0
+    /// 流し終えるのを待っている読み上げの合図。
+    private var drainWaiter: (() -> Void)?
+    private var playerFormat: AVAudioFormat?
     private var budgetTimer: Task<Void, Never>?
+    /// 再開の鍵（`sessionResumptionUpdate`）。`resumable` のときだけ持つ。
+    private var resumeHandle: String?
+    private var reconnects = 0
+    static let maxReconnects = 3
+    /// 検査用の足跡（時刻つき、最新 50 件）。声・文字の中身は入れない。
+    private(set) var trace: [(Date, String)] = []
+    private func mark(_ event: String) {
+        trace.append((Date(), event))
+        if trace.count > 50 { trace.removeFirst(trace.count - 50) }
+    }
 
     init(apiKey: String, model: String = GeminiLive.defaultModel, settings: GeminiLiveSettings,
          delegate: @escaping (String) async -> String, onLost: @escaping (String) -> Void) {
@@ -119,7 +139,7 @@ final class GeminiLiveProvider: ConversationProvider {
         guard Permissions.microphone == .granted else { return false }
         self.onFirstFrame = onFirstFrame
         self.onUtterance = onUtterance
-        heard = ""; said = ""; answered = false; audio = []
+        heard = ""; said = ""; answered = false; streamedThisTurn = false
         if ready { startMic(echoCancellation: echoCancellation) }
         else {
             pendingOpen = { [weak self] in self?.startMic(echoCancellation: echoCancellation) }
@@ -142,53 +162,71 @@ final class GeminiLiveProvider: ConversationProvider {
         self.onReply = onReply
     }
 
-    /// 溜めた Gemini の声を再生する（`text` は文字起こし。表示・記録用）。
+    /// 読み上げの合図。Gemini の声は届いた時から流しているので、流し終えるのを待つだけ（`text` は表示・記録用）。
     func speak(_ text: String, onFinish: @escaping () -> Void) {
-        let chunks = audio
-        audio = []
-        guard !chunks.isEmpty else {
-            // Gemini が声を作っていない知らせ（受付・失敗・預かり）は、Mac の読み上げで伝える。黙らない。
-            let spoken = text.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !spoken.isEmpty else { onFinish(); return }
-            let id = UUID()
-            playing = id
-            GenieSpeechOutput.shared.read(spoken, owner: id) { [weak self] in
-                guard let self, self.playing == id else { return }
-                self.playing = nil
-                onFinish()
-            }
+        if streamedThisTurn {
+            streamedThisTurn = false
+            if queuedBuffers == 0 { onFinish() } else { drainWaiter = onFinish }
             return
         }
+        // Gemini が声を作っていない知らせ（受付・失敗・預かり）は、Mac の読み上げで伝える。黙らない。
+        let spoken = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !spoken.isEmpty else { onFinish(); return }
         let id = UUID()
         playing = id
-        do {
-            let rate = chunks[0].1
-            guard let format = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: Double(rate), channels: 1, interleaved: false) else { onFinish(); return }
-            engine.disconnectNodeOutput(player)
-            engine.connect(player, to: engine.mainMixerNode, format: format)
-            if !engine.isRunning { try engine.start() }
-            let samples = chunks.flatMap { Self.floats(from: $0.0) }
-            guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(samples.count)) else { onFinish(); return }
-            buffer.frameLength = AVAudioFrameCount(samples.count)
-            samples.withUnsafeBufferPointer { src in buffer.floatChannelData![0].update(from: src.baseAddress!, count: samples.count) }
-            player.scheduleBuffer(buffer, completionCallbackType: .dataPlayedBack) { [weak self] _ in
-                Task { @MainActor in
-                    guard let self, self.playing == id else { return }
-                    self.playing = nil
-                    onFinish()
-                }
-            }
-            player.play()
-        } catch {
-            playing = nil
+        GenieSpeechOutput.shared.read(spoken, owner: id) { [weak self] in
+            guard let self, self.playing == id else { return }
+            self.playing = nil
             onFinish()
         }
+    }
+
+    /// 届いた声を、すぐ再生の列に足す（ためない）。
+    private func enqueue(_ pcm: Data, rate: Int) {
+        let samples = Self.floats(from: pcm)
+        guard !samples.isEmpty,
+              let format = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: Double(rate), channels: 1, interleaved: false),
+              let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(samples.count)) else { return }
+        buffer.frameLength = AVAudioFrameCount(samples.count)
+        samples.withUnsafeBufferPointer { src in buffer.floatChannelData![0].update(from: src.baseAddress!, count: samples.count) }
+        do {
+            if playerFormat?.sampleRate != format.sampleRate {
+                engine.disconnectNodeOutput(player)
+                engine.connect(player, to: engine.mainMixerNode, format: format)
+                playerFormat = format
+            }
+            if !engine.isRunning { try engine.start() }
+        } catch { return }
+        let generation = playbackGeneration
+        if queuedBuffers == 0 { mark("playback-start") }
+        queuedBuffers += 1
+        streamedThisTurn = true
+        player.scheduleBuffer(buffer, completionCallbackType: .dataPlayedBack) { [weak self] _ in
+            Task { @MainActor in
+                guard let self, self.playbackGeneration == generation else { return }
+                self.queuedBuffers = max(0, self.queuedBuffers - 1)
+                if self.queuedBuffers == 0, let waiter = self.drainWaiter {
+                    self.drainWaiter = nil
+                    waiter()
+                }
+            }
+        }
+        if !player.isPlaying { player.play() }
+    }
+
+    /// 再生中と再生待ちの声を捨てる（割り込み・停止）。世代を進め、古い完了の知らせと遅れた声を無視する。
+    private func clearPlayback() {
+        if queuedBuffers > 0 { mark("playback-cleared-\(queuedBuffers)") }
+        playbackGeneration += 1
+        queuedBuffers = 0
+        player.stop()
     }
 
     func stopSpeaking() {
         if let id = playing { GenieSpeechOutput.shared.stop(owner: id) }
         playing = nil
-        player.stop()
+        clearPlayback()
+        drainWaiter = nil
     }
 
     func endSession() {
@@ -201,21 +239,29 @@ final class GeminiLiveProvider: ConversationProvider {
         socket?.cancel(with: .normalClosure, reason: nil)
         socket = nil
         onReply = nil; onUtterance = nil; onFirstFrame = nil; pendingOpen = nil
+        resumeHandle = nil; reconnects = 0
         if engine.isRunning { engine.stop() }
     }
 
     // MARK: - 接続
 
+    /// 接続先の差し替え。**この Mac の中（127.0.0.1 / localhost）だけ**。検査用の偽の Gemini にしか向けられない。
+    private static var endpointOverride: URL?
+
+    /// 検査用: 手元の偽の Gemini（`tools/gemini-fake/server.mjs`）へつなぐ提供元。本物の API へは向けられない
+    /// （ループバック以外の宛先なら nil）。本物の Gemini へつなぐ提供元は `VoiceHUDState.beginConversation` だけが作る
+    /// （同意・キー・上限を確かめた後。`scripts/verify-privacy-egress.sh`）。
+    static func forLocalFake(url: URL, settings: GeminiLiveSettings, delegate: @escaping (String) async -> String,
+                             onLost: @escaping (String) -> Void) -> GeminiLiveProvider? {
+        guard ["ws", "wss"].contains(url.scheme ?? ""), ["127.0.0.1", "localhost", "::1"].contains(url.host ?? "") else { return nil }
+        endpointOverride = url
+        return GeminiLiveProvider(apiKey: "local-fake", settings: settings, delegate: delegate, onLost: onLost)
+    }
+
     private func connect() {
         guard socket == nil else { return }
-        var request = URLRequest(url: GeminiLive.endpoint)
-        request.setValue(apiKey, forHTTPHeaderField: "x-goog-api-key")
-        let task = URLSession.shared.webSocketTask(with: request)
-        socket = task
-        task.resume()
+        openSocket(resume: nil)
         connectedAt = Date()
-        send(GeminiLive.setup(model: model, instruction: Self.instruction))
-        receive()
         // 今月の残りを超えて話し続けない。
         let remaining = settings.budget.remainingSeconds(at: Date())
         budgetTimer = Task { [weak self] in
@@ -225,19 +271,63 @@ final class GeminiLiveProvider: ConversationProvider {
         }
     }
 
-    private static let instruction = """
-    あなたは Mac の作業を手伝う Genie です。日本語で、短く、落ち着いて話します。
+    private func openSocket(resume handle: String?) {
+        var request = URLRequest(url: Self.endpointOverride ?? GeminiLive.endpoint)
+        request.setValue(apiKey, forHTTPHeaderField: "x-goog-api-key")
+        let task = URLSession.shared.webSocketTask(with: request)
+        socket = task
+        ready = false
+        task.resume()
+        send(GeminiLive.setup(model: model, instruction: Self.instruction, resumeHandle: handle))
+        receive(task)
+    }
+
+    /// 同じ会話へつなぎ直す（接続の寿命・回線の切断）。鍵が無い・回数を超えたら false。
+    /// 聞いている途中なら、つながり次第マイクの声を送り直す。流している声・待っている答えはそのまま。
+    private func resume() -> Bool {
+        guard let handle = resumeHandle, reconnects < Self.maxReconnects else { return false }
+        reconnects += 1
+        mark("resume-\(reconnects)")
+        let old = socket
+        socket = nil
+        old?.cancel(with: .goingAway, reason: nil)
+        if streaming { pendingOpen = { } }
+        openSocket(resume: handle)
+        return true
+    }
+
+    /// 役割・話し方・会話・正確さと実行を分けて書く（公式の推奨）。言語は指示で決める（languageCode は使わない）。
+    static let instruction = """
+    あなたは Mac の作業を手伝う音声アシスタントの Genie です。自然な日本語で話してください。
+
+    【話し方】
+    落ち着いた、親しみやすい「です・ます」調にしてください。
+    普段の返答は 1〜3 文を目安にし、必要な情報から話してください。詳しい説明を求められた場合は、必要な長さで説明してください。
+    毎回「承知しました」「なるほど」から始めないでください。相手の発言を毎回そのまま復唱しないでください。
+    不自然な笑い声、過剰な共感、わざとらしい言い淀みを加えないでください。
+
+    【会話】
+    言い直しがあった場合は、最後の訂正を採用してください。
+    確認質問は、回答や実行に必要なものを一つずつ聞いてください。
+    沈黙のたびに話しかけたり、返事を催促したりしないでください。
+    割り込まれた後は、直前の説明を最初から繰り返さないでください。
+
+    【正確さと実行】
+    分からない事実を推測で断定しないでください。数字や予定を作らないでください。
     作業・操作・調べもの・送信などを頼まれたら、自分で済ませたふりをせず、必ず delegate_task に依頼文を渡し、
-    受け付けたかどうかだけを伝えます。「完了しました」とは言いません。数字や予定は推測で作りません。
+    受け付けたかどうかだけを伝えてください。実行結果が成功するまで「完了しました」と言わないでください。
+    重要な名前・金額・日時が曖昧な場合は、その部分だけ確認してください。
+    権限や承認が必要な操作は、許可されるまで実行しないでください。
     """
 
-    private func receive() {
-        socket?.receive { [weak self] result in
+    private func receive(_ task: URLSessionWebSocketTask) {
+        task.receive { [weak self] result in
             Task { @MainActor in
-                guard let self, self.socket != nil else { return }
+                // 古い接続（つなぎ直した後）からの知らせは捨てる。
+                guard let self, self.socket === task else { return }
                 switch result {
                 case .failure:
-                    self.lose("Gemini との接続が切れました。")
+                    if !self.resume() { self.lose("Gemini との接続が切れました。") }
                 case .success(let message):
                     let text: String? = switch message {
                     case .string(let s): s
@@ -245,7 +335,7 @@ final class GeminiLiveProvider: ConversationProvider {
                     @unknown default: nil
                     }
                     if let text { for event in GeminiLive.parse(text) { self.handle(event) } }
-                    self.receive()
+                    if self.socket === task { self.receive(task) }
                 }
             }
         }
@@ -260,7 +350,7 @@ final class GeminiLiveProvider: ConversationProvider {
             heard += t
         case .audio(let pcm, let rate):
             userTurnEnded()
-            audio.append((pcm, rate))
+            enqueue(pcm, rate: rate)
         case .outputTranscript(let t):
             userTurnEnded()
             said += t
@@ -276,12 +366,21 @@ final class GeminiLiveProvider: ConversationProvider {
                 self.send(GeminiLive.toolResponse(id: id, name: name, response: ["status": status]))
             }
         case .turnComplete:
+            mark("turn-complete")
             guard answered, let reply = onReply else { return }
             onReply = nil
             reply(.settled(said))
         case .goAway:
-            lose("Gemini との接続が終わりました。")
-        case .interrupted, .generationComplete, .toolCallCancelled, .usage:
+            // 接続の寿命。鍵があれば同じ会話へつなぎ直す（会話は終えない）。
+            if !resume() { lose("Gemini との接続が終わりました。") }
+        case .resumption(let handle, let resumable):
+            if resumable { resumeHandle = handle }
+        case .interrupted:
+            mark("interrupted")
+            // 話し始めた・割り込まれた。流している声と待ちの声を捨てる。読み上げの終わりを待っていれば、次を聞く。
+            clearPlayback()
+            if let waiter = drainWaiter { drainWaiter = nil; waiter() }
+        case .generationComplete, .toolCallCancelled, .usage:
             break
         }
     }
@@ -302,7 +401,8 @@ final class GeminiLiveProvider: ConversationProvider {
                 try mic.start(echoCancellation: echoCancellation) { frame in
                     let message = GeminiLive.json(GeminiLive.audioChunk(frame))
                     Task { @MainActor in
-                        guard let self, self.streaming else { return }
+                        // 準備が済む前（つなぎ直しの間も）は送らない。setupComplete より前の音声は受け付けられない。
+                        guard let self, self.streaming, self.ready else { return }
                         if first { first = false; self.onFirstFrame?() }
                         self.socket?.send(.string(message)) { _ in }
                     }
@@ -321,6 +421,7 @@ final class GeminiLiveProvider: ConversationProvider {
     /// 以前は待っている答えに失敗を返すだけで、会話は切れた接続のまま・上限を超えて続いていた。
     private func lose(_ reason: String) {
         guard socket != nil || ready else { return }
+        mark("lost")
         onReply = nil
         closeInput()
         ready = false

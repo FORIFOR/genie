@@ -39,7 +39,12 @@ final class GeminiLiveTests: XCTestCase {
         XCTAssertEqual(GeminiLive.parse(#"{"setupComplete":{}}"#), [.setupComplete])
         XCTAssertEqual(GeminiLive.parse(#"{"toolCall":{"functionCalls":[{"id":"c1","name":"delegate_task","args":{"request":"資料を直して"}}]}}"#),
                        [.toolCall(id: "c1", name: "delegate_task", request: "資料を直して")])
-        XCTAssertEqual(GeminiLive.parse(#"{"goAway":{"timeLeft":"5s"}}"#), [.goAway])
+        XCTAssertEqual(GeminiLive.parse(#"{"goAway":{"timeLeft":"5s"}}"#), [.goAway(timeLeft: "5s")])
+        XCTAssertEqual(GeminiLive.parse(#"{"sessionResumptionUpdate":{"newHandle":"h1","resumable":true}}"#),
+                       [.resumption(handle: "h1", resumable: true)])
+        XCTAssertEqual(GeminiLive.parse(#"{"sessionResumptionUpdate":{"newHandle":"h2","resumable":false}}"#),
+                       [.resumption(handle: "h2", resumable: false)])
+        XCTAssertEqual(GeminiLive.parse(#"{"serverContent":{"interrupted":true}}"#), [.interrupted])
         XCTAssertEqual(GeminiLive.parse("not json"), [])
     }
 
@@ -47,7 +52,36 @@ final class GeminiLiveTests: XCTestCase {
         let r = object(GeminiLive.json(GeminiLive.toolResponse(id: "c1", name: "delegate_task", response: ["status": "accepted"])))
         let f = ((r["toolResponse"] as? [String: Any])?["functionResponses"] as? [[String: Any]])?.first
         XCTAssertEqual(f?["id"] as? String, "c1")
-        XCTAssertEqual(f?["response"] as? [String: String], ["status": "accepted"])
+        XCTAssertEqual(f?["response"] as? [String: String], ["status": "accepted", "scheduling": "WHEN_IDLE"],
+                       "受付は話の途中に割り込ませず、区切りで伝える（scheduling は response の中）")
+    }
+
+    /// 3.8 Live で送ってはいけない設定を入れない（proactive audio は常に有効で false はエラー。言語は指示で決める）。
+    func testSetupFollowsTheThreePointEightRules() {
+        let json = GeminiLive.json(GeminiLive.setup(instruction: "短く"))
+        for forbidden in ["thinkingConfig", "thinking_level", "thinkingLevel", "enableAffectiveDialog", "proactivity",
+                          "proactiveAudio", "languageCode"] {
+            XCTAssertFalse(json.contains(forbidden), "\(forbidden) を送っている")
+        }
+        let setup = object(json)["setup"] as? [String: Any]
+        let input = setup?["realtimeInputConfig"] as? [String: Any]
+        XCTAssertEqual(input?["activityHandling"] as? String, "START_OF_ACTIVITY_INTERRUPTS", "話し始めたら出力を止める")
+        let vad = input?["automaticActivityDetection"] as? [String: Any]
+        XCTAssertEqual(vad?["disabled"] as? Bool, false, "区切りはサーバーの自動判定に任せる")
+        let silence = vad?["silenceDurationMs"] as? Int ?? 0
+        XCTAssertTrue((500...800).contains(silence), "話し終わりの判定は公式の推奨 500〜800ms の中（\(silence)）")
+        XCTAssertNotNil(setup?["contextWindowCompression"], "長い会話は履歴を圧縮する")
+        XCTAssertNotNil(setup?["sessionResumption"], "接続が切れても同じ会話へ戻れる")
+        let tool = ((setup?["tools"] as? [[String: Any]])?.first?["functionDeclarations"] as? [[String: Any]])?.first
+        XCTAssertEqual(tool?["behavior"] as? String, "NON_BLOCKING", "仕事の完了を待たずに会話を続ける")
+        XCTAssertTrue(GeminiLiveProvider.instruction.contains("日本語"), "言語は指示で決める")
+    }
+
+    func testResumeHandleIsSentOnlyWhenGiven() {
+        let fresh = (object(GeminiLive.json(GeminiLive.setup(instruction: "x")))["setup"] as? [String: Any])?["sessionResumption"] as? [String: Any]
+        XCTAssertNil(fresh?["handle"])
+        let resumed = (object(GeminiLive.json(GeminiLive.setup(instruction: "x", resumeHandle: "h1")))["setup"] as? [String: Any])?["sessionResumption"] as? [String: Any]
+        XCTAssertEqual(resumed?["handle"] as? String, "h1")
     }
 
     func testPlaybackConvertsLittleEndianPCM() {
