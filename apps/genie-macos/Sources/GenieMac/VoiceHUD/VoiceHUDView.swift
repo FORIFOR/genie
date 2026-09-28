@@ -978,11 +978,13 @@ struct ConfirmationDock: View {
                     // 検査が押すのも同じ 1 本（`ProbeButton`）。
                     // 答えは**描いたカードの id 付き**で返す（store の現在値に答えない）。
                     ProbeButton(id: "confirmCancel", action: { GenieStateStore.shared.resolveConfirmation(id: confirmation.id, approved: false) }) {
+                        // 高さと余白はラベルの中に置く（外に付けると背景と押せる範囲が文字だけになる）。
                         Text(Facts.confirmationCancel)
+                            .font(.system(size: S.type(Metrics.dockRowSize)))
+                            .foregroundStyle(Palette.muted(dark))
+                            .frame(height: 32).padding(.horizontal, 14)
+                            .contentShape(Rectangle())
                     }
-                        .font(.system(size: S.type(Metrics.dockRowSize)))
-                        .foregroundStyle(Palette.muted(dark))
-                        .frame(height: 32).padding(.horizontal, 14)
                         .buttonStyle(GenieControlStyle(radius: 7, base: 0.0))
                     if confirmation.risk != .r3, !confirmation.params.isEmpty || confirmation.preview != nil {
                         // 検査から押せる目印付き（Atlas dock.confirmation-edit）。走るものは 1 本。
@@ -1007,13 +1009,16 @@ struct ConfirmationDock: View {
                         guard armed else { return }
                         GenieStateStore.shared.resolveConfirmation(id: confirmation.id, approved: true, edits: edited)
                     }) {
+                        // 塗り・高さ・最小幅はラベルの中に置く。外に付けると、見た目は大きいのに
+                        // 押せるのは文字だけだった（主たる操作なのに当たりが小さい）。
                         Text(confirmation.confirmLabel)
+                            .font(.system(size: S.type(Metrics.dockRowSize), weight: .semibold))
+                            .foregroundStyle(.white)
+                            .frame(height: 32).padding(.horizontal, 20)
+                            .frame(minWidth: S.metric(Metrics.dockConfirmPrimaryMinWidth))
+                            .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(riskTint))
+                            .contentShape(Rectangle())
                     }
-                        .font(.system(size: S.type(Metrics.dockRowSize), weight: .semibold))
-                        .foregroundStyle(.white)
-                        .frame(height: 32).padding(.horizontal, 20)
-                        .frame(minWidth: S.metric(Metrics.dockConfirmPrimaryMinWidth))
-                        .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(riskTint))
                         .buttonStyle(GenieControlStyle(radius: 7, base: 0.0, filled: false))
                 }
             }
@@ -1316,12 +1321,14 @@ private struct MeetingPanelBody: View {
                     if RecordingRuntime.shared.liveTranscriptionFailure != nil { RecordingRuntime.shared.retryLiveTranscription() }
                     else { Permissions.openDictationSettings() }
                 }) {
+                    // 高さと余白はラベルの中に置く（外に付けると背景と押せる範囲が文字だけになる）。
                     Text(RecordingRuntime.shared.liveTranscriptionFailure != nil
                          ? Facts.liveRetry : "\(Facts.resultOpenSettings)（音声入力）")
+                        .font(.system(size: S.type(Metrics.dockRowSize), weight: .medium))
+                        .foregroundStyle(Palette.accent(dark))
+                        .frame(height: 30).padding(.horizontal, 10)
+                        .contentShape(Rectangle())
                 }
-                .font(.system(size: S.type(Metrics.dockRowSize), weight: .medium))
-                .foregroundStyle(Palette.accent(dark))
-                .frame(height: 30).padding(.horizontal, 10)
                 .buttonStyle(GenieControlStyle(radius: 8, base: 0.0))
             } else {
                 Text(Facts.captionsEmpty)
@@ -1593,13 +1600,16 @@ struct ResultDock: View {
             Spacer(minLength: 0)
             HStack(spacing: 6) {
                 ForEach(orderedActions, id: \.self) { action in
+                    // 高さと余白はラベルの中に置く。ボタンの外に付けると、背景と押せる範囲が文字だけになり
+                    // （「開く」「コピー」が詰まって見え、押しにくかった）、止めるボタンで直した誤りと同じになる。
                     ProbeButton(id: "result-\(action.rawValue)",
                                 action: { ResultActionRunner.run(action, title: result.title, sessionId: result.sessionId, taskID: result.taskID) }) {
                         Text(action.title)
+                            .font(.system(size: S.type(Metrics.dockRowSize), weight: .medium))
+                            .foregroundStyle(Palette.text(dark))
+                            .frame(height: 32).padding(.horizontal, 16)
+                            .contentShape(Rectangle())
                     }
-                        .font(.system(size: S.type(Metrics.dockRowSize), weight: .medium))
-                        .foregroundStyle(Palette.text(dark))
-                        .frame(height: 32).padding(.horizontal, 16)
                         .buttonStyle(GenieControlStyle(radius: 8, base: 0.07))
                 }
                 Spacer(minLength: 0)

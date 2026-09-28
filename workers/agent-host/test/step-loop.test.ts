@@ -185,3 +185,49 @@ describe('the host step loop', () => {
     expect(seen.map((e) => e.message)).toEqual(['network down', 'network down']);
   });
 });
+
+describe('reporting the result after a restart', () => {
+  const noWait = async () => undefined;
+
+  it('retries a transient failure to report success, and keeps it a success', async () => {
+    const transport = fakeTransport([step()]);
+    let attempts = 0;
+    const flaky: StepTransport = {
+      ...transport,
+      async complete(id, hostId, result) {
+        attempts++;
+        if (attempts < 3) throw new TypeError('fetch failed');
+        await transport.complete(id, hostId, result);
+      },
+    };
+    const loop = new HostStepLoop({ transport: flaky, runner: runner(async () => ({ ok: true, result: 1 })), sleep: noWait });
+    expect(await loop.tick(HOST)).toBe(true);
+    expect(attempts).toBe(3);
+    expect(transport.completed).toEqual([{ id: 'req-1', result: 1 }]);
+    expect(transport.failed).toEqual([]);
+  });
+
+  it('never turns a success it could not report into a failure', async () => {
+    const transport = fakeTransport([step()]);
+    const errors: string[] = [];
+    const down: StepTransport = { ...transport, async complete() { throw new TypeError('fetch failed'); } };
+    const loop = new HostStepLoop({
+      transport: down,
+      runner: runner(async () => ({ ok: true, result: 1 })),
+      sleep: noWait,
+      onError: (e) => errors.push(e.message),
+    });
+    expect(await loop.tick(HOST)).toBe(true);
+    expect(transport.failed).toEqual([]);
+    expect(errors.some((m) => m.includes('could not be reported'))).toBe(true);
+  });
+
+  it('does not retry an error that is not transient', async () => {
+    const transport = fakeTransport([step()]);
+    let attempts = 0;
+    const denied: StepTransport = { ...transport, async complete() { attempts++; throw new Error('403 forbidden'); } };
+    const loop = new HostStepLoop({ transport: denied, runner: runner(async () => ({ ok: true, result: 1 })), sleep: noWait });
+    await loop.tick(HOST);
+    expect(attempts).toBe(1);
+  });
+});

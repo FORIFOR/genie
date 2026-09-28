@@ -49,18 +49,25 @@ struct ConfirmationCardView: View {
                 Spacer(minLength: 0)
                 // 検査から押す口。Dock の確認面（confirmCancel / confirmProceed）と
                 // 別の id にする —— 同じ id で登録すると後勝ちで、どちらを押したか分からない。
-                ProbeButton(id: "cardCancel", action: { onResolve(false) }) { Text(Facts.confirmationCancel) }
-                    .font(.system(size: 11))
-                    .foregroundStyle(Palette.muted(dark))
-                    .frame(height: 28).padding(.horizontal, 12)
+                // 高さと余白はラベルの中に置く（外に付けると押せる範囲が文字だけになる）。
+                ProbeButton(id: "cardCancel", action: { onResolve(false) }) {
+                    Text(Facts.confirmationCancel)
+                        .font(.system(size: 11))
+                        .foregroundStyle(Palette.muted(dark))
+                        .frame(height: 28).padding(.horizontal, 12)
+                        .contentShape(Rectangle())
+                }
                     .buttonStyle(GenieControlStyle(radius: 8, base: 0.0))
                 ProbeButton(id: "cardProceed", action: {
                     guard Date().timeIntervalSince(shownAt) >= ActionConfirmation.proceedArmDelay else { return }
                     onResolve(true)
-                }) { Text(confirmation.confirmLabel) }
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(riskTint)
-                    .frame(height: 28).padding(.horizontal, 14)
+                }) {
+                    Text(confirmation.confirmLabel)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(riskTint)
+                        .frame(height: 28).padding(.horizontal, 14)
+                        .contentShape(Rectangle())
+                }
                     .buttonStyle(GenieControlStyle(radius: 8, base: 0.06))
             }
         }

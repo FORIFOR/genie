@@ -8,6 +8,7 @@ import {
   verifyProcessExit,
 } from '../src/verifier.js';
 import type { VerificationCriteria } from '@genie/contracts';
+import type { VerifierEnvironment } from '../src/verifier.js';
 
 describe('Deterministic Verifier', () => {
   describe('verifyFileExists', () => {
@@ -118,7 +119,8 @@ describe('Deterministic Verifier', () => {
 
     it('verifies element existence and expected value', async () => {
       const env = {
-        queryAx: async (q: { app?: string; role?: string; title?: string; value?: string }) => {
+        // 本体の型（exactOptionalPropertyTypes で `| undefined` を含む）に合わせる。
+        queryAx: async (q: Parameters<NonNullable<VerifierEnvironment['queryAx']>>[0]) => {
           if (q.title === 'Meeting with Tanaka') {
             return { found: true, value: '15:00 - 15:30' };
           }

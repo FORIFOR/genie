@@ -416,13 +416,17 @@ private struct MeetingNotesCanvas: View {
                     .background(RoundedRectangle(cornerRadius: 7).fill(Palette.surface(dark)))
                     .accessibilityIdentifier("canvasEditField")
                 HStack(spacing: 8) {
-                    Button(Facts.confirmationEdit) {
+                    Button {
                         MeetingIntelligence.shared.edit(line, to: editText)
                         editing = nil; openedItem = nil
+                    } label: {
+                        // 高さと余白はラベルの中に置く（外に付けると背景と押せる範囲が文字だけになる）。
+                        Text(Facts.confirmationEdit)
+                            .font(.system(size: TypeScale.microSize, weight: .medium))
+                            .foregroundStyle(Palette.accent(dark))
+                            .frame(height: 26).padding(.horizontal, 10)
+                            .contentShape(Rectangle())
                     }
-                    .font(.system(size: TypeScale.microSize, weight: .medium))
-                    .foregroundStyle(Palette.accent(dark))
-                    .frame(height: 26).padding(.horizontal, 10)
                     .buttonStyle(GenieControlStyle(radius: 6, base: 0.05))
                     Button(Facts.confirmationCancel) { editing = nil }
                         .font(.system(size: TypeScale.microSize))
@@ -434,18 +438,22 @@ private struct MeetingNotesCanvas: View {
             } else {
                 HStack(spacing: 8) {
                     ProbeButton(id: "canvasEdit",
-                                action: { editing = line.id; editText = line.text }) { Text(Facts.confirmationEdit) }
-                        .font(.system(size: TypeScale.microSize, weight: .medium))
-                        .foregroundStyle(Palette.accent(dark))
-                        .frame(height: 26).padding(.horizontal, 10)
+                                action: { editing = line.id; editText = line.text }) {
+                        Text(Facts.confirmationEdit)
+                            .font(.system(size: TypeScale.microSize, weight: .medium))
+                            .foregroundStyle(Palette.accent(dark))
+                            .frame(height: 26).padding(.horizontal, 10)
+                            .contentShape(Rectangle())
+                    }
                         .buttonStyle(GenieControlStyle(radius: 6, base: 0.05))
                                             ProbeButton(id: "canvasRemove",
                                 action: { MeetingIntelligence.shared.remove(line); openedItem = nil }) {
                         Text("これは違う")
+                            .font(.system(size: TypeScale.microSize))
+                            .foregroundStyle(Palette.muted(dark))
+                            .frame(height: 26).padding(.horizontal, 8)
+                            .contentShape(Rectangle())
                     }
-                    .font(.system(size: TypeScale.microSize))
-                    .foregroundStyle(Palette.muted(dark))
-                    .frame(height: 26).padding(.horizontal, 8)
                     .buttonStyle(GenieControlStyle(radius: 6, base: 0.0))
                                         Spacer(minLength: 0)
                 }
@@ -537,10 +545,11 @@ private struct MeetingNotesCanvas: View {
                 }) {
                     Text(RecordingRuntime.shared.liveTranscriptionFailure != nil
                          ? Facts.liveRetry : "\(Facts.resultOpenSettings)（音声入力）")
+                        .font(.system(size: TypeScale.microSize, weight: .medium))
+                        .foregroundStyle(Palette.accent(dark))
+                        .frame(height: 24).padding(.horizontal, 8)
+                        .contentShape(Rectangle())
                 }
-                .font(.system(size: TypeScale.microSize, weight: .medium))
-                .foregroundStyle(Palette.accent(dark))
-                .frame(height: 24).padding(.horizontal, 8)
                 .buttonStyle(GenieControlStyle(radius: 6, base: 0.0))
                 .help(Facts.transcriptionRecoveryHint)
             }

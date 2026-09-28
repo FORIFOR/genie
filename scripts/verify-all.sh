@@ -66,6 +66,7 @@ run "guide facts selfcheck"        bash scripts/verify-guide-facts.sh --selfchec
 run "liquid orb assets fresh"    node scripts/gen-liquid-orb.mjs --check
 run "design tokens fresh"         node scripts/gen-design-tokens.mjs --check
 run "type scale (no literals)"    node scripts/lint-type-literals.mjs
+run "button hit area"             node scripts/lint-button-hit-area.mjs
 run "swift bindings fresh"        bash scripts/gen-swift-bindings.sh --check
 run "workspace fixture fresh"     node scripts/gen-workspace-fixture.mjs --check
 run "conventions"                 node scripts/check-conventions.mjs

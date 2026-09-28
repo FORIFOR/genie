@@ -79,14 +79,27 @@ export class HostStepLoop {
       }
 
       const outcome = await this.#options.runner.run(step, this.#abort.signal);
-      if (outcome.ok) {
-        await this.#options.transport.complete(step.id, hostId, outcome.result ?? null);
-      } else {
-        await this.#options.transport.fail(
-          step.id,
-          hostId,
-          outcome.error ?? { code: 'host.failed', message: '端末で実行できませんでした。' },
-        );
+      /*
+       * 結果を返す。**返すことの失敗を、仕事の失敗にしない。**
+       * 以前は complete が通信の一時的な失敗（再起動の直後の `fetch failed`）で落ちると、下の catch で
+       * fail を送り、うまくいった仕事が失敗になっていた。一時的な失敗はやり直し、それでも返せなければ
+       * 何も送らない（受け渡しは期限切れになり、cloud 側は待ち直せる）。
+       */
+      try {
+        if (outcome.ok) {
+          await this.#report(() => this.#options.transport.complete(step.id, hostId, outcome.result ?? null));
+        } else {
+          await this.#report(() =>
+            this.#options.transport.fail(
+              step.id,
+              hostId,
+              outcome.error ?? { code: 'host.failed', message: '端末で実行できませんでした。' },
+            ),
+          );
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.#options.onError?.(new Error(`the result could not be reported: ${message}`));
       }
       return true;
     } catch (error) {
@@ -106,6 +119,21 @@ export class HostStepLoop {
     } finally {
       this.#current = null;
       this.#abort = null;
+    }
+  }
+
+  /** 報告を送る。通信の一時的な失敗（接続できない・切れた・502/503/504）だけ、間を空けて 5 回までやり直す。 */
+  async #report(send: () => Promise<void>): Promise<void> {
+    const waits = [250, 500, 1_000, 2_000, 4_000];
+    const sleep = this.#options.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
+    for (let attempt = 0; ; attempt++) {
+      try {
+        await send();
+        return;
+      } catch (error) {
+        if (attempt >= waits.length || !isTransient(error)) throw error;
+        await sleep(waits[attempt]!);
+      }
     }
   }
 
@@ -138,4 +166,11 @@ export class HostStepLoop {
     this.#stopping = true;
     this.#abort?.abort();
   }
+}
+
+/** 通信の一時的な失敗か（やり直してよい）。認証・権限・入力の誤りはやり直さない。 */
+export function isTransient(error: unknown): boolean {
+  const e = error as { message?: string; code?: string; cause?: { code?: string } } | null;
+  const text = `${e?.message ?? ''} ${e?.code ?? ''} ${e?.cause?.code ?? ''}`;
+  return /fetch failed|ECONNREFUSED|ECONNRESET|ETIMEDOUT|EPIPE|UND_ERR_SOCKET|\b(502|503|504)\b/.test(text);
 }
