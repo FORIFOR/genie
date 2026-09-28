@@ -14,6 +14,13 @@ enum DictationCleanup {
     /// ほかの意味になり得ない言い淀み。長いものから順に消す。
     static let fillers = ["えーっと", "えーっとー", "えーと", "えっと", "えー", "うーん", "うーむ", "あー", "んー"]
 
+    /// 区切り（息継ぎの間）で入れる文の終わり。句読点で終わっていなければ「。」を付ける
+    /// （続けて入れた区切りがつながって一文に見えないように。macOS の音声入力と同じ）。
+    static func terminated(_ text: String) -> String {
+        guard let last = text.last else { return text }
+        return "。．.！!？?、，,…」』)）".contains(last) ? text : text + "。"
+    }
+
     static func clean(_ text: String) -> String {
         var t = text
         for filler in fillers.sorted(by: { $0.count > $1.count }) {

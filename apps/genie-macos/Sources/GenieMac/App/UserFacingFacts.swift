@@ -77,6 +77,11 @@ enum UserFacingFacts {
     /// 音声入力で言い淀みを消して入れたとき。
     static let dictationCleaned = "言い淀みを消して入れました"
     static let dictationRestore = "元の文に戻す"
+    static let dictationRestored = "元の文に戻しました"
+    static func dictationInserted(_ app: String, cleaned: Bool) -> String {
+        cleaned ? "\(app) に入れました（言い淀みを消しました）" : "\(app) に入れました"
+    }
+    static func dictationNotInserted(_ app: String, reason: String) -> String { "\(app) に入れられませんでした: \(reason)" }
     static let dictationRestoreFailed = "元の文に戻せませんでした。入れた先で ⌘Z を押すと戻せます。"
     static let resultOpenSettings = "設定を開く"
     static let recoveryResume = "続きから"
@@ -254,6 +259,7 @@ enum UserFacingFacts {
             f("result.close", resultClose, false),
             f("dictation.cleaned", dictationCleaned, false),
             f("dictation.restore", dictationRestore, false),
+            f("dictation.restored", dictationRestored, false),
             f("dictation.restoreFailed", dictationRestoreFailed, false),
             f("task.stoppedDetail", taskStoppedDetail, false),
             f("task.accepted", taskAccepted, false),

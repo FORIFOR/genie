@@ -48,6 +48,8 @@ final class GenieAppDelegate: NSObject, NSApplicationDelegate {
         // 自動更新。配布先と公開鍵が Info.plist に入っていなければ何もしない
         // （確かめているつもりで何も見ていない状態を作らない）。
         SoftwareUpdate.shared.startIfConfigured()
+        // 音声入力の入れる先: Genie の窓が前面でも、直前に見ていたアプリの欄へ入れるため。
+        Dictation.trackFrontApps()
         // 前面アプリが変わったら、まだ繋がっていないものを 1 度だけ勧める（§14）。
         // 勧誘は Dock の下の別 Panel に出す（Dock 本体は伸ばさない）。
         NSWorkspace.shared.notificationCenter.addObserver(

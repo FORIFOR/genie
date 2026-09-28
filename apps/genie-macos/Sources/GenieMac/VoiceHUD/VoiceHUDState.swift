@@ -207,7 +207,59 @@ final class VoiceHUDState: ObservableObject {
         // 入力中の状態を崩し、欄の判定も Genie 自身を指していた）。会議の問いは Dock の欄で受ける。
         if listenPurpose != .dictation { WindowCoordinator.shared.focusListeningDock() }
         GenieEventBus.shared.publish(.voiceStarted)
-        openMicrophone()
+        if listenPurpose == .dictation {
+            // 音声入力は続けて聞く。区切り（息継ぎの間）ごとに、いま見ている画面の欄へ入れる。
+            dictationStatus = nil
+            lastDictated = nil
+            dictatedSegments = 0
+            openMicrophone(onFinal: { [weak self] text in self?.dictateSegment(text) })
+            armDictationIdle()
+        } else {
+            openMicrophone()
+        }
+    }
+
+    // MARK: - 音声入力（続けて聞き、区切りごとに入れる）
+
+    /// 直前の区切りの結果（「<アプリ> に入れました」/ 入れられなかった理由）。聞く面に出す。
+    @Published private(set) var dictationStatus: String?
+    /// 直前に入れた区切り（「元に戻す」用）。
+    @Published private(set) var lastDictated: DictatedText?
+    /// この音声入力で入れた区切りの数（検査・表示用）。
+    @Published private(set) var dictatedSegments = 0
+    private var dictationIdleGeneration = 0
+
+    /// 区切りの文を、いま見ている画面のフォーカス中の欄へ入れる。マイクは開いたまま次を聞く。
+    func dictateSegment(_ text: String) {
+        let raw = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !raw.isEmpty, listenPurpose == .dictation else { return }
+        let cleaned = DictationCleanup.terminated(DictationCleanup.clean(raw))
+        let pid = Dictation.targetPID()
+        let report = Dictation.insertReporting(cleaned, appPID: pid)
+        if report.ok {
+            lastDictated = DictatedText(inserted: cleaned, original: DictationCleanup.terminated(raw), appPID: pid)
+            dictatedSegments += 1
+            dictationStatus = Facts.dictationInserted(report.app, cleaned: cleaned != DictationCleanup.terminated(raw))
+        } else {
+            lastDictated = nil
+            dictationStatus = Facts.dictationNotInserted(report.app, reason: report.method)
+        }
+        // 次の区切りに備えて、聞く面の途中の文を空にする。結果の行が出るので面の高さを合わせる。
+        if case .listening = mode { mode = .listening(partial: "") }
+        WindowCoordinator.shared.syncDockPanels()
+        armDictationIdle()
+    }
+
+    /// 30 秒話さなければ音声入力を終える（マイクを開いたままにしない）。
+    private func armDictationIdle() {
+        dictationIdleGeneration += 1
+        let generation = dictationIdleGeneration
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: 30_000_000_000)
+            guard let self, self.dictationIdleGeneration == generation, self.listenPurpose == .dictation,
+                  case .listening(let partial) = self.mode, partial.isEmpty else { return }
+            self.cancelListening()
+        }
     }
 
     /// マイクを開く。コールバックは**この世代のものだけ**受け付ける。
@@ -339,6 +391,7 @@ final class VoiceHUDState: ObservableObject {
 
     /// 認識の途中経過。**確定を待たずに** Dock へ出す（§Listening）。
     func updatePartial(_ text: String) {
+        if listenPurpose == .dictation, !text.isEmpty { armDictationIdle() }
         // 会話で答えのカードを残したまま次を聞いているとき、話し始めたら聞いている面へ移る。
         if conversation.isActive, !text.isEmpty {
             switch mode {
@@ -391,7 +444,8 @@ final class VoiceHUDState: ObservableObject {
     /// 「元の文に戻す」。入れた欄の中で、整えた文を元の文へ差し替える。
     func restoreDictated(_ notice: DictatedText) {
         if Dictation.replaceInserted(notice.inserted, with: notice.original, appPID: notice.appPID) {
-            mode = .idle
+            // 続けて聞いている間は聞く面のまま（戻したことだけ書く）。
+            if case .listening = mode { dictationStatus = Facts.dictationRestored; lastDictated = nil } else { mode = .idle }
         } else {
             answer = Facts.dictationRestoreFailed
             mode = .answer(answer)

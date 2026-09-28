@@ -33,6 +33,8 @@ enum DockContentMeasure {
         let held: String?
         /// 会話の 1 行（ConversationBar）が出ているか・終わり際か・延長できるか。
         let conversation: [Bool]
+        /// 音声入力の結果の行（どこへ入れたか・戻せるか）。
+        let dictation: String?
         let width: CGFloat
         let type: CGFloat
         let metric: CGFloat
@@ -64,6 +66,9 @@ enum DockContentMeasure {
                       conversation: [VoiceHUDState.shared.conversation.isActive,
                                      VoiceHUDState.shared.conversationEnding,
                                      VoiceHUDState.shared.conversation.canExtend],
+                      dictation: VoiceHUDState.shared.listenPurpose == .dictation
+                        ? (VoiceHUDState.shared.dictationStatus ?? "") + (VoiceHUDState.shared.lastDictated == nil ? "" : "·戻す")
+                        : nil,
                       width: width,
                       type: UIScale.shared.size.type, metric: UIScale.shared.size.metric)
         if let cache, cache.key == key { return cache.height }

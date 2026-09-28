@@ -35,12 +35,20 @@ extension SelfTest {
             }
         }
         var log: [String] = ["前面=\(front0)"]
+        if Dictation.lastOtherAppPID == nil { Dictation.trackFrontApps() }
         // --dockkey: Dock を押して Quick Actions から始めたときのように、Dock がキーの状態から始める。
         if args.contains("--dockkey") {
             hud.toggleQuickActions()
             WindowCoordinator.shared.focusListeningDock()
             await pause(0.3)
             log.append("始める前の Dock のキー=\(WindowCoordinator.shared.isListeningDockKey)")
+        }
+        // --genie-front: Genie の窓を前面にしてから始める（入れる先は、直前に見ていたアプリ）。
+        if args.contains("--genie-front") {
+            MainWindowController.shared.showSection(.home)
+            NSApp.activate(ignoringOtherApps: true)
+            await pause(0.8)
+            log.append("始める時の前面=\(NSWorkspace.shared.frontmostApplication?.localizedName ?? "?")")
         }
         hud.beginDictation()
         await pause(0.3)
@@ -50,24 +58,32 @@ extension SelfTest {
         let targetDuring = Dictation.focusedTextTarget(excludingOwnProcess: true) != nil
         log.append("聞く面=\(hud.mode) Dockがkey=\(key) 入れる欄あり=\(targetDuring)")
         await pause(1.0)
-        // --text <文>: 認識の代わりに、言い終えた文として渡す（入れる・整える・戻すは本番と同じ）。
+        // --text <文>: 認識の代わりに、区切りの文として渡す（入れる・整える・戻すは本番と同じ）。
         if let k = args.firstIndex(of: "--text"), args.count > k + 1 {
-            _ = hud.speak(args[k + 1])
-            partials.append(args[k + 1])
+            for sentence in args[k + 1].components(separatedBy: "|") {
+                hud.dictateSegment(sentence)
+                partials.append(sentence)
+                await pause(0.6)
+            }
         } else if !inject {
             let play = Process(); play.executableURL = URL(fileURLWithPath: "/usr/bin/afplay"); play.arguments = [file]
             try? play.run()
         }
-        let deadline = Date().addingTimeInterval(25)
-        var lastMode = "\(hud.mode)"
+        // 続けて聞く: 区切りごとの結果を集める。音が終わって 4 秒、新しい結果が無ければ終わり。
+        var statuses: [String] = []
+        var lastChange = Date()
+        let deadline = Date().addingTimeInterval(40)
         while Date() < deadline {
             await pause(0.1)
-            if case .listening(let p) = hud.mode, !p.isEmpty, partials.last != p { partials.append(p) }
-            let m = "\(hud.mode)"
-            if m != lastMode { log.append("面→\(m.prefix(40))"); lastMode = m }
-            if dictated != nil { break }
-            if case .listening = hud.mode {} else if !partials.isEmpty { await pause(1.0); break }
+            if case .listening(let p) = hud.mode, !p.isEmpty, partials.last != p { partials.append(p); lastChange = Date() }
+            if let st = hud.dictationStatus, statuses.count < hud.dictatedSegments || statuses.last != st {
+                statuses.append(st); lastChange = Date()
+            }
+            if !statuses.isEmpty, Date().timeIntervalSince(lastChange) > 4 { break }
         }
+        let stillListening: Bool = { if case .listening = hud.mode { return true }; return false }()
+        log.append("区切りの結果=\(statuses) 入れた区切り=\(hud.dictatedSegments)")
+        log.append("入れた後も聞いている=\(stillListening)")
         Dictation.dryRun = nil
         // --restore: 「元の文に戻す」を押す（整えて入れた時だけ出る）。
         if args.contains("--restore") {
@@ -81,10 +97,18 @@ extension SelfTest {
                 log.append("戻す面が出ていない(\(hud.mode))")
             }
         }
+        // やめる（Esc）とマイクが閉じる。
+        let micBefore = processIsRunningInput()
+        hud.cancelListening()
+        await pause(1.5)
+        let micAfter = processIsRunningInput()
+        log.append("Esc 前のマイク=\(micBefore.map(String.init) ?? "?") 後=\(micAfter.map(String.init) ?? "?")")
         let summary = (log + ["途中=\(partials.last ?? "なし")", "入れた文=\(dictated ?? (real ? "（実際に打ち込み）" : "なし"))",
                               "答え=\(hud.answer.prefix(60))"]).joined(separator: " | ")
         // 実際に打ち込んだときは、欄が見つからない等の答えが出ていないこと（欄の中身は外の検査が読む）。
-        let ok = real ? (!partials.isEmpty && hud.answer.isEmpty) : (dictated?.isEmpty == false)
+        let expected = args.firstIndex(of: "--segments").flatMap { args.count > $0 + 1 ? Int(args[$0 + 1]) : nil } ?? 1
+        let inserted = hud.dictatedSegments
+        let ok = (real ? inserted >= expected && stillListening : (dictated?.isEmpty == false)) && micAfter == false
         print((ok ? "SELFTEST_OK" : "SELFTEST_FAIL") + " dictationmic: " + summary)
         exit(ok ? 0 : 2)
     }

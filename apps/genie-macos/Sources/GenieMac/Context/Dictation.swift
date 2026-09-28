@@ -169,6 +169,73 @@ enum Dictation {
         return (checkRef as? String) == next
     }
 
+    // MARK: - 入れる先（いま見ている画面）と、入れた結果
+
+    /// 最後に前面だった Genie 以外のアプリ。Genie の窓が前面でも、本人が見ていた画面の欄へ入れる。
+    @MainActor static var lastOtherAppPID: pid_t?
+
+    /// 前面のアプリの移り変わりを覚える（起動時に 1 度）。
+    @MainActor static func trackFrontApps() {
+        if let pid = frontmostOtherAppPID() { lastOtherAppPID = pid }
+        NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main
+        ) { note in
+            guard let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
+                  app.processIdentifier != getpid() else { return }
+            MainActor.assumeIsolated { lastOtherAppPID = app.processIdentifier }
+        }
+    }
+
+    /// いま入れる先のアプリ: 前面（Genie 以外）、Genie が前面なら直前に見ていたアプリ。
+    @MainActor static func targetPID() -> pid_t? { frontmostOtherAppPID() ?? lastOtherAppPID }
+
+    /// 入れた結果。Dock に出し、記録に残す（**話した文そのものは記録しない**）。
+    struct Report {
+        let app: String
+        let role: String
+        let method: String     // "欄に書き込み" / "キー入力" / 失敗の理由
+        let ok: Bool
+    }
+
+    /// 入れて、結果を返す。記録は ~/Library/Logs/Astra/dictation.log（アプリ名・欄の種類・方法・字数・結果）。
+    @MainActor static func insertReporting(_ text: String, appPID: pid_t?) -> Report {
+        let app = appPID.flatMap { NSRunningApplication(processIdentifier: $0)?.localizedName } ?? "（前面のアプリ不明）"
+        let role = appPID.map(focusedRole(appPID:)) ?? "-"
+        let report: Report
+        if !AXIsProcessTrusted() {
+            report = Report(app: app, role: role, method: "アクセシビリティの許可がありません", ok: false)
+        } else if appPID == nil {
+            report = Report(app: app, role: role, method: "入れる先のアプリが分かりません", ok: false)
+        } else if insert(text, excludingOwnProcess: true, appPID: appPID) {
+            let how: String = { if case .typed? = lastInsertMethod { return "キー入力" }; return "欄に書き込み" }()
+            report = Report(app: app, role: role, method: how, ok: true)
+        } else {
+            report = Report(app: app, role: role, method: role == "-" ? "入力欄にカーソルがありません" : "この欄（\(role)）には入れられません", ok: false)
+        }
+        log(report, length: text.count)
+        return report
+    }
+
+    /// フォーカス中の要素の種類（記録と説明用）。
+    static func focusedRole(appPID: pid_t) -> String {
+        guard AXIsProcessTrusted() else { return "-" }
+        var focused: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(AXUIElementCreateApplication(appPID), kAXFocusedUIElementAttribute as CFString, &focused) == .success,
+              let element = focused else { return "-" }
+        var roleRef: CFTypeRef?
+        AXUIElementCopyAttributeValue(element as! AXUIElement, kAXRoleAttribute as CFString, &roleRef)
+        return roleRef as? String ?? "-"
+    }
+
+    private static func log(_ r: Report, length: Int) {
+        let dir = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Logs/Astra")
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let url = dir.appendingPathComponent("dictation.log")
+        let line = "\(ISO8601DateFormatter().string(from: Date())) app=\(r.app) role=\(r.role) method=\(r.method) ok=\(r.ok) chars=\(length)\n"
+        if let h = try? FileHandle(forWritingTo: url) { h.seekToEndOfFile(); h.write(Data(line.utf8)); try? h.close() }
+        else { try? line.write(to: url, atomically: true, encoding: .utf8) }
+    }
+
     /// 音声入力を始めたときの前面のアプリ（Genie 自身は除く）。入れる先はここで決める。
     @MainActor static func frontmostOtherAppPID() -> pid_t? {
         guard let app = NSWorkspace.shared.frontmostApplication, app.processIdentifier != getpid() else { return nil }

@@ -453,6 +453,30 @@ struct ListeningDock: View {
                 }
             }
             ContextStrip()
+            // 音声入力: 区切りごとに、どこへ入れたか（入れられなかったら理由）。
+            if voice.listenPurpose == .dictation, let status = voice.dictationStatus {
+                HStack(spacing: 8) {
+                    Text(status)
+                        .font(.system(size: S.type(Metrics.dockMetaSize)))
+                        .foregroundStyle(status.contains("入れられません") ? Palette.warning(dark) : Palette.muted(dark))
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("dictationStatus")
+                    Spacer(minLength: 0)
+                    if let last = voice.lastDictated, last.inserted != last.original {
+                        Button { voice.restoreDictated(last) } label: {
+                            Text(Facts.dictationRestore)
+                                .font(.system(size: S.type(Metrics.dockMetaSize), weight: .medium))
+                                .foregroundStyle(Palette.text(dark))
+                                .frame(height: 24)
+                                .padding(.horizontal, 8)
+                        }
+                        .buttonStyle(GenieControlStyle(radius: 7, base: 0.06))
+                        .help(last.original)
+                        .accessibilityIdentifier("dictationRestoreLast")
+                    }
+                }
+            }
             ConversationBar(showsPhase: false)
         }
         .padding(.horizontal, S.metric(Metrics.dockPadH))

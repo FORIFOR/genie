@@ -23,3 +23,13 @@ final class DictationCleanupTests: XCTestCase {
         XCTAssertEqual(DictationCleanup.clean("えーっと"), "えーっと")
     }
 }
+
+final class DictationTerminationTests: XCTestCase {
+    func testEachSegmentEndsAsASentence() {
+        XCTAssertEqual(DictationCleanup.terminated("資料を共有してください"), "資料を共有してください。")
+        XCTAssertEqual(DictationCleanup.terminated("資料を共有してください。"), "資料を共有してください。")
+        XCTAssertEqual(DictationCleanup.terminated("本当ですか？"), "本当ですか？")
+        XCTAssertEqual(DictationCleanup.terminated("「はい」"), "「はい」")
+        XCTAssertEqual(DictationCleanup.terminated(""), "")
+    }
+}
