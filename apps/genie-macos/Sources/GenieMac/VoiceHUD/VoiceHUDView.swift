@@ -385,15 +385,18 @@ struct ListeningDock: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 9) {
-                GenieOrb(mode: voice.isListeningMuted ? .idle : (voice.listeningAwaitingAudio ? .preparing : .listening),
-                         level: voice.isListeningMuted ? 0 : voice.inputLevel)
+                // 1b: 球ではなく Genie の印。聞いている間だけ、輪郭が入力音量に合わせて伸縮する。
+                // 準備中（マイクがまだ開いていない）と消音中は動かさない（聞いているふりをしない）。
+                GeniePresenceMark(mode: voice.isListeningMuted || voice.listeningAwaitingAudio ? .still : .listening,
+                                  level: voice.isListeningMuted ? 0 : voice.inputLevel,
+                                  stretchOnAppear: true)
 
                 // 会話では、声が届いていることを波形でも見せる（文字は右の欄に出る）。
                 // 届く値は振幅の peak で、話し声でも 0.05〜0.3 に集まり、そのままでは 1〜5pt の棒にしかならない
                 // （実マイクの voicee2e で確認）。平方根で見える高さに広げる（静か 0.07→0.26、声 0.33→0.57）。
                 if voice.conversation.isActive {
                     Waveform(levels: voice.isListeningMuted ? [] : voice.inputLevels.map { $0.squareRoot() },
-                             color: Palette.accent(dark),
+                             color: Palette.presence(dark),
                              barWidth: 2, spacing: 2,
                              awaitingInput: voice.listeningAwaitingAudio)
                         .frame(width: CGFloat(VoiceHUDState.inputLevelHistory) * 4, height: 18)
@@ -568,7 +571,8 @@ struct ThinkingDock: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
-                GenieOrb(mode: .thinking)
+                // 1b: 受け付けた瞬間に印が一度だけ反応し、内側を流れが進む（波形は出さない）。
+                GeniePresenceMark(mode: .working, ackOnAppear: true)
                 Text("考えています…")
                     .font(.system(size: S.type(Metrics.dockPrimarySize)))
                     .foregroundStyle(Palette.text(scheme == .dark))
@@ -644,6 +648,10 @@ struct AgentDock: View {
         .padding(.horizontal, S.metric(Metrics.dockPadH))
         .padding(.vertical, S.metric(Metrics.dockPadV))
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        // 1b: 作業中だけ、面の下辺を細い流れが進む。進捗率ではない（Reduce Motion / selftest では描かない）。
+        .overlay(alignment: .bottom) {
+            if store.state.activeTask?.status == .running { DockFlowLine() }
+        }
         .onReceive(timer) { tick = $0 }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("dockAgent")
@@ -661,8 +669,8 @@ struct AgentDock: View {
 
     private var header: some View {
         HStack(spacing: 10) {
-            GenieOrb(mode: store.state.activeTask?.status == .running ? .thinking : .idle,
-                     size: Metrics.hudOrbCompactSize)
+            GeniePresenceMark(mode: store.state.activeTask?.status == .running ? .working : .still,
+                              height: 14)
             Text("Genie")
                 .font(.system(size: S.type(Metrics.dockMetaSize), weight: .medium))
                 .foregroundStyle(Palette.muted(dark))
@@ -691,7 +699,7 @@ struct AgentDock: View {
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     Capsule().fill(Color.subtleFill(dark, 0.10))
-                    Capsule().fill(Palette.accent(dark))
+                    Capsule().fill(Palette.presence(dark))
                         .frame(width: max(2, geo.size.width * task.progress))
                 }
             }
@@ -808,7 +816,7 @@ struct AgentDock: View {
     private func tint(_ s: AgentRunState) -> Color {
         switch s {
         case .pending: return Palette.muted(dark)
-        case .running: return Palette.accent(dark)
+        case .running: return Palette.presence(dark)
         case .success: return Palette.success(dark)
         case .failed: return Palette.danger(dark)
         }
@@ -1473,9 +1481,17 @@ struct ResultDock: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 9) {
                 // できなかった結果に ✓ を付けない。
-                Image(systemName: result.failed ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
-                    .font(.system(size: 13))
-                    .foregroundStyle(result.failed ? Palette.warning(dark) : Palette.success(dark))
+                if result.failed {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 13))
+                        .foregroundStyle(Palette.warning(dark))
+                } else {
+                    // 1b: できたときだけ、印が一度だけ反応する。✓ は意味の色として残す。
+                    GeniePresenceMark(mode: .still, height: 14, ackOnAppear: true)
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 13))
+                        .foregroundStyle(Palette.success(dark))
+                }
                 VStack(alignment: .leading, spacing: 1) {
                     Text(result.title)
                         .font(.system(size: S.type(Metrics.dockTitleSize), weight: .semibold))

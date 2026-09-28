@@ -101,6 +101,8 @@ public static class Motion
     public const int HoverMs = 110;
     public const int DockResizeMs = 180;
     public const int DockContentDelayMs = 55;
+    public const int MarkStretchMs = 220;
+    public const int MarkAckMs = 320;
 }
 
 /// <summary>§17.1 カラートークン（Light/Dark, #AARRGGBB は不要な #RRGGBB 文字列）。</summary>
@@ -124,6 +126,8 @@ public static class Palette
     public const string WarningDark = "#F4B860";
     public const string DangerLight = "#B42318";
     public const string DangerDark = "#FF746C";
+    public const string PresenceLight = "#1C7FA8";
+    public const string PresenceDark = "#48BCEC";
 }
 
 /// <summary>§17.2 タイポグラフィ（pt / weight）。</summary>

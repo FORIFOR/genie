@@ -31,7 +31,8 @@ struct GenieOrb: View {
 struct GenieVoiceMark: View {
     // Genie の印（ランプ）。ブランド記号であって、音の量ではない（`GenieBrandMark`）。
     var body: some View {
-        GenieBrandMarkView(height: 12, color: Color.genieAccent.opacity(0.9))
+        // 1b: 待機の印は本文色で静止。青（presence）は聞く・作業するときだけ印の中に出る。
+        GenieBrandMarkView(height: 12, color: Palette.text(true).opacity(0.92))
             .frame(height: 14)
     }
 }

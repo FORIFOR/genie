@@ -100,6 +100,8 @@ enum Motion {
     static let hoverMs: Double = 0.110
     static let dockResizeMs: Double = 0.180
     static let dockContentDelayMs: Double = 0.055
+    static let markStretchMs: Double = 0.220
+    static let markAckMs: Double = 0.320
 }
 
 /// §17.1 カラートークン（Light/Dark）。UI に直書きせずここから使う。
@@ -113,6 +115,7 @@ enum Palette {
     static func success(_ dark: Bool) -> Color { dark ? successDark : successLight }
     static func warning(_ dark: Bool) -> Color { dark ? warningDark : warningLight }
     static func danger(_ dark: Bool) -> Color { dark ? dangerDark : dangerLight }
+    static func presence(_ dark: Bool) -> Color { dark ? presenceDark : presenceLight }
     static let canvasLight = Color(.sRGB, red: 0.9686, green: 0.9725, blue: 0.9804)
     static let canvasDark = Color(.sRGB, red: 0.0588, green: 0.0667, blue: 0.0824)
     static let surfaceLight = Color(.sRGB, red: 1.0000, green: 1.0000, blue: 1.0000)
@@ -131,6 +134,8 @@ enum Palette {
     static let warningDark = Color(.sRGB, red: 0.9569, green: 0.7216, blue: 0.3765)
     static let dangerLight = Color(.sRGB, red: 0.7059, green: 0.1373, blue: 0.0941)
     static let dangerDark = Color(.sRGB, red: 1.0000, green: 0.4549, blue: 0.4235)
+    static let presenceLight = Color(.sRGB, red: 0.1098, green: 0.4980, blue: 0.6588)
+    static let presenceDark = Color(.sRGB, red: 0.2824, green: 0.7373, blue: 0.9255)
 }
 
 /// §17.2 タイポグラフィ（pt / weight）。

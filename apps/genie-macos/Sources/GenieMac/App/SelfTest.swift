@@ -606,6 +606,9 @@ enum SelfTest {
         // 前の撮影は Dock を待機に戻しているので、聞いている姿から始める。
         shoot("05b-thinking-held", { hud.mode = .listening(partial: ""); hud.hold("明日の天気教えて") })
         _ = hud.takeHeldUtterance()
+        // 考え中は答えが届くと終わる（本番）。撮影では答えが来ないので、次の仕事の前に待機へ戻す。
+        // 戻さないと、考え中が動いている仕事より前に出て（One Continuous Surface の優先順）、仕事の面が撮れない。
+        hud.mode = .idle
 
         // 5. Agent（startTask が Dock を agent の姿にする＝実遷移）
         shoot("06-agent", {

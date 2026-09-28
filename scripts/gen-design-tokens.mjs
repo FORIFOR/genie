@@ -122,6 +122,8 @@ const DURATIONS = [
   ['hoverMs', ix.hoverMs],
   ['dockResizeMs', a.dockResizeMs],
   ['dockContentDelayMs', a.dockContentDelayMs],
+  ['markStretchMs', a.markStretchMs],
+  ['markAckMs', a.markAckMs],
 ];
 
 // §17 Visual Design System を単一正に。色/タイポ/余白を各 OS へ直書きせず tokens から生成する。
