@@ -118,8 +118,8 @@ public static class Palette
     public const string MutedDark = "#98A2B3";
     public const string BorderLight = "#E6E8EC";
     public const string BorderDark = "#2B3038";
-    public const string AccentLight = "#5B4CF0";
-    public const string AccentDark = "#8A7DFF";
+    public const string AccentLight = "#1C6FA0";
+    public const string AccentDark = "#3E95D0";
     public const string SuccessLight = "#18794E";
     public const string SuccessDark = "#3CCB7F";
     public const string WarningLight = "#B54708";

@@ -32,6 +32,9 @@ struct VoiceTaskDockView: View {
 
     /// 面が縮み終わってから中身を出す。同時に動かすと中身がはみ出して見える。
     @State private var contentVisible = true
+    /// 1b: 印の反応のきっかけ。値が変わったときだけ一度動く。
+    @State private var markStretch = 0
+    @State private var markAck = 0
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -41,12 +44,28 @@ struct VoiceTaskDockView: View {
                 .padding(.top, screenLayout.topInset)
                 .opacity(contentVisible ? 1 : 0)
                 .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: contentVisible)
+            // 1b: 印は中身と一緒に消さない。面が変わっても同じ左上に居続け、中身だけが入れ替わる。
+            if let mark = presence {
+                GeniePresenceMark(mode: mark.mode, level: mark.level, height: mark.height,
+                                  stretchKey: markStretch, ackKey: markAck)
+                    .padding(.leading, S.metric(Metrics.dockPadH))
+                    .padding(.top, screenLayout.topInset + mark.top)
+                    .frame(width: size.width, height: size.height + screenLayout.topInset, alignment: .topLeading)
+                    .animation(reduceMotion ? nil : .easeInOut(duration: Motion.dockResizeMs), value: mark.top)
+            }
         }
         // 地が暗いので、中身も暗色側の配色で描く。
         // 各 View は `@Environment(\.colorScheme)` を見ているので、ここで一括して切り替わる。
         .environment(\.colorScheme, .dark)
         .frame(width: size.width, height: size.height + screenLayout.topInset)
         .onChange(of: store.dock) { old, new in
+            // 1b: 呼び出しで一度伸び、受付と「できた」で一度膨らむ。受付前・保存前には動かさない。
+            if case .idle = old, case .listening = new { markStretch += 1 }
+            if case .listening = old {
+                if case .thinking = new { markAck += 1 }
+                if case .agent = new { markAck += 1 }
+            }
+            if case .result(let r) = new, !r.failed, !r.cancelled { markAck += 1 }
             guard !reduceMotion else { return }
             // 会議 Dock の中で板（メモ / 字幕 / Ask）が開閉するだけのときは、変わらない見出し
             // （録音中・メモ・字幕・Ask Genie・停止）を消さない。全体を消すと、盲検 3 名全員が
@@ -68,6 +87,33 @@ struct VoiceTaskDockView: View {
     }
 
     private var size: CGSize { store.dock.size(agentRows: store.state.activeTask?.steps.count ?? 0) }
+
+    /// 1b: 印を出す面と、その面での印の状態・高さ・位置（面の上端から）。
+    /// 印を持たない面（確認・会議・回答・文脈など）では出さない。
+    private var presence: (mode: GeniePresenceMode, level: Float, height: CGFloat, top: CGFloat)? {
+        let padV = S.metric(Metrics.dockPadV)
+        switch store.dock {
+        case .idle:
+            // スクショの chip は画像の縮小が先頭に来るので、印は出さない。
+            guard visual.justCaptured == nil, visual.offeredCapture == nil else { return nil }
+            return (.idle, 0, DockMark.idleHeight, (size.height - DockMark.idleHeight) / 2)
+        case .listening:
+            // 準備中（マイクがまだ開いていない）と消音中は動かさない（聞いているふりをしない）。
+            let quiet = state.isListeningMuted || state.listeningAwaitingAudio
+            return (quiet ? .still : .listening, quiet ? 0 : state.inputLevel, DockMark.height,
+                    padV + (DockMark.rowHeight - DockMark.height) / 2)
+        case .thinking:
+            return (.working, 0, DockMark.height, padV + (DockMark.rowHeight - DockMark.height) / 2)
+        case .agent:
+            let running = store.state.activeTask?.status == .running
+            return (running ? .working : .still, 0, DockMark.height,
+                    padV + (DockMark.compactRowHeight - DockMark.height) / 2)
+        case .result:
+            return (.still, 0, DockMark.height, padV + (DockMark.resultRowHeight - DockMark.height) / 2)
+        default:
+            return nil
+        }
+    }
 
     @ViewBuilder private var content: some View {
         switch store.dock {
@@ -185,12 +231,13 @@ private struct IdleDock: View {
         HStack(spacing: 7) {
             Button { VoiceHUDState.shared.toggleQuickActions() } label: {
                 HStack(spacing: 7) {
-                    GenieVoiceMark()
+                    DockMarkSlot(height: DockMark.idleHeight, rowHeight: 14)
                     Text("Genie")
                         .font(.system(size: S.type(Metrics.dockPrimarySize), weight: .medium))
                 }
                 .foregroundStyle(Palette.text(scheme == .dark))
                 .frame(maxHeight: .infinity)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("dockOpenActions")
@@ -385,11 +432,8 @@ struct ListeningDock: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 9) {
-                // 1b: 球ではなく Genie の印。聞いている間だけ、輪郭が入力音量に合わせて伸縮する。
-                // 準備中（マイクがまだ開いていない）と消音中は動かさない（聞いているふりをしない）。
-                GeniePresenceMark(mode: voice.isListeningMuted || voice.listeningAwaitingAudio ? .still : .listening,
-                                  level: voice.isListeningMuted ? 0 : voice.inputLevel,
-                                  stretchOnAppear: true)
+                // 1b: 印の場所。印そのものは VoiceTaskDockView が描く（面が変わっても消えない）。
+                DockMarkSlot(height: DockMark.height, rowHeight: DockMark.rowHeight)
 
                 // 会話では、声が届いていることを波形でも見せる（文字は右の欄に出る）。
                 // 届く値は振幅の peak で、話し声でも 0.05〜0.3 に集まり、そのままでは 1〜5pt の棒にしかならない
@@ -571,8 +615,8 @@ struct ThinkingDock: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
-                // 1b: 受け付けた瞬間に印が一度だけ反応し、内側を流れが進む（波形は出さない）。
-                GeniePresenceMark(mode: .working, ackOnAppear: true)
+                // 1b: 印の場所。受け付けた瞬間に印が一度だけ反応し、内側を流れが進む（波形は出さない）。
+                DockMarkSlot(height: DockMark.height, rowHeight: DockMark.rowHeight)
                 Text("考えています…")
                     .font(.system(size: S.type(Metrics.dockPrimarySize)))
                     .foregroundStyle(Palette.text(scheme == .dark))
@@ -633,15 +677,14 @@ struct AgentDock: View {
     private var dark: Bool { scheme == .dark }
     @ObservedObject private var store = GenieStateStore.shared
     @State private var tick = Date()
-    private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
+        // 1b: 作業中の面は「作業名・段階・停止」だけ。経過・段数・進行帯・見出し・文脈は作業画面で見る。
+        // 段の色（✓ ● ○）と各段の「いま何を見ているか」は残す。
         VStack(alignment: .leading, spacing: 12) {
             header
             taskTitle
-            progressBar
             steps
-            contextChips
             Spacer(minLength: 0)
             footer
         }
@@ -652,7 +695,6 @@ struct AgentDock: View {
         .overlay(alignment: .bottom) {
             if store.state.activeTask?.status == .running { DockFlowLine() }
         }
-        .onReceive(timer) { tick = $0 }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("dockAgent")
     }
@@ -669,8 +711,7 @@ struct AgentDock: View {
 
     private var header: some View {
         HStack(spacing: 10) {
-            GeniePresenceMark(mode: store.state.activeTask?.status == .running ? .working : .still,
-                              height: 14)
+            DockMarkSlot(height: DockMark.height, rowHeight: DockMark.compactRowHeight)
             Text("Genie")
                 .font(.system(size: S.type(Metrics.dockMetaSize), weight: .medium))
                 .foregroundStyle(Palette.muted(dark))
@@ -680,15 +721,6 @@ struct AgentDock: View {
                 Text(statusLabel(task.status))
                     .font(.system(size: S.type(Metrics.dockMetaSize), weight: .medium))
                     .foregroundStyle(Palette.muted(dark))
-                // 待っている間、どれだけ待つのかが分かるように経過も出す。
-                Text(elapsedLabel(task))
-                    .font(.system(size: S.type(Metrics.dockMetaSize), design: .monospaced))
-                    .foregroundStyle(Palette.muted(dark))
-                if !task.steps.isEmpty {
-                    Text("\(task.doneSteps)/\(task.steps.count) 段")
-                    .font(.system(size: S.type(Metrics.dockMetaSize), design: .monospaced))
-                    .foregroundStyle(Palette.muted(dark))
-                }
             }
         }
     }
@@ -728,7 +760,6 @@ struct AgentDock: View {
     /// 5 行の段取りが「見出しの無い表」に見えていた。
     private var steps: some View {
         VStack(alignment: .leading, spacing: 6) {
-            DockLabel(text: Facts.dockPlan)
             VStack(alignment: .leading, spacing: 0) {
             ForEach(store.state.activeTask?.steps ?? []) { step in
                 HStack(spacing: 10) {
@@ -1477,37 +1508,63 @@ struct ResultDock: View {
         }
     }
 
+    /// 1b: 1 行目。何が起きたかを先に言う（「できました」だけにしない）。
+    private var outcomeLine: String {
+        if result.cancelled { return "止めました" }
+        if result.failed { return "できませんでした" }
+        return "\(result.kind ?? "成果物")ができました"
+    }
+
+    /// 1b: 開く操作を最初に。閉じる（×）は右端のまま。
+    private var orderedActions: [AgentResult.Action] {
+        let first: [AgentResult.Action] = [.openWorkspace, .openNotes]
+        return result.actions.filter { first.contains($0) } + result.actions.filter { !first.contains($0) }
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 9) {
-                // できなかった結果に ✓ を付けない。
-                if result.failed {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.system(size: 13))
-                        .foregroundStyle(Palette.warning(dark))
-                } else {
-                    // 1b: できたときだけ、印が一度だけ反応する。✓ は意味の色として残す。
-                    GeniePresenceMark(mode: .still, height: 14, ackOnAppear: true)
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 13))
-                        .foregroundStyle(Palette.success(dark))
-                }
-                VStack(alignment: .leading, spacing: 1) {
+        VStack(alignment: .leading, spacing: 10) {
+            // 1b: 左は印の場所（印は VoiceTaskDockView が 1 つだけ描く）。
+            HStack(alignment: .center, spacing: 12) {
+                DockMarkSlot(height: DockMark.height, rowHeight: DockMark.resultRowHeight)
+                VStack(alignment: .leading, spacing: 2) {
+                    // 1 行目: 何が起きたか。できなかった結果・止めた結果に ✓ を付けない。
+                    HStack(spacing: 5) {
+                        Image(systemName: result.failed ? "exclamationmark.triangle.fill"
+                              : (result.cancelled ? "stop.circle" : "checkmark.circle.fill"))
+                            .font(.system(size: S.type(Metrics.dockMetaSize)))
+                            .foregroundStyle(result.failed ? Palette.warning(dark)
+                                             : (result.cancelled ? Palette.muted(dark) : Palette.success(dark)))
+                        Text(outcomeLine)
+                            .font(.system(size: S.type(Metrics.dockMetaSize), weight: .medium))
+                            .foregroundStyle(result.failed ? Palette.warning(dark) : Palette.muted(dark))
+                    }
+                    // 2 行目: 何を。
                     Text(result.title)
                         .font(.system(size: S.type(Metrics.dockTitleSize), weight: .semibold))
                         .foregroundStyle(Palette.text(dark))
                         .lineLimit(1)
-                    // Session の状態をそのまま出す。読み取り中は「何をしているか」を言う。
-                    Text(sessionLine)
-                        .font(.system(size: S.type(Metrics.dockMetaSize)))
-                        // 失敗の理由は補足ではなく本文。灰にすると題より読めない（盲検 3/3）。
-                        .foregroundStyle(result.failed ? Palette.text(dark) : Palette.muted(dark))
                 }
                 Spacer(minLength: 0)
             }
+            // 3 行目: どこに・なぜ。失敗の理由は補足ではなく本文（灰にすると題より読めない — 盲検 3/3）。
+            if sessionLine != "できました" {
+                Text(sessionLine)
+                    .font(.system(size: S.type(Metrics.dockMetaSize)))
+                    .foregroundStyle(result.failed ? Palette.text(dark) : Palette.muted(dark))
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("resultWhere")
+            }
+            // 失敗・中止: 失われていないもの（仕事の結果のときだけ。会議・始められなかった知らせには出さない）。
+            // 仕事の結果（taskID あり）は、声・文字の依頼も会議の AI 操作も Work の一覧に保存されている。
+            if result.failed || result.cancelled, result.taskID != nil {
+                Text(Facts.resultKept)
+                    .font(.system(size: S.type(Metrics.dockMetaSize)))
+                    .foregroundStyle(Palette.muted(dark))
+                    .accessibilityIdentifier("resultKept")
+            }
             Spacer(minLength: 0)
             HStack(spacing: 6) {
-                ForEach(result.actions, id: \.self) { action in
+                ForEach(orderedActions, id: \.self) { action in
                     ProbeButton(id: "result-\(action.rawValue)",
                                 action: { ResultActionRunner.run(action, title: result.title, sessionId: result.sessionId, taskID: result.taskID) }) {
                         Text(action.title)

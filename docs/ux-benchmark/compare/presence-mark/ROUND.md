@@ -24,3 +24,17 @@ gate      : 1) 機械: build、swift test 240、UI の癖（gradient 4/4・Capsu
 - Liquid Glass の外殻の上での青の見え方（明るい・込み入った背景）。GPU 負荷。
 - 聞く状態の輪郭は `inputLevel`（peak）をそのまま使う。実マイクで振れ幅が小さければ、波形と同じく平方根で広げる（パッチの注記どおり、未調整）。
 - 盲検 panel。`verify-all`（本人が Mac を使っている間は、画面を占める検査を回さない）。
+
+## 第 2 版（A〜F、同じ日の 23:29 版のパッチ）
+
+本人が同じ zip の第 2 版を渡した（1b に A〜F を足したもの。v1 を反映した HEAD の上で作られていた）。規則は `shared/design/DESIGN.md` §7（パッチが追記）。
+
+- A 印を消さない: `VoiceTaskDockView` が中身の外に印を 1 つだけ描き、各 Dock は `DockMarkSlot` で場所を空ける。反応（伸び・膨らみ）は `store.dock` の変化で 1 度だけ。
+- B 作業中を静かに: 経過時間・「n/m 段」・進行帯・PLAN・CONTEXT と 1 秒ごとの再描画を外した（段の ✓ ● ○ と detail、停止、作業画面は残す）。
+- C/D 結果: 1 行目「<種類>ができました / できませんでした / 止めました」、2 行目に題、3 行目に場所・理由。仕事の結果の失敗・中止には「依頼は Work に残っています。」（`Facts.resultKept`。taskID のある結果は声・文字の依頼も会議の AI 操作も Work の一覧に保存される）。
+- E 紫をやめる: `accent` を青へ（light #1C6FA0 / dark #3E95D0）。Home・Library・録音面・Windows 側（GeneratedMetrics.cs）も変わる。
+  白文字の対比（WCAG）: 旧 dark 3.25:1 → 新 3.27:1、旧 light 5.62:1 → 新 5.48:1。**変更で悪くはなっていないが、dark の塗りに白文字は元から 3:1 前後**（AA の 4.5:1 に届かない所が前からある）。
+- F Reduce Motion / `--selftest` では静止形（listening は輪郭、working は内側の青を中央）。
+- 反映で直したこと: 文言を `UserFacingFacts` へ移した、結果の印の大きさの直書き（11）を型の段（dockMetaSize）へ（`lint:type-literals`）。
+- 検査: build、swift test 240、UI の癖・言葉・承認境界・送信・権限・type-literals・check-conventions、`dock8` 明暗 25 状態（印の位置を目で確認: idle・聞く・会話・考え中・作業中・完了・失敗）。golden: task-dock を撮り直し。
+- 撮り直していない golden: `docs/golden-screenshots` 直下・`dark/`・`genie-rename/`・`notch-safe-area/task-dock`・`outcome-workspace`（accent の色が変わる。直下の shots はこの OS の基準を記録しない本人の決定のまま）。`--selftest geometry`・`verify-all`・盲検・実機での動きは未実施。

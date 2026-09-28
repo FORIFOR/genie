@@ -74,6 +74,8 @@ enum UserFacingFacts {
     static let resultOpen = "開く"
     static let resultCopy = "コピー"
     static let resultClose = "閉じる"
+    /// 失敗・中止した仕事の結果で、失われていないもの（依頼は Work の一覧に残る）。
+    static let resultKept = "依頼は Work に残っています。"
     /// 音声入力で言い淀みを消して入れたとき。
     static let dictationCleaned = "言い淀みを消して入れました"
     static let dictationRestore = "元の文に戻す"
@@ -261,6 +263,7 @@ enum UserFacingFacts {
             f("task.cancelled", taskCancelled, false),
             f("task.working", taskWorking, false),
             f("result.close", resultClose, false),
+            f("result.kept", resultKept, false),
             f("dictation.cleaned", dictationCleaned, false),
             f("dictation.restore", dictationRestore, false),
             f("dictation.restored", dictationRestored, false),
