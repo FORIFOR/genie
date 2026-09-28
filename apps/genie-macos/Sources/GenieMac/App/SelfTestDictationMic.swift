@@ -24,6 +24,16 @@ extension SelfTest {
         WindowCoordinator.shared.showVoiceHUD()
         await pause(1.0)
         let front0 = NSWorkspace.shared.frontmostApplication?.localizedName ?? "?"
+        // 実際に打ち込むときは、前面が検査用のアプリであることを確かめてから（本人のアプリへ打ち込まない）。
+        // 2026-09-28、検査用アプリが起動せず、本人のターミナルへ打ち込んでしまった。
+        if real {
+            let expected = args.firstIndex(of: "--expect-front").flatMap { args.count > $0 + 1 ? args[$0 + 1] : nil }
+            let frontExec = NSWorkspace.shared.frontmostApplication?.executableURL?.lastPathComponent ?? ""
+            guard let expected, frontExec == expected || front0 == expected else {
+                print("SELFTEST_FAIL dictationmic: 前面が検査用のアプリではない（前面=\(front0) / \(frontExec)）。打ち込まずに止めた。--real には --expect-front <検査用アプリ> が要る")
+                exit(2)
+            }
+        }
         var log: [String] = ["前面=\(front0)"]
         // --dockkey: Dock を押して Quick Actions から始めたときのように、Dock がキーの状態から始める。
         if args.contains("--dockkey") {

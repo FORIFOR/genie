@@ -94,6 +94,7 @@ enum SelfTest {
         case "inputfocus": Task { await inputFocus() }; return true
         case "micprobe": Task { await micProbe() }; return true
         case "micrelease": Task { await micRelease() }; return true
+        case "axprobe": axProbe(); return true
         case "dictationmic": Task { await dictationMic(args) }; return true
         case "aistop": Task { await aiStop(args) }; return true
         case "glassshots": Task { await glassShots(Array(args[(i + 2)...])) }; return true

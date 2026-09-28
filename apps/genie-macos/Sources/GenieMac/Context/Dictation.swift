@@ -62,16 +62,100 @@ enum Dictation {
             guard !text.isEmpty else { return false }
             return MainActor.assumeIsolated { dryRun(text) }
         }
-        guard !text.isEmpty,
-              let target = focusedTextTarget(excludingOwnProcess: excludingOwnProcess, appPID: appPID)
-                ?? (appPID != nil ? focusedTextTarget(excludingOwnProcess: excludingOwnProcess) : nil)
-        else { return false }
-        return insert(text, into: target)
+        guard !text.isEmpty else { return false }
+        if let target = focusedTextTarget(excludingOwnProcess: excludingOwnProcess, appPID: appPID)
+            ?? (appPID != nil ? focusedTextTarget(excludingOwnProcess: excludingOwnProcess) : nil),
+           insertVerified(text, into: target) {
+            MainActor.assumeIsolated { lastInsertMethod = .accessibility }
+            return true
+        }
+        // 値を書き換えられない欄（ターミナル・ブラウザ・Electron のエディタ等）は、キー入力として打つ。
+        // 以前はここで諦め、文字起こしはできているのに見えている画面へ入らなかった（2026-09-28 実機、ターミナル）。
+        guard let pid = appPID ?? MainActor.assumeIsolated({ frontmostOtherAppPID() }),
+              acceptsTyping(appPID: pid), type(text, to: pid) else { return false }
+        MainActor.assumeIsolated { lastInsertMethod = .typed(pid) }
+        return true
+    }
+
+    /// 値を書き換えて入れ、**入ったことを読み戻して確かめる**。書き換えを「成功」と返して何もしない欄がある
+    /// （検査用の欄で実際にそうなった）。読み戻せない欄は、書き換えの結果を信じる。
+    static func insertVerified(_ text: String, into target: AXUIElement) -> Bool {
+        func value() -> String? {
+            var ref: CFTypeRef?
+            guard AXUIElementCopyAttributeValue(target, kAXValueAttribute as CFString, &ref) == .success else { return nil }
+            return ref as? String
+        }
+        let before = value()
+        guard insert(text, into: target) else { return false }
+        guard let before, let after = value() else { return true }
+        return after != before && after.contains(text)
+    }
+
+    enum InsertMethod: Equatable { case accessibility, typed(pid_t) }
+    /// 直前に入れた方法（「元の文に戻す」が、値の差し替えか打ち直しかを選ぶ）。
+    @MainActor static var lastInsertMethod: InsertMethod?
+
+    /// フォーカス中の要素が、値は書き換えられないが文字を受け取る欄か（ターミナルの本文・Web の入力欄など）。
+    static func acceptsTyping(appPID: pid_t) -> Bool {
+        guard AXIsProcessTrusted() else { return false }
+        let app = AXUIElementCreateApplication(appPID)
+        var focused: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(app, kAXFocusedUIElementAttribute as CFString, &focused) == .success,
+              let element = focused else { return false }
+        let e = element as! AXUIElement
+        var roleRef: CFTypeRef?
+        AXUIElementCopyAttributeValue(e, kAXRoleAttribute as CFString, &roleRef)
+        let role = roleRef as? String ?? ""
+        let textRoles: Set<String> = [kAXTextFieldRole as String, kAXTextAreaRole as String, kAXComboBoxRole as String]
+        if textRoles.contains(role) { return true }
+        // role が汎用（AXGroup 等）でも、選択範囲（キャレット）を持つなら文字を受け取る欄（contenteditable など）。
+        var range: CFTypeRef?
+        return AXUIElementCopyAttributeValue(e, kAXSelectedTextRangeAttribute as CFString, &range) == .success && range != nil
+    }
+
+    /// 文字をキー入力として打つ（Unicode をそのまま渡すので、日本語入力の変換を通らない）。
+    static func type(_ text: String, to pid: pid_t) -> Bool {
+        guard AXIsProcessTrusted(), let source = CGEventSource(stateID: .hidSystemState) else { return false }
+        let units = Array(text.utf16)
+        var i = 0
+        while i < units.count {
+            // 1 回に渡せる長さには上限がある（20 前後）。サロゲートの途中で切らない。
+            var end = min(i + 16, units.count)
+            if end < units.count, UTF16.isLeadSurrogate(units[end - 1]) { end -= 1 }
+            let chunk = Array(units[i..<end])
+            guard let down = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: true),
+                  let up = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: false) else { return false }
+            chunk.withUnsafeBufferPointer { p in
+                down.keyboardSetUnicodeString(stringLength: p.count, unicodeString: p.baseAddress)
+                up.keyboardSetUnicodeString(stringLength: p.count, unicodeString: p.baseAddress)
+            }
+            down.postToPid(pid)
+            up.postToPid(pid)
+            usleep(8_000)
+            i = end
+        }
+        return true
+    }
+
+    /// 打った文を消す（「元の文に戻す」: 入れた直後だけ）。文字数ぶん後退する。
+    static func deleteTyped(_ text: String, from pid: pid_t) -> Bool {
+        guard AXIsProcessTrusted(), let source = CGEventSource(stateID: .hidSystemState) else { return false }
+        for _ in 0..<text.count {
+            guard let down = CGEvent(keyboardEventSource: source, virtualKey: 51, keyDown: true),
+                  let up = CGEvent(keyboardEventSource: source, virtualKey: 51, keyDown: false) else { return false }
+            down.postToPid(pid); up.postToPid(pid)
+            usleep(6_000)
+        }
+        return true
     }
 
     /// 入れた文を、元の文へ戻す（「元の文に戻す」）。その欄の値の中で、最後に入れた文を探して差し替える。
     /// 戻せなければ false（入れた先で ⌘Z を押してもらう）。
     static func replaceInserted(_ inserted: String, with original: String, appPID: pid_t?) -> Bool {
+        // 打って入れた欄は値を書き換えられない。打った文字数ぶん消して、元の文を打ち直す。
+        if case .typed(let pid)? = MainActor.assumeIsolated({ lastInsertMethod }) {
+            return deleteTyped(inserted, from: pid) && type(original, to: pid)
+        }
         guard AXIsProcessTrusted(), !inserted.isEmpty,
               let target = focusedTextTarget(excludingOwnProcess: true, appPID: appPID) else { return false }
         var valueRef: CFTypeRef?
