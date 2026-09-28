@@ -681,6 +681,8 @@ final class ConsentAccessoryView: NSView {
         accessory.cleanUp()
         guard ret == .alertFirstButtonReturn, accessory.popup.indexOfSelectedItem > 0 else { throw Failure("user_cancelled") }
         let w=accessory.currentWindows[accessory.popup.indexOfSelectedItem-1], owner=w.owningApplication!
+        // 選ばれたアプリの名前だけを残す（窓の題・中身は残さない）。止まったとき、違う窓が選ばれていたかが分かる。
+        stage("selected-app-\(owner.applicationName.replacingOccurrences(of: " ", with: "_"))")
         NSApp.hide(nil)
         /*
          * 同意 UI を隠すと、macOS は次のアプリへ焦点を渡す。それが対象アプリだと、
