@@ -137,6 +137,16 @@ enum Dictation {
         return true
     }
 
+    /// 入れた先のアプリで Return を押す（本人が「送信」を押したときだけ）。
+    static func pressReturn(in pid: pid_t) -> Bool {
+        guard AXIsProcessTrusted(), let source = CGEventSource(stateID: .hidSystemState),
+              let down = CGEvent(keyboardEventSource: source, virtualKey: 36, keyDown: true),
+              let up = CGEvent(keyboardEventSource: source, virtualKey: 36, keyDown: false) else { return false }
+        usleep(30_000)   // 直前に打った文字が先に届くように
+        down.postToPid(pid); up.postToPid(pid)
+        return true
+    }
+
     /// 打った文を消す（「元の文に戻す」: 入れた直後だけ）。文字数ぶん後退する。
     static func deleteTyped(_ text: String, from pid: pid_t) -> Bool {
         guard AXIsProcessTrusted(), let source = CGEventSource(stateID: .hidSystemState) else { return false }

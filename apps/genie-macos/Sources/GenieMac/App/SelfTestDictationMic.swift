@@ -59,8 +59,23 @@ extension SelfTest {
         log.append("聞く面=\(hud.mode) Dockがkey=\(key) 入れる欄あり=\(targetDuring)")
         await pause(1.0)
         // --text <文>: 認識の代わりに、区切りの文として渡す（入れる・整える・戻すは本番と同じ）。
+        /// 実際に打つ・押す前に毎回、前面がまだ検査用のアプリか確かめる（途中で本人が別のアプリへ移ることがある。
+        /// 2026-09-28、途中で Chrome が前面になり、送信の Return が Chrome に届いた）。
+        func stillFixture() -> Bool {
+            guard real else { return true }
+            let expected = args.firstIndex(of: "--expect-front").flatMap { args.count > $0 + 1 ? args[$0 + 1] : nil } ?? ""
+            let front = NSWorkspace.shared.frontmostApplication
+            return front?.executableURL?.lastPathComponent == expected || front?.localizedName == expected
+        }
+        func abortIfMoved(_ step: String) {
+            guard !stillFixture() else { return }
+            hud.cancelListening()
+            print("SELFTEST_FAIL dictationmic: \(step)の前に前面が検査用のアプリから変わった（\(NSWorkspace.shared.frontmostApplication?.localizedName ?? "?")）。打たずに止めた")
+            exit(2)
+        }
         if let k = args.firstIndex(of: "--text"), args.count > k + 1 {
             for sentence in args[k + 1].components(separatedBy: "|") {
+                abortIfMoved("入れる")
                 hud.dictateSegment(sentence)
                 partials.append(sentence)
                 await pause(0.6)
@@ -76,6 +91,7 @@ extension SelfTest {
         while Date() < deadline {
             await pause(0.1)
             if case .listening(let p) = hud.mode, !p.isEmpty, partials.last != p { partials.append(p); lastChange = Date() }
+            abortIfMoved("聞いている間")
             if let st = hud.dictationStatus, statuses.count < hud.dictatedSegments || statuses.last != st {
                 statuses.append(st); lastChange = Date()
             }
@@ -97,6 +113,14 @@ extension SelfTest {
                 log.append("戻す面が出ていない(\(hud.mode))")
             }
         }
+        // --send [未確定の文]: 送信ボタン（入れた先で Return）。未確定の文があれば入れてから押す。
+        if let k = args.firstIndex(of: "--send") {
+            let pending = args.count > k + 1 && !args[k + 1].hasPrefix("--") ? args[k + 1] : ""
+            abortIfMoved("送信")
+            hud.sendDictation(pending: pending)
+            await pause(0.8)
+            log.append("送信後の面=\("\(hud.mode)".prefix(30))")
+        }
         // やめる（Esc）とマイクが閉じる。
         let micBefore = processIsRunningInput()
         hud.cancelListening()
@@ -108,7 +132,8 @@ extension SelfTest {
         // 実際に打ち込んだときは、欄が見つからない等の答えが出ていないこと（欄の中身は外の検査が読む）。
         let expected = args.firstIndex(of: "--segments").flatMap { args.count > $0 + 1 ? Int(args[$0 + 1]) : nil } ?? 1
         let inserted = hud.dictatedSegments
-        let ok = (real ? inserted >= expected && stillListening : (dictated?.isEmpty == false)) && micAfter == false
+        let sent = args.contains("--send") ? hud.mode == .idle : true
+        let ok = (real ? inserted >= expected && stillListening && sent : (dictated?.isEmpty == false)) && micAfter == false
         print((ok ? "SELFTEST_OK" : "SELFTEST_FAIL") + " dictationmic: " + summary)
         exit(ok ? 0 : 2)
     }

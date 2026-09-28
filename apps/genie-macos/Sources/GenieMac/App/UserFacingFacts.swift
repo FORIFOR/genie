@@ -78,6 +78,10 @@ enum UserFacingFacts {
     static let dictationCleaned = "言い淀みを消して入れました"
     static let dictationRestore = "元の文に戻す"
     static let dictationRestored = "元の文に戻しました"
+    /// 音声入力の送信ボタン（入れた先のアプリで Return を押す）。
+    static let dictationSend = "入れた先で送信"
+    static let dictationSendHelp = "入れた先のアプリで送信します（Return を押します）"
+    static let dictationSendFailed = "送信できませんでした。入れた先のアプリで Return を押してください。"
     static func dictationInserted(_ app: String, cleaned: Bool) -> String {
         cleaned ? "\(app) に入れました（言い淀みを消しました）" : "\(app) に入れました"
     }
@@ -260,6 +264,9 @@ enum UserFacingFacts {
             f("dictation.cleaned", dictationCleaned, false),
             f("dictation.restore", dictationRestore, false),
             f("dictation.restored", dictationRestored, false),
+            f("dictation.send", dictationSend, false),
+            f("dictation.sendHelp", dictationSendHelp, false),
+            f("dictation.sendFailed", dictationSendFailed, false),
             f("dictation.restoreFailed", dictationRestoreFailed, false),
             f("task.stoppedDetail", taskStoppedDetail, false),
             f("task.accepted", taskAccepted, false),

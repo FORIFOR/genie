@@ -212,6 +212,7 @@ final class VoiceHUDState: ObservableObject {
             dictationStatus = nil
             lastDictated = nil
             dictatedSegments = 0
+            dictationInsertedPID = nil
             openMicrophone(onFinal: { [weak self] text in self?.dictateSegment(text) })
             armDictationIdle()
         } else {
@@ -227,6 +228,8 @@ final class VoiceHUDState: ObservableObject {
     @Published private(set) var lastDictated: DictatedText?
     /// この音声入力で入れた区切りの数（検査・表示用）。
     @Published private(set) var dictatedSegments = 0
+    /// この音声入力で文を入れたアプリ（送信の Return はここにだけ押す）。
+    private var dictationInsertedPID: pid_t?
     private var dictationIdleGeneration = 0
 
     /// 区切りの文を、いま見ている画面のフォーカス中の欄へ入れる。マイクは開いたまま次を聞く。
@@ -237,6 +240,7 @@ final class VoiceHUDState: ObservableObject {
         let pid = Dictation.targetPID()
         let report = Dictation.insertReporting(cleaned, appPID: pid)
         if report.ok {
+            dictationInsertedPID = pid
             lastDictated = DictatedText(inserted: cleaned, original: DictationCleanup.terminated(raw), appPID: pid)
             dictatedSegments += 1
             dictationStatus = Facts.dictationInserted(report.app, cleaned: cleaned != DictationCleanup.terminated(raw))
@@ -248,6 +252,37 @@ final class VoiceHUDState: ObservableObject {
         if case .listening = mode { mode = .listening(partial: "") }
         WindowCoordinator.shared.syncDockPanels()
         armDictationIdle()
+    }
+
+    /// 音声入力の「送信」: まだ入れていない文を入れ、入れた先のアプリで Return を押し、聞くのを終える。
+    /// 先にマイクを閉じる（後から同じ文の確定が届いて二重に入らないように）。
+    func sendDictation(pending: String) {
+        guard listenPurpose == .dictation else { return }
+        closeMicrophone()
+        let rest = pending.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Return を押すのは、この音声入力で文を入れたアプリだけ。そのアプリが前面で、欄にカーソルがあるときだけ。
+        // 以前は前面のアプリならどこでも押した（文を入れていないアプリで Return が押され得た）。
+        var pid = dictationInsertedPID
+        if !rest.isEmpty {
+            let target = pid ?? Dictation.targetPID()
+            let report = Dictation.insertReporting(DictationCleanup.terminated(DictationCleanup.clean(rest)), appPID: target)
+            guard report.ok else {
+                answer = Facts.dictationNotInserted(report.app, reason: report.method)
+                mode = .answer(answer)
+                return
+            }
+            pid = target
+        }
+        guard let pid, Dictation.frontmostOtherAppPID() == pid, Dictation.acceptsTyping(appPID: pid),
+              Dictation.pressReturn(in: pid) else {
+            answer = Facts.dictationSendFailed
+            mode = .answer(answer)
+            return
+        }
+        listeningAwaitingAudio = true
+        dictationStatus = nil
+        lastDictated = nil
+        mode = .idle
     }
 
     /// 30 秒話さなければ音声入力を終える（マイクを開いたままにしない）。

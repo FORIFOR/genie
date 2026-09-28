@@ -433,8 +433,11 @@ struct ListeningDock: View {
                     .accessibilityIdentifier("dockToggleMute")
                     .help(voice.isListeningMuted ? "音声入力を再開" : (isSpeechDenied ? "音声認識の許可が必要です（クリックで設定を開く）" : "音声入力を消音（ミュート）"))
 
-                    // テキストがあるときは送信ボタン
-                    if !textInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    // テキストがあるときは送信ボタン。音声入力では、入れた先のアプリで送信する（Return を押す）。
+                    // 以前は音声入力でも Genie への質問として送り、関係の無い「回答」が出ていた（2026-09-28 実機）。
+                    let dictating = voice.listenPurpose == .dictation && !voice.conversation.isActive
+                    if !textInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                        || (dictating && voice.dictatedSegments > 0) {
                         Button {
                             submitCurrentText()
                         } label: {
@@ -445,7 +448,8 @@ struct ListeningDock: View {
                         }
                         .buttonStyle(.plain)
                         .accessibilityIdentifier("dockSubmitInput")
-                        .help("送信 (Enter)")
+                        .accessibilityLabel(dictating ? Facts.dictationSend : "送信")
+                        .help(dictating ? Facts.dictationSendHelp : "送信 (Enter)")
                     }
 
                     // 逃げ道の鍵（Esc）
@@ -494,7 +498,11 @@ struct ListeningDock: View {
             isFieldFocused = true
         }
         .onChange(of: partial) { old, new in
-            if !new.isEmpty && (textInput.isEmpty || textInput == old) {
+            // 音声入力では、欄はいまの区切り（まだ入れていない文）だけを映す。入れた文を残すと、
+            // 送信で同じ文をもう一度入れてしまう。
+            if voice.listenPurpose == .dictation, !voice.conversation.isActive {
+                textInput = new
+            } else if !new.isEmpty && (textInput.isEmpty || textInput == old) {
                 textInput = new
             }
         }
@@ -505,6 +513,11 @@ struct ListeningDock: View {
     private func submitCurrentText() {
         let target = textInput.trimmingCharacters(in: .whitespacesAndNewlines)
         let toSend = target.isEmpty ? partial.trimmingCharacters(in: .whitespacesAndNewlines) : target
+        if voice.listenPurpose == .dictation, !voice.conversation.isActive {
+            // 音声入力: まだ入れていない文があれば入れてから、入れた先のアプリで送信する。
+            voice.sendDictation(pending: toSend)
+            return
+        }
         guard !toSend.isEmpty else { return }
         voice.submitText(toSend)
     }
