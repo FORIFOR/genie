@@ -445,6 +445,10 @@ export async function start(options) {
     if (options.computerUse) {
       runtimeEnv.ASTRA_COMPUTER_USE = 'on';
       runtimeEnv.ASTRA_COMPUTER_VISION_HELPER = computerHelper;
+      // 画面操作が止まった理由（helper の STAGE 行: どの段で何に阻まれたか）を host.log に残す。
+      // 行に画面の中身も入力した文字も入らない（helper 側の約束）。以前は環境を引き継がないので、
+      // 止まっても「target_changed」しか分からなかった（2026-09-28）。
+      runtimeEnv.ASTRA_COMPUTER_STAGE_LOG = process.env.ASTRA_COMPUTER_STAGE_LOG ?? 'on';
     }
     if (process.platform !== 'darwin')
       runtimeEnv.ASTRA_SECRET_STORE_FILE = join(stateDir, 'host-secrets.json');

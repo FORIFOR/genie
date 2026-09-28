@@ -94,6 +94,7 @@ enum SelfTest {
         case "inputfocus": Task { await inputFocus() }; return true
         case "micprobe": Task { await micProbe() }; return true
         case "micrelease": Task { await micRelease() }; return true
+        case "markmotion": Task { await markMotion() }; return true
         case "axprobe": axProbe(); return true
         case "dictationmic": Task { await dictationMic(args) }; return true
         case "aistop": Task { await aiStop(args) }; return true
@@ -656,6 +657,27 @@ enum SelfTest {
                 if case .info = hud.mode {} else { failures.append("\(name)=カードにならない") }
             })
         }
+        hud.mode = .idle
+
+        // 5-5. 仕事が複数（One Continuous Surface）: 1 件 1 行・確認待ちの行・止める。声・文字の依頼と同じ出来事で作る。
+        store.dismissResult()
+        let rowA = UUID(), rowB = UUID()
+        shoot("06h-agent-rows", {
+            store.apply(store.event(rowA, .started(title: "ページを要約して下書きにする", step: "要約を作成中")))
+            store.apply(store.event(rowB, .started(title: "定例議事メモを英訳", step: "翻訳中")))
+            store.apply(store.event(rowB, .awaitingApproval))
+            hud.mode = .idle
+        })
+        // 聞いている間も、動いている仕事は「実行中 n件」で残る。
+        shoot("06i-listening-running", { hud.mode = .listening(partial: "") })
+        hud.mode = .idle
+        // 結果を出していても、ほかに動いている仕事は消さない。
+        shoot("06j-result-others", {
+            store.apply(store.event(rowA, .succeeded(DockArtifact(kind: "下書き", title: "移行ガイドの要約",
+                                                                 detail: "312字 · Work に保存しました", actions: [.openWorkspace, .copy]))))
+        })
+        store.stopTask(rowB)
+        store.dismissResult()
         hud.mode = .idle
 
         // 6. Confirmation（requireConfirmation が Dock を展開する＝実遷移）

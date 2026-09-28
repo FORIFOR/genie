@@ -100,7 +100,8 @@ struct VoiceTaskDockView: View {
         case .listening:
             // 準備中（マイクがまだ開いていない）と消音中は動かさない（聞いているふりをしない）。
             let quiet = state.isListeningMuted || state.listeningAwaitingAudio
-            return (quiet ? .still : .listening, quiet ? 0 : state.inputLevel, DockMark.height,
+            // 届く値は peak で、話し声でも 0.05〜0.3。波形と同じく平方根で広げる（そのままでは輪郭がほぼ動かない）。
+            return (quiet ? .still : .listening, quiet ? 0 : state.inputLevel.squareRoot(), DockMark.height,
                     padV + (DockMark.rowHeight - DockMark.height) / 2)
         case .thinking:
             return (.working, 0, DockMark.height, padV + (DockMark.rowHeight - DockMark.height) / 2)
@@ -458,6 +459,16 @@ struct ListeningDock: View {
                     .accessibilityIdentifier("dockListeningInputField")
                     .frame(maxWidth: .infinity, alignment: .leading)
 
+                // 聞いている間も、動いている仕事は消さない（「実行中 n件」で残す。One Continuous Surface）。
+                if store.state.board.active.count > 0 {
+                    Text(Facts.taskRunningCount(store.state.board.active.count))
+                        .font(.system(size: S.type(Metrics.dockMetaSize), weight: .medium))
+                        .foregroundStyle(Palette.muted(dark))
+                        .padding(.horizontal, 6)
+                        .frame(height: 20)
+                        .background(RoundedRectangle(cornerRadius: 6).fill(Color.white.opacity(0.06)))
+                        .accessibilityIdentifier("listeningRunningCount")
+                }
                 HStack(spacing: 6) {
                     // ミュートボタン / 許可案内: ユーザーの指示「邪魔な場合は聞いています というUIにミュートを追加」
                     Button {
@@ -676,15 +687,27 @@ struct AgentDock: View {
     @Environment(\.colorScheme) private var scheme
     private var dark: Bool { scheme == .dark }
     @ObservedObject private var store = GenieStateStore.shared
-    @State private var tick = Date()
+
+    /// 動いている仕事（声・文字の依頼も会議の AI 操作も）。
+    private var active: [DockTask] { store.state.board.active }
+    /// 段で進む仕事（会議の AI 操作）が 1 件だけ動いているときは、その段を出す。それ以外は 1 件 1 行。
+    /// 以前は段の無い仕事（声・文字の依頼）でも段の面を出し、題が「実行中」、止めるも無かった。
+    private var detailed: Bool {
+        guard let task = store.state.activeTask, task.status == .running, !task.steps.isEmpty else { return false }
+        return active.count <= 1 && (active.first?.id ?? task.id) == task.id
+    }
 
     var body: some View {
         // 1b: 作業中の面は「作業名・段階・停止」だけ。経過・段数・進行帯・見出し・文脈は作業画面で見る。
         // 段の色（✓ ● ○）と各段の「いま何を見ているか」は残す。
         VStack(alignment: .leading, spacing: 12) {
             header
-            taskTitle
-            steps
+            if detailed {
+                taskTitle
+                steps
+            } else {
+                rows
+            }
             Spacer(minLength: 0)
             footer
         }
@@ -693,10 +716,11 @@ struct AgentDock: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         // 1b: 作業中だけ、面の下辺を細い流れが進む。進捗率ではない（Reduce Motion / selftest では描かない）。
         .overlay(alignment: .bottom) {
-            if store.state.activeTask?.status == .running { DockFlowLine() }
+            if active.contains(where: { $0.status == .running }) || store.state.activeTask?.status == .running { DockFlowLine() }
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("dockAgent")
+        .accessibilityLabel(Facts.dockRunningLabel(max(active.count, 1)))
     }
 
     /// 状態語。英語の rawValue をそのまま出していたので、面の中で言語が混ざっていた。
@@ -716,8 +740,12 @@ struct AgentDock: View {
                 .font(.system(size: S.type(Metrics.dockMetaSize), weight: .medium))
                 .foregroundStyle(Palette.muted(dark))
             Spacer(minLength: 0)
-            if let task = store.state.activeTask {
-                // 何をしているか（状態語）と、どこまで進んだか。
+            if !detailed, active.count > 1 {
+                Text(Facts.taskRunningCount(active.count))
+                    .font(.system(size: S.type(Metrics.dockMetaSize), weight: .medium))
+                    .foregroundStyle(Palette.muted(dark))
+            } else if let task = store.state.activeTask, detailed {
+                // 何をしているか（状態語）。
                 Text(statusLabel(task.status))
                     .font(.system(size: S.type(Metrics.dockMetaSize), weight: .medium))
                     .foregroundStyle(Palette.muted(dark))
@@ -725,26 +753,35 @@ struct AgentDock: View {
         }
     }
 
-    /// 進み具合は数字だけだと目に入らない。細い帯で出す。
-    @ViewBuilder private var progressBar: some View {
-        if let task = store.state.activeTask {
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Color.subtleFill(dark, 0.10))
-                    Capsule().fill(Palette.presence(dark))
-                        .frame(width: max(2, geo.size.width * task.progress))
+    /// 1 件 1 行: 題・いまの工程（確認待ちは注意色）・止める。進捗率は出さない（取れない）。
+    private var rows: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(Array(active.enumerated()), id: \.element.id) { index, task in
+                if index > 0 { Divider().overlay(Color.white.opacity(0.08)) }
+                HStack(spacing: 12) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(task.title)
+                            .font(.system(size: S.type(Metrics.dockRowSize), weight: .semibold))
+                            .foregroundStyle(Palette.text(dark))
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                        Text(task.status == .awaitingApproval ? Facts.taskAwaitingApproval : task.step)
+                            .font(.system(size: S.type(Metrics.dockMetaSize)))
+                            .foregroundStyle(task.status == .awaitingApproval ? Palette.warning(dark) : Palette.muted(dark))
+                            .lineLimit(1)
+                    }
+                    Spacer(minLength: 0)
+                    StopButton(label: Facts.taskStop,
+                               font: .system(size: S.type(Metrics.dockMetaSize), weight: .medium)) {
+                        GenieStateStore.shared.stopTask(task.id)
+                    }
+                    .accessibilityIdentifier("stopTask-\(index)")
+                    .accessibilityLabel("\(task.title)を\(Facts.taskStop)")
                 }
+                .padding(.vertical, 6)
             }
-            .frame(height: 3)
-            .animation(.easeOut(duration: Motion.drawerMs), value: task.progress)
-            .accessibilityIdentifier("agentProgress")
-            .accessibilityLabel("\(task.steps.count) 段のうち \(task.doneSteps) 段が終わりました")
         }
-    }
-
-    private func elapsedLabel(_ task: AgentTask) -> String {
-        let t = Int(max(0, tick.timeIntervalSince(task.startedAt)))
-        return String(format: "%02d:%02d", t / 60, t % 60)
+        .accessibilityIdentifier("agentRows")
     }
 
     /// 仕事の名前は状態語と分けて、1 行の見出しにする。
@@ -786,28 +823,10 @@ struct AgentDock: View {
         }
     }
 
-    /// 見ているもの。3 つの capsule（塗り + 線）で出していたが、ここで押せるものは
-    /// 無いので、押せそうな形を与えない。語を「·」で並べる（⑨ 図形の重さ）。
-    /// 名前は SOURCES から CONTEXT へ。結果の根拠（sources）ではなく、
-    /// いま Genie が見ている文脈だから。
-    @ViewBuilder private var contextChips: some View {
-        let items = store.state.context.items
-        if !items.isEmpty {
-            VStack(alignment: .leading, spacing: 6) {
-                DockLabel(text: Facts.dockContext)
-                Text(items.map(\.application).joined(separator: " · "))
-                    .font(.system(size: S.type(Metrics.dockMetaSize)))
-                    .foregroundStyle(Palette.text(dark))
-                    .lineLimit(1)
-            }
-            .accessibilityIdentifier("agentContextChips")
-        }
-    }
-
     private var footer: some View {
         HStack(spacing: 0) {
             // 走っている仕事は止められること。止め方が無いまま待たせない。
-            if store.state.activeTask?.status == .running {
+            if detailed {
                 // 押せる範囲を label へ付ける。Button の外側に .frame を付けると
                 // 当たりは文字のままで、実寸は 29x16 だった（隣の openWorkspace は
                 // 178x28）。**止める操作がいちばん小さい**のは、あってはならない。
@@ -1488,6 +1507,7 @@ struct ResultDock: View {
     @Environment(\.colorScheme) private var scheme
     private var dark: Bool { scheme == .dark }
     @ObservedObject private var sessions = MeetingSessionStore.shared
+    @ObservedObject private var store = GenieStateStore.shared
     let result: AgentResult
 
     /// 直近の会議の状態を 1 行で。processing の間は spinner だけにしない。
@@ -1561,6 +1581,14 @@ struct ResultDock: View {
                     .font(.system(size: S.type(Metrics.dockMetaSize)))
                     .foregroundStyle(Palette.muted(dark))
                     .accessibilityIdentifier("resultKept")
+            }
+            // 結果を出していても、ほかに動いている仕事は消さない。
+            let others = store.state.board.active.filter { $0.id != result.taskID }.count
+            if others > 0 {
+                Text(Facts.taskOthersRunning(others))
+                    .font(.system(size: S.type(Metrics.dockMetaSize)))
+                    .foregroundStyle(Palette.muted(dark))
+                    .accessibilityIdentifier("resultOthersRunning")
             }
             Spacer(minLength: 0)
             HStack(spacing: 6) {

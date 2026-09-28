@@ -12,6 +12,13 @@ import SwiftUI
 /// - 呼び出しの瞬間だけ横に伸びる（`stretchKey`）。受付と完了のときだけ一度膨らむ（`ackKey`）。
 /// - Reduce Motion と `--selftest` では時間を止める。動きの代わりに **静止した形で状態を描き分ける**
 ///   （listening = 輪郭を出す、working = 内側の青を中央に止める）。golden はこの静止形で撮る。
+/// 印の時間を止めるか。`--selftest` では止めて golden を再現できるようにする。
+/// 動きそのものを確かめる検査（`--selftest markmotion`）だけは `GENIE_ANIMATE_IN_SELFTEST=1` で動かす。
+enum GeniePresenceMotion {
+    static let frozen = CommandLine.arguments.contains("--selftest")
+        && ProcessInfo.processInfo.environment["GENIE_ANIMATE_IN_SELFTEST"] != "1"
+}
+
 enum GeniePresenceMode {
     case idle, still, listening, working
     var moving: Bool { self == .listening || self == .working }
@@ -57,7 +64,7 @@ struct GeniePresenceMark: View {
     @State private var stretch = false
     @State private var ack = false
 
-    private static let frozen = CommandLine.arguments.contains("--selftest")
+    private static let frozen = GeniePresenceMotion.frozen
     private var still: Bool { reduceMotion || Self.frozen }
 
     var body: some View {
@@ -132,7 +139,7 @@ struct DockFlowLine: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        if reduceMotion || CommandLine.arguments.contains("--selftest") {
+        if reduceMotion || GeniePresenceMotion.frozen {
             EmptyView()
         } else {
             GeometryReader { geo in

@@ -76,6 +76,14 @@ enum UserFacingFacts {
     static let resultClose = "閉じる"
     /// 失敗・中止した仕事の結果で、失われていないもの（依頼は Work の一覧に残る）。
     static let resultKept = "依頼は Work に残っています。"
+    /// 動いている仕事の数（聞く面・作業中の見出し）。進捗率ではない。
+    static func taskRunningCount(_ n: Int) -> String { "実行中 \(n)件" }
+    /// 結果を出している間に、ほかに動いている仕事。
+    static func taskOthersRunning(_ n: Int) -> String { "他 \(n) 件 実行中" }
+    static let taskAwaitingApproval = "確認待ち"
+    /// VoiceOver: 作業中の面の名前。
+    static func dockRunningLabel(_ n: Int) -> String { "Genie: \(n)件 実行中" }
+    static let confirmationNeeded = "確認が必要です"
     /// 音声入力で言い淀みを消して入れたとき。
     static let dictationCleaned = "言い淀みを消して入れました"
     static let dictationRestore = "元の文に戻す"
@@ -264,6 +272,8 @@ enum UserFacingFacts {
             f("task.working", taskWorking, false),
             f("result.close", resultClose, false),
             f("result.kept", resultKept, false),
+            f("task.awaitingApproval", taskAwaitingApproval, false),
+            f("confirmation.needed", confirmationNeeded, false),
             f("dictation.cleaned", dictationCleaned, false),
             f("dictation.restore", dictationRestore, false),
             f("dictation.restored", dictationRestored, false),

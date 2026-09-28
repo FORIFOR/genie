@@ -54,7 +54,9 @@ final class GenieStateStore: ObservableObject {
 
     private func applyDock(_ presentation: DockPresentation) {
         guard state.dock != presentation else { return }
+        let previous = state.dock
         state.dock = presentation
+        DockAnnouncer.announce(presentation, previous: previous, activeCount: state.board.active.count)
         // マイクが開いたまま、止める手の無い面にしない（会話を終える / 音声入力のマイクを閉じる）。
         VoiceHUDState.shared.dockChanged(to: presentation)
         setMode(activity(showing: presentation))
