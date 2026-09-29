@@ -75,6 +75,9 @@ final class GeminiLiveTests: XCTestCase {
         let tool = ((setup?["tools"] as? [[String: Any]])?.first?["functionDeclarations"] as? [[String: Any]])?.first
         XCTAssertEqual(tool?["behavior"] as? String, "NON_BLOCKING", "仕事の完了を待たずに会話を続ける")
         XCTAssertTrue(GeminiLiveProvider.instruction.contains("日本語"), "言語は指示で決める")
+        let voice = (((setup?["generationConfig"] as? [String: Any])?["speechConfig"] as? [String: Any])?["voiceConfig"] as? [String: Any])?["prebuiltVoiceConfig"] as? [String: Any]
+        XCTAssertEqual(voice?["voiceName"] as? String, "Kore", "声は本人の指定どおり Kore")
+        XCTAssertTrue(GeminiLiveProvider.instruction.contains("丁寧な言葉づかい"), "丁寧な受け答え")
     }
 
     func testResumeHandleIsSentOnlyWhenGiven() {

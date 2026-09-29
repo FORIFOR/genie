@@ -23,6 +23,8 @@ enum GeminiLive {
     static let silenceDurationMs = 650
     /// 話し始めの直前も拾う（語頭の欠け防止）。
     static let prefixPaddingMs = 200
+    /// 声（本人の指定、2026-09-29）。公式の prebuilt voice の名前（`speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName`）。
+    static let voiceName = "Kore"
 
     /// 接続の設定。**3.8 Live で送ってはいけない設定を入れない**（`thinkingConfig`・`enableAffectiveDialog`・
     /// `proactivity`・`languageCode`。3.8 では proactive audio が常に有効で、false はエラー。言語は指示で決める）。
@@ -34,7 +36,10 @@ enum GeminiLive {
         return [
             "setup": [
                 "model": "models/\(model)",
-                "generationConfig": ["responseModalities": ["AUDIO"]],
+                "generationConfig": [
+                    "responseModalities": ["AUDIO"],
+                    "speechConfig": ["voiceConfig": ["prebuiltVoiceConfig": ["voiceName": voiceName]]],
+                ],
                 "systemInstruction": ["parts": [["text": instruction]]],
                 "inputAudioTranscription": [String: Any](),
                 "outputAudioTranscription": [String: Any](),
