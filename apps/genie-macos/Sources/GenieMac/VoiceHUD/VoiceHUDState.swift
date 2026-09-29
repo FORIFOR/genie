@@ -430,7 +430,7 @@ final class VoiceHUDState: ObservableObject {
         // 会話で答えのカードを残したまま次を聞いているとき、話し始めたら聞いている面へ移る。
         if conversation.isActive, !text.isEmpty {
             switch mode {
-            case .answer, .info: mode = .listening(partial: "")
+            case .answer, .card: mode = .listening(partial: "")
             default: break
             }
         }
@@ -537,7 +537,7 @@ final class VoiceHUDState: ObservableObject {
         updateEscapeMonitor(for: dock)
         if conversation.isActive {
             switch dock {
-            case .listening, .thinking, .answer, .info, .ack: return
+            case .listening, .thinking, .answer, .card, .ack: return
             default: endConversation(.replaced)
             }
             return
@@ -735,7 +735,7 @@ final class VoiceHUDState: ObservableObject {
                 inputLevels = []
                 listeningAwaitingAudio = true
                 // 答えのカードは残したまま次を聞く（読み上げを聞き逃しても見返せる）。話し始めたら聞く面へ。
-                let showingAnswer: Bool = switch mode { case .answer, .info: true; default: false }
+                let showingAnswer: Bool = switch mode { case .answer, .card: true; default: false }
                 if GenieStateStore.shared.state.confirmation == nil, !showingAnswer { mode = .listening(partial: "") }
                 // 消音中は開かない（面は「消音中」なのにマイクが開き、Gemini では声が送られていた）。
                 // 消音を解いた時に `toggleListeningMute` が開く。
@@ -1063,14 +1063,14 @@ final class VoiceHUDState: ObservableObject {
                             self?.dropFromDock(task.id)
                             return nil
                         }
-                        // 後から届いた結果は Work に残る。天気・ニュースのカードは、これがいちばん新しい依頼で、
+                        // 後から届いた結果は Work に残る。例外のカード（天気・ニュース…）は、これがいちばん新しい依頼で、
                         // 会話が次のターンを聞いていないときだけ出す（聞いている面・新しい答えを上書きしない）。
                         // それ以外は Dock の結果（何ができたかと、開く・コピー）になる。
-                        if let card = later.info, card.hasContent {
+                        if let card = later.card, card.hasContent {
                             self?.dropFromDock(task.id)
                             if let self, self.latestRequestID == task.id, !self.conversation.isActive, !self.isListeningSurface {
                                 self.answer = later.text
-                                self.mode = .info(card)
+                                self.mode = .card(card)
                             }
                         } else {
                             self?.finishOnDock(task.id, reply: later, title: task.title)
@@ -1252,9 +1252,9 @@ final class VoiceHUDState: ObservableObject {
         return current
     }
 
-    /// 答えの見せ方。天気・ニュースでカードに描くものがあればカード、無ければ文。
+    /// 答えの見せ方。例外のカードに描くものがあればカード、無ければ文。
     nonisolated static func presentation(for reply: TaskReply) -> DockPresentation {
-        if let card = reply.info, card.hasContent { return .info(card) }
+        if let card = reply.card, card.hasContent { return .card(card) }
         return .answer(reply.text)
     }
 
@@ -1266,9 +1266,9 @@ final class VoiceHUDState: ObservableObject {
             guard !body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
                 return TaskReply(text: "成果物の内容が空でした。状況を確認してください。", phase: .needsInput, artifactID: artifactID)
             }
-            // 天気・ニュースは JSON の成果物。カードと、そのまま読める文に分ける。
-            if let card = InfoCard.decode(body) {
-                return TaskReply(text: card.text, phase: .complete, artifactID: artifactID, info: card)
+            // 例外のカード（天気・ニュース…）は JSON の成果物。カードと、そのまま読める文に分ける。
+            if let card = DockCard.decode(body) {
+                return TaskReply(text: card.text, phase: .complete, artifactID: artifactID, card: card)
             }
             return TaskReply(text: body, phase: .complete, artifactID: artifactID)
         case "FAILED": return TaskReply(text: "処理を完了できませんでした。依頼を見直すか、接続を確認してください。", phase: .failed)

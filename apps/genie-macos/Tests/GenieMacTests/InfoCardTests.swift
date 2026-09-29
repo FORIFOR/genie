@@ -10,14 +10,14 @@ final class InfoCardTests: XCTestCase {
         let reply = VoiceHUDState.taskReply(status: "COMPLETED", artifactID: "a1") { weather }
         XCTAssertEqual(reply.phase, .complete)
         XCTAssertEqual(reply.text, "明日の東京都は雨。最高22℃、最低20℃、降水確率78%です。")
-        let card = try XCTUnwrap(reply.info)
+        guard case .info(let card) = try XCTUnwrap(reply.card) else { return XCTFail("expected an info card") }
         XCTAssertEqual(card.kind, .weather)
         XCTAssertEqual(card.weather?.days.first?.high, 22.0)
         XCTAssertEqual(card.weather?.days.first?.precipitation, 78)
         XCTAssertEqual(card.sources.map(\.name), ["Open-Meteo.com"])
         XCTAssertNotNil(card.fetchedAt)
         XCTAssertEqual(InfoCard.Weather.symbol(for: 63), "cloud.rain.fill")
-        guard case .info(let shown) = VoiceHUDState.presentation(for: reply) else { return XCTFail("expected a card") }
+        guard case .card(.info(let shown)) = VoiceHUDState.presentation(for: reply) else { return XCTFail("expected a card") }
         XCTAssertEqual(shown, card)
     }
 
@@ -39,7 +39,7 @@ final class InfoCardTests: XCTestCase {
     func testOrdinaryAnswersAndUnknownSchemasStayText() {
         for body in ["# 答え\n本文", #"{"schema":"other/v1","kind":"weather","text":"x"}"#, #"{"schema":"genie.info/v1","kind":"quote","text":"x"}"#] {
             let reply = VoiceHUDState.taskReply(status: "COMPLETED", artifactID: "a1") { body }
-            XCTAssertNil(reply.info, body)
+            XCTAssertNil(reply.card, body)
             XCTAssertEqual(reply.text, body)
         }
     }
@@ -47,9 +47,9 @@ final class InfoCardTests: XCTestCase {
     @MainActor
     func testInfoDockStaysWithinItsDeclaredCeiling() throws {
         let card = try XCTUnwrap(InfoCard.decode(news))
-        let size = DockPresentation.info(card).size()
+        let size = DockPresentation.card(.info(card)).size()
         XCTAssertEqual(size.width, Metrics.dockResultWidth)
-        XCTAssertLessThanOrEqual(size.height, Metrics.dockInfoMaxHeight)
+        XCTAssertLessThanOrEqual(size.height, Metrics.dockCardMaxHeight)
         XCTAssertGreaterThan(size.height, 60)
     }
 }

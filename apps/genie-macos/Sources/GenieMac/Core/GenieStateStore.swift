@@ -88,7 +88,7 @@ final class GenieStateStore: ObservableObject {
         case .agent: return .acting
         case .confirmation: return .awaitingConfirmation
         case .meeting, .enteringRecording: return .meeting
-        case .answer, .info: return .completed
+        case .answer, .card: return .completed
         case .ack: return .acting
         case .dictated: return .idle
         case .result: return .completed
@@ -436,7 +436,7 @@ final class GenieStateStore: ObservableObject {
             return
         }
         switch state.dock {
-        case .answer, .info, .result:
+        case .answer, .card, .result:
             // 会話の途中なら、カードを閉じても会話は続いている。マイクが開いている姿を隠さない。
             setDock(VoiceHUDState.shared.conversation.isActive ? .listening(partial: "") : .idle)
         default: break

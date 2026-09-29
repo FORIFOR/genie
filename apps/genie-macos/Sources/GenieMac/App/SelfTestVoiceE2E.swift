@@ -102,7 +102,7 @@ extension SelfTest {
         while Date() < deadline {
             try? await Task.sleep(nanoseconds: 100_000_000)
             if case .listening(let partial) = hud.mode, !partial.isEmpty { heard = partial }
-            if case .info = hud.mode { sawCard = true }
+            if case .card = hud.mode { sawCard = true }
             switch stage {
             case "listen":
                 if hud.conversation.phase == .waiting {
@@ -153,7 +153,7 @@ extension SelfTest {
             try? await Task.sleep(nanoseconds: 100_000_000)
             if dictated != nil { break }
             if hud.latestRequestID != before, !hud.requestInFlight {
-                if case .info = hud.mode { answer = hud.answer; break }
+                if case .card = hud.mode { answer = hud.answer; break }
                 if case .answer(let t) = hud.mode { answer = t; break }
             }
         }

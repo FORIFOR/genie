@@ -128,7 +128,7 @@ struct VoiceTaskDockView: View {
         case .confirmation(let confirmation): ConfirmationDock(confirmation: confirmation).id(confirmation.id)
         case .meeting(let panel): MeetingDock(open: panel)
         case .answer(let text): AnswerDock(text: text)
-        case .info(let card): InfoDock(card: card)
+        case .card(let card): DockCardView(card: card)
         case .result(let result): ResultDock(result: result)
         case .contextDetail: ContextDetailDock()
         case .quickActions: QuickActionsDock()

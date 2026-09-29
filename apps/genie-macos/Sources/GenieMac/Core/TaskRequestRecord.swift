@@ -57,8 +57,8 @@ struct TaskReply {
     var text: String
     var phase: TaskRequestRecord.Phase
     var artifactID = ""
-    /// 天気・ニュースの答えなら、そのカード。`text` はカードの文（Work にはこちらを残す）。
-    var info: InfoCard? = nil
+    /// 例外のカード（天気・ニュース…）の答えなら、そのカード。`text` はカードの文（Work にはこちらを残す）。
+    var card: DockCard? = nil
     var settled: Bool { phase != .working && phase != .waiting }
 }
 

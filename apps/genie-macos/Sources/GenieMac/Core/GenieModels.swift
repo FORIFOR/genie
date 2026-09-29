@@ -34,8 +34,8 @@ enum DockPresentation: Equatable {
     case meeting(expanded: MeetingPanel?)
     /// すぐ返せる短い回答。Task Dock の中で確認でき、作業画面へ遷移しない。
     case answer(String)
-    /// 天気・ニュースの答え。回答面と同じ幅で、種類ごとの段に描く（`InfoDock`）。
-    case info(InfoCard)
+    /// 例外のカード（天気・ニュース・近くの店…）。回答面と同じ幅で、種類ごとの段に描く（`DockCardView`、DESIGN.md §8）。
+    case card(DockCard)
     /// 仕事が終わった直後。消して終わらせず、後始末だけ出して残す（CleanShot の Quick Access）。
     case result(AgentResult)
     /// 文脈の棚を開いた状態（Dropover: 棚そのものが詳細へ展開する）。
@@ -124,11 +124,11 @@ enum DockPresentation: Equatable {
             // 短い回答は結果面と同じ幅で測る。長い回答も Dock 内でスクロールできる。会話の間は聞く面と同じ幅。
             return measured(VoiceHUDState.shared.conversation.isActive ? Metrics.dockListeningWidth : Metrics.dockResultWidth,
                             fallback: Metrics.dockResultHeight)
-        case .info:
+        case .card:
             // 回答面と同じ幅。高さは中身で、確認面と同じ理由で上限を置く（作業面ほど大きくしない）。
             let s = measured(VoiceHUDState.shared.conversation.isActive ? Metrics.dockListeningWidth : Metrics.dockResultWidth,
                              fallback: Metrics.dockResultHeight)
-            return CGSize(width: s.width, height: min(Metrics.dockInfoMaxHeight, s.height))
+            return CGSize(width: s.width, height: min(Metrics.dockCardMaxHeight, s.height))
         case .result:
             return measured(Metrics.dockResultWidth, fallback: Metrics.dockResultHeight)
         case .dictated:

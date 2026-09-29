@@ -17,7 +17,7 @@ import SwiftUI
 /// - `.confirmation`: 決断の面が作業面ほど大きくならないよう **上限 360**
 /// - `.idle` / `.appContext`（畳んだ棚）: Dynamic Island の寸法そのもの（token）
 ///
-/// `.answer` / `.info` / `.result` は中身を測る（短い回答も結果面と同じ幅で、長文は面内でスクロール）。
+/// `.answer` / `.card` / `.result` は中身を測る（短い回答も結果面と同じ幅で、長文は面内でスクロール）。
 ///
 /// 測るのは `NSHostingView.fittingSize`。実際に窓へ載せる view と同じ型・同じ幅・
 /// 同じ environment（dark / UIScale）で測るので、窓の中でだけ違う高さになることはない。
@@ -52,7 +52,7 @@ enum DockContentMeasure {
         case .confirmation(let c): body = AnyView(ConfirmationDock(confirmation: c))
         case .result(let r): body = AnyView(ResultDock(result: r))
         case .answer(let text): body = AnyView(AnswerDock(text: text))
-        case .info(let card): body = AnyView(InfoDock(card: card))
+        case .card(let card): body = AnyView(DockCardView(card: card))
         case .contextDetail: body = AnyView(ContextDetailDock())
         case .quickActions: body = AnyView(QuickActionsDock())
         case .ack(let ack): body = AnyView(AckDock(ack: ack))

@@ -646,17 +646,12 @@ enum SelfTest {
             store.finishTask(.failed)
         })
 
-        // 5-4. いまの情報（天気・ニュース）。本番と同じく成果物の JSON を taskReply → presentation に通す。
-        // 撮るたびに変わらないよう、取得時刻は固定・ニュースの時刻は無し（相対表記が撮影時刻で変わる）。
-        for (name, body) in [
-            ("06e-info-weather", #"{"schema":"genie.info/v1","kind":"weather","text":"大阪の天気: 今日 雨 24℃/20℃ 降水95%、明日 くもり 25℃/19℃ 降水30%。","data":{"place":"大阪","current":null,"days":[{"date":"2026-09-27","label":"今日","code":63,"summary":"雨","high":24.0,"low":20.2,"precipitation":95},{"date":"2026-09-28","label":"明日","code":3,"summary":"くもり","high":25.1,"low":19.4,"precipitation":30},{"date":"2026-09-29","label":"明後日","code":2,"summary":"晴れ時々くもり","high":26.0,"low":18.8,"precipitation":10},{"date":"2026-09-30","label":"9/30(水)","code":0,"summary":"快晴","high":27.2,"low":18.1,"precipitation":0}]},"sources":[{"name":"Open-Meteo.com","url":"https://open-meteo.com/"}],"fetched_at":"2026-09-27T00:30:00Z"}"#),
-            ("06g-info-weather-day", #"{"schema":"genie.info/v1","kind":"weather","text":"明日の東京都は雨。最高22℃、最低20℃、降水確率78%です。","data":{"place":"東京都","current":null,"days":[{"date":"2026-09-28","label":"明日","code":63,"summary":"雨","high":21.9,"low":19.5,"precipitation":78}]},"sources":[{"name":"Open-Meteo.com","url":"https://open-meteo.com/"}],"fetched_at":"2026-09-27T00:30:00Z"}"#),
-            ("06f-info-news", #"{"schema":"genie.info/v1","kind":"news","text":"主なニュース（NHK）: 1. 台風26号 沖縄に接近へ","data":{"topic":null,"items":[{"title":"台風26号 沖縄に接近へ 来週も東～西日本は雨降りやすい見込み","url":"https://news.web.nhk/a","source":"NHK","published_at":null},{"title":"首相 米大統領と電話会談 米中首脳会談の内容説明受ける","url":"https://news.web.nhk/b","source":"NHK","published_at":null},{"title":"タイで大雨続き 首都バンコクでも浸水被害広がる","url":"https://news.web.nhk/c","source":"NHK","published_at":null}]},"sources":[{"name":"NHK","url":"https://news.web.nhk/"}],"fetched_at":"2026-09-27T00:30:00Z"}"#),
-        ] {
+        // 5-4. 例外のカード（天気・ニュース…）。本番と同じく成果物の JSON を taskReply → presentation に通す。
+        for (name, body) in cardFixtures {
             shoot(name, {
                 let reply = VoiceHUDState.taskReply(status: "COMPLETED", artifactID: "shot") { body }
                 hud.mode = VoiceHUDState.presentation(for: reply)
-                if case .info = hud.mode {} else { failures.append("\(name)=カードにならない") }
+                if case .card = hud.mode {} else { failures.append("\(name)=カードにならない") }
             })
         }
         hud.mode = .idle
@@ -1521,6 +1516,14 @@ enum SelfTest {
         }
     }
 
+    /// 例外のカードの fixture（成果物の JSON）。dock8 が撮り、occupation が上限を測る。
+    /// 撮るたびに変わらないよう、取得時刻は固定・ニュースの時刻は無し（相対表記が撮影時刻で変わる）。
+    static let cardFixtures: [(String, String)] = [
+        ("06e-info-weather", #"{"schema":"genie.info/v1","kind":"weather","text":"大阪の天気: 今日 雨 24℃/20℃ 降水95%、明日 くもり 25℃/19℃ 降水30%。","data":{"place":"大阪","current":null,"days":[{"date":"2026-09-27","label":"今日","code":63,"summary":"雨","high":24.0,"low":20.2,"precipitation":95},{"date":"2026-09-28","label":"明日","code":3,"summary":"くもり","high":25.1,"low":19.4,"precipitation":30},{"date":"2026-09-29","label":"明後日","code":2,"summary":"晴れ時々くもり","high":26.0,"low":18.8,"precipitation":10},{"date":"2026-09-30","label":"9/30(水)","code":0,"summary":"快晴","high":27.2,"low":18.1,"precipitation":0}]},"sources":[{"name":"Open-Meteo.com","url":"https://open-meteo.com/"}],"fetched_at":"2026-09-27T00:30:00Z"}"#),
+        ("06g-info-weather-day", #"{"schema":"genie.info/v1","kind":"weather","text":"明日の東京都は雨。最高22℃、最低20℃、降水確率78%です。","data":{"place":"東京都","current":null,"days":[{"date":"2026-09-28","label":"明日","code":63,"summary":"雨","high":21.9,"low":19.5,"precipitation":78}]},"sources":[{"name":"Open-Meteo.com","url":"https://open-meteo.com/"}],"fetched_at":"2026-09-27T00:30:00Z"}"#),
+        ("06f-info-news", #"{"schema":"genie.info/v1","kind":"news","text":"主なニュース（NHK）: 1. 台風26号 沖縄に接近へ","data":{"topic":null,"items":[{"title":"台風26号 沖縄に接近へ 来週も東～西日本は雨降りやすい見込み","url":"https://news.web.nhk/a","source":"NHK","published_at":null},{"title":"首相 米大統領と電話会談 米中首脳会談の内容説明受ける","url":"https://news.web.nhk/b","source":"NHK","published_at":null},{"title":"タイで大雨続き 首都バンコクでも浸水被害広がる","url":"https://news.web.nhk/c","source":"NHK","published_at":null}]},"sources":[{"name":"NHK","url":"https://news.web.nhk/"}],"fetched_at":"2026-09-27T00:30:00Z"}"#),
+    ]
+
     /// geometry / occupation が測る 6 状態。名前は正解画像（task-dock/）と揃える。
     @MainActor
     private static func geometryStates() -> [(String, () -> Void)] {
@@ -1585,7 +1588,7 @@ enum SelfTest {
         let dockKey = "window:GeniePanel<VoiceTaskDockView>"
         let workspaceKey = "window:GeniePanel<RecordingWorkspaceView>"
         // 状態ごとの上限（token）。03 の agent は行数で伸びるので、出している 3 行ぶん。
-        let ceilings: [String: [(String, CGFloat, CGFloat)]] = [
+        var ceilings: [String: [(String, CGFloat, CGFloat)]] = [
             "01-idle": [(dockKey, Metrics.dockIdleWidth, Metrics.dockIdleHeight)],
             "02-listening": [(dockKey, Metrics.dockListeningWidth, Metrics.dockListeningHeight)],
             "03-task-dock": [(dockKey, Metrics.dockAgentWidth, Metrics.dockAgentHeightBase + Metrics.dockAgentRowHeight * 3)],
@@ -1594,13 +1597,23 @@ enum SelfTest {
             "06-workspace": [(dockKey, Metrics.dockMeetingWidth, Metrics.dockMeetingExpandedHeight),
                              (workspaceKey, Metrics.workspaceWidth, Metrics.workspaceHeight)],
         ]
+        // 例外のカード（DESIGN.md §8）。回答面の幅と、カードの高さの上限。
+        let cardStates: [(String, () -> Void)] = cardFixtures.map { name, body in
+            ("card-" + name, {
+                WindowCoordinator.shared.hideRecordingWorkspace()
+                GenieStateStore.shared.reset()
+                VoiceHUDState.shared.mode = VoiceHUDState.presentation(
+                    for: VoiceHUDState.taskReply(status: "COMPLETED", artifactID: "occupation") { body })
+            })
+        }
+        for (name, _) in cardStates { ceilings[name] = [(dockKey, Metrics.dockResultWidth, Metrics.dockCardMaxHeight)] }
         let refW = 1440.0, refH = 900.0
 
         GenieStateStore.shared.reset()
         WindowCoordinator.shared.showVoiceHUD()
         var fail: [String] = []
         var measured = 0
-        for (name, present) in geometryStates() {
+        for (name, present) in geometryStates() + cardStates {
             present()
             settle(1.2)
             guard let snap = UIGeometry.snapshot() else { fail.append("\(name): 実寸を読めない"); continue }

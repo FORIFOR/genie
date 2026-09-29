@@ -3,32 +3,23 @@ import SwiftUI
 
 // MARK: - いまの情報（天気・ニュース）
 
-/// 天気・ニュースの答え。回答面（`AnswerDock`）と同じ幅・同じ縁・同じ見出しの操作で、
+/// 天気・ニュースの答え。外側は `DockCardScaffold`（回答面と同じ幅・縁・見出しの操作）、
 /// 中身だけを種類ごとの段にする（docs/ux-benchmark/compare/info-card/ROUND.md）。
 ///
 /// 数字は取得元の値だけ。出所（Open-Meteo.com / NHK / Google ニュース）と取得時刻を必ず出す。
-/// 高さは中身で決まり（`DockContentMeasure`）、`dockInfoMaxHeight` を上限にする。
 struct InfoDock: View {
-    @Environment(\.colorScheme) private var scheme
-    private var dark: Bool { scheme == .dark }
     let card: InfoCard
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            header
+        DockCardScaffold(symbol: card.kind == .weather ? "cloud.sun" : "newspaper",
+                         title: title, copyText: card.text,
+                         sources: card.sources.map(\.name), fetchedAt: card.fetchedAt,
+                         identifier: "info") {
             switch card.kind {
             case .weather: if let weather = card.weather { WeatherBody(weather: weather) }
             case .news: if let news = card.news { NewsBody(news: news) }
             }
-            provenance
-            ConversationBar()
         }
-        .padding(.horizontal, S.metric(Metrics.dockPadH))
-        .padding(.vertical, S.metric(Metrics.dockPadV))
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .escapeKey { GenieStateStore.shared.dismissResult() }
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("dockInfo")
     }
 
     private var title: String {
@@ -41,55 +32,6 @@ struct InfoDock: View {
             if let topic = card.news?.topic { return "「\(topic)」のニュース" }
             return "主なニュース"
         }
-    }
-
-    private var header: some View {
-        HStack(spacing: 9) {
-            Image(systemName: card.kind == .weather ? "cloud.sun" : "newspaper")
-                .font(.system(size: 13))
-                .foregroundStyle(Palette.accent(dark))
-            Text(title)
-                .font(.system(size: S.type(Metrics.dockTitleSize), weight: .semibold))
-                .foregroundStyle(Palette.text(dark))
-                .lineLimit(1)
-            Spacer(minLength: 0)
-            Button { copy() } label: {
-                Text(Facts.resultCopy)
-                    .font(.system(size: S.type(Metrics.dockMetaSize), weight: .medium))
-                    .foregroundStyle(Palette.text(dark))
-                    .frame(height: 28)
-                    .padding(.horizontal, 9)
-            }
-            .buttonStyle(GenieControlStyle(radius: 7, base: 0.06))
-            .accessibilityIdentifier("infoCopy")
-            // 会話中は ✕ を出さない（カードを閉じるのか会話を終えるのかが分からない。終えるのは下の行）。
-            if !VoiceHUDState.shared.conversation.isActive {
-            Button { GenieStateStore.shared.dismissResult() } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 11))
-                    .foregroundStyle(Palette.muted(dark))
-                    .frame(width: 28, height: 28)
-            }
-            .buttonStyle(GenieControlStyle(radius: 7, base: 0.0))
-            .accessibilityIdentifier("infoDismiss")
-            .accessibilityLabel("回答を閉じる")
-            }
-        }
-    }
-
-    /// 出所と取得時刻。値の由来を読めない答えにしない。
-    private var provenance: some View {
-        let names = card.sources.map(\.name).joined(separator: "・")
-        let time = card.fetchedAt.map { " · \($0.formatted(date: .omitted, time: .shortened)) 取得" } ?? ""
-        return Text("出所 \(names)\(time)")
-            .font(.system(size: S.type(Metrics.dockLabelSize)))
-            .foregroundStyle(Palette.muted(dark))
-            .accessibilityIdentifier("infoProvenance")
-    }
-
-    private func copy() {
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(card.text, forType: .string)
     }
 }
 
