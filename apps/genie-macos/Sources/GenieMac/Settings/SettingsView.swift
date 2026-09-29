@@ -85,6 +85,7 @@ struct SettingsView: View {
                     Text("「会話」の間の声と文字起こしを Google に送ります。")
                     Text("利用料はあなたの API キーにかかります。")
                     Text("「聞く」と会議の録音は送りません。")
+                    Text("天気やニュースは Gemini が Google 検索で答えます。")
                     Text("仕事の中身は Google に返しません。")
                 }
                 .font(.system(size: 11)).foregroundStyle(.primary).opacity(0.78)

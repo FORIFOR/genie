@@ -7,14 +7,23 @@ final class GeminiLiveTests: XCTestCase {
         (try? JSONSerialization.jsonObject(with: Data(json.utf8))) as? [String: Any] ?? [:]
     }
 
-    func testSetupAsksForAudioWithTranscriptsAndOnlyTheDelegateTool() {
+    func testSetupAsksForAudioWithTranscriptsSearchAndOnlyTheDelegateFunction() {
         let setup = object(GeminiLive.json(GeminiLive.setup(instruction: "短く")))["setup"] as? [String: Any]
         XCTAssertEqual(setup?["model"] as? String, "models/gemini-3.8-live")
         XCTAssertEqual((setup?["generationConfig"] as? [String: Any])?["responseModalities"] as? [String], ["AUDIO"])
         XCTAssertNotNil(setup?["inputAudioTranscription"])
         XCTAssertNotNil(setup?["outputAudioTranscription"])
-        let tools = (setup?["tools"] as? [[String: Any]])?.first?["functionDeclarations"] as? [[String: Any]]
-        XCTAssertEqual(tools?.map { $0["name"] as? String }, ["delegate_task"], "道具は仕事を渡す 1 つだけ")
+        let tools = setup?["tools"] as? [[String: Any]] ?? []
+        XCTAssertEqual(tools.flatMap { $0.keys }.sorted(), ["functionDeclarations", "googleSearch"], "道具は Google 検索と、仕事を渡す関数だけ")
+        let functions = tools.compactMap { $0["functionDeclarations"] as? [[String: Any]] }.flatMap { $0 }
+        XCTAssertEqual(functions.map { $0["name"] as? String }, ["delegate_task"], "関数は仕事を渡す 1 つだけ")
+    }
+
+    func testQuotaAndKeyClosuresAreExplainedInsteadOfRetried() {
+        XCTAssertTrue(GeminiLive.fatalCloseMessage(code: 1011, reason: "You exceeded your current quota, please check your plan and billing details.")?.contains("利用枠") == true)
+        XCTAssertTrue(GeminiLive.fatalCloseMessage(code: 1008, reason: "API key not valid.")?.contains("API キー") == true)
+        XCTAssertNil(GeminiLive.fatalCloseMessage(code: 1001, reason: nil), "回線の切断はつなぎ直す")
+        XCTAssertNil(GeminiLive.fatalCloseMessage(code: 1011, reason: "Internal error"), "一時的な内部エラーはつなぎ直す")
     }
 
     func testAudioIsSixteenBitLittleEndianPCMAtSixteenKilohertz() throws {
@@ -72,12 +81,15 @@ final class GeminiLiveTests: XCTestCase {
         XCTAssertTrue((500...800).contains(silence), "話し終わりの判定は公式の推奨 500〜800ms の中（\(silence)）")
         XCTAssertNotNil(setup?["contextWindowCompression"], "長い会話は履歴を圧縮する")
         XCTAssertNotNil(setup?["sessionResumption"], "接続が切れても同じ会話へ戻れる")
-        let tool = ((setup?["tools"] as? [[String: Any]])?.first?["functionDeclarations"] as? [[String: Any]])?.first
+        let tool = (setup?["tools"] as? [[String: Any]])?.compactMap { $0["functionDeclarations"] as? [[String: Any]] }.first?.first
         XCTAssertEqual(tool?["behavior"] as? String, "NON_BLOCKING", "仕事の完了を待たずに会話を続ける")
         XCTAssertTrue(GeminiLiveProvider.instruction.contains("日本語"), "言語は指示で決める")
         let voice = (((setup?["generationConfig"] as? [String: Any])?["speechConfig"] as? [String: Any])?["voiceConfig"] as? [String: Any])?["prebuiltVoiceConfig"] as? [String: Any]
         XCTAssertEqual(voice?["voiceName"] as? String, "Kore", "声は本人の指定どおり Kore")
         XCTAssertTrue(GeminiLiveProvider.instruction.contains("丁寧な言葉づかい"), "丁寧な受け答え")
+        XCTAssertTrue(GeminiLiveProvider.instruction.contains("Google 検索で調べて"), "公開情報は検索して声で伝える")
+        XCTAssertTrue(GeminiLiveProvider.instruction.contains("断らずに"), "注文・予約は断らずに Genie へ渡す（確定の前に Genie が本人に確認する）")
+        XCTAssertFalse(GeminiLiveProvider.instruction.contains("許可されるまで実行しないでください"), "承認は Genie の確認カードが受け持つ。Gemini に断らせない")
     }
 
     func testResumeHandleIsSentOnlyWhenGiven() {

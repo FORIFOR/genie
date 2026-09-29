@@ -25,7 +25,10 @@ extension SelfTest {
         var seen: [String] = []
         var audioBytes = 0
         do {
-            try await send(GeminiLive.setup(instruction: "日本語で一言だけ返事をしてください。"))
+            // GENIE_GEMINI_SMOKE_PROMPT: 本番の指示で 1 ターン試す（検索・仕事の依頼の振る舞いを確かめる）。
+            let prompt = ProcessInfo.processInfo.environment["GENIE_GEMINI_SMOKE_PROMPT"]
+            try await send(GeminiLive.setup(instruction: prompt == nil ? "日本語で一言だけ返事をしてください。" : GeminiLiveProvider.instruction))
+            var said = ""
             let deadline = Date().addingTimeInterval(30)
             var sentTurn = false
             loop: while Date() < deadline {
@@ -41,13 +44,18 @@ extension SelfTest {
                         seen.append("setupComplete")
                         if !sentTurn {
                             sentTurn = true
-                            try await send(["clientContent": ["turns": [["role": "user", "parts": [["text": "こんにちは"]]]], "turnComplete": true]])
+                            try await send(["clientContent": ["turns": [["role": "user", "parts": [["text": prompt ?? "こんにちは"]]]], "turnComplete": true]])
                         }
                     case .audio(let pcm, let rate):
                         if audioBytes == 0 { seen.append("audio@\(rate)") }
                         audioBytes += pcm.count
-                    case .outputTranscript(let t): if !seen.contains("transcript") { seen.append("transcript:\(t.prefix(20))") }
-                    case .turnComplete: seen.append("turnComplete"); break loop
+                    case .outputTranscript(let t): said += t
+                    case .toolCall(let id, let name, _):
+                        seen.append("toolCall:\(name)")
+                        try await send(GeminiLive.toolResponse(id: id, name: name, response: ["status": "accepted"]))
+                    case .turnComplete:
+                        seen.append("transcript:\(said.prefix(prompt == nil ? 20 : 200))")
+                        seen.append("turnComplete"); break loop
                     case .goAway: seen.append("goAway"); break loop
                     default: break
                     }
@@ -55,7 +63,9 @@ extension SelfTest {
             }
         } catch {
             socket.cancel(with: .normalClosure, reason: nil)
-            print("SELFTEST_FAIL geminismoke: \(error.localizedDescription) seen=\(seen)"); exit(2)
+            // サーバーが閉じた理由（設定の誤りはここに出る）。
+            let reason = socket.closeReason.flatMap { String(data: $0, encoding: .utf8) } ?? "-"
+            print("SELFTEST_FAIL geminismoke: \(error.localizedDescription) close=\(socket.closeCode.rawValue) reason=\(reason) seen=\(seen)"); exit(2)
         }
         socket.cancel(with: .normalClosure, reason: nil)
         if seen.contains("setupComplete"), audioBytes > 0, seen.contains("turnComplete") {

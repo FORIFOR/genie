@@ -16,6 +16,19 @@ enum GeminiLive {
     /// 返すのは受け付けたかだけ（仕事の中身・結果の本文は渡さない）。
     static let delegateTool = "delegate_task"
 
+    /// サーバーが接続を閉じた理由のうち、つなぎ直しても直らないもの（本人が直す）を言葉にする。それ以外は nil。
+    /// 例: 利用枠の超過は close 1011「You exceeded your current quota…」（2026-09-29 に実機で確認）。
+    static func fatalCloseMessage(code: Int, reason: String?) -> String? {
+        let r = (reason ?? "").lowercased()
+        if r.contains("quota") || r.contains("resource_exhausted") {
+            return "Gemini の利用枠の上限に達しました。Google AI Studio で API キーのプランと請求を確かめてください。"
+        }
+        if r.contains("api key") || r.contains("api_key") || r.contains("permission denied") {
+            return "Gemini の API キーが使えません。設定でキーを確かめてください。"
+        }
+        return nil
+    }
+
     // MARK: - 送る
 
     /// 話し終わりの判定（ミリ秒）。公式の推奨は 500〜800ms（100〜200ms に縮めると一つの発話が分かれる）。
@@ -56,12 +69,16 @@ enum GeminiLive {
                 // 接続が切れても同じ会話へ戻る（goAway・回線の切断）。長い会話は履歴を圧縮する（音声だけなら無いと 15 分）。
                 "sessionResumption": resumption,
                 "contextWindowCompression": ["slidingWindow": [String: Any]()],
+                // 天気・ニュースなどの公開情報は Gemini が Google 検索で調べて答える（Genie の仕事の中身は渡さない）。
+                // 3.8 Live は googleSearch と functionDeclarations を併用できる（公式: live-api/tools、2026-09-29 確認）。
                 "tools": [[
+                    "googleSearch": [String: Any](),
+                ], [
                     "functionDeclarations": [[
                         "name": delegateTool,
                         // 仕事の完了を待たずに会話を続ける（3.8 の既定だが、意図として明示する）。
                         "behavior": "NON_BLOCKING",
-                        "description": "利用者が作業・操作・調べものを頼んだときに、その依頼文を Genie に渡す。受け付けたかどうかだけが返る。完了を待たない。",
+                        "description": "利用者が Mac での作業・アプリの操作・送信・注文や予約などを頼んだときに、その依頼文を Genie に渡す。受け付けたかどうかだけが返る。完了を待たない。支払いや確定の前には Genie が画面で本人に確認する。",
                         "parameters": [
                             "type": "OBJECT",
                             "properties": ["request": ["type": "STRING", "description": "依頼文（利用者の言葉のまま）"]],

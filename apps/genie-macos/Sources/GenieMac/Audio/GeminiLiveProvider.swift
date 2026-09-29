@@ -316,10 +316,13 @@ final class GeminiLiveProvider: ConversationProvider {
 
     【正確さと実行】
     分からない事実を推測で断定しないでください。数字や予定を作らないでください。
-    作業・操作・調べもの・送信などを頼まれたら、自分で済ませたふりをせず、必ず delegate_task に依頼文を渡し、
-    受け付けたかどうかだけを伝えてください。実行結果が成功するまで「完了しました」と言わないでください。
-    重要な名前・金額・日時が曖昧な場合は、その部分だけ確認してください。
-    権限や承認が必要な操作は、許可されるまで実行しないでください。
+    天気・ニュース・営業時間・一般的な事実など、公開されている情報を聞かれたら、Google 検索で調べて、その結果を声で要点だけお伝えしてください。
+    調べられなかった場合は、推測で答えずにそう伝えてください。
+    Mac での作業・アプリの操作・送信・注文や予約（モバイルオーダー・デリバリーを含む）を頼まれたら、断らずに、
+    自分で済ませたふりもせず、必ず delegate_task に依頼文を渡し、受け付けたかどうかだけを伝えてください。
+    支払い・注文の確定・送信の前には Genie が画面で本人に確認を求めるので、あなたが代わりに断ったり止めたりする必要はありません。
+    実行結果が成功するまで「完了しました」「注文しました」と言わないでください。
+    重要な名前・金額・日時・店舗・品目が曖昧な場合は、その部分だけ確認してください。
     """
 
     private func receive(_ task: URLSessionWebSocketTask) {
@@ -329,7 +332,12 @@ final class GeminiLiveProvider: ConversationProvider {
                 guard let self, self.socket === task else { return }
                 switch result {
                 case .failure:
-                    if !self.resume() { self.lose("Gemini との接続が切れました。") }
+                    // 利用枠・キーの問題はつなぎ直しても直らない。理由を言って終える。
+                    if let fatal = GeminiLive.fatalCloseMessage(code: task.closeCode.rawValue,
+                                                                reason: task.closeReason.flatMap { String(data: $0, encoding: .utf8) }) {
+                        self.mark("closed-fatal-\(task.closeCode.rawValue)")
+                        self.lose(fatal)
+                    } else if !self.resume() { self.lose("Gemini との接続が切れました。") }
                 case .success(let message):
                     let text: String? = switch message {
                     case .string(let s): s

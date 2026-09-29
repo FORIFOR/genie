@@ -760,10 +760,11 @@ final class VoiceHUDState: ObservableObject {
             case .warnEnding:
                 conversationEnding = true
             case .readyCue:
-                // macOS 同梱の短い音。生成も通信もしない。
-                NSSound(named: NSSound.Name("Pop"))?.play()
+                // 聞き始めた合図（その場で合成する短い音。通信しない）。
+                GenieEarcon.play(.start)
             case .ended(let reason):
                 conversationProvider.endSession()
+                GenieEarcon.play(.end)
                 conversationClock?.cancel(); conversationClock = nil
                 pendingConversationReply = nil
                 conversationEnding = false
