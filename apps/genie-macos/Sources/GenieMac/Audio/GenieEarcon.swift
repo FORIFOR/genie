@@ -2,18 +2,18 @@ import AVFoundation
 import Foundation
 
 /// 会話の始まりと終わりの短い音。その場で合成する（素材ファイル・通信なし）。
-/// 始まりは 2 音の上行（A5 → E6）、終わりは同じ 2 音の下行。柔らかい立ち上がりと減衰で、通知音より控えめにする。
+/// 1 つの正弦波が滑らかに上がる（始まり）／下がる（終わり）。スイッチを入れる・切る合図で、通知音より控えめにする。
+/// 2026-09-30 に本人が 3 案（いまの 2 音 / 低い 2 音 / 1 音のグライド）を実機で聴き比べて選んだ。
 /// macOS の「ユーザインターフェイスのサウンドエフェクトを再生」がオフなら鳴らさない。
 @MainActor
 enum GenieEarcon {
     enum Kind { case start, end }
 
     static let sampleRate = 44_100.0
-    /// 2 音の高さ（Hz）と、2 音目の遅れ（秒）。
-    static let low = 880.0, high = 1318.5
-    static let stagger = 0.075
-    static let noteLength = 0.20
-    static let gain = 0.22
+    /// 動く範囲（Hz）と長さ（秒）。高さは指数で動かす（耳には等速に聞こえる）。
+    static let low = 660.0, high = 990.0
+    static let length = 0.18
+    static let gain = 0.20
 
     private static var players: [AVAudioPlayer] = []
 
@@ -31,24 +31,16 @@ enum GenieEarcon {
 
     /// 16-bit mono PCM の samples（検査で形を確かめる）。
     static func samples(_ kind: Kind) -> [Int16] {
-        let notes = kind == .start ? [low, high] : [high, low]
-        let total = Int((stagger + noteLength) * sampleRate)
-        var out = [Double](repeating: 0, count: total)
-        for (i, f) in notes.enumerated() {
-            let start = Int(Double(i) * stagger * sampleRate)
-            let n = Int(noteLength * sampleRate)
-            for k in 0..<n where start + k < total {
-                let t = Double(k) / sampleRate
-                let attack = min(1, t / 0.006)            // 6ms で立ち上げる（クリック音を出さない）
-                let decay = exp(-t * 18)                  // 余韻は短く
-                let tone = sin(2 * .pi * f * t) + 0.18 * sin(4 * .pi * f * t)
-                out[start + k] += tone * attack * decay
-            }
+        let (from, to) = kind == .start ? (low, high) : (high, low)
+        let n = Int(length * sampleRate)
+        var phase = 0.0
+        return (0..<n).map { k in
+            let t = Double(k) / sampleRate
+            phase += 2 * .pi * from * pow(to / from, t / length) / sampleRate
+            let attack = min(1, t / 0.008)                // 8ms で立ち上げる（クリック音を出さない）
+            let release = min(1, (length - t) / 0.06)     // 最後の 60ms で静かに閉じる
+            return Int16(max(-1, min(1, sin(phase) * attack * release * gain)) * Double(Int16.max))
         }
-        // 最後の 4ms を 0 へ閉じる。
-        let tail = Int(0.004 * sampleRate)
-        for k in 0..<tail { out[total - 1 - k] *= Double(k) / Double(tail) }
-        return out.map { Int16(max(-1, min(1, $0 * gain)) * Double(Int16.max)) }
     }
 
     static func wav(_ kind: Kind) -> Data {

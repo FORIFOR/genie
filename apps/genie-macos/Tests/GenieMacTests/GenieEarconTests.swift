@@ -3,7 +3,7 @@ import XCTest
 
 @MainActor
 final class GenieEarconTests: XCTestCase {
-    func testStartRisesEndFallsAndBothAreShortAndQuiet() {
+    func testStartGlidesUpEndGlidesDownAndBothAreShortAndQuiet() {
         for kind in [GenieEarcon.Kind.start, .end] {
             let s = GenieEarcon.samples(kind)
             XCTAssertLessThan(Double(s.count) / GenieEarcon.sampleRate, 0.35, "合図は短い")
@@ -13,10 +13,13 @@ final class GenieEarconTests: XCTestCase {
             XCTAssertLessThan(abs(Int(s.first!)), 200, "立ち上がりでクリック音を出さない")
             XCTAssertLessThan(abs(Int(s.last!)), 200, "終わりでクリック音を出さない")
         }
-        // 最初の 2 音目が入る前の区間の高さを、ゼロ交差の数で比べる（始まり = 低→高、終わり = 高→低）。
-        func crossings(_ s: [Int16]) -> Int { zip(s, s.dropFirst()).filter { ($0 < 0) != ($1 < 0) }.count }
-        let head = Int(GenieEarcon.stagger * GenieEarcon.sampleRate) - 1
-        XCTAssertLessThan(crossings(Array(GenieEarcon.samples(.start)[..<head])), crossings(Array(GenieEarcon.samples(.end)[..<head])))
+        // 前の 1/4 と後ろの 1/4 の高さを、ゼロ交差の数で比べる（始まり = 上がる、終わり = 下がる）。
+        func crossings(_ s: ArraySlice<Int16>) -> Int { zip(s, s.dropFirst()).filter { ($0 < 0) != ($1 < 0) }.count }
+        for (kind, rises) in [(GenieEarcon.Kind.start, true), (.end, false)] {
+            let s = GenieEarcon.samples(kind), q = s.count / 4
+            let head = crossings(s[..<q]), tail = crossings(s[(s.count - q)...])
+            XCTAssertEqual(head < tail, rises, "\(kind) の高さの向き")
+        }
     }
 
     func testWavHeaderMatchesSamples() {
