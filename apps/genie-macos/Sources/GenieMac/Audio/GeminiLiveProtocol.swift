@@ -17,9 +17,13 @@ enum GeminiLive {
     static let delegateTool = "delegate_task"
 
     /// サーバーが接続を閉じた理由のうち、つなぎ直しても直らないもの（本人が直す）を言葉にする。それ以外は nil。
-    /// 例: 利用枠の超過は close 1011「You exceeded your current quota…」（2026-09-29 に実機で確認）。
+    /// 例: 利用枠の超過は close 1011「You exceeded your current quota…」、前払いの残高切れは
+    /// close 1011「Your prepayment credits are depleted…」（どちらも 2026-09-29 に実機で確認）。
     static func fatalCloseMessage(code: Int, reason: String?) -> String? {
         let r = (reason ?? "").lowercased()
+        if r.contains("prepayment") || r.contains("credits are depleted") {
+            return "Gemini の前払いクレジットが残っていません。AI Studio のプロジェクトでクレジットを追加してください。"
+        }
         if r.contains("quota") || r.contains("resource_exhausted") {
             return "Gemini の利用枠の上限に達しました。Google AI Studio で API キーのプランと請求を確かめてください。"
         }

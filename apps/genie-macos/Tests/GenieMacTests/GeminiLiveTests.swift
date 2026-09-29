@@ -22,6 +22,7 @@ final class GeminiLiveTests: XCTestCase {
     func testQuotaAndKeyClosuresAreExplainedInsteadOfRetried() {
         XCTAssertTrue(GeminiLive.fatalCloseMessage(code: 1011, reason: "You exceeded your current quota, please check your plan and billing details.")?.contains("利用枠") == true)
         XCTAssertTrue(GeminiLive.fatalCloseMessage(code: 1008, reason: "API key not valid.")?.contains("API キー") == true)
+        XCTAssertTrue(GeminiLive.fatalCloseMessage(code: 1011, reason: "Your prepayment credits are depleted. Please go to AI Studio")?.contains("前払いクレジット") == true)
         XCTAssertNil(GeminiLive.fatalCloseMessage(code: 1001, reason: nil), "回線の切断はつなぎ直す")
         XCTAssertNil(GeminiLive.fatalCloseMessage(code: 1011, reason: "Internal error"), "一時的な内部エラーはつなぎ直す")
     }
