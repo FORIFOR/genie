@@ -487,6 +487,39 @@ final class VoiceHUDState: ObservableObject {
         }
     }
 
+    private var lastDock: DockPresentation = .idle
+
+    /// 一時的な面（Quick Actions・文脈の棚・提案を開いた面）が出ている間だけ、**ほかのアプリにキーがあっても**
+    /// Esc で閉じる。開いた後に別のアプリを触る・スクリーンショットを撮ると、キーはそちらへ移り、
+    /// Dock の Esc（`escapeKey`）が届かなかった（2026-09-29 実機）。Esc は元のアプリにも届く（奪わない）。
+    /// ほかのアプリのキーを見るにはアクセシビリティの許可が要る（無ければ Dock がキーのときの Esc だけ）。
+    private var escapeMonitor: Any?
+
+    private func updateEscapeMonitor(for dock: DockPresentation) {
+        let transient: Bool = switch dock {
+        case .quickActions, .contextDetail, .appContextExpanded: true
+        default: false
+        }
+        if transient, escapeMonitor == nil, !WindowCoordinator.headless {
+            escapeMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { event in
+                guard event.keyCode == 53 else { return }
+                Task { @MainActor in VoiceHUDState.shared.closeTransientSurface() }
+            }
+        } else if !transient, let monitor = escapeMonitor {
+            NSEvent.removeMonitor(monitor)
+            escapeMonitor = nil
+        }
+    }
+
+    /// 一時的な面を閉じる（Esc）。聞いている・考えている・結果の面には触らない。
+    func closeTransientSurface() {
+        switch mode {
+        case .quickActions, .contextDetail: mode = .idle
+        case .appContextExpanded(let s): mode = .appContext(s)
+        default: break
+        }
+    }
+
     /// いま聞く面を出しているか（遅れて届いた答えで、聞いている途中を消さないため）。
     var isListeningSurface: Bool { if case .listening = mode { return true }; return false }
 
@@ -497,6 +530,11 @@ final class VoiceHUDState: ObservableObject {
     /// 面は待機なのにマイクが回り続けた（2026-09-28 実機。メニューバーのマイクの印が消えない）。
     /// 面の方が変わったら、声の側を合わせて閉じる。仕事は取り消さない。
     func dockChanged(to dock: DockPresentation) {
+        // Quick Actions を離れたら、借りていたキー入力を元のアプリへ返す。
+        // 会話・会議の問いは、このあと自分で Dock にキーを取り直す（音声入力は取らない）。
+        if lastDock == .quickActions, dock != .quickActions { WindowCoordinator.shared.releaseDockKey() }
+        lastDock = dock
+        updateEscapeMonitor(for: dock)
         if conversation.isActive {
             switch dock {
             case .listening, .thinking, .answer, .info, .ack: return
@@ -528,6 +566,8 @@ final class VoiceHUDState: ObservableObject {
         // 先に閉じてから開く（`--selftest micrelease`）。
         if conversation.isActive || RecordingRuntime.shared.voiceListening { cancelListening() }
         mode = mode == .quickActions ? .idle : .quickActions
+        // 開いた間は Esc で閉じられるよう、Dock がキー入力を受ける（閉じたら元のアプリへ返す）。
+        if mode == .quickActions { WindowCoordinator.shared.focusDockForQuickActions() }
     }
 
     /// App Context の開閉。閉じているときは 1 行、開くと頼めることを出す。

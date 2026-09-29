@@ -176,6 +176,29 @@ final class WindowCoordinator {
         panel.makeKeyAndOrderFront(nil)
     }
 
+    /// Quick Actions を開いた間だけ、Dock がキー入力を受ける（Esc で閉じられるように）。
+    /// 開く前に前面だったアプリを覚えておき、閉じたらキー入力をそこへ返す。
+    private var appBeforeDockKey: NSRunningApplication?
+
+    func focusDockForQuickActions() {
+        guard !Self.headless, !PresentationGuard.shared.isSharing,
+              let panel = hudPanel, panel.isVisible else { return }
+        if !panel.isKeyWindow {
+            let front = NSWorkspace.shared.frontmostApplication
+            appBeforeDockKey = front?.processIdentifier == getpid() ? nil : front
+        }
+        panel.makeKeyAndOrderFront(nil)
+    }
+
+    /// Dock が持っていたキー入力を、開く前のアプリへ返す（Quick Actions を閉じた・選んだ）。
+    func releaseDockKey() {
+        guard !Self.headless, let panel = hudPanel, panel.isKeyWindow else { appBeforeDockKey = nil; return }
+        let back = appBeforeDockKey
+        appBeforeDockKey = nil
+        panel.resignKey()
+        back?.activate()
+    }
+
     /// Listening 面の Dock がキー入力を受けているか（`focusListeningDock` が効いたか）。
     /// 受けているなら、話しかけた相手は前面アプリの欄ではなく Dock の入力欄。
     var isListeningDockKey: Bool {
