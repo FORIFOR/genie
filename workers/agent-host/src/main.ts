@@ -358,13 +358,29 @@ async function main(): Promise<void> {
       logger.warn({ source, err: error.message }, 'work context sync failed for a source'),
   });
   let initialBusy = false;
+  // 失敗が続く間は間を空ける（4 秒 → 最大 5 分）。以前は一時的な障害（DB の接続切れ）の間、
+  // 理由の無い警告を 4 秒ごとに出し続けていた（2026-09-29）。
+  let initialFailures = 0;
+  let initialNextAt = 0;
   const initialTimer = setInterval(() => {
     // Initial profiling is explicitly requested in Connections. Disabling
     // continuous background sync must not strand that user-requested job.
-    if (initialBusy) return;
+    if (initialBusy || Date.now() < initialNextAt) return;
     initialBusy = true;
     void runInitialProfile({ cloud, connectors: runtime, refreshGrants })
-      .catch(() => logger.warn('initial profile could not finish; the lease will allow recovery'))
+      .then(() => {
+        initialFailures = 0;
+        initialNextAt = 0;
+      })
+      .catch((error: unknown) => {
+        initialFailures++;
+        const waitMs = Math.min(300_000, 4_000 * 2 ** Math.min(initialFailures, 7));
+        initialNextAt = Date.now() + waitMs;
+        logger.warn(
+          { err: error instanceof Error ? error.message : String(error), failures: initialFailures, retryInMs: waitMs },
+          'initial profile could not finish; the lease will allow recovery',
+        );
+      })
       .finally(() => {
         initialBusy = false;
       });
