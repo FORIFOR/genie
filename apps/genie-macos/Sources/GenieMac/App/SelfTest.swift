@@ -654,6 +654,7 @@ enum SelfTest {
                 if case .card = hud.mode {} else { failures.append("\(name)=カードにならない") }
             })
         }
+        shoot("06k-card-places", { hud.mode = .card(placesFixture()) })
         hud.mode = .idle
 
         // 5-5. 仕事が複数（One Continuous Surface）: 1 件 1 行・確認待ちの行・止める。声・文字の依頼と同じ出来事で作る。
@@ -1524,6 +1525,31 @@ enum SelfTest {
         ("06f-info-news", #"{"schema":"genie.info/v1","kind":"news","text":"主なニュース（NHK）: 1. 台風26号 沖縄に接近へ","data":{"topic":null,"items":[{"title":"台風26号 沖縄に接近へ 来週も東～西日本は雨降りやすい見込み","url":"https://news.web.nhk/a","source":"NHK","published_at":null},{"title":"首相 米大統領と電話会談 米中首脳会談の内容説明受ける","url":"https://news.web.nhk/b","source":"NHK","published_at":null},{"title":"タイで大雨続き 首都バンコクでも浸水被害広がる","url":"https://news.web.nhk/c","source":"NHK","published_at":null}]},"sources":[{"name":"NHK","url":"https://news.web.nhk/"}],"fetched_at":"2026-09-27T00:30:00Z"}"#),
     ]
 
+    /// 近くの店のカードの fixture。**地図は合成**（灰色の地に白い道。本物の Google 地図ではない）。
+    /// ネットワークにも鍵にも触れずに撮るため。店名・数字は撮るたびに変わらない固定値。
+    @MainActor
+    static func placesFixture() -> DockCard {
+        let map = NSImage(size: NSSize(width: 960, height: 300), flipped: false) { rect in
+            NSColor(calibratedRed: 0.93, green: 0.93, blue: 0.91, alpha: 1).setFill(); rect.fill()
+            NSColor.white.setStroke()
+            for i in 0..<8 {
+                let road = NSBezierPath(); road.lineWidth = 14
+                road.move(to: NSPoint(x: CGFloat(i) * 140, y: 0)); road.line(to: NSPoint(x: CGFloat(i) * 120 + 80, y: 300)); road.stroke()
+            }
+            return true
+        }
+        let png = map.tiffRepresentation.flatMap { NSBitmapImageRep(data: $0)?.representation(using: .png, properties: [:]) }
+        func place(_ id: String, _ name: String, _ rating: Double, _ count: Int, _ open: Bool, _ distance: Double) -> PlacesCard.Place {
+            PlacesCard.Place(id: id, name: name, address: "東京都渋谷区", latitude: 35.66, longitude: 139.70,
+                             rating: rating, ratingCount: count, openNow: open, mapsURL: nil, distance: distance)
+        }
+        return .places(PlacesCard(query: "スターバックス", places: [
+            place("1", "スターバックス コーヒー 渋谷駅前店", 3.9, 2345, true, 120),
+            place("2", "スターバックス コーヒー 渋谷マークシティ店", 4.1, 812, true, 380),
+            place("3", "スターバックス コーヒー 表参道店", 4.2, 1500, false, 1450),
+        ], map: png, fetchedAt: Date(timeIntervalSince1970: 1_790_730_000)))
+    }
+
     /// geometry / occupation が測る 6 状態。名前は正解画像（task-dock/）と揃える。
     @MainActor
     private static func geometryStates() -> [(String, () -> Void)] {
@@ -1606,14 +1632,19 @@ enum SelfTest {
                     for: VoiceHUDState.taskReply(status: "COMPLETED", artifactID: "occupation") { body })
             })
         }
-        for (name, _) in cardStates { ceilings[name] = [(dockKey, Metrics.dockResultWidth, Metrics.dockCardMaxHeight)] }
+        let placesState: (String, () -> Void) = ("card-06k-card-places", {
+            WindowCoordinator.shared.hideRecordingWorkspace()
+            GenieStateStore.shared.reset()
+            VoiceHUDState.shared.mode = .card(placesFixture())
+        })
+        for (name, _) in cardStates + [placesState] { ceilings[name] = [(dockKey, Metrics.dockResultWidth, Metrics.dockCardMaxHeight)] }
         let refW = 1440.0, refH = 900.0
 
         GenieStateStore.shared.reset()
         WindowCoordinator.shared.showVoiceHUD()
         var fail: [String] = []
         var measured = 0
-        for (name, present) in geometryStates() + cardStates {
+        for (name, present) in geometryStates() + cardStates + [placesState] {
             present()
             settle(1.2)
             guard let snap = UIGeometry.snapshot() else { fail.append("\(name): 実寸を読めない"); continue }

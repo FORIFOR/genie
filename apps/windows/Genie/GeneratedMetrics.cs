@@ -35,6 +35,7 @@ public static class Metrics
     public const double DockResultWidth = 520;
     public const double DockResultHeight = 150;
     public const double DockCardMaxHeight = 360;
+    public const double DockCardImageHeight = 150;
     public const double DockConfirmWidth = 560;
     public const double DockConfirmHeight = 176;
     public const double DockConfirmPrimaryMinWidth = 96;

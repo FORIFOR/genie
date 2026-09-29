@@ -55,12 +55,16 @@ enum ConsumerJourneyKind: String, CaseIterable, Identifiable {
         }
     }
 
+    /// Product work, quoted text, negations and questions about a service — not a request
+    /// to do something for the user now. Shared with `NearbyPlaceIntent`.
+    static let notAPersonalRequest = "実装|機能|アプリ|api|ui|ux|コード|システム|紹介文|記事|台本|翻訳|英訳|とは|仕組み|方法|キャンセル|取り消|予約済|注文済|購入済|予約した(?!い)|注文した(?!い)|しない|しなく|しません|するな|してはいけ|してはだめ|してはダメ|予約サイト|注文サイト|予約画面|注文画面|macbook|mac mini|mac studio|パソコン|新しいマック|マックブック|do not|don't|cancel|implement|feature|code|explain|translate"
+
     /// Only direct personal requests. Product work, quoted text, and questions
     /// about the service must continue through the normal assistant.
     static func detect(_ request: String) -> Self? {
         let text = request.lowercased()
         func matches(_ pattern: String) -> Bool { text.range(of: pattern, options: .regularExpression) != nil }
-        guard !matches("実装|機能|アプリ|api|ui|ux|コード|システム|紹介文|記事|台本|翻訳|英訳|とは|仕組み|方法|キャンセル|取り消|予約済|注文済|購入済|予約した(?!い)|注文した(?!い)|しない|しなく|しません|するな|してはいけ|してはだめ|してはダメ|予約サイト|注文サイト|予約画面|注文画面|macbook|mac mini|mac studio|パソコン|新しいマック|マックブック|do not|don't|cancel|implement|feature|code|explain|translate") else { return nil }
+        guard !matches(Self.notAPersonalRequest) else { return nil }
         let movie = matches("映画|シネマ|movie|cinema") && matches("予約|チケット|観たい|見たい|book|ticket")
         let travel = matches("旅行|旅程|ホテル|宿泊|travel|trip|hotel") && matches("計画|旅程|予約|探して|調べて|plan|book|find")
         let delivery = matches("マクドナルド|マック|マクド|mcdonald|mcdelivery") && matches("注文|配達|届けて|デリバリー|order|deliver")

@@ -7,11 +7,14 @@ import Foundation
 enum DockCard: Equatable {
     /// 天気・ニュース（`genie.info/v1`）。
     case info(InfoCard)
+    /// 近くの店（地図と店の行）。端末で作る（`NearbyPlaces`）。成果物からは読まない。
+    case places(PlacesCard)
 
     /// 読み上げ・コピー・Work の記録に使う文。カードを描けないときもこれを出す。
     var text: String {
         switch self {
         case .info(let card): return card.text
+        case .places(let card): return card.text
         }
     }
 
@@ -19,6 +22,7 @@ enum DockCard: Equatable {
     var hasContent: Bool {
         switch self {
         case .info(let card): return card.hasContent
+        case .places(let card): return card.hasContent
         }
     }
 

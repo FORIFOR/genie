@@ -35,6 +35,7 @@ enum Metrics {
     static let dockResultWidth: CGFloat = 520
     static let dockResultHeight: CGFloat = 150
     static let dockCardMaxHeight: CGFloat = 360
+    static let dockCardImageHeight: CGFloat = 150
     static let dockConfirmWidth: CGFloat = 560
     static let dockConfirmHeight: CGFloat = 176
     static let dockConfirmPrimaryMinWidth: CGFloat = 96

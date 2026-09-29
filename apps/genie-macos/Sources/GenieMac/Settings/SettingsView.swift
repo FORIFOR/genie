@@ -18,6 +18,9 @@ struct SettingsView: View {
     @ObservedObject private var gemini = GeminiLiveSettings.shared
     @State private var geminiKeyDraft = ""
     @State private var geminiKeyMessage: String?
+    @ObservedObject private var places = PlacesSettings.shared
+    @State private var placesKeyDraft = ""
+    @State private var placesKeyMessage: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -113,6 +116,40 @@ struct SettingsView: View {
                 .accessibilityIdentifier("geminiLiveMinutes")
                 if let geminiKeyMessage {
                     Text(geminiKeyMessage).font(.system(size: 11)).foregroundStyle(.secondary)
+                }
+            }
+
+            // 近くの店は、現在地と検索語を Google に送る。送るものと費用を、キーを置く前に読める場所に書く。
+            section("近くの店（Google マップ）") {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("近くの店を頼んだときだけ、現在地を Google に送ります。")
+                    Text("使う API: Places API (New) と Static Maps")
+                    Text("利用料はあなたの API キーにかかります。")
+                    Text("結果は画面に出すだけで、保存しません。")
+                }
+                .font(.system(size: 11)).foregroundStyle(.primary).opacity(0.78)
+                HStack {
+                    SecureField(places.hasKey ? "API キーは保存済み（置き換える）" : "API キー", text: $placesKeyDraft)
+                        .textFieldStyle(.roundedBorder)
+                        .accessibilityIdentifier("placesKey")
+                    Button(places.hasKey && placesKeyDraft.isEmpty ? "キーを消す" : "保存") {
+                        let ok = places.setKey(placesKeyDraft)
+                        placesKeyMessage = ok ? (placesKeyDraft.isEmpty ? "キーを消しました。" : "キーチェーンに保存しました。") : "キーチェーンに保存できませんでした。"
+                        placesKeyDraft = ""
+                    }
+                    .controlSize(.small)
+                    .disabled(!places.hasKey && placesKeyDraft.isEmpty)
+                }
+                Stepper(value: Binding(get: { places.monthlyLimit }, set: { places.setMonthlyLimit($0) }),
+                        in: 0...10_000, step: 10) {
+                    Text(places.monthlyLimit == 0
+                         ? "月の上限: 未設定（決めるまで使えません）"
+                         : "月の上限: \(places.monthlyLimit) 回 ・ 今月 \(places.usedThisMonth()) 回使用")
+                        .font(.system(size: 12))
+                }
+                .accessibilityIdentifier("placesMonthlyLimit")
+                if let placesKeyMessage {
+                    Text(placesKeyMessage).font(.system(size: 11)).foregroundStyle(.secondary)
                 }
             }
 

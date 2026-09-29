@@ -155,6 +155,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>NSCalendarsFullAccessUsageDescription</key><string>会議の予定を文脈として読むために、カレンダーを使います。読み取りは手元で行い、外部には送りません。</string>
   <key>NSMicrophoneUsageDescription</key><string>会議を録音し、文字起こしするためにマイクを使います。クラウド文字起こしを許可した場合は、録音音声をGoogleへ送信します。</string>
   <key>NSSpeechRecognitionUsageDescription</key><string>会議の音声を文字起こしします。設定で許可した場合は高精度化のためGoogle STTへ送信します。</string>
+  <key>NSLocationWhenInUseUsageDescription</key><string>「近くの店」を頼んだときだけ、現在地の近くの店を探すために使います。現在地はそのときだけGoogleマップの検索に送り、保存しません。</string>
   <key>NSAppleEventsUsageDescription</key><string>前面アプリの文脈（開いている書類名など）を読むために使います。</string>
   <key>NSCameraUsageDescription</key><string>使いません。</string>
   <key>NSCalendarsUsageDescription</key><string>会議の予定を文脈として読むために、カレンダーを使います。</string>
@@ -180,6 +181,7 @@ cat > "$OUT/genie.entitlements" <<'ENT'
 <plist version="1.0"><dict>
   <key>com.apple.security.device.audio-input</key><true/>
   <key>com.apple.security.automation.apple-events</key><true/>
+  <key>com.apple.security.personal-information.location</key><true/>
 </dict></plist>
 ENT
 

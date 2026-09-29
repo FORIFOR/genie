@@ -10,6 +10,7 @@ struct DockCardView: View {
     var body: some View {
         switch card {
         case .info(let info): InfoDock(card: info)
+        case .places(let places): PlacesDock(card: places)
         }
     }
 }

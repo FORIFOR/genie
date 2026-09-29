@@ -819,6 +819,34 @@ final class VoiceHUDState: ObservableObject {
         deliver(reply)
     }
 
+    /// 近くの店を探して地図のカードを出す。会話へは件数だけを返す（店名・住所・位置は Gemini に返さない）。
+    /// 探せないとき（キー・上限・位置の許可が無い）は、できないことと次の一手を回答面に出す。
+    private func showNearby(_ intent: NearbyPlaceIntent) {
+        latestRequestID = nil; answer = ""
+        requestInFlight = true
+        mode = .thinking
+        Task { @MainActor [weak self] in
+            let result = await NearbyPlaces.search(intent)
+            guard let self else { return }
+            self.requestInFlight = false
+            let conversationListening = self.conversation.isActive && self.conversation.phase != .waiting
+            let reply: TaskReply
+            switch result {
+            case .success(let card):
+                self.answer = card.text
+                reply = TaskReply(text: card.conversationText, phase: .complete, card: .places(card))
+                if !conversationListening, !self.isListeningSurface {
+                    self.mode = card.hasContent ? .card(.places(card)) : .answer(card.text)
+                }
+            case .failure(let failure):
+                self.answer = failure.message
+                reply = TaskReply(text: failure.message, phase: .needsInput)
+                if !conversationListening, !self.isListeningSurface { self.mode = .answer(failure.message) }
+            }
+            self.conversationReply(reply)
+        }
+    }
+
     /// `ask` の結果を会話へ返す（会話中で、答えを待っているときだけ）。
     private func conversationReply(_ reply: TaskReply?, draft: Bool = false, failed: String? = nil) {
         guard conversation.isActive, conversation.phase == .waiting else { return }
@@ -918,6 +946,12 @@ final class VoiceHUDState: ObservableObject {
             ConsumerJourneyStore.shared.present(kind, request: text)
             MainWindowController.shared.showSection(.home)
             conversationReply(TaskReply(text: "準備の画面を開きました。内容を確かめてください。", phase: .complete))
+            return true
+        }
+        // 「近くのスタバ」: 端末で現在地と Google マップを引き、地図つきのカードにする（gateway・モデルは通さない）。
+        if consumerPlanning == nil, visualContext?.isEmpty != false,
+           let nearby = NearbyPlaceIntent.detect(text) {
+            showNearby(nearby)
             return true
         }
         guard let base = apiBase, let token = apiToken else {

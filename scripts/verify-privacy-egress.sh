@@ -229,6 +229,49 @@ else
   bad "gemini live requires consent, key, limit" "FAIL" "$gemini_check"
 fi
 
+# 9. 近くの店（Google Maps Platform）は、本人がキーと上限を置き、近くの店を頼んだときだけ外へ出る。
+#    - 接続先（places.googleapis.com / maps.googleapis.com）を書いてよいのは Places/PlacesClient.swift だけ
+#    - Places のキーはヘッダー（X-Goog-Api-Key）。URL に載せてよいのは Static Maps の staticMapURL だけ
+#    - PlacesClient.swift は URL をログに出さない（print / NSLog / Logger / os_log を持たない）
+#    - PlacesClient を作るのは NearbyPlaces.search だけで、キー・上限（settings.canSearch）を確かめた後
+places_check=$(python3 - "$SRC" "$ROOT" <<'CHECK'
+import pathlib, re, sys
+src = pathlib.Path(sys.argv[1]); root = pathlib.Path(sys.argv[2])
+problems = []
+for f in src.rglob('*.swift'):
+    text = f.read_text(); rel = str(f.relative_to(src))
+    for host in ('places.googleapis.com', 'maps.googleapis.com'):
+        if host in text and rel != 'Places/PlacesClient.swift':
+            problems.append(f'{rel}: {host} outside PlacesClient.swift')
+    if re.search(r'\bPlacesClient\(', text) and rel not in ('Places/NearbyPlaces.swift', 'Places/PlacesClient.swift') and not f.name.startswith('SelfTest'):
+        problems.append(f'{rel}: PlacesClient created outside NearbyPlaces.search')
+client = (src / 'Places/PlacesClient.swift').read_text()
+if 'X-Goog-Api-Key' not in client:
+    problems.append('PlacesClient.swift: Places key must go in the X-Goog-Api-Key header')
+key_in_url = [m.start() for m in re.finditer(r'URLQueryItem\(name: "key"', client)]
+static = client.split('func staticMapURL(')[1].split('\n    }\n')[0] if 'func staticMapURL(' in client else ''
+if len(key_in_url) != 1 or 'URLQueryItem(name: "key"' not in static:
+    problems.append('PlacesClient.swift: key may be in the URL only inside staticMapURL')
+if re.search(r'\b(print|NSLog|os_log)\(|Logger\(', client):
+    problems.append('PlacesClient.swift: must not log (the map URL carries the key)')
+nearby = (src / 'Places/NearbyPlaces.swift').read_text()
+search = nearby.split('func search(')[1].split('\n    }\n')[0] if 'func search(' in nearby else ''
+if 'canSearch' not in search or 'PlacesClient(' not in search or search.index('canSearch') > search.index('PlacesClient('):
+    problems.append('NearbyPlaces.search: must check settings.canSearch before creating PlacesClient')
+doc = (root / 'docs/privacy-egress.md').read_text()
+for host in ('places.googleapis.com', 'maps.googleapis.com'):
+    if host not in doc:
+        problems.append(f'docs/privacy-egress.md: {host} missing')
+print('; '.join(problems))
+sys.exit(1 if problems else 0)
+CHECK
+)
+if [ "$?" -eq 0 ]; then
+  row "nearby places require key, limit, request" "PASS"
+else
+  bad "nearby places require key, limit, request" "FAIL" "$places_check"
+fi
+
 # 実行体（ある時だけ）: 既定 OFF と、資産の無いロケールで throw。
 if [ -x "$BIN" ]; then
   out=$(env -u ASTRA_DEV_AUTO_UPLOAD "$BIN" --selftest egress 2>/dev/null | tail -1)

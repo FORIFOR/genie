@@ -63,6 +63,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>LSUIElement</key><true/>
   <!-- 許可の説明文言（無いと TCC プロンプトが出ない） -->
   <key>NSMicrophoneUsageDescription</key><string>会議を録音し、手元で文字にするためにマイクを使います。</string>
+  <key>NSLocationWhenInUseUsageDescription</key><string>「近くの店」を頼んだときだけ、現在地の近くの店を探すために使います。現在地はそのときだけGoogleマップの検索に送り、保存しません。</string>
   <key>NSAppleEventsUsageDescription</key><string>他アプリの文脈を読むために使います。</string>
   <key>NSCalendarsUsageDescription</key><string>会議の予定を取り込むために使います。</string>
   <key>NSCalendarsFullAccessUsageDescription</key><string>会議の予定を取り込むために使います。</string>

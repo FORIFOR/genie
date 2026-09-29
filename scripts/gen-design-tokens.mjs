@@ -59,6 +59,7 @@ const FIELDS = [
   ['dockResultWidth', h.resultWidth],
   ['dockResultHeight', h.resultHeight],
   ['dockCardMaxHeight', h.cardMaxHeight],
+  ['dockCardImageHeight', h.cardImageHeight],
   ['dockConfirmWidth', h.confirmWidth],
   ['dockConfirmHeight', h.confirmHeight],
   ['dockConfirmPrimaryMinWidth', h.confirmPrimaryMinWidth],

@@ -40,6 +40,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
        要求しうるものは全部ここに書く。 -->
   <key>NSMicrophoneUsageDescription</key><string>会議を録音し、文字起こしするためにマイクを使います。クラウド文字起こしを許可した場合は、録音音声をGoogleへ送信します。</string>
   <key>NSSpeechRecognitionUsageDescription</key><string>ライブ文字起こしをこのMac内で処理するために使います。別途クラウド文字起こしを許可した場合はGoogleへ録音音声を送信します。</string>
+  <key>NSLocationWhenInUseUsageDescription</key><string>「近くの店」を頼んだときだけ、現在地の近くの店を探すために使います。現在地はそのときだけGoogleマップの検索に送り、保存しません。</string>
   <key>NSAppleEventsUsageDescription</key><string>前面アプリの文脈（開いている書類名など）を読むために使います。</string>
   <key>NSCameraUsageDescription</key><string>使いません。</string>
   <key>NSCalendarsUsageDescription</key><string>会議の予定を文脈として読むために、カレンダーを使います。</string>
