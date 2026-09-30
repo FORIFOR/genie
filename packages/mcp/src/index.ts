@@ -22,4 +22,11 @@ export {
   type HttpOptions,
   type StdioOptions,
 } from './transport.js';
-export { connectOathra, OathraClient, type OathraConnectionOptions, type OathraPhoneInput, type OathraDraftResult, type OathraCallResult } from './oathra.js';
+export {
+  connectOathra,
+  OathraClient,
+  type OathraConnectionOptions,
+  type OathraPhoneInput,
+  type OathraDraftResult,
+  type OathraCallResult,
+} from './oathra.js';
