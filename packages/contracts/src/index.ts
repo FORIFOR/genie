@@ -44,3 +44,7 @@ export * from './host.js';
 export * from './api.js';
 export * from './voice.js';
 export * from './task-ledger.js';
+export * from './transaction.js';
+export * from './transaction-authorization.js';
+export * from './transaction-simulation.js';
+export * from './checkout-assistance.js';

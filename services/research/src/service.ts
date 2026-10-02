@@ -254,25 +254,34 @@ export class ResearchService {
   async report(tenantId: string, taskId: string): Promise<StepOutcome> {
     const run = await this.#require(tenantId, taskId);
 
-    const { markdown, sources } = await withTenant(this.#db, tenantId, async (tx) => {
-      const rows = await this.#evidenceOf(tx, run.id);
-      const claims = rows.map((row) => row.claim);
-      const summary = await this.#model.synthesize(run.question, claims);
-      const distinct = new Set(rows.map((row) => row.source_url));
+    const rows = await withTenant(this.#db, tenantId, (tx) => this.#evidenceOf(tx, run.id));
+    /*
+     * **モデルを呼ぶ間、トランザクションを開いたままにしない。**
+     *
+     * 端末のモデルへの依頼は `host_step_requests` に行を置いて、端末が取りに来るのを待つ。
+     * 入れ子の `withTenant` は外側のトランザクションに相乗りするので、ここを囲んだままだと
+     * その行はコミットされず、端末からは見えない。誰も取らない依頼を上限まで待って落ちていた
+     * （実測 2026-10-02: レポートの段だけ依頼が 1 件も残らず、10 分後に失敗）。
+     * 同じトランザクションが tasks の行も掴むので、停止も失敗の記録も待たされていた。
+     */
+    const summary = await this.#model.synthesize(
+      run.question,
+      rows.map((row) => row.claim),
+    );
+    const distinct = new Set(rows.map((row) => row.source_url));
 
-      await tx
+    await withTenant(this.#db, tenantId, (tx) =>
+      tx
         .updateTable('research_runs')
         .set({ status: 'COMPLETE', updated_at: this.#now() })
         .where('id', '=', run.id)
-        .execute();
-
-      return { markdown: composeReport(run, summary, rows), sources: distinct.size };
-    });
+        .execute(),
+    );
 
     return {
-      result: { sources },
+      result: { sources: distinct.size },
       detail: null,
-      artifact: { title: run.question, markdown },
+      artifact: { title: run.question, markdown: composeReport(run, summary, rows) },
     };
   }
 

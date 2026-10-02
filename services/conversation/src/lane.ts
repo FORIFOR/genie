@@ -9,6 +9,8 @@
  * 規則で決まらないものだけ chat に落とす。
  */
 import type { Lane, Modality } from '@genie/contracts';
+import { checkoutAssistanceRequest, isCheckoutAssistanceQuotation } from './checkout-request.js';
+import { simulationOrderRequest } from './transaction-request.js';
 
 export interface LaneInput {
   readonly text: string;
@@ -114,7 +116,9 @@ const ACTION = [...COMMIT_ACTION, ...SCREEN_ACTION];
  * 画面の操作の語は、やり方を尋ねているだけなら言っていない。確定させる操作の語は、説明の句があっても言っている。
  */
 function asksForAction(text: string): boolean {
-  return matches(text, COMMIT_ACTION) || (matches(text, SCREEN_ACTION) && !matches(text, EXPLANATION));
+  return (
+    matches(text, COMMIT_ACTION) || (matches(text, SCREEN_ACTION) && !matches(text, EXPLANATION))
+  );
 }
 
 /**
@@ -144,6 +148,15 @@ export function routeLane(input: LaneInput): LaneDecision {
   if (matches(text, EDIT) && input.hasSelection) {
     // 選択が無い「直して」は、何を直すか決まらない
     return { lane: 'edit', reason: 'asked to change the current selection' };
+  }
+  if (simulationOrderRequest(text)) {
+    return { lane: 'action', reason: 'explicit fictional order preview' };
+  }
+  if (checkoutAssistanceRequest(text)) {
+    return { lane: 'action', reason: 'official checkout site handoff, not an order' };
+  }
+  if (isCheckoutAssistanceQuotation(text)) {
+    return { lane: 'chat', reason: 'quoted checkout request, not a request to open a site' };
   }
   if (asksForAction(text)) {
     return { lane: 'action', reason: 'asked to do something outward' };

@@ -148,19 +148,75 @@ pub fn api_finish_meeting(
     Ok(resp.task_id)
 }
 
-/// gateway に届くか（GET /v1/auth/providers, 認証不要）。オフライン判定に。
+/// gateway に届くか（GET /healthz, 認証・rate limit 対象外）。依存サービスの readiness は判定しない。
 #[uniffi::export]
 pub fn api_reachable(base_url: String) -> bool {
-    ureq::get(&format!("{}/v1/auth/providers", base(&base_url)))
+    ureq::get(&format!("{}/healthz", base(&base_url)))
         .timeout(std::time::Duration::from_secs(3))
         .call()
-        .is_ok()
+        .is_ok_and(|response| (200..300).contains(&response.status()))
 }
 
 // gateway を起動して実行する結合テスト。`ASTRA_GATEWAY_URL` が無ければ skip。
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn reachability_server(statuses: Vec<u16>) -> (String, std::thread::JoinHandle<Vec<String>>) {
+        use std::io::{BufRead, Write};
+        use std::time::{Duration, Instant};
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        listener.set_nonblocking(true).unwrap();
+        let url = format!("http://{}", listener.local_addr().unwrap());
+        let thread = std::thread::spawn(move || {
+            let mut requests = Vec::new();
+            for health_status in statuses {
+                let deadline = Instant::now() + Duration::from_secs(5);
+                let mut socket = loop {
+                    match listener.accept() {
+                        Ok((socket, _)) => break socket,
+                        Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
+                            assert!(Instant::now() < deadline, "reachability probe did not arrive");
+                            std::thread::sleep(Duration::from_millis(5));
+                        }
+                        Err(error) => panic!("reachability listener failed: {error}"),
+                    }
+                };
+                socket.set_read_timeout(Some(Duration::from_secs(3))).unwrap();
+                let mut request = String::new();
+                std::io::BufReader::new(&socket).read_line(&mut request).unwrap();
+                // Auth is deliberately unavailable: probes must not consume its shared budget.
+                let status = if request.starts_with("GET /healthz ") { health_status } else { 429 };
+                requests.push(request.trim_end().to_owned());
+                write!(socket, "HTTP/1.1 {status} Test\r\nContent-Length: 0\r\nConnection: close\r\n\r\n").unwrap();
+            }
+            requests
+        });
+        (url, thread)
+    }
+
+    #[test]
+    fn reachable_repeated_probes_use_health_without_auth_budget() {
+        let (url, server) = reachability_server(vec![200; 12]);
+        let results: Vec<_> = (0..12).map(|_| api_reachable(format!("{url}/"))).collect();
+        let requests = server.join().unwrap();
+        assert!(results.into_iter().all(|reachable| reachable));
+        assert_eq!(requests, vec!["GET /healthz HTTP/1.1"; 12]);
+    }
+
+    #[test]
+    fn reachable_requires_success_status_and_rejects_transport_failure() {
+        let (url, server) = reachability_server(vec![200, 204, 302, 401, 429, 500, 503]);
+        let results: Vec<_> = (0..7).map(|_| api_reachable(url.clone())).collect();
+        let requests = server.join().unwrap();
+        assert_eq!(results, vec![true, true, false, false, false, false, false]);
+        assert_eq!(requests, vec!["GET /healthz HTTP/1.1"; 7]);
+
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let unavailable = format!("http://{}", listener.local_addr().unwrap());
+        drop(listener);
+        assert!(!api_reachable(unavailable));
+    }
 
     fn task_server(responses: Vec<u16>, minimum_spacing_ms: u128) -> (String, std::thread::JoinHandle<()>) {
         use std::io::{Read, Write};

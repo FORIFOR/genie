@@ -26,6 +26,7 @@ import { registerIdpRoutes } from './auth/idp-routes.js';
 import { IdpVerifiers, type IdentityVerifier } from './auth/idp.js';
 import type { JwtTokens } from './auth/tokens.js';
 import { registerTaskRoutes, type EvidenceReader } from './routes/tasks.js';
+import { registerTransactionAuthorizationRoutes } from './routes/transaction-authorizations.js';
 import { registerAgentHostRoutes } from './routes/agent-host.js';
 import { registerArtifactRoutes } from './routes/artifacts.js';
 import { registerPluginRoutes } from './routes/plugins.js';
@@ -148,6 +149,7 @@ export function buildApp(deps: AppDeps): App {
     ...(deps.evidence === undefined ? {} : { evidence: deps.evidence }),
     ...(deps.ssePollIntervalMs === undefined ? {} : { ssePollIntervalMs: deps.ssePollIntervalMs }),
   });
+  registerTransactionAuthorizationRoutes(app, { db: deps.db, tasks: deps.tasks });
   if (deps.agentHosts) {
     registerAgentHostRoutes(app, {
       hosts: deps.agentHosts,

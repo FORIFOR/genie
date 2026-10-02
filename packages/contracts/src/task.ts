@@ -6,6 +6,7 @@ import { PROGRESS_REQUIRED_AFTER_MS } from './slo.js';
 import { ArtifactId, ConversationId, TaskId, TenantId, UserId } from './ids.js';
 import { JsonObject, Timestamp } from './primitives.js';
 import { ErrorCode } from './errors.js';
+import { UnknownTransactionResult } from './transaction.js';
 
 export const TASK_STATUSES = [
   'PENDING',
@@ -97,6 +98,8 @@ export const TaskError = z.object({
    * こちらは利用者に見せてよい言葉だけで組んである。
    */
   handoff_explanation: z.string().nullable().default(null),
+  /** Stopping Genie leaves an unconfirmed external order available for read-only lookup. */
+  transaction_result: UnknownTransactionResult.optional(),
 });
 export type TaskError = z.infer<typeof TaskError>;
 

@@ -8,8 +8,12 @@ import {
   VisionFailure,
   frameOf,
   record,
+  targetPreviewOf,
+  scrollReadbackOf,
   type VisionFrame,
   type GroundedAction,
+  type TargetPreview,
+  type ScrollReadback,
 } from './computer-vision-policy.js';
 import type { VisionDevice } from './computer-vision.js';
 
@@ -37,7 +41,15 @@ export class NativeVisionDevice implements VisionDevice {
     const id = createHash('sha256').update(requestId).digest('hex');
     // Older managed previews used the ordinary shared cache. Moving screenshots to
     // isolated storage must not make an already-claimed request executable again.
-    const legacy = join(homedir(), 'Library', 'Caches', 'Astra', 'VisualContext', 'ComputerRuns', `${id}.json`);
+    const legacy = join(
+      homedir(),
+      'Library',
+      'Caches',
+      'Astra',
+      'VisualContext',
+      'ComputerRuns',
+      `${id}.json`,
+    );
     if (legacy !== join(journal, `${id}.json`)) {
       try {
         await lstat(legacy);
@@ -76,8 +88,26 @@ export class NativeVisionDevice implements VisionDevice {
       await file.close();
     }
   }
-  async begin(goal: string, recipient: string, signal: AbortSignal): Promise<VisionFrame> {
-    return this.#capture({ op: 'begin', goal, recipient }, signal);
+  async begin(
+    goal: string,
+    recipient: string,
+    signal: AbortSignal,
+    expectedTarget?: { readonly pid: number; readonly bundleId: string },
+  ): Promise<VisionFrame> {
+    if (
+      expectedTarget &&
+      (!Number.isSafeInteger(expectedTarget.pid) ||
+        expectedTarget.pid <= 0 ||
+        expectedTarget.pid > 2_147_483_647 ||
+        typeof expectedTarget.bundleId !== 'string' ||
+        !expectedTarget.bundleId ||
+        expectedTarget.bundleId.length > 255)
+    )
+      throw new VisionFailure('invalid_expected_target');
+    return this.#capture(
+      { op: 'begin', goal, recipient, ...(expectedTarget ? { expectedTarget } : {}) },
+      signal,
+    );
   }
   async capture(scope: VisionFrame, signal: AbortSignal): Promise<VisionFrame> {
     return this.#capture({ op: 'capture', scope }, signal);
@@ -100,7 +130,7 @@ export class NativeVisionDevice implements VisionDevice {
     action: GroundedAction,
     signal: AbortSignal,
     expiresAt: number,
-  ): Promise<{ route?: string; effect?: string }> {
+  ): Promise<{ route?: string; effect?: string; scroll?: ScrollReadback }> {
     const result = await this.#invoke(
       {
         op: 'apply',
@@ -118,12 +148,59 @@ export class NativeVisionDevice implements VisionDevice {
      */
     const route = typeof result['route'] === 'string' ? result['route'] : undefined;
     const effect = result['effect'] === 'confirmed' ? 'confirmed' : 'unconfirmed';
-    return { ...(route ? { route } : {}), effect };
+    if (action.action === 'scroll' && effect !== 'confirmed')
+      throw new VisionFailure('input_effect_unconfirmed');
+    const scroll =
+      action.action === 'scroll' ? scrollReadbackOf(result['scroll'], action) : undefined;
+    return { ...(route ? { route } : {}), effect, ...(scroll ? { scroll } : {}) };
+  }
+  async previewTarget(
+    frame: VisionFrame,
+    action: GroundedAction,
+    signal: AbortSignal,
+    expiresAt: number,
+  ): Promise<TargetPreview> {
+    if (!this.#root) throw new VisionFailure('session_not_claimed');
+    const id = `cv-${randomUUID()}`;
+    const path = join(this.#root, `${id}.png`);
+    this.#owned.add(path);
+    const result = await this.#invoke(
+      {
+        op: 'preview_target',
+        id,
+        outputPath: path,
+        scope: frame,
+        action,
+        authorizationExpiresAt: expiresAt,
+        referencePath: join(this.#root, `${frame.id}.png`),
+      },
+      signal,
+    );
+    const preview = targetPreviewOf(result, frame, action);
+    if (preview.id !== id) throw new VisionFailure('invalid_target_preview');
+    const data = readVisualImages(
+      locateImages([{ id, kind: 'screenshot', label: 'Proposed target' }]),
+    )[0]?.data;
+    if (
+      !data ||
+      data.length < 24 ||
+      data.readUInt32BE(16) !== preview.width ||
+      data.readUInt32BE(20) !== preview.height ||
+      createHash('sha256').update(data).digest('hex') !== preview.sha256
+    )
+      throw new VisionFailure('image_mismatch');
+    return preview;
   }
   async close(): Promise<void> {
     if (this.#backgroundScope) {
-      await this.#invoke({ op: 'end', scope: this.#backgroundScope,
-        referencePath: join(this.#root, `${this.#backgroundScope.id}.png`) }, AbortSignal.timeout(2000)).catch(() => undefined);
+      await this.#invoke(
+        {
+          op: 'end',
+          scope: this.#backgroundScope,
+          referencePath: join(this.#root, `${this.#backgroundScope.id}.png`),
+        },
+        AbortSignal.timeout(2000),
+      ).catch(() => undefined);
     }
     await Promise.all([...this.#owned].map((path) => rm(path, { force: true })));
   }
@@ -136,6 +213,12 @@ export class NativeVisionDevice implements VisionDevice {
     this.#owned.add(path + '.used');
     const result = await this.#invoke({ ...input, id, outputPath: path }, signal);
     const frame = frameOf(result, Date.now());
+    const expectedTarget = input['expectedTarget'] as { pid: number; bundleId: string } | undefined;
+    if (
+      expectedTarget &&
+      (frame.pid !== expectedTarget.pid || frame.bundleId !== expectedTarget.bundleId)
+    )
+      throw new VisionFailure('target_changed');
     if (frame.deliveryMode === 'background') this.#backgroundScope = frame;
     if (frame.id !== id) throw new VisionFailure('invalid_frame');
     const images = readVisualImages(locateImages([{ id, kind: 'screenshot', label: 'Computer' }]));

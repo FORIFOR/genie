@@ -7,9 +7,13 @@ import {
   requireApproval,
   verdictOf,
   splitCriteria,
+  targetPreviewOf,
+  scrollReadbackOf,
+  type ScrollReadback,
   type Verdict,
   type VisionFrame,
   type GroundedAction,
+  type TargetPreview,
 } from './computer-vision-policy.js';
 
 // Structural types keep the loop independent of providers, native UI, and the cloud.
@@ -50,13 +54,20 @@ export interface VisionDevice {
    * 実装しない装置では、割り込みはこれまでどおりその場で停止になる。
    */
   resume?(scope: VisionFrame, signal: AbortSignal): Promise<void>;
+  /** Read-only native grounding. Required before any text write; never focuses or dispatches input. */
+  previewTarget?(
+    frame: VisionFrame,
+    action: GroundedAction,
+    signal: AbortSignal,
+    expiresAt: number,
+  ): Promise<TargetPreview>;
   /** Freshness, window and local per-action approval are rechecked natively before input. */
   apply(
     frame: VisionFrame,
     action: GroundedAction,
     signal: AbortSignal,
     expiresAt: number,
-  ): Promise<{ route?: string; effect?: string } | void>;
+  ): Promise<{ route?: string; effect?: string; scroll?: ScrollReadback } | void>;
   close(): Promise<void>;
 }
 export interface VisionConfig {
@@ -92,7 +103,12 @@ interface AuditRow {
    * `uncertain` はモデルが判断を控えたこと（成否の主張ではない）。
    */
   evidence?: 'target' | 'model' | 'uncertain';
+  /** 配送の途中で止まった可能性。未配送と決めつけて再実行しない。 */
+  delivery?: 'unknown';
+  /** 書き込む対象と内容が依頼に合うかを、配送前に別のモデル呼び出しで確認した。 */
+  targetVerified?: boolean;
   route?: string;
+  scroll?: ScrollReadback;
   /** どの要素に送ったか。木の位置を表す id で、画面の文言は含まない。 */
   elementId?: string;
   /** まだ満たされていない完了条件の番号。番号だけで、条件の文も画面の文言も含まない。 */
@@ -197,6 +213,7 @@ export class ComputerVisionRuntime {
         toolId: string,
         frames: VisionFrame[],
         args: Record<string, unknown>,
+        preview?: TargetPreview,
       ) => {
         check(signal);
         requireApproval(step.approval, 'computer.run', this.#now());
@@ -226,11 +243,13 @@ export class ComputerVisionRuntime {
                 goal,
                 successCriteria: criteria,
                 vision_model_kind: kind,
-                images: frames.map((f, i) => ({
-                  id: f.id,
-                  kind: 'screenshot',
-                  label: frames.length === 2 ? (i === 0 ? 'BEFORE' : 'AFTER') : 'CURRENT',
-                })),
+                images: preview
+                  ? [{ id: preview.id, kind: 'screenshot', label: 'PROPOSED_TARGET_PREVIEW' }]
+                  : frames.map((f, i) => ({
+                      id: f.id,
+                      kind: 'screenshot',
+                      label: frames.length === 2 ? (i === 0 ? 'BEFORE' : 'AFTER') : 'CURRENT',
+                    })),
                 frames: frames.map((f) => ({ id: f.id, width: f.width, height: f.height })),
                 // 操作できる候補。位置は渡さない——選ばれた後に helper が取り直す。
                 candidates: frames.at(-1)?.elements ?? [],
@@ -308,22 +327,65 @@ export class ComputerVisionRuntime {
        * どれも入力が出る前に決まる（経路は送る前に選ぶ）ので、二重実行にならない。
        */
       const UNSENT_REFUSALS = new Set([
-        'background_field_not_empty', 'background_no_text_delivery', 'background_no_press_action',
-        'background_target_unresolved', 'background_element_ambiguous', 'target_changed',
+        'background_field_not_empty',
+        'background_no_text_delivery',
+        'background_no_press_action',
+        'background_target_unresolved',
+        'background_element_ambiguous',
+        'target_changed',
         /*
          * 「その相手にその操作はできない」「その文字は打てない」も、送る前の断り。
          * **守るための線ではなく、狙いが合っていないだけ**なので選び直させる。
          * 伏せ字の欄（policy_secure_field）だけは別で、ここには入れない——
          * あれは狙いの誤りではなく、してはいけないことなので、その場で人に返す。
          */
-        'policy_action_not_allowed', 'policy_text_rejected',
+        'policy_action_not_allowed',
+        'policy_text_rejected',
         // 鍵を受け取る窓が違う。押せばその窓に移るので、押してから打ち直させる。
         'background_key_window_not_focused',
       ]);
+      // Only these native failures establish that dispatch never started. Every
+      // other apply failure (including helper loss or cancellation) is ambiguous.
+      // The native adapter must map failures after dispatch to a different code.
+      const UNSENT_FAILURES = new Set([
+        ...UNSENT_REFUSALS,
+        'human_takeover',
+        'stale_generation',
+        'stale_frame',
+        'policy_secure_field',
+        'user_cancelled',
+        'session_stopped',
+        'consent_expired',
+        'consent_target_mismatch',
+        'approval_expired',
+        'invalid_request',
+        'invalid_scope',
+        'invalid_cache',
+        'background_receipt_missing',
+        'background_file_exists',
+        'background_monitor_unavailable',
+        'background_disabled',
+        'background_key_route_unavailable',
+        'background_spi_unavailable',
+        'background_event_unavailable',
+        'background_window_ambiguous',
+        'background_tree_limit',
+        'background_target_offscreen',
+        'background_scroll_unsupported',
+        'background_scroll_boundary',
+        'background_link_unsupported',
+      ]);
       let refused = '';
       const SHAPE_FAILURES = new Set([
-        'invalid_response', 'invalid_plan', 'invalid_frame', 'invalid_target',
-        'invalid_text', 'invalid_key', 'ungrounded_action', 'invalid_verdict',
+        'invalid_response',
+        'invalid_plan',
+        'invalid_frame',
+        'invalid_target',
+        'invalid_text',
+        'invalid_key',
+        'invalid_scroll',
+        'ungrounded_action',
+        'invalid_verdict',
         // 古い写真の番号を書き写しただけ。**形の間違いなので訊き直す。**
         // 指示の側では最初から「最新でない frameId」として説明していたのに、
         // 実際に出る符号が別名だったため、訊き直されずに走行が終わっていた。
@@ -379,9 +441,17 @@ export class ComputerVisionRuntime {
         }
         throw new VisionFailure('invalid_verdict');
       };
+      const reframeIfStale = async (): Promise<boolean> => {
+        if (this.#now() - current.capturedAt <= 60_000) return false;
+        staleDecisions += 1;
+        if (++replans > 2)
+          throw new VisionFailure(staleDecisions > 2 ? 'model_too_slow' : 'stale_frame');
+        current = await capture();
+        return true;
+      };
       while (true) {
         check(signal);
-        const proposed = await plan();
+        let proposed = await plan();
         if (proposed.action === 'stop') throw new VisionFailure('planner_stopped');
         if (proposed.action === 'done') {
           const latest = await capture();
@@ -432,6 +502,75 @@ export class ComputerVisionRuntime {
         // No stale model result may mutate the desktop after cancellation or approval expiry.
         check(signal);
         requireApproval(step.approval, 'computer.run', this.#now());
+        if (await reframeIfStale()) continue;
+        const verifiesTarget = ['type', 'type_keys', 'scroll'].includes(proposed.action);
+        if (verifiesTarget) {
+          if (!device.previewTarget) throw new VisionFailure('target_preview_unavailable');
+          let preview: TargetPreview;
+          try {
+            preview = targetPreviewOf(
+              await wait(
+                device.previewTarget(
+                  current,
+                  proposed,
+                  signal,
+                  Date.parse((step.approval as { expiresAt: string }).expiresAt),
+                ),
+                signal,
+              ),
+              current,
+              proposed,
+            );
+          } catch (error) {
+            // Preview is explicitly read-only, so interruption can safely reframe.
+            if (
+              error instanceof VisionFailure &&
+              ['human_takeover', 'stale_generation'].includes(error.code)
+            ) {
+              await pauseForHuman(error.code);
+              current = await capture();
+              continue;
+            }
+            if (error instanceof VisionFailure && error.code === 'stale_frame' && ++replans <= 2) {
+              current = await capture();
+              continue;
+            }
+            throw error;
+          }
+          // The helper resolved a single actual field. Both verifier and input use
+          // that same identity, never the model's potentially misleading pixel box.
+          const { target: _target, ...named } = proposed;
+          proposed = { ...named, elementId: preview.elementId };
+          /*
+           * 書ける欄であることと、依頼された欄であることは違う。配送前に、元の依頼と
+           * この対象・文字の組み合わせを別の呼び出しで確かめる。planner の期待や
+           * 自信は渡さない。拒否・曖昧・不正な返答を別の欄への書き込みに言い換えない。
+           * これはモデルによる追加確認で、native 側の承認・保護欄・世代検査の代わりではない。
+           */
+          const targetVerdict = verdictOf(
+            await model(
+              TOOLS.verify,
+              [current],
+              {
+                phase: 'target',
+                proposedInput: {
+                  action: proposed.action,
+                  elementId: proposed.elementId,
+                  text: proposed.text,
+                  ...(proposed.textMode ? { textMode: proposed.textMode } : {}),
+                  ...(proposed.direction ? { direction: proposed.direction } : {}),
+                },
+                targetPreview: preview,
+              },
+              preview,
+            ),
+            current,
+          );
+          if (targetVerdict.outcome !== 'satisfied') throw new VisionFailure('target_not_verified');
+          // 確認を待っている間の取消・承認切れ・写真の古さも、配送する前に検査する。
+          check(signal);
+          requireApproval(step.approval, 'computer.run', this.#now());
+        }
         /*
          * 決まったときには写真が古い、という場合。撮り直して考え直す。
          * ただし**毎回そうなるなら、それは一度きりの不運ではない。**
@@ -440,13 +579,7 @@ export class ComputerVisionRuntime {
          * 実測（qwen3.5:9b / 1200x966）: 109 秒・94 秒・74 秒。
          * 一度も送れないまま 4 分半を使い、`stale_frame` とだけ言って終わっていた。
          */
-        if (this.#now() - current.capturedAt > 60_000) {
-          staleDecisions += 1;
-          if (++replans > 2)
-            throw new VisionFailure(staleDecisions > 2 ? 'model_too_slow' : 'stale_frame');
-          current = await capture();
-          continue;
-        }
+        if (await reframeIfStale()) continue;
         const signature = createHash('sha256')
           .update(
             JSON.stringify({
@@ -456,13 +589,15 @@ export class ComputerVisionRuntime {
               // 要素で指した操作は座標を持たない。id を入れないと、**別の要素が同じ操作に見える。**
               elementId: proposed.elementId,
               text: proposed.text,
+              textMode: proposed.textMode,
+              direction: proposed.direction,
               key: proposed.key,
             }),
           )
           .digest('hex');
         if (signature === lastAttempt) throw new VisionFailure('repeated_action');
         lastAttempt = signature;
-        let applied: { route?: string; effect?: string } | void;
+        let applied: { route?: string; effect?: string; scroll?: ScrollReadback } | void;
         try {
           applied = await wait(
             device.apply(
@@ -473,7 +608,25 @@ export class ComputerVisionRuntime {
             ),
             signal,
           );
+          if (proposed.action === 'scroll') {
+            if (applied?.effect !== 'confirmed')
+              throw new VisionFailure('input_effect_unconfirmed');
+            applied.scroll = scrollReadbackOf(applied.scroll, proposed);
+          }
         } catch (error) {
+          if (!(error instanceof VisionFailure) || !UNSENT_FAILURES.has(error.code)) {
+            audit.push({
+              sequence: count + 1,
+              event: proposed.action,
+              before: current.sha256,
+              verified: false,
+              evidence: 'uncertain',
+              delivery: 'unknown',
+              ...(verifiesTarget ? { targetVerified: true } : {}),
+              ...(proposed.elementId ? { elementId: proposed.elementId } : {}),
+            });
+            throw error;
+          }
           /*
            * 人が割り込んだ、あるいは割り込みで実行世代が進んでいた。
            * **どちらも入力が出る前の断りで、画面には何も起きていない。**
@@ -500,11 +653,7 @@ export class ComputerVisionRuntime {
            * 符号を返して立て直させる。回数は作り直しの持ち分に数える。
            * **断りの理由が「してはいけない」の側（policy_・同意・割り込み）は、ここに入れない。**
            */
-          if (
-            error instanceof VisionFailure &&
-            UNSENT_REFUSALS.has(error.code) &&
-            ++replans <= 2
-          ) {
+          if (error instanceof VisionFailure && UNSENT_REFUSALS.has(error.code) && ++replans <= 2) {
             refused = error.code;
             current = await capture();
             continue;
@@ -512,6 +661,19 @@ export class ComputerVisionRuntime {
           throw error;
         }
         count++;
+        // 配送の記録を先に残す。次の撮影・検証が失敗しても、送った入力は消えない。
+        const sent: AuditRow = {
+          sequence: count,
+          event: proposed.action,
+          before: current.sha256,
+          verified: false,
+          evidence: 'uncertain',
+          ...(verifiesTarget ? { targetVerified: true } : {}),
+          ...(applied?.route ? { route: applied.route } : {}),
+          ...(applied?.scroll ? { scroll: applied.scroll } : {}),
+          ...(proposed.elementId ? { elementId: proposed.elementId } : {}),
+        };
+        audit.push(sent);
         const after = await capture();
         /*
          * helper が対象を読み直して変化を確かめられたなら、**そちらを信じる。**
@@ -531,15 +693,10 @@ export class ComputerVisionRuntime {
         const verified = verdict.outcome;
         // 効果が確かめられなかったときだけ、その理由を次の計画へ戻す。
         feedback = verified === 'satisfied' ? '' : verdict.evidence;
-        audit.push({
-          sequence: count,
-          event: proposed.action,
-          before: current.sha256,
+        Object.assign(sent, {
           after: after.sha256,
           verified: verified === 'satisfied',
           evidence: confirmedByTarget ? 'target' : verified === 'uncertain' ? 'uncertain' : 'model',
-          ...(applied?.route ? { route: applied.route } : {}),
-          ...(proposed.elementId ? { elementId: proposed.elementId } : {}),
         });
         if (verified !== 'satisfied' && ++replans > 2)
           throw new VisionFailure(
@@ -571,16 +728,30 @@ export class ComputerVisionRuntime {
        * **画面に何かを残したことは伝わらなかった**——利用者は確認しに行けない。
        * 取り消せるとは言わない。送った数と、確認が要ることだけを言う。
        */
-      const delivered = audit.filter((row) => row.event !== 'goal_verification').length;
+      const delivered = audit.filter(
+        (row) => row.event !== 'goal_verification' && !row.delivery,
+      ).length;
+      const unknown = audit.filter((row) => row.delivery === 'unknown').length;
       const stopped = failure(code);
+      const disclosure = [
+        ...(delivered > 0
+          ? [
+              `すでに${delivered}件の入力を画面へ送っています（取り消していません）。画面の状態を確認してください。`,
+            ]
+          : []),
+        ...(unknown > 0
+          ? [
+              `${unknown}件の入力は配送中に停止した可能性があります。一部が届いている場合があるため、再送せずに画面の状態を確認してください。`,
+            ]
+          : []),
+      ].join(' ');
       return {
         ...stopped,
-        ...(delivered > 0 && stopped.error
+        ...(disclosure && stopped.error
           ? {
               error: {
                 ...stopped.error,
-                message:
-                  `${stopped.error.message} すでに${delivered}件の入力を画面へ送っています（取り消していません）。画面の状態を確認してください。`,
+                message: `${stopped.error.message} ${disclosure}`,
               },
             }
           : {}),
@@ -601,15 +772,37 @@ function failure(code: string): VisionOutcome {
   const messages: Record<string, string> = {
     human_takeover:
       '対象アプリを利用者が操作したため停止しました。手が空くのを待ちましたが、操作は続いています。入力は送っていません。',
-    background_unsupported: 'この操作はバックグラウンドでは未対応です。前面操作へ切り替えず停止しました。',
-    background_text_unsupported: 'この入力欄はバックグラウンド入力に対応していないか、既に文字があります。上書きせず停止しました。',
-    background_interference: '前面アプリまたはクリップボードの変化を検出し、停止しました。直前の操作結果を確認してください。',
-    background_result_unknown: 'バックグラウンド操作の結果を確認できませんでした。二重実行を防ぐため再送していません。',
-    background_monitor_unavailable: '利用者の操作を検出する監視を確認できないため、画面操作を停止しました。',
+    background_unsupported:
+      'この操作はバックグラウンドでは未対応です。前面操作へ切り替えず停止しました。',
+    background_target_offscreen:
+      '操作する場所が接続中の画面に表示されていないため、入力せずに停止しました。対象の窓を画面内へ移してから再実行してください。',
+    background_link_unsupported:
+      'このリンクは対象ページ内の確実なバックグラウンド移動として確認できないため、クリックせず停止しました。',
+    background_scroll_unsupported:
+      'この領域のスクロール位置を安全に読み取れないため、スクロールせず停止しました。',
+    background_scroll_boundary: '指定方向の端まで達しているため、スクロールせず停止しました。',
+    background_text_unsupported:
+      'この入力欄はバックグラウンド入力に対応していないか、既に文字があります。上書きせず停止しました。',
+    background_interference:
+      '前面アプリまたはクリップボードの変化を検出し、停止しました。直前の操作結果を確認してください。',
+    background_result_unknown:
+      'バックグラウンド操作の結果を確認できませんでした。二重実行を防ぐため再送していません。',
+    background_monitor_unavailable:
+      '利用者の操作を検出する監視を確認できないため、画面操作を停止しました。',
     verification_uncertain:
       '操作の結果を画面から確かめきれませんでした。完了扱いにせず停止しました。',
+    target_not_verified:
+      '書き込む対象と内容が依頼に合うことを確認できなかったため、この入力を送らずに停止しました。',
+    target_preview_unavailable:
+      '入力先を示す画像を作成できないため、この入力を送らずに停止しました。画面操作ヘルパーを更新してください。',
+    invalid_target_preview:
+      '入力先の画像と元の画面の一致を確認できなかったため、この入力を送らずに停止しました。',
+    input_effect_unconfirmed:
+      '操作の配送結果が未確認のため停止しました。二重入力を防ぐため、自動では再実行しません。',
     verification_blocked:
       '確認の途中で先へ進めない画面を検出し、停止しました。画面の状態を確認してください。',
+    commit_boundary:
+      '注文・購入・支払いを確定するボタンは、画面操作では押しません。金額と内容を確認してから確定する、注文の手順で依頼してください。',
     goal_not_verified: '目的が満たされたことを画面から確認できませんでした。完了していません。',
     free_quota_exhausted:
       '選んだクラウドモデルの無料で使える分を使い切りました。自動では有料に切り替えません。',
@@ -640,13 +833,14 @@ function failure(code: string): VisionOutcome {
       '画面の一時保存先が安全に使えません（symlink を含む、所有者が違う、権限が緩いなど）。操作は行っていません。保存先の設定を確認してください。',
     replay_blocked:
       'この依頼は既に開始されています。二重実行を防ぐため再実行しません。新しい依頼を作ってください。',
-    helper_unavailable: '画面操作ヘルパーを実行できませんでした。操作は行っていません。',
+    helper_unavailable: '画面操作ヘルパーから応答を確認できなかったため停止しました。',
   };
   return {
     ok: false,
     error: {
       code: `computer.vision.${code}`,
-      message: messages[code] ??
+      message:
+        messages[code] ??
         '画面操作を停止しました。完了は確認されていません。権限・対象画面・モデル設定を確認してください。',
     },
   };

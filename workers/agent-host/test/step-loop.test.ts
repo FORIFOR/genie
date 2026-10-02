@@ -48,6 +48,164 @@ const runner = (run: (s: HostStep) => Promise<StepOutcome>, handles = true) => (
 });
 
 describe('the host step loop', () => {
+  it('reports unknown transaction identity as a failed result without submitting again', async () => {
+    const transport = fakeTransport([step({ toolId: 'transaction.submit' })]);
+    transport.executionAllowed = async () => true;
+    const unknown = {
+      status: 'unknown',
+      provider: 'fixture',
+      mode: 'simulation',
+      account: 'account',
+      orderKey: 'order-1',
+      quoteHash: 'a'.repeat(64),
+    };
+    const fail = vi.spyOn(transport, 'fail');
+    const run = vi.fn(async () => ({
+      ok: false,
+      result: unknown,
+      error: { code: 'transaction.result_unknown', message: '受付状況を照会してください。' },
+    }));
+    const loop = new HostStepLoop({ transport, runner: runner(run) });
+    await loop.tick(HOST);
+    expect(fail).toHaveBeenCalledWith(
+      'req-1',
+      HOST,
+      expect.objectContaining({ code: 'transaction.result_unknown' }),
+      unknown,
+    );
+    expect(await loop.tick(HOST)).toBe(false);
+    expect(run).toHaveBeenCalledOnce();
+    expect(transport.completed).toEqual([]);
+  });
+
+  it('checks fresh authority before dispatch, including cancellation after claim', async () => {
+    const transport = fakeTransport([step({ toolId: 'transaction.submit' })]);
+    const run = vi.fn(async () => ({ ok: true }));
+    transport.executionAllowed = vi.fn(async () => false);
+    const loop = new HostStepLoop({ transport, runner: runner(run) });
+    await loop.tick(HOST);
+    expect(transport.executionAllowed).toHaveBeenCalledWith('req-1', HOST, expect.any(AbortSignal));
+    expect(run).not.toHaveBeenCalled();
+    expect(transport.failed[0]?.error.code).toBe('host.cancelled');
+  });
+
+  it('requires revocation support for submit without breaking legacy transports', async () => {
+    const transport = fakeTransport([step({ toolId: 'transaction.submit' }), step()]);
+    const run = vi.fn(async () => ({ ok: true }));
+    const loop = new HostStepLoop({ transport, runner: runner(run) });
+    await loop.tick(HOST);
+    expect(run).not.toHaveBeenCalled();
+    expect(transport.failed[0]?.error.code).toBe('host.authority_unavailable');
+    await loop.tick(HOST);
+    expect(run).toHaveBeenCalledOnce();
+  });
+
+  it('does not run when the authority endpoint is missing or unavailable', async () => {
+    for (const message of ['404 not found', 'fetch failed']) {
+      const transport = fakeTransport([step()]);
+      transport.executionAllowed = async () => {
+        throw new Error(message);
+      };
+      const run = vi.fn(async () => ({ ok: true }));
+      await new HostStepLoop({ transport, runner: runner(run) }).tick(HOST);
+      expect(run).not.toHaveBeenCalled();
+      expect(transport.failed).toHaveLength(1);
+    }
+  });
+
+  it('propagates in-flight revocation and network loss to the runner signal', async () => {
+    for (const lostConnection of [false, true]) {
+      const transport = fakeTransport([step()]);
+      let checks = 0;
+      transport.executionAllowed = async () => {
+        if (++checks === 1) return true;
+        if (lostConnection) throw new Error('fetch failed');
+        return false;
+      };
+      let received: AbortSignal | undefined;
+      const loop = new HostStepLoop({
+        transport,
+        authorityPollMs: 1,
+        runner: {
+          handles: () => true,
+          async run(_step, signal) {
+            received = signal;
+            await new Promise<void>((resolve) =>
+              signal!.addEventListener('abort', () => resolve(), { once: true }),
+            );
+            return {
+              ok: false,
+              error: { code: 'transaction.result_unknown', message: '停止後は照会してください。' },
+            };
+          },
+        },
+      });
+      await loop.tick(HOST);
+      expect(received?.aborted).toBe(true);
+      expect(transport.failed[0]?.error.code).toBe('transaction.result_unknown');
+    }
+  });
+
+  it('aborts even while the authority transport is hung before fetch or ignores the signal', async () => {
+    const transport = fakeTransport([step()]);
+    let checks = 0;
+    transport.executionAllowed = () =>
+      ++checks === 1 ? Promise.resolve(true) : new Promise(() => {});
+    let aborted = false;
+    const loop = new HostStepLoop({
+      transport,
+      authorityPollMs: 1,
+      authorityTimeoutMs: 5,
+      runner: {
+        handles: () => true,
+        async run(_step, signal) {
+          await new Promise<void>((resolve) =>
+            signal!.addEventListener(
+              'abort',
+              () => {
+                aborted = true;
+                resolve();
+              },
+              { once: true },
+            ),
+          );
+          return {
+            ok: false,
+            error: { code: 'transaction.result_unknown', message: '照会してください。' },
+          };
+        },
+      },
+    });
+    await loop.tick(HOST);
+    expect(aborted).toBe(true);
+    expect(transport.failed[0]?.error.code).toBe('transaction.result_unknown');
+  });
+
+  it('preserves a receipt returned after cancellation and stops polling after completion', async () => {
+    const transport = fakeTransport([step()]);
+    let checks = 0;
+    transport.executionAllowed = async () => ++checks === 1;
+    const receipt = { status: 'accepted', providerOrderId: 'already-sent' };
+    const loop = new HostStepLoop({
+      transport,
+      authorityPollMs: 1,
+      runner: {
+        handles: () => true,
+        async run(_step, signal) {
+          await new Promise<void>((resolve) =>
+            signal!.addEventListener('abort', () => resolve(), { once: true }),
+          );
+          return { ok: true, result: receipt };
+        },
+      },
+    });
+    await loop.tick(HOST);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(checks).toBe(2);
+    expect(transport.completed).toEqual([{ id: 'req-1', result: receipt }]);
+    expect(transport.failed).toEqual([]);
+  });
+
   it('returns the result of what it ran', async () => {
     const transport = fakeTransport([step()]);
     const loop = new HostStepLoop({
@@ -200,7 +358,11 @@ describe('reporting the result after a restart', () => {
         await transport.complete(id, hostId, result);
       },
     };
-    const loop = new HostStepLoop({ transport: flaky, runner: runner(async () => ({ ok: true, result: 1 })), sleep: noWait });
+    const loop = new HostStepLoop({
+      transport: flaky,
+      runner: runner(async () => ({ ok: true, result: 1 })),
+      sleep: noWait,
+    });
     expect(await loop.tick(HOST)).toBe(true);
     expect(attempts).toBe(3);
     expect(transport.completed).toEqual([{ id: 'req-1', result: 1 }]);
@@ -210,7 +372,12 @@ describe('reporting the result after a restart', () => {
   it('never turns a success it could not report into a failure', async () => {
     const transport = fakeTransport([step()]);
     const errors: string[] = [];
-    const down: StepTransport = { ...transport, async complete() { throw new TypeError('fetch failed'); } };
+    const down: StepTransport = {
+      ...transport,
+      async complete() {
+        throw new TypeError('fetch failed');
+      },
+    };
     const loop = new HostStepLoop({
       transport: down,
       runner: runner(async () => ({ ok: true, result: 1 })),
@@ -225,8 +392,18 @@ describe('reporting the result after a restart', () => {
   it('does not retry an error that is not transient', async () => {
     const transport = fakeTransport([step()]);
     let attempts = 0;
-    const denied: StepTransport = { ...transport, async complete() { attempts++; throw new Error('403 forbidden'); } };
-    const loop = new HostStepLoop({ transport: denied, runner: runner(async () => ({ ok: true, result: 1 })), sleep: noWait });
+    const denied: StepTransport = {
+      ...transport,
+      async complete() {
+        attempts++;
+        throw new Error('403 forbidden');
+      },
+    };
+    const loop = new HostStepLoop({
+      transport: denied,
+      runner: runner(async () => ({ ok: true, result: 1 })),
+      sleep: noWait,
+    });
     await loop.tick(HOST);
     expect(attempts).toBe(1);
   });

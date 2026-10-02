@@ -38,6 +38,7 @@ const CompleteStepRequest = z.object({
 });
 const FailStepRequest = z.object({
   host_id: z.uuid(),
+  result: z.unknown().optional(),
   error: z.object({
     code: z.string().min(1).max(80),
     /** 画面に出せる言葉で。tool 側の文言をそのまま流さない（§7.2）。 */
@@ -148,6 +149,24 @@ export function registerAgentHostRoutes(app: App, deps: AgentHostRouteDeps): voi
   });
 
   app.post<{ Params: { requestId: string } }>(
+    '/v1/host-steps/:requestId/authority',
+    async (request) => {
+      const principal = requirePrincipal();
+      const body = ClaimStepRequest.parse(request.body ?? {});
+      if (!deps.bridge)
+        throw new GenieError('common.not_found', 'the host bridge is not connected');
+      return {
+        allowed: await deps.bridge.executionAllowed({
+          tenantId: principal.tenantId,
+          userId: principal.userId,
+          requestId: request.params.requestId,
+          hostId: body.host_id,
+        }),
+      };
+    },
+  );
+
+  app.post<{ Params: { requestId: string } }>(
     '/v1/host-steps/:requestId/complete',
     async (request, reply) => {
       const principal = requirePrincipal();
@@ -178,6 +197,7 @@ export function registerAgentHostRoutes(app: App, deps: AgentHostRouteDeps): voi
         requestId: request.params.requestId,
         hostId: body.host_id,
         error: body.error,
+        result: body.result,
       });
       return reply.status(204).send();
     },

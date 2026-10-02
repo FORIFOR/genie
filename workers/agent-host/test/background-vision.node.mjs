@@ -1,14 +1,19 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { visionPromptFor } from '../dist/computer-vision-prompts.js';
+import { pathToFileURL } from 'node:url';
+import path from 'node:path';
+const base = process.env.GENIE_VISION_TEST_DIST
+  ? pathToFileURL(path.resolve(process.env.GENIE_VISION_TEST_DIST) + '/').href
+  : new URL('../dist/', import.meta.url).href;
+const { visionPromptFor } = await import(new URL('computer-vision-prompts.js', base));
 
 test('background planning uses empty-field AX input, not focus or keyboard fallback', () => {
   const prompt=visionPromptFor('llm.plan_computer_action',{goal:'fill draft',observation:{deliveryMode:'background'}});
   assert.match(prompt,/EMPTY editable native field/);
   // キーの押下／解放は背景でも届くようになった。守り続けるのは前面化・ドラッグ・
   // クリップボードを使わないことと、フォーカス済みを前提にしないこと。
-  assert.match(prompt,/Drag, scrolling and clipboard are unsupported/);
+  assert.match(prompt,/Horizontal scrolling, drag and clipboard are unsupported/);
   assert.match(prompt,/Never request foreground activation/);
   assert.match(prompt,/must not be replaced with a foreground action/);
   /*
@@ -70,12 +75,17 @@ test('送る前の関門は、承認・対象・停止に加えて実行世代�
    * apply 経路で permitted を直に呼ぶのは `current()` の中の 1 か所だけ。
    * ほかに素の permitted が残っていると、そこだけ世代を見ない関門になる。
    */
-  const apply=source.slice(source.indexOf('guard request.op == "apply"'));
+  const start=source.indexOf('guard ["apply", "preview_target"].contains(request.op)');
+  assert.ok(start >= 0, 'apply and preview share the authority guard');
+  const apply=source.slice(start);
   assert.equal(apply.match(/permitted\(f,\s*dir:\s*dir\)/g)?.length,1);
   const guardBody=apply.slice(apply.indexOf('func current()'),apply.indexOf('let t=try current()'));
   assert.match(guardBody,/permitted\(f,\s*dir:\s*dir\)/);
+  assert.match(apply,/snapshot\.frame\.backgroundEpoch == f\.backgroundEpoch/);
   // 1 打ごとの確認も同じ物差しを使う。
-  assert.match(apply,/stillAllowed:\{ \(try\? current\(\)\) != nil \}/);
+  assert.match(apply,/func inputStillAllowed\(\) -> Bool[\s\S]*?try\? current\(\)/);
+  assert.match(apply,/func inputStillAllowed\(\) -> Bool[\s\S]*?keyWindowIsTarget\(t\)/);
+  assert.equal((apply.match(/stillAllowed: inputStillAllowed/g) ?? []).length, 2);
 });
 
 /*
@@ -129,3 +139,15 @@ test('背景で失敗しても前面操作へ切り替えない（経路の取�
   assert.match(source,/Helper\.rescope\(frame\).*Does not reveal, unhide, raise or activate/);
 });
 
+test('append retains native current-value binding and exact post-write readback without enabling replacement',async()=>{
+  const source=await readFile(new URL('../../../tools/computer-use/BackgroundAX.swift',import.meta.url),'utf8');
+  assert.match(source,/digest\(Data\(currentValue\.utf8\)\) == chosen\?\.valueHash/);
+  assert.match(source,/BackgroundTextEdit\.value\(current: currentValue, text: text, mode: a\.textMode\)/);
+  assert.match(source,/describe\(element, path: chosen\.path, bounds: t\.bounds\) != chosen/);
+  assert.match(source,/describe\(targetElement,path:expected\.path,bounds:t\.bounds\) == expected/);
+  assert.match(source,/AXUIElementSetAttributeValue\(targetElement,kAXValueAttribute as CFString,valueForInput! as CFString\)/);
+  assert.match(source,/string\(element!,kAXValueAttribute\) == valueForInput/);
+  assert.match(source,/"elementRole": selected\.role/);
+  const legacy=await readFile(new URL('../../../tools/computer-use/genie-computer.swift',import.meta.url),'utf8');
+  assert.match(legacy,/guard a\.textMode == nil, a\.direction == nil, a\.action != "scroll" else \{ throw Failure\("policy_action_not_allowed"\) \}/);
+});

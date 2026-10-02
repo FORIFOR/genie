@@ -1,5 +1,9 @@
 import { compositionIssues } from './compose-quality.js';
 import { visionPromptFor } from './computer-vision-prompts.js';
+import { createHash } from 'node:crypto';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 /** 画面の鮮度に間に合わせる必要がある仕事。 */
 const VISION_TOOLS = new Set(['llm.plan_computer_action', 'llm.verify_computer_action']);
@@ -463,10 +467,13 @@ export class LlmRuntime {
       const images = locateImages(imageRefsOf(step.args['images']));
       if (vision) {
         const expected =
-          tool === 'llm.plan_computer_action' || step.args['phase'] === 'goal' ? 1 : 2;
+          tool === 'llm.plan_computer_action' ||
+          ['goal', 'target'].includes(String(step.args['phase']))
+            ? 1
+            : 2;
         if (images.length !== expected || images.some((image) => !image.present))
           throw new HttpLlmError('image_unavailable', 'Fresh vision frames are required');
-        readVisualImages(images);
+        readImagesForRequest(tool, step.args, images);
       }
       const prompt = promptFor(
         tool,
@@ -576,6 +583,27 @@ export class LlmRuntime {
     | null {
     if (kind === 'codex' && this.#deps.codex) {
       const cli = this.#deps.codex;
+      if (tool === 'llm.verify_computer_action' && args['phase'] === 'target') {
+        return async (prompt, allowedTools, images) => {
+          const pixels = readImagesForRequest(tool, args, images);
+          // The CLI reads paths asynchronously. Give it a separate read-only
+          // snapshot of the validated bytes, so handover-cache replacement cannot
+          // change what it sees. This is not a malicious same-user process boundary.
+          const directory = await mkdtemp(join(tmpdir(), 'genie-target-preview-'));
+          try {
+            const path = join(directory, 'target.png');
+            await writeFile(path, pixels[0]!.data, { flag: 'wx', mode: 0o400 });
+            signal?.throwIfAborted();
+            return await cli.ask(prompt, {
+              images: allowedTools.includes('Read') ? [path] : [],
+              webSearch: false,
+              ...(signal ? { signal } : {}),
+            });
+          } finally {
+            await rm(directory, { recursive: true, force: true });
+          }
+        };
+      }
       return (prompt, allowedTools, images) =>
         cli.ask(prompt, {
           images: allowedTools.includes('Read')
@@ -619,7 +647,7 @@ export class LlmRuntime {
              */
             http.ask(
               prompt,
-              readVisualImages(images),
+              readImagesForRequest(tool, args, images),
               signal,
               kind === 'local' && VISION_TOOLS.has(tool) ? 'none' : undefined,
             );
@@ -631,6 +659,48 @@ export class LlmRuntime {
     }
     return null;
   }
+}
+
+/** Validate the bytes that are actually dispatched, not an earlier read of the same path. */
+function readImagesForRequest(
+  tool: string,
+  args: Record<string, unknown>,
+  images: readonly LocatedImage[],
+) {
+  const pixels = readVisualImages(images);
+  if (tool !== 'llm.verify_computer_action' || args['phase'] !== 'target') return pixels;
+  const preview = args['targetPreview'] as
+    | { id?: unknown; sourceFrameId?: unknown; sha256?: unknown; width?: unknown; height?: unknown }
+    | undefined;
+  const frames = args['frames'];
+  const source = Array.isArray(frames)
+    ? (frames.at(-1) as { id?: unknown } | undefined)
+    : undefined;
+  const data = pixels[0]?.data;
+  if (
+    !preview ||
+    images.length !== 1 ||
+    preview.id !== images[0]?.id ||
+    preview.sourceFrameId !== source?.id ||
+    !data ||
+    data.length < 24 ||
+    typeof preview.sha256 !== 'string' ||
+    !/^[a-f0-9]{64}$/.test(preview.sha256) ||
+    !Number.isSafeInteger(preview.width) ||
+    Number(preview.width) < 1 ||
+    Number(preview.width) > 1600 ||
+    !Number.isSafeInteger(preview.height) ||
+    Number(preview.height) < 1 ||
+    Number(preview.height) > 1600 ||
+    data.readUInt32BE(16) !== preview.width ||
+    data.readUInt32BE(20) !== preview.height ||
+    createHash('sha256').update(data).digest('hex') !== preview.sha256
+  )
+    throw new HttpLlmError(
+      'image_unavailable',
+      'The native target preview bytes no longer match their proof',
+    );
+  return pixels;
 }
 
 /** 小型ローカルモデルがJSONを返しても根拠語を壊す場合の安全な抽出。 */

@@ -343,10 +343,16 @@ export class TaskService {
         .executeTakeFirst();
       if (existing) {
         if (existing.text !== text)
-          throw new GenieError('task.idempotency_conflict', 'この request_id は別の指示に使われています');
+          throw new GenieError(
+            'task.idempotency_conflict',
+            'この request_id は別の指示に使われています',
+          );
         // 保存の後、合図を送る前に落ちていたかもしれない。まだ受け取ったままで仕事が動いていれば送り直す
         // （workflow は同じ request_id を二度反映しない）。
-        const resend = existing.status === 'RECEIVED' && !isTerminal(task.status as TaskStatus) && task.status !== 'CANCELLING';
+        const resend =
+          existing.status === 'RECEIVED' &&
+          !isTerminal(task.status as TaskStatus) &&
+          task.status !== 'CANCELLING';
         return { row: existing as InstructionRow, fresh: resend, workflowId: task.workflow_id };
       }
       if (isTerminal(task.status as TaskStatus) || task.status === 'CANCELLING') {
@@ -468,6 +474,44 @@ export class TaskService {
     });
 
     await this.#runtime.approve(workflowId, approvalId, decision);
+  }
+
+  /** Retry only the workflow signal for an already-reserved human authorization. */
+  async resumeAuthorizedApproval(
+    tenantId: string,
+    userId: string,
+    approvalId: string,
+  ): Promise<void> {
+    const workflowId = await withTenant(this.#db, tenantId, async (tx) => {
+      const row = await tx
+        .selectFrom('transaction_authorization_uses as u')
+        .innerJoin('transaction_authorizations as g', 'g.id', 'u.authorization_id')
+        .innerJoin('approvals as a', 'a.id', 'u.approval_id')
+        .innerJoin('tasks as t', 't.id', 'u.task_id')
+        .select([
+          't.workflow_id',
+          't.status as task_status',
+          'g.status as grant_status',
+          'g.expires_at as grant_expiry',
+          'a.status as approval_status',
+          'a.expires_at',
+        ])
+        .where('u.approval_id', '=', approvalId)
+        .where('g.created_by', '=', userId)
+        .where('t.created_by', '=', userId)
+        .executeTakeFirst();
+      if (!row) throw new GenieError('approval.not_found', 'no authorized approval');
+      // The accepted create receipt is still recoverable after the task finishes.
+      // There is nothing to signal, even when its grant has since expired or been revoked.
+      if (row.task_status !== 'WAITING_APPROVAL') return null;
+      if (row.grant_status !== 'ACTIVE' || row.grant_expiry.getTime() <= Date.now())
+        throw new GenieError('approval.expired', 'authorization is no longer active');
+      // A response retry after dispatch/finish is only a receipt, never another submission.
+      if (row.approval_status !== 'APPROVED' || row.expires_at.getTime() <= Date.now())
+        throw new GenieError('approval.expired', 'approval is no longer active');
+      return row.workflow_id;
+    });
+    if (workflowId) await this.#runtime.approve(workflowId, approvalId, 'APPROVED');
   }
 
   /** SSE のリプレイ用（実装仕様 §7.3）。 */

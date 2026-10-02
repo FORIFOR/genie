@@ -1,6 +1,16 @@
 /** activity の型。ワークフロー側から見える契約なので、実装から分離しておく。 */
 import type { TaskStep } from './plan.js';
 import type { TaskWorkflowInput, TaskResult } from './workflows.js';
+import type { UnknownTransactionResult } from '@genie/contracts';
+export type { UnknownTransactionResult } from '@genie/contracts';
+
+export interface FailureFinalization {
+  /** Only patched workflows opt in; old histories retain their original activity arguments. */
+  readonly preserveCancellation: true;
+  readonly cancellationReason?: string;
+  /** Exact step actually scheduled after approval; persistence still requires a matching host claim. */
+  readonly transactionSubmission?: { readonly stepIndex: number; readonly args: unknown };
+}
 
 export interface TaskErrorPayload {
   readonly code: string;
@@ -20,6 +30,8 @@ export interface TaskErrorPayload {
    * **そのまま画面へ出すと tool 名が漏れる**（§7.2）。
    */
   readonly handoff_explanation?: string | null;
+  /** Task cancellation does not resolve or cancel an external order. */
+  readonly transaction_result?: UnknownTransactionResult;
 }
 
 export interface StartTaskMeta {
@@ -39,6 +51,8 @@ export interface ArtifactSpec {
 
 export interface RequestedApproval {
   readonly approvalId: string;
+  /** Short-lived quotes must not leave a task waiting for the default 24 hours. */
+  readonly timeoutMs?: number;
 }
 
 export interface TaskActivities {
@@ -49,7 +63,11 @@ export interface TaskActivities {
   ): Promise<RequestedApproval | null>;
   acceptApproval(input: TaskWorkflowInput, approvalId: string): Promise<void>;
   /** 追加指示を「反映した（どの段で）」と記録する。受け取ったままのものだけを動かす。 */
-  applyInstructions(input: TaskWorkflowInput, requestIds: readonly string[], stepIndex: number): Promise<void>;
+  applyInstructions(
+    input: TaskWorkflowInput,
+    requestIds: readonly string[],
+    stepIndex: number,
+  ): Promise<void>;
   rejectApproval(input: TaskWorkflowInput, approvalId: string, stepIndex: number): Promise<void>;
   expireApproval(input: TaskWorkflowInput, approvalId: string): Promise<void>;
   executeStep(input: TaskWorkflowInput, step: TaskStep): Promise<unknown>;
@@ -74,6 +92,10 @@ export interface TaskActivities {
     input: TaskWorkflowInput,
     artifactId: string,
   ): Promise<TaskResult | { status: 'CANCELLING'; artifactId: null }>;
-  failTask(input: TaskWorkflowInput, error: TaskErrorPayload): Promise<void>;
+  failTask(
+    input: TaskWorkflowInput,
+    error: TaskErrorPayload,
+    finalization?: FailureFinalization,
+  ): Promise<TaskResult>;
   cancelTask(input: TaskWorkflowInput, reason: string): Promise<TaskResult>;
 }

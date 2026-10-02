@@ -32,7 +32,7 @@ export interface VisionFrame {
 }
 
 export interface GroundedAction {
-  action: 'click' | 'type' | 'key' | 'type_keys';
+  action: 'click' | 'type' | 'key' | 'type_keys' | 'scroll';
   /** 要素で指したとき。座標推測を挟まない経路。 */
   elementId?: string;
   frameId: string;
@@ -42,7 +42,102 @@ export interface GroundedAction {
   confidence: number;
   risk: 'navigation' | 'draft';
   text?: string;
+  /** Explicit append preserves the native field's current value; omission requires an empty field. */
+  textMode?: 'append';
+  /** One bounded vertical native scroll. No model-supplied distance or wheel event. */
+  direction?: 'up' | 'down';
   key?: 'TAB' | 'ESC' | 'LEFT' | 'RIGHT' | 'UP' | 'DOWN' | 'SPACE';
+}
+
+/** A native-rendered context/crop proof for one exact writable element. */
+export interface TargetPreview {
+  status: 'target_preview';
+  id: string;
+  width: number;
+  height: number;
+  sha256: string;
+  sourceFrameId: string;
+  sourceSha256: string;
+  elementId: string;
+  elementRole: 'AXTextField' | 'AXTextArea' | 'AXScrollArea';
+  /** The resolved element bounds in the ORIGINAL screenshot's pixels. */
+  target: [number, number, number, number];
+}
+
+export function targetPreviewOf(
+  raw: unknown,
+  frame: VisionFrame,
+  action: GroundedAction,
+): TargetPreview {
+  const value = record(raw);
+  const box = value['target'];
+  const selected = frame.elements?.find((element) => element.id === value['elementId']);
+  // The public candidate list is capped. Native coordinate grounding may identify
+  // a field outside that list, but must attest its text role and exact target box.
+  const role = value['elementRole'] ?? selected?.role;
+  if (
+    !['type', 'type_keys', 'scroll'].includes(action.action) ||
+    value['status'] !== 'target_preview' ||
+    typeof value['id'] !== 'string' ||
+    !/^cv-[a-f0-9-]{36}$/.test(value['id']) ||
+    value['id'] === frame.id ||
+    value['sourceFrameId'] !== frame.id ||
+    value['sourceSha256'] !== frame.sha256 ||
+    !Number.isSafeInteger(value['width']) ||
+    Number(value['width']) < 1 ||
+    Number(value['width']) > 1600 ||
+    !Number.isSafeInteger(value['height']) ||
+    Number(value['height']) < 1 ||
+    Number(value['height']) > 1600 ||
+    typeof value['sha256'] !== 'string' ||
+    !/^[a-f0-9]{64}$/.test(value['sha256']) ||
+    typeof value['elementId'] !== 'string' ||
+    !/^e[0-9-]{0,80}$/.test(value['elementId']) ||
+    !(action.action === 'scroll' ? ['AXScrollArea'] : ['AXTextField', 'AXTextArea']).includes(
+      String(role),
+    ) ||
+    (action.action === 'scroll' && frame.deliveryMode !== 'background') ||
+    (selected !== undefined && selected.role !== role) ||
+    (action.elementId !== undefined && value['elementId'] !== action.elementId) ||
+    !validPreviewRect(box, frame) ||
+    (action.elementId === undefined && !previewContainsAction(box, action))
+  )
+    throw new VisionFailure('invalid_target_preview');
+  return {
+    status: 'target_preview',
+    id: value['id'],
+    width: Number(value['width']),
+    height: Number(value['height']),
+    sha256: value['sha256'],
+    sourceFrameId: frame.id,
+    sourceSha256: frame.sha256,
+    elementId: value['elementId'],
+    elementRole: role as TargetPreview['elementRole'],
+    target: box as [number, number, number, number],
+  };
+}
+
+function previewContainsAction(box: unknown, action: GroundedAction): boolean {
+  if (!Array.isArray(box) || !action.target) return false;
+  const x = (action.target[0] + action.target[2]) / 2;
+  const y = (action.target[1] + action.target[3]) / 2;
+  return x >= box[0] && x < box[2] && y >= box[1] && y < box[3];
+}
+
+function validPreviewRect(
+  raw: unknown,
+  frame: VisionFrame,
+): raw is [number, number, number, number] {
+  if (!Array.isArray(raw) || raw.length !== 4 || !raw.every(finite)) return false;
+  const [left, top, right, bottom] = raw as [number, number, number, number];
+  return (
+    left >= 0 &&
+    top >= 0 &&
+    right <= frame.width &&
+    bottom <= frame.height &&
+    right - left >= 2 &&
+    bottom - top >= 2
+  );
 }
 
 export type VisionDecision =
@@ -65,6 +160,30 @@ export type VisionDecision =
 const KEYS = ['TAB', 'ESC', 'LEFT', 'RIGHT', 'UP', 'DOWN', 'SPACE'];
 /** `type_keys` で打てる文字。物理キーで判定する画面のために、値の設定と別経路にする。 */
 const TYPABLE = /^[\x20-\x7e]{1,400}$/;
+
+/*
+ * 注文・購入・支払い・発注を**確定する**ボタン。画面操作（computer.run）では押さない。
+ *
+ * これまでは指示文で「支払いの手前で止まれ」と頼んでいただけで、止めるかどうかはモデル次第だった。
+ * お金が動く確定は、金額と内容に結び付いた承認を取る注文の経路（transaction.*）だけが行う。
+ * カートへ入れる・レジへ進む・数量を選ぶ、は確定ではないので通す。
+ *
+ * **これだけでは境界にならない。**名前は画面から読んだ文字で、座標で指したクリックには
+ * 名前が無い。取りこぼしはあり得るので、指示文の側の停止と併せて二重に置く。
+ */
+const COMMIT_CONTROL = [
+  /(?:注文|購入|支払い?|決済|発注|申し?込み?|予約).{0,6}(?:確定|を?完了する|を?実行)/,
+  /(?:確定|完了)して(?:注文|購入|支払)/,
+  /今すぐ(?:買う|購入|支払)/,
+  /^(?:購入する|支払う|お支払い|決済する|発注する|注文を送信(?:する)?|注文を確定|買う)$/,
+  /(?:買い?|売り?|新規|返済)注文.{0,6}(?:発注|送信|確定|実行)|^(?:注文発注|発注)$/,
+  /送金(?:する|を?(?:実行|確定))|振り?込み?を?(?:実行|確定)|振り込む/,
+  /^(?:place (?:your )?order|buy now|pay now|pay|purchase|submit order|complete (?:order|purchase)|confirm (?:order|purchase|payment)|order now)$/i,
+];
+export function isCommitControl(name: string): boolean {
+  const label = name.normalize('NFKC').replace(/\s+/g, ' ').trim();
+  return COMMIT_CONTROL.some((pattern) => pattern.test(label));
+}
 export function record(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value))
     throw new VisionFailure('invalid_response');
@@ -182,7 +301,7 @@ export function decisionOf(raw: unknown, frame: VisionFrame): VisionDecision {
     return { action: d['action'], frameId: frame.id, reason: d['reason'] };
   }
   if (
-    !['click', 'type', 'key', 'type_keys'].includes(String(d['action'])) ||
+    !['click', 'type', 'key', 'type_keys', 'scroll'].includes(String(d['action'])) ||
     !finite(d['confidence']) ||
     d['confidence'] < 0.9 ||
     d['confidence'] > 1 ||
@@ -200,8 +319,11 @@ export function decisionOf(raw: unknown, frame: VisionFrame): VisionDecision {
   const wanted = d['element_id'] ?? d['elementId'];
   let elementId: string | undefined;
   if (typeof wanted === 'string' && wanted) {
-    if (!frame.elements?.some((e) => e.id === wanted))
-      throw new VisionFailure('invalid_target');
+    const element = frame.elements?.find((e) => e.id === wanted);
+    if (!element) throw new VisionFailure('invalid_target');
+    // 形の間違いではないので訊き直さない。別のボタンを探させず、ここで止める。
+    if (['click', 'key'].includes(String(d['action'])) && isCommitControl(element.name))
+      throw new VisionFailure('commit_boundary');
     elementId = wanted;
   }
   let x1 = 0,
@@ -226,6 +348,21 @@ export function decisionOf(raw: unknown, frame: VisionFrame): VisionDecision {
     throw new VisionFailure('invalid_text');
   if (d['action'] === 'key' && !KEYS.includes(String(d['key'])))
     throw new VisionFailure('invalid_key');
+  if (
+    (d['action'] === 'scroll' &&
+      (frame.deliveryMode !== 'background' ||
+        !['up', 'down'].includes(String(d['direction'])) ||
+        d['risk'] !== 'navigation' ||
+        d['text'] !== undefined ||
+        d['key'] !== undefined)) ||
+    (d['direction'] !== undefined && d['action'] !== 'scroll')
+  )
+    throw new VisionFailure('invalid_scroll');
+  if (
+    d['textMode'] !== undefined &&
+    (d['action'] !== 'type' || d['textMode'] !== 'append' || frame.deliveryMode !== 'background')
+  )
+    throw new VisionFailure('invalid_text');
   // 値の設定ではなく、1 文字ずつ押して離す経路。打てない文字が混ざったら打たない。
   if (d['action'] === 'type_keys' && (typeof d['text'] !== 'string' || !TYPABLE.test(d['text'])))
     throw new VisionFailure('invalid_text');
@@ -233,13 +370,50 @@ export function decisionOf(raw: unknown, frame: VisionFrame): VisionDecision {
   return {
     action: d['action'] as GroundedAction['action'],
     frameId: frame.id,
-    ...(elementId ? { elementId } : { target: [x1, y1, x2, y2] as [number, number, number, number] }),
+    ...(elementId
+      ? { elementId }
+      : { target: [x1, y1, x2, y2] as [number, number, number, number] }),
     confidence: d['confidence'],
     risk: d['risk'] as GroundedAction['risk'],
     expectation: d['expectation'],
     ...(['type', 'type_keys'].includes(String(d['action'])) ? { text: d['text'] as string } : {}),
+    ...(d['textMode'] === 'append' ? { textMode: 'append' as const } : {}),
+    ...(d['action'] === 'scroll' ? { direction: d['direction'] as 'up' | 'down' } : {}),
     ...(d['action'] === 'key' ? { key: d['key'] as NonNullable<GroundedAction['key']> } : {}),
   };
+}
+
+/** Numeric native readback, not a model claim or merely a changed screenshot. */
+export interface ScrollReadback {
+  direction: 'up' | 'down';
+  before: number;
+  after: number;
+  deltaPoints: number;
+  viewportPoints: number;
+}
+export function scrollReadbackOf(raw: unknown, action: GroundedAction): ScrollReadback {
+  const v = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+  const { before, after, deltaPoints, viewportPoints } = v;
+  if (
+    action.action !== 'scroll' ||
+    v['direction'] !== action.direction ||
+    !finite(before) ||
+    !finite(after) ||
+    !finite(deltaPoints) ||
+    !finite(viewportPoints) ||
+    before < 0 ||
+    before > 1 ||
+    after < 0 ||
+    after > 1 ||
+    viewportPoints < 2 ||
+    Math.abs(deltaPoints) < 0.5 ||
+    Math.abs(deltaPoints) > viewportPoints / 2 + 1 ||
+    (action.direction === 'down'
+      ? after <= before || deltaPoints <= 0
+      : after >= before || deltaPoints >= 0)
+  )
+    throw new VisionFailure('input_effect_unconfirmed');
+  return { direction: action.direction!, before, after, deltaPoints, viewportPoints };
 }
 
 /** Image pixels -> Quartz global points. Negative secondary-display origins are valid. */
@@ -286,11 +460,7 @@ function unmetOf(raw: unknown, total: number): number[] {
   return [...seen].sort((a, b) => a - b);
 }
 
-export function verdictOf(
-  raw: unknown,
-  after: VisionFrame,
-  criteriaCount = 0,
-): Verdict {
+export function verdictOf(raw: unknown, after: VisionFrame, criteriaCount = 0): Verdict {
   const v = record(raw);
   // 形が通らない返答は判定ではない。訊き直せるように、不確かとは分けて投げる。
   if (

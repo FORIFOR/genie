@@ -31,6 +31,10 @@ import { ComputerVisionRuntime } from './computer-vision.js';
 import { CloudModelBudget } from './cloud-vision-budget.js';
 import { visualContextDir } from './visual-context.js';
 import { NativeVisionDevice } from './computer-vision-device.js';
+import { CheckoutAssistanceRuntime } from './checkout-assistance.js';
+import { TransactionRuntime } from './transaction-runtime.js';
+import { SimulationOrders } from './simulation-orders.js';
+import { nativeSimulationConfirmation } from './simulation-native-checkout.js';
 import { selectLanguageModel } from '@genie/contracts';
 import type { WorkSyncState, LanguageModelKind } from '@genie/contracts';
 import { DEFAULT_SYNC_INTERVAL_MS, WorkSyncLoop } from './work-sync.js';
@@ -77,8 +81,11 @@ async function main(): Promise<void> {
    * Claude Code のログインは Claude Code のもので、Genie は読まない。
    */
   const preferredCli = process.env['ASTRA_LLM_CLI'];
-  if (preferredCli && !['codex', 'claude_code', 'api', 'local', 'none'].includes(preferredCli))
-    throw new Error('ASTRA_LLM_CLI must be codex, claude_code, api, local, or none');
+  if (
+    preferredCli &&
+    !['codex', 'claude_code', 'api', 'gemini_api', 'local', 'none'].includes(preferredCli)
+  )
+    throw new Error('ASTRA_LLM_CLI must be codex, claude_code, api, gemini_api, local, or none');
   const llmKeychain = keychainFor(process.platform, deviceLabel);
   const httpClients: Partial<
     Record<'anthropic_api' | 'gemini_api' | 'openai_api' | 'local', HttpLlmClient>
@@ -284,7 +291,8 @@ async function main(): Promise<void> {
     const raw = process.env[name];
     if (raw === undefined || raw === '') return undefined;
     const value = Number(raw);
-    if (!Number.isFinite(value) || value < 0) throw new Error(`${name} must be a non-negative number`);
+    if (!Number.isFinite(value) || value < 0)
+      throw new Error(`${name} must be a non-negative number`);
     return value;
   };
   const limit = (field: string, name: string): Record<string, number> => {
@@ -292,7 +300,8 @@ async function main(): Promise<void> {
     return value === undefined ? {} : { [field]: value };
   };
   const tier = process.env['ASTRA_CLOUD_VISION_TIER'] ?? 'free';
-  if (!['free', 'paid'].includes(tier)) throw new Error('ASTRA_CLOUD_VISION_TIER must be free or paid');
+  if (!['free', 'paid'].includes(tier))
+    throw new Error('ASTRA_CLOUD_VISION_TIER must be free or paid');
   const budget = new CloudModelBudget({
     tier: tier as 'free' | 'paid',
     billedProject: process.env['ASTRA_CLOUD_VISION_BILLED_PROJECT'] === 'yes',
@@ -321,10 +330,45 @@ async function main(): Promise<void> {
     budget,
   });
 
+  // Transaction adapters are registered locally, never selected by a model-supplied URL.
+  // The only bundled submit adapter currently available is an explicitly named simulator.
+  const simulationEnabled = process.env['ASTRA_TRANSACTION_SIMULATION'] === 'on';
+  if (simulationEnabled && process.env['ASTRA_COMPUTER_USE'] !== 'on')
+    throw new Error('Transaction simulation requires background computer use.');
+  // Claims must survive visual-cache rotation; never derive them from screenshot storage.
+  const transactionRoot =
+    process.env['ASTRA_TRANSACTION_DATA_ROOT'] ??
+    join(
+      process.env['ASTRA_DATA_ROOT'] ?? join(homedir(), 'Library', 'Application Support', 'Genie'),
+      'Transactions',
+    );
+  const transactions = new TransactionRuntime({
+    journalDir: join(transactionRoot, 'journal'),
+    timeoutMs: 300_000,
+    adapters: simulationEnabled
+      ? [
+          new SimulationOrders({
+            root: join(transactionRoot, 'simulation'),
+            confirm: nativeSimulationConfirmation({
+              helper: process.env['ASTRA_COMPUTER_VISION_HELPER'] ?? '',
+              executable: process.env['ASTRA_TRANSACTION_SIMULATION_APP'] ?? '',
+            }),
+          }),
+        ]
+      : [],
+  });
+
   const steps = new HostStepLoop({
     transport: httpStepTransport({ baseUrl, token, fetch: apiSession.fetch }),
     // いまの情報（天気・ニュース）は端末で取る。モデルは使わない。
-    runner: new CompositeRunner([runtime, computerVision, new CurrentInfoRunner(), llm]),
+    runner: new CompositeRunner([
+      runtime,
+      computerVision,
+      transactions,
+      new CheckoutAssistanceRuntime(),
+      new CurrentInfoRunner(),
+      llm,
+    ]),
     onError: (error) => logger.warn({ err: error.message }, 'a step could not be handled'),
   });
   void steps.start(id);
@@ -377,7 +421,11 @@ async function main(): Promise<void> {
         const waitMs = Math.min(300_000, 4_000 * 2 ** Math.min(initialFailures, 7));
         initialNextAt = Date.now() + waitMs;
         logger.warn(
-          { err: error instanceof Error ? error.message : String(error), failures: initialFailures, retryInMs: waitMs },
+          {
+            err: error instanceof Error ? error.message : String(error),
+            failures: initialFailures,
+            retryInMs: waitMs,
+          },
           'initial profile could not finish; the lease will allow recovery',
         );
       })

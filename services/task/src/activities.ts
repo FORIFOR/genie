@@ -11,17 +11,27 @@ import {
   handoffExplanation,
   isHostOfflineError,
   HostOfflineError,
+  validateTransactionSubmitArgs,
+  TransactionSubmitArgs,
   uuidv7,
   type ActionRisk,
   type EscalationStep,
   type EscalationTrail,
 } from '@genie/contracts';
-import { withTenant, type DbHandle, type ScopedDb } from '@genie/db';
+import {
+  isTransactionAuthorizationApprovalActive,
+  withTenant,
+  type DbHandle,
+  type ScopedDb,
+} from '@genie/db';
 import { appendAuditEvent } from '@genie/telemetry';
 import { approvalTtlMs, evaluate, isApprovalUsable, type ActionContext } from '@genie/policy';
 import type { PolicyDocument } from '@genie/contracts';
 import type { LibraryService } from '@genie/service-library';
 import { appendEvent, type EventPublisher } from './events.js';
+import { formatCheckoutArtifact } from './checkout-artifact.js';
+import { formatTransactionArtifact } from './transaction-artifact.js';
+import { TransactionAuthorizationService } from './transaction-authorizations.js';
 import { approvalSummaryFor, requiresSingleAttempt, isMeteredStep, type TaskStep } from './plan.js';
 import type {
   ArtifactSpec,
@@ -29,8 +39,39 @@ import type {
   StartTaskMeta,
   TaskActivities,
   TaskErrorPayload,
+  UnknownTransactionResult,
+  FailureFinalization,
 } from './activity-types.js';
 import type { TaskWorkflowInput, TaskResult } from './workflows.js';
+
+function storedInputsHash(details: unknown): unknown {
+  return details && typeof details === 'object'
+    ? (details as Record<string, unknown>)['inputsHash']
+    : undefined;
+}
+
+/** Runs outside the deterministic workflow: bind the displayed quote, its expiry, and exact dispatch args. */
+async function transactionApprovalBinding(step: TaskStep, now: Date) {
+  if (step.toolId !== 'transaction.submit') return null;
+  if (step.risk !== 'FINANCIAL' || step.surface !== 'local' || step.requiresConfirmation !== true) {
+    throw ApplicationFailure.nonRetryable(
+      '注文には金額を確認する承認が必要です。',
+      'ValidationError',
+    );
+  }
+  try {
+    const args = await validateTransactionSubmitArgs(step.args, now.getTime());
+    return {
+      inputsHash: await canonicalSha256(step.args),
+      expiresAt: Date.parse(args.quote.expiresAt),
+    };
+  } catch {
+    throw ApplicationFailure.nonRetryable(
+      '見積もりが無効、変更済み、または期限切れです。新しい見積もりを確認してください。',
+      'ValidationError',
+    );
+  }
+}
 
 /**
  * 1 つの step を実際にやる人。
@@ -232,6 +273,16 @@ function messageOfCause(error: unknown): string {
   return error instanceof Error && error.message ? error.message : String(error);
 }
 
+/**
+ * 端末側の executor が投げる「止めたので取り下げた」の名前。
+ * この service は agent-host に依存しない（executor は外から渡される）ので、名前で見分ける。
+ */
+const HOST_STEP_CANCELLED_TYPE = 'HostStepCancelled';
+
+function isHostStepCancelled(error: unknown): boolean {
+  return error instanceof Error && error.name === HOST_STEP_CANCELLED_TYPE;
+}
+
 const stepKey = (taskId: string, index: number, name: string): string =>
   `${taskId}:${index}:${name}`;
 
@@ -257,6 +308,7 @@ function isMissingParent(error: unknown): boolean {
 
 export function createTaskActivities(deps: ActivityDeps): TaskActivities {
   const now = deps.now ?? (() => new Date());
+  const authorizations = new TransactionAuthorizationService({ db: deps.db, now });
 
   const inTenant = async <T>(
     input: TaskWorkflowInput,
@@ -313,22 +365,59 @@ export function createTaskActivities(deps: ActivityDeps): TaskActivities {
     async requestApprovalIfNeeded(input, step: TaskStep): Promise<RequestedApproval | null> {
       const decision = evaluate(policyContextFor(step));
       if (!decision.requiresApproval) return null;
+      const binding = await transactionApprovalBinding(step, now());
+
+      if (binding && !decision.denied) {
+        const card = approvalSummaryFor(step);
+        const derived = await authorizations.deriveApproval({
+          tenantId: input.tenantId,
+          userId: input.userId,
+          taskId: input.taskId,
+          stepIndex: step.index,
+          args: step.args,
+          summary: card.summary,
+          details: { items: card.details, impact: card.impact },
+        });
+        if (derived) return null;
+      }
 
       return inTenant(input, async (tx) => {
         const existing = await tx
           .selectFrom('approvals')
-          .select(['id', 'status'])
+          .select(['id', 'status', 'details', 'expires_at'])
           .where('task_id', '=', input.taskId)
           .where('step_index', '=', step.index)
           .executeTakeFirst();
+        if (
+          binding &&
+          existing &&
+          (storedInputsHash(existing.details) !== binding.inputsHash ||
+            existing.expires_at.getTime() <= now().getTime())
+        ) {
+          throw ApplicationFailure.nonRetryable(
+            '注文内容または期限が承認時と一致しません。新しい見積もりを確認してください。',
+            'ApprovalStale',
+          );
+        }
         // 承認後にタスクを再開したとき、同じ step で再び確認を要求しない。
         // 以前は status を見ずに既存IDを返していたため、再開直後に
         // 「この操作には確認が必要です」で止まり、承認が実行へ進まなかった。
         if (existing?.status === 'APPROVED') return null;
-        if (existing) return { approvalId: existing.id };
+        if (existing)
+          return {
+            approvalId: existing.id,
+            ...(binding
+              ? { timeoutMs: Math.max(1, existing.expires_at.getTime() - now().getTime()) }
+              : {}),
+          };
 
         const approvalId = uuidv7();
-        const expiresAt = new Date(now().getTime() + approvalTtlMs(step.risk as ActionRisk));
+        const expiresAt = new Date(
+          Math.min(
+            now().getTime() + approvalTtlMs(step.risk as ActionRisk),
+            binding?.expiresAt ?? Infinity,
+          ),
+        );
         const card = approvalSummaryFor(step);
 
         await tx
@@ -340,7 +429,13 @@ export function createTaskActivities(deps: ActivityDeps): TaskActivities {
             step_index: step.index,
             risk: step.risk,
             summary: card.summary,
-            details: JSON.stringify({ items: card.details, impact: card.impact }),
+            details: JSON.stringify({
+              items: card.details,
+              impact: card.impact,
+              ...(binding
+                ? { inputsHash: binding.inputsHash, transactionSubmitArgs: step.args }
+                : {}),
+            }),
             editable_fields: JSON.stringify([]),
             status: 'PENDING',
             expires_at: expiresAt,
@@ -382,7 +477,10 @@ export function createTaskActivities(deps: ActivityDeps): TaskActivities {
           payload: { approval_id: approvalId, risk: step.risk },
         });
 
-        return { approvalId };
+        return {
+          approvalId,
+          ...(binding ? { timeoutMs: Math.max(1, expiresAt.getTime() - now().getTime()) } : {}),
+        };
       });
     },
 
@@ -491,6 +589,68 @@ export function createTaskActivities(deps: ActivityDeps): TaskActivities {
 
     async executeStep(input, step: TaskStep) {
       const decision = evaluate(policyContextFor(step));
+      const binding = await transactionApprovalBinding(step, now());
+      if (binding) {
+        const task = await inTenant(input, (tx) =>
+          tx.selectFrom('tasks').select('status').where('id', '=', input.taskId).executeTakeFirst(),
+        );
+        if (
+          !task ||
+          !['RUNNING', 'WAITING_APPROVAL', 'PAUSED_HOST_OFFLINE'].includes(task.status)
+        ) {
+          throw ApplicationFailure.nonRetryable(
+            '停止済みのタスクから注文は送信しません。',
+            'ApprovalStale',
+          );
+        }
+        const instruction = await inTenant(input, (tx) =>
+          tx
+            .selectFrom('task_instructions')
+            .select('request_id')
+            .where('task_id', '=', input.taskId)
+            .where('status', '=', 'RECEIVED')
+            .executeTakeFirst(),
+        );
+        if (instruction)
+          throw ApplicationFailure.nonRetryable(
+            '追加指示を反映した新しい見積もりの確認が必要です。',
+            'ApprovalStale',
+          );
+        const approved = await inTenant(input, (tx) =>
+          tx
+            .selectFrom('approvals')
+            .select(['id', 'status', 'details', 'expires_at'])
+            .where('task_id', '=', input.taskId)
+            .where('step_index', '=', step.index)
+            .executeTakeFirst(),
+        );
+        if (
+          !approved ||
+          approved.status !== 'APPROVED' ||
+          approved.expires_at.getTime() <= now().getTime() ||
+          storedInputsHash(approved.details) !== binding.inputsHash
+        ) {
+          throw ApplicationFailure.nonRetryable(
+            'この注文内容に対する有効な承認がありません。',
+            'ApprovalStale',
+          );
+        }
+        const active = await inTenant(input, (tx) =>
+          isTransactionAuthorizationApprovalActive(tx, {
+            approvalId: approved.id,
+            taskId: input.taskId,
+            stepIndex: step.index,
+            userId: input.userId,
+            inputsHash: binding.inputsHash,
+            now: now(),
+          }),
+        );
+        if (!active)
+          throw ApplicationFailure.nonRetryable(
+            '任せていた設定が取り消されたか、期限を過ぎています。',
+            'ApprovalStale',
+          );
+      }
 
       /*
        * 規則が「やらない」と言っているなら、承認を取っても実行しない（正本 §22）。
@@ -599,6 +759,12 @@ export function createTaskActivities(deps: ActivityDeps): TaskActivities {
           throw ApplicationFailure.nonRetryable(messageOfCause(error), HostOfflineError.TYPE);
         }
 
+        // 止めた仕事の、端末がまだ取っていなかった step。何も走っていないので、
+        // 代替の経路へ降りない（止めたものを別の手段で続けない）。
+        if (isHostStepCancelled(error)) {
+          throw ApplicationFailure.nonRetryable(messageOfCause(error), HOST_STEP_CANCELLED_TYPE);
+        }
+
         // Retrying or escalating a generative request may charge again after
         // a lost response. Preserve host-offline recovery above (nothing ran).
         if (isMeteredStep(step)) {
@@ -622,10 +788,12 @@ export function createTaskActivities(deps: ActivityDeps): TaskActivities {
           } catch {
             // 元の操作の失敗を保持する。
           }
+          const transactionResult = unknownTransactionResult(step, error);
           throw ApplicationFailure.nonRetryable(
             messageOfCause(error),
             'ExternalActionFailed',
             '自動でやり直していません。再実行する前に、実行先の履歴を確認してください。',
+            ...(transactionResult ? [{ transactionResult }] : []),
           );
         }
 
@@ -786,10 +954,14 @@ export function createTaskActivities(deps: ActivityDeps): TaskActivities {
 
       // step が自分で本文を組み立てているならそれを使う。
       // 使わずに汎用の整形をかけると、せっかくのレポートが台無しになる。
-      const composed = results
-        .map((value) => (value as { artifact?: { title: string; markdown: string } })?.artifact)
-        .filter((value): value is { title: string; markdown: string } => Boolean(value))
-        .at(-1);
+      const transaction = formatTransactionArtifact(input.kind, input.input, results);
+      const composed =
+        formatCheckoutArtifact(input.kind, input.input, results) ??
+        transaction ??
+        results
+          .map((value) => (value as { artifact?: { title: string; markdown: string } })?.artifact)
+          .filter((value): value is { title: string; markdown: string } => Boolean(value))
+          .at(-1);
 
       const body =
         composed?.markdown ??
@@ -799,15 +971,16 @@ export function createTaskActivities(deps: ActivityDeps): TaskActivities {
           ...results.map((r, i) => `- step ${i + 1}: ${JSON.stringify(r)}`),
         ].join('\n');
       const title = composed?.title ?? spec.title;
+      const mimeType = transaction ? 'text/markdown' : spec.mimeType;
 
       const artifact = await deps.library.create({
         tenantId: input.tenantId,
         ownerId: input.userId,
         type: spec.type,
         title,
-        mimeType: spec.mimeType,
+        mimeType,
         body: Buffer.from(body, 'utf8'),
-        fileName: `${title}.${/json$/.test(spec.mimeType) ? 'json' : 'md'}`,
+        fileName: `${title}.${/json$/.test(mimeType) ? 'json' : 'md'}`,
         sourceTaskId: input.taskId,
         sourceAgentId: 'general',
         ...(spec.sourceMeetingId ? { sourceMeetingId: spec.sourceMeetingId } : {}),
@@ -882,21 +1055,46 @@ export function createTaskActivities(deps: ActivityDeps): TaskActivities {
       });
     },
 
-    async failTask(input, error: TaskErrorPayload) {
-      await inTenant(input, async (tx) => {
-        const updated = await tx
+    async failTask(input, error: TaskErrorPayload, finalization) {
+      return inTenant(input, async (tx) => {
+        // Serialize with the user Stop endpoint. A delayed Temporal signal must
+        // not let a host's unconfirmed outcome erase an already accepted stop.
+        const current = await tx
+          .selectFrom('tasks')
+          .select('status')
+          .where('id', '=', input.taskId)
+          .forUpdate()
+          .executeTakeFirst();
+        if (!current) throw ApplicationFailure.nonRetryable('Task no longer exists', 'TaskGone');
+        if (['COMPLETED', 'CANCELLED', 'FAILED'].includes(current.status))
+          return persistedOutcome(tx, input.taskId);
+        const cancelled =
+          finalization?.preserveCancellation === true &&
+          (current.status === 'CANCELLING' || finalization.cancellationReason !== undefined);
+        const status = cancelled ? ('CANCELLED' as const) : ('FAILED' as const);
+        const fallback =
+          !error.transaction_result && finalization?.transactionSubmission
+            ? await claimedTransactionIdentity(tx, input.taskId, finalization.transactionSubmission)
+            : undefined;
+        const recordedError = fallback ? { ...error, transaction_result: fallback } : error;
+        await tx
           .updateTable('tasks')
           .set({
-            status: 'FAILED',
-            error: JSON.stringify(error),
+            status,
+            error: JSON.stringify(recordedError),
             completed_at: now(),
             updated_at: now(),
           })
           .where('id', '=', input.taskId)
-          .where('status', 'not in', ['COMPLETED', 'CANCELLED', 'FAILED'])
-          .returning('id')
-          .executeTakeFirst();
-        if (!updated) return;
+          .execute();
+
+        const cancellation = {
+          reason: finalization?.cancellationReason ?? 'user_requested',
+          message: recordedError.transaction_result
+            ? 'Genieの操作を停止しました。注文結果は未確認です。再注文せず、同じ注文の履歴を照会してください。'
+            : 'Genieの操作を停止しました。送信済みの外部操作の取消は確認していません。',
+          error: recordedError,
+        };
 
         await appendEvent(
           tx,
@@ -905,12 +1103,22 @@ export function createTaskActivities(deps: ActivityDeps): TaskActivities {
             streamKind: 'task',
             streamId: input.taskId,
             taskId: input.taskId,
-            type: 'task.failed',
-            payload: { error },
-            idempotencyKey: stepKey(input.taskId, error.step_index ?? -4, 'failed'),
+            type: cancelled ? 'task.cancelled' : 'task.failed',
+            payload: cancelled ? cancellation : { error: recordedError },
+            idempotencyKey: cancelled
+              ? stepKey(input.taskId, -5, 'cancelled')
+              : stepKey(input.taskId, error.step_index ?? -4, 'failed'),
           },
           deps.publisher,
         );
+        if (cancelled)
+          await appendAuditEvent(tx, input.tenantId, {
+            actorType: 'user',
+            action: 'task.cancelled',
+            taskId: input.taskId,
+            payload: cancellation,
+          });
+        return { status, artifactId: null };
       });
     },
 
@@ -1027,6 +1235,109 @@ export function createTaskActivities(deps: ActivityDeps): TaskActivities {
         return { status: 'CANCELLED' as const, artifactId: null };
       });
     },
+  };
+}
+
+/** Worker loss/timeouts may omit the host's result. Only a durable, approved,
+ * exact-argument host claim permits a conservative lookup identity fallback.
+ * Current approval expiry/revocation cannot erase a past possible submission. */
+async function claimedTransactionIdentity(
+  tx: ScopedDb,
+  taskId: string,
+  submission: NonNullable<FailureFinalization['transactionSubmission']>,
+): Promise<UnknownTransactionResult | undefined> {
+  const parsed = TransactionSubmitArgs.safeParse(submission.args);
+  if (!parsed.success) return undefined;
+  const args = parsed.data;
+  if ((await canonicalSha256(args.quote)) !== args.quoteHash) return undefined;
+  const inputsHash = await canonicalSha256(args);
+  const approval = await tx
+    .selectFrom('approvals')
+    .select(['id', 'status', 'details'])
+    .where('task_id', '=', taskId)
+    .where('step_index', '=', submission.stepIndex)
+    .executeTakeFirst();
+  if (
+    !approval ||
+    approval.status !== 'APPROVED' ||
+    storedInputsHash(approval.details) !== inputsHash
+  )
+    return undefined;
+  const requests = await tx
+    .selectFrom('host_step_requests')
+    .select(['status', 'error', 'args', 'approval'])
+    .where('task_id', '=', taskId)
+    .where('step_index', '=', submission.stepIndex)
+    .where('tool_id', '=', 'transaction.submit')
+    .where('claimed_at', 'is not', null)
+    .execute();
+  for (const request of requests) {
+    const proof = request.approval as {
+      approvalId?: unknown;
+      inputsHash?: unknown;
+      decision?: unknown;
+      operationId?: unknown;
+    } | null;
+    const failureCode = (request.error as { code?: unknown } | null)?.code;
+    // Explicit pre-dispatch refusals (e.g. unsupported, stale approval,
+    // authority unavailable, host.cancelled) do not imply an unknown order.
+    if (
+      request.status !== 'CLAIMED' &&
+      request.status !== 'DONE' &&
+      !(
+        request.status === 'FAILED' &&
+        ['transaction.result_unknown', 'host.failed', 'host.step_failed'].includes(
+          String(failureCode),
+        )
+      )
+    )
+      continue;
+    if (
+      proof?.approvalId !== approval.id ||
+      proof.decision !== 'APPROVED' ||
+      proof.operationId !== 'transaction.submit' ||
+      proof.inputsHash !== inputsHash ||
+      (await canonicalSha256(request.args)) !== inputsHash
+    )
+      continue;
+    return {
+      provider: args.quote.provider,
+      mode: args.quote.mode,
+      account: args.quote.account,
+      orderKey: args.quote.orderKey,
+      quoteHash: args.quoteHash,
+      status: 'unknown',
+    };
+  }
+  return undefined;
+}
+
+/** Transport failures may retain a read-only reconciliation identity. Do not
+ * propagate an unrelated host result or fabricate a provider receipt. */
+function unknownTransactionResult(
+  step: TaskStep,
+  error: unknown,
+): UnknownTransactionResult | undefined {
+  if (step.toolId !== 'transaction.submit') return undefined;
+  const args = TransactionSubmitArgs.safeParse(step.args);
+  const result = (error as { result?: Record<string, unknown> } | null)?.result;
+  if (!args.success || !result || result['status'] !== 'unknown') return undefined;
+  const { quote, quoteHash } = args.data;
+  if (
+    result['quoteHash'] !== quoteHash ||
+    result['provider'] !== quote.provider ||
+    result['mode'] !== quote.mode ||
+    result['account'] !== quote.account ||
+    result['orderKey'] !== quote.orderKey
+  )
+    return undefined;
+  return {
+    mode: quote.mode,
+    provider: quote.provider,
+    account: quote.account,
+    orderKey: quote.orderKey,
+    quoteHash,
+    status: 'unknown',
   };
 }
 

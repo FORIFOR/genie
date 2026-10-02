@@ -6,9 +6,11 @@
  */
 import {
   SendTurnRequest,
+  CHECKOUT_HANDOFF_NOTICE,
   GenieError,
   ConversationId,
   StartConversationRequest,
+  simulationOrderIntent,
   type Referent,
   type TurnAttachment,
   type InjectionStats,
@@ -19,12 +21,14 @@ import { z } from 'zod';
 import type { ConversationService } from '@genie/service-conversation';
 import {
   classifyCurrentInfo,
+  checkoutAssistanceRequest,
   clarificationFor,
   type CurrentInfoQuery,
   isDocumentRequest,
   remember,
   resolveReferences,
   routeLane,
+  simulationOrderRequest,
 } from '@genie/service-conversation';
 import { agentKindFor, type TaskService } from '@genie/service-task';
 import type { Redis } from 'ioredis';
@@ -362,7 +366,11 @@ export function registerConversationRoutes(app: App, deps: ConversationRouteDeps
         needs_clarification: false,
         intent: laneToIntent(decision.lane),
         task_id: null,
-        notice: null,
+        // Lost task-dispatch responses must retain the same no-order disclosure.
+        notice:
+          decision.lane === 'action' && checkoutAssistanceRequest(body.text)
+            ? CHECKOUT_HANDOFF_NOTICE
+            : null,
         ...(replyMeta ? { reply: replyMeta } : {}),
       };
       if (body.request_id)
@@ -480,39 +488,54 @@ async function startWork(
   replyDraft: { meta: ReplyDraftMeta; instruction: string } | null = null,
   info: CurrentInfoQuery | null = null,
 ): Promise<{ taskId: string | null; notice: string | null }> {
-  const request =
-    info && info.kind !== 'quote'
-      ? // 端末が取りに行く。場所・話題だけを渡し、会話の文脈や Work Context は渡さない。
-        { kind: 'info.lookup', input: { question: text, ...info } }
-      : lane === 'chat'
+  const checkout = lane === 'action' ? checkoutAssistanceRequest(text) : null;
+  const simulation = lane === 'action' ? simulationOrderRequest(text) : null;
+  const request = simulation
+    ? {
+        kind: 'transaction.order',
+        title: '模擬注文（課金なし）',
+        input: { intent: simulationOrderIntent(simulation, `turn:${turnId}`) },
+      }
+    : checkout
       ? {
-          kind: agentKindFor('com.astra.general', 'assistant'),
-          // 添付は id とラベルだけ。画素は端末に残り、端末のモデル呼び出しが読む。
-          // context は Work Graph から選んだ関連分だけ（無ければ付けない）。
-          input: {
-            question: text,
-            message: text,
-            // 返信案: compose の段だけを走らせる（instruction がある = compose）。送らない。
-            ...(isDocumentRequest(text) ? { instruction: text } : {}),
-            ...(replyDraft ? { instruction: replyDraft.instruction, reply: replyDraft.meta } : {}),
-            ...(attachments.length > 0 ? { attachments: [...attachments] } : {}),
-            ...(workContext ? { context: workContext } : {}),
-            // 渡した量の事実。何を知っているかではなく、何を渡したか。
-            ...(contextStats ? { context_meta: contextStats } : {}),
-          },
+          kind: 'checkout.assist',
+          title: '注文画面への引き継ぎ（未注文）',
+          input: { service: checkout },
         }
-      : lane === 'research'
-        ? { kind: 'research', input: { question: text } }
-        : lane === 'action'
+      : info && info.kind !== 'quote'
+        ? // 端末が取りに行く。場所・話題だけを渡し、会話の文脈や Work Context は渡さない。
+          { kind: 'info.lookup', input: { question: text, ...info } }
+        : lane === 'chat'
           ? {
-              kind: 'computer.run',
+              kind: agentKindFor('com.astra.general', 'assistant'),
+              // 添付は id とラベルだけ。画素は端末に残り、端末のモデル呼び出しが読む。
+              // context は Work Graph から選んだ関連分だけ（無ければ付けない）。
               input: {
-                goal: text,
-                title: text.length > 30 ? `${text.slice(0, 30)}…` : text,
+                question: text,
+                message: text,
+                // 返信案: compose の段だけを走らせる（instruction がある = compose）。送らない。
+                ...(isDocumentRequest(text) ? { instruction: text } : {}),
+                ...(replyDraft
+                  ? { instruction: replyDraft.instruction, reply: replyDraft.meta }
+                  : {}),
                 ...(attachments.length > 0 ? { attachments: [...attachments] } : {}),
+                ...(workContext ? { context: workContext } : {}),
+                // 渡した量の事実。何を知っているかではなく、何を渡したか。
+                ...(contextStats ? { context_meta: contextStats } : {}),
               },
             }
-          : null;
+          : lane === 'research'
+            ? { kind: 'research', input: { question: text } }
+            : lane === 'action'
+              ? {
+                  kind: 'computer.run',
+                  input: {
+                    goal: text,
+                    title: text.length > 30 ? `${text.slice(0, 30)}…` : text,
+                    ...(attachments.length > 0 ? { attachments: [...attachments] } : {}),
+                  },
+                }
+              : null;
 
   if (!request) {
     return {
@@ -529,7 +552,7 @@ async function startWork(
       // 同じ発話を二度仕事にしない
       idempotencyKey: `turn:${turnId}`,
     });
-    return { taskId: task.id, notice: null };
+    return { taskId: task.id, notice: checkout ? CHECKOUT_HANDOFF_NOTICE : null };
   } catch (error) {
     return {
       taskId: null,

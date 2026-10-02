@@ -568,6 +568,37 @@ export interface Tenants {
   name: string;
 }
 
+export interface TransactionAuthorizations {
+  created_at: Generated<Timestamp>;
+  created_by: string;
+  expires_at: Timestamp;
+  id: string;
+  initial_approval_id: string | null;
+  request_id: string;
+  revoked_at: Timestamp | null;
+  spec: Json;
+  spec_hash: string;
+  status: string;
+  tenant_id: string;
+}
+
+export interface TransactionAuthorizationUses {
+  account: string;
+  amount_minor: Int8;
+  approval_id: string;
+  authorization_id: string;
+  created_at: Generated<Timestamp>;
+  id: string;
+  inputs_hash: string;
+  mode: string;
+  order_key: string;
+  provider: string;
+  quote_hash: string;
+  step_index: number;
+  task_id: string;
+  tenant_id: string;
+}
+
 export interface Translations {
   created_at: Generated<Timestamp>;
   meeting_id: string;
@@ -757,6 +788,8 @@ export interface DB {
   task_instructions: TaskInstructions;
   tasks: Tasks;
   tenants: Tenants;
+  transaction_authorization_uses: TransactionAuthorizationUses;
+  transaction_authorizations: TransactionAuthorizations;
   translations: Translations;
   turns: Turns;
   user_identities: UserIdentities;

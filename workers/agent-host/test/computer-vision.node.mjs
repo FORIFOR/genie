@@ -6,8 +6,17 @@ const base = process.env.GENIE_VISION_TEST_DIST
   ? pathToFileURL(path.resolve(process.env.GENIE_VISION_TEST_DIST) + '/').href
   : new URL('../dist/', import.meta.url).href;
 const { ComputerVisionRuntime } = await import(new URL('computer-vision.js', base));
-const { VisionFailure, frameOf, decisionOf, verdictOf, requireApproval, actionPoint } =
-  await import(new URL('computer-vision-policy.js', base));
+const {
+  VisionFailure,
+  frameOf,
+  decisionOf,
+  isCommitControl,
+  verdictOf,
+  requireApproval,
+  actionPoint,
+  targetPreviewOf,
+  scrollReadbackOf,
+} = await import(new URL('computer-vision-policy.js', base));
 const { visionPromptFor } = await import(new URL('computer-vision-prompts.js', base));
 const now = Date.now();
 const frame = (n = 1, extra = {}) => ({
@@ -61,6 +70,19 @@ function harness(decide, options = {}) {
     closed = 0,
     claimed = false;
   const seen = [];
+  const elements = options.elements ?? [{ id: 'e9', role: 'AXTextArea', name: 'Test field' }];
+  const makePreview = (f, action) => ({
+    status: 'target_preview',
+    id: frame(9000 + Number(f.id.slice(-12))).id,
+    width: 800,
+    height: 600,
+    sha256: 'a'.repeat(64),
+    sourceFrameId: f.id,
+    sourceSha256: f.sha256,
+    elementId:
+      action.elementId ?? elements.find((e) => (action.action === 'scroll' ? ['AXScrollArea'] : ['AXTextField', 'AXTextArea']).includes(e.role))?.id,
+    target: action.target ?? [100, 50, 200, 100],
+  });
   const device = {
     async claim() {
       if (claimed) throw new VisionFailure('replay_blocked');
@@ -71,22 +93,32 @@ function harness(decide, options = {}) {
       captures++;
       return frame(n, {
         capturedAt: options.config?.now?.() ?? now,
-        ...(options.elements ? { elements: options.elements } : {}),
+        elements,
+        ...(options.background ? { deliveryMode: 'background' } : {}),
       });
     },
     async capture() {
       captures++;
       return frame(++n, {
         capturedAt: options.config?.now?.() ?? now,
-        ...(options.elements ? { elements: options.elements } : {}),
+        elements,
+        ...(options.background ? { deliveryMode: 'background' } : {}),
         ...(options.after ?? {}),
       });
     },
     async apply(f, a, signal) {
       applied++;
-      if (options.apply) await options.apply(f, a, signal);
+      if (options.apply) return await options.apply(f, a, signal);
     },
     ...(options.resume ? { resume: options.resume } : {}),
+    ...(options.noPreview
+      ? {}
+      : {
+          previewTarget: async (f, action, signal, expiry) =>
+            options.previewTarget
+              ? options.previewTarget(f, action, signal, expiry, makePreview(f, action))
+              : makePreview(f, action),
+        }),
     async close() {
       closed++;
     },
@@ -268,7 +300,8 @@ test('uncertain visual verification cannot return success', async () => {
 test('an uncertain verdict spends the replan budget instead of stopping at once', async () => {
   let verifications = 0;
   const h = harness((s) => {
-    if (s.toolId === 'llm.plan_computer_action') return { ok: true, result: done(s.args.observation) };
+    if (s.toolId === 'llm.plan_computer_action')
+      return { ok: true, result: done(s.args.observation) };
     verifications++;
     return { ok: true, result: verdict(s.args.observation, 'uncertain') };
   });
@@ -278,9 +311,13 @@ test('an uncertain verdict spends the replan budget instead of stopping at once'
 test('an uncertain verdict that later resolves completes the run', async () => {
   let verifications = 0;
   const h = harness((s) => {
-    if (s.toolId === 'llm.plan_computer_action') return { ok: true, result: done(s.args.observation) };
+    if (s.toolId === 'llm.plan_computer_action')
+      return { ok: true, result: done(s.args.observation) };
     verifications++;
-    return { ok: true, result: verdict(s.args.observation, verifications < 2 ? 'uncertain' : 'satisfied') };
+    return {
+      ok: true,
+      result: verdict(s.args.observation, verifications < 2 ? 'uncertain' : 'satisfied'),
+    };
   });
   const out = await h.runtime.run(step());
   assert.equal(out.ok, true);
@@ -301,7 +338,8 @@ test('a low-confidence satisfied verdict never completes the run', async () => {
 test('a blocked verdict stops immediately and is not re-asked', async () => {
   let verifications = 0;
   const h = harness((s) => {
-    if (s.toolId === 'llm.plan_computer_action') return { ok: true, result: done(s.args.observation) };
+    if (s.toolId === 'llm.plan_computer_action')
+      return { ok: true, result: done(s.args.observation) };
     verifications++;
     return { ok: true, result: verdict(s.args.observation, 'blocked') };
   });
@@ -316,7 +354,8 @@ test('a malformed verdict is re-asked with the rejection code, then accepted', a
   let verifications = 0;
   const rejected = [];
   const h = harness((s) => {
-    if (s.toolId === 'llm.plan_computer_action') return { ok: true, result: done(s.args.observation) };
+    if (s.toolId === 'llm.plan_computer_action')
+      return { ok: true, result: done(s.args.observation) };
     verifications++;
     if (s.args.rejected) rejected.push(s.args.rejected);
     return {
@@ -353,10 +392,7 @@ test('a stopped run records its reason and audit beside the claim', async () => 
   assert.match(notes[0].code, /goal_not_verified/);
   assert.equal(notes[0].audit.length > 0, true);
   // 控えに画面や入力文字は入れない。
-  assert.equal(
-    JSON.stringify(notes[0].audit).includes('Panel heading is visible'),
-    false,
-  );
+  assert.equal(JSON.stringify(notes[0].audit).includes('Panel heading is visible'), false);
 });
 test('a verdict that never takes shape stops the run', async () => {
   const h = harness((s) => ({
@@ -401,17 +437,18 @@ test('a fresh run says nothing about progress', () => {
 });
 // 要素で指した操作は、どの要素に送ったかが記録に残る。次の回でそれを数える。
 test('the audit records which element an action was sent to', async () => {
-  const h = harness((s) => {
-    const f = s.args.observation;
-    if (s.toolId === 'llm.verify_computer_action') return { ok: true, result: verdict(f) };
-    return {
-      ok: true,
-      result:
-        s.args.turn === 0
-          ? { ...click(f), target: undefined, element_id: 'e7-1' }
-          : done(f),
-    };
-  }, { elements: [{ id: 'e7-1', role: 'AXButton', name: 'Show' }] });
+  const h = harness(
+    (s) => {
+      const f = s.args.observation;
+      if (s.toolId === 'llm.verify_computer_action') return { ok: true, result: verdict(f) };
+      return {
+        ok: true,
+        result:
+          s.args.turn === 0 ? { ...click(f), target: undefined, element_id: 'e7-1' } : done(f),
+      };
+    },
+    { elements: [{ id: 'e7-1', role: 'AXButton', name: 'Show' }] },
+  );
   const out = await h.runtime.run(step());
   assert.equal(out.ok, true);
   assert.equal(out.result.audit[0].elementId, 'e7-1');
@@ -487,7 +524,10 @@ test('two different elements are not mistaken for a repeated action', async () =
 // 形の間違いと、届ける道が無いことは、直し方が逆。言い方も分ける。
 test('a route refusal tells the planner to change its approach, a malformed reply to fix its JSON', () => {
   const args = { goal: 'g', frames: [{ id: frame().id, width: 100, height: 50 }] };
-  const route = visionPromptFor('llm.plan_computer_action', { ...args, rejected: 'background_field_not_empty' });
+  const route = visionPromptFor('llm.plan_computer_action', {
+    ...args,
+    rejected: 'background_field_not_empty',
+  });
   assert.match(route, /PREVIOUS_ACTION_NOT_DELIVERED/);
   assert.match(route, /type_keys/);
   assert.match(route, /Choose a different way/);
@@ -506,7 +546,10 @@ test('a model slower than the freshness window stops as too slow, not as a stale
   const h = harness(
     (s) => ({
       ok: true,
-      result: s.toolId === 'llm.verify_computer_action' ? verdict(s.args.observation) : click(s.args.observation),
+      result:
+        s.toolId === 'llm.verify_computer_action'
+          ? verdict(s.args.observation)
+          : click(s.args.observation),
     }),
     { config: { now: () => clock } },
   );
@@ -522,7 +565,8 @@ test('a model slower than the freshness window stops as too slow, not as a stale
 });
 // 一度きりの遅れは、これまでどおり撮り直して続ける。
 test('one slow decision is retried, not called too slow', async () => {
-  let clock = now, calls = 0;
+  let clock = now,
+    calls = 0;
   const h = harness(
     (s) => ({
       ok: true,
@@ -557,7 +601,8 @@ test('an echoed old frame id is re-asked instead of ending the run', async () =>
     const f = s.args.observation;
     if (s.toolId === 'llm.verify_computer_action') return { ok: true, result: verdict(f) };
     if (s.args.rejected) rejected.push(s.args.rejected);
-    if (s.args.turn === 0 && plans++ === 0) return { ok: true, result: { ...click(f), frameId: 'cv-old' } };
+    if (s.args.turn === 0 && plans++ === 0)
+      return { ok: true, result: { ...click(f), frameId: 'cv-old' } };
     return { ok: true, result: s.args.turn === 0 ? click(f) : done(f) };
   });
   const out = await h.runtime.run(step());
@@ -603,6 +648,57 @@ test('stale frame-id, out-of-bounds and low-confidence grounding are rejected', 
     { confidence: 0.5 },
   ])
     assert.throws(() => decisionOf(click(frame(), bad), frame()));
+});
+test('a button that commits an order, purchase, payment or trade is never pressed by screen control', () => {
+  const withElement = (name) => frame(1, { elements: [{ id: 'e1', role: 'AXButton', name }] });
+  const press = (f, extra = {}) => {
+    const reply = click(f, { element_id: 'e1', ...extra });
+    delete reply.target;
+    return reply;
+  };
+  for (const name of [
+    '注文を確定する',
+    'ご注文を確定',
+    '購入を確定する',
+    '今すぐ買う',
+    '支払う',
+    'お支払いを確定',
+    '買い注文を発注',
+    '注文発注',
+    '振込を実行',
+    'Place your order',
+    'Buy now',
+    ' Ｐａｙ　ｎｏｗ ',
+  ]) {
+    assert.equal(isCommitControl(name), true, name);
+    const f = withElement(name);
+    assert.throws(
+      () => decisionOf(press(f), f),
+      (error) => error.code === 'commit_boundary',
+      name,
+    );
+    // SPACE on the focused control presses it too.
+    assert.throws(
+      () => decisionOf(press(f, { action: 'key', key: 'SPACE' }), f),
+      (error) => error.code === 'commit_boundary',
+    );
+  }
+  // Getting to the confirmation page is navigation, not the commitment.
+  for (const name of [
+    'カートに入れる',
+    'レジに進む',
+    '注文履歴',
+    '注文内容を確認する',
+    '数量を増やす',
+    'メニューを見る',
+    'Add to cart',
+    'Checkout',
+    '保存',
+  ]) {
+    assert.equal(isCommitControl(name), false, name);
+    const f = withElement(name);
+    assert.equal(decisionOf(press(f), f).elementId, 'e1');
+  }
 });
 test('shell / Enter / arbitrary modifiers are not action capabilities', () => {
   for (const bad of [
@@ -687,7 +783,10 @@ test('成功条件を確かめられる単位に分ける（分けられない�
   // 短すぎる破片は切り出さない。意味が消えるくらいなら分けない方が正確。
   assert.deepEqual(splitCriteria('あ、い、う'), ['あ、い、う']);
   // 多すぎる分割は、条件ではなく文章。まとめて 1 つとして扱う。
-  assert.equal(splitCriteria(Array.from({ length: 12 }, (_, i) => `- 条件${i}`).join('\n')).length, 1);
+  assert.equal(
+    splitCriteria(Array.from({ length: 12 }, (_, i) => `- 条件${i}`).join('\n')).length,
+    1,
+  );
 });
 
 test('確認が断った理由と未達成の条件が、次の計画へ戻る', async () => {
@@ -789,7 +888,11 @@ test('再開できない装置では、割り込みはこれまでどおりそ�
         ? { ok: true, result: verdict(f) }
         : { ok: true, result: click(f) };
     },
-    { apply: async () => { throw new VisionFailure('human_takeover'); } },
+    {
+      apply: async () => {
+        throw new VisionFailure('human_takeover');
+      },
+    },
   );
   const out = await h.runtime.run(step());
   assert.equal(out.error.code, 'computer.vision.human_takeover');
@@ -822,7 +925,14 @@ test('割り込みで失効した世代の操作は、送らずに撮り直す�
 test('前へ進んだ操作は作り直しの持ち分を戻す（序盤のつまずきで打ち切らない）', async () => {
   // 3 回言い直してから通り、そのあとさらに 3 回言い直しても続けられること。
   let turn = 0;
-  const outcomes = ['not_satisfied', 'not_satisfied', 'satisfied', 'not_satisfied', 'not_satisfied', 'satisfied'];
+  const outcomes = [
+    'not_satisfied',
+    'not_satisfied',
+    'satisfied',
+    'not_satisfied',
+    'not_satisfied',
+    'satisfied',
+  ];
   const h = harness(
     (s) => {
       const f = s.args.observation;
@@ -869,10 +979,22 @@ test('入力を送ったあとに止まったら、送ったことを先に伝�
     if (s.toolId === 'llm.verify_computer_action')
       return {
         ok: true,
-        result: { frameId: f.id, outcome: 'satisfied', confidence: 0.95, evidence: '入った', unmet: [] },
+        result: {
+          frameId: f.id,
+          outcome: 'satisfied',
+          confidence: 0.95,
+          evidence: '入った',
+          unmet: [],
+        },
       };
     // 1 回入力してから、次の回で諦める。
-    return { ok: true, result: s.args.turn === 0 ? click(f) : { action: 'stop', frameId: f.id, reason: 'これ以上は分からない' } };
+    return {
+      ok: true,
+      result:
+        s.args.turn === 0
+          ? click(f)
+          : { action: 'stop', frameId: f.id, reason: 'これ以上は分からない' },
+    };
   });
   const out = await h.runtime.run(step());
   assert.equal(out.ok, false);
@@ -891,4 +1013,654 @@ test('入力を 1 つも送っていない停止には、その断りを付け�
   const out = await h.runtime.run(step());
   assert.equal(out.error.code, 'computer.vision.planner_stopped');
   assert.doesNotMatch(out.error.message, /すでに/);
+});
+
+// Round 11 wrote a secret-field request into an unrelated address field. A native
+// target being writable does not establish that it is the user's intended target.
+test('a wrong-field write is refused before delivery, without trying another field', async () => {
+  const h = harness(
+    (s) => {
+      const f = s.args.observation;
+      if (s.args.phase === 'target')
+        return {
+          ok: true,
+          result: {
+            ...verdict(f, 'not_satisfied'),
+            evidence: 'e2 is the address field; the goal asks for the secret field.',
+          },
+        };
+      if (s.toolId === 'llm.verify_computer_action') return { ok: true, result: verdict(f) };
+      return {
+        ok: true,
+        result:
+          s.args.turn === 0
+            ? click(f, { action: 'type', target: undefined, element_id: 'e2', text: 'himitsu' })
+            : done(f),
+      };
+    },
+    { elements: [{ id: 'e2', role: 'AXTextField', name: '住所' }] },
+  );
+  const out = await h.runtime.run(
+    step({ args: { goal: '伏せ字の欄に himitsu と入力してください' } }),
+  );
+  assert.equal(out.error?.code, 'computer.vision.target_not_verified');
+  assert.equal(h.stats().applied, 0);
+  assert.equal(h.stats().calls, 2);
+  assert.equal(h.seen[1].args.goal, '伏せ字の欄に himitsu と入力してください');
+  assert.deepEqual(h.seen[1].args.proposedInput, {
+    action: 'type',
+    elementId: 'e2',
+    text: 'himitsu',
+  });
+  assert.equal('expectation' in h.seen[1].args, false);
+  assert.deepEqual(out.result.audit, []);
+});
+
+test('both text routes need a confident current-frame target verdict before input', async () => {
+  const cases = [
+    ['not_satisfied', 0.99, undefined, 'target_not_verified'],
+    ['uncertain', 0.99, undefined, 'target_not_verified'],
+    ['satisfied', 0.89, undefined, 'target_not_verified'],
+    ['blocked', 0.99, undefined, 'verification_blocked'],
+    ['satisfied', 0.99, 'old-frame', 'invalid_verdict'],
+    ['invalid', 0.99, undefined, 'invalid_verdict'],
+  ];
+  for (const action of ['type', 'type_keys']) {
+    for (const [outcome, confidence, frameId, expected] of cases) {
+      const h = harness((s) => {
+        const f = s.args.observation;
+        if (s.args.phase === 'target')
+          return {
+            ok: true,
+            result: {
+              ...verdict(f, outcome),
+              confidence,
+              ...(frameId ? { frameId } : {}),
+            },
+          };
+        if (s.toolId === 'llm.verify_computer_action') return { ok: true, result: verdict(f) };
+        return {
+          ok: true,
+          result: s.args.turn === 0 ? click(f, { action, text: 'hello' }) : done(f),
+        };
+      });
+      const out = await h.runtime.run(step());
+      assert.equal(
+        out.error?.code,
+        `computer.vision.${expected}`,
+        `${action} ${outcome} ${confidence} ${frameId}`,
+      );
+      assert.equal(h.stats().applied, 0);
+      assert.equal(h.stats().calls, 2, 'a target refusal must not be retried into an approval');
+    }
+  }
+});
+
+test('target verification uses the selected provider and its existing call budget', async () => {
+  let authorized = 0,
+    recorded = 0;
+  const h = harness(
+    (s) => ({
+      ok: true,
+      result:
+        s.toolId === 'llm.verify_computer_action'
+          ? verdict(s.args.observation)
+          : s.args.turn === 0
+            ? click(s.args.observation, { action: 'type', text: 'hello' })
+            : done(s.args.observation),
+    }),
+    {
+      config: {
+        selectModel: async () => 'openai_api',
+        allowExternalPixels: true,
+        budget: {
+          beginTask() {},
+          authorize() {
+            authorized++;
+          },
+          record() {
+            recorded++;
+          },
+          exhausted() {},
+        },
+      },
+    },
+  );
+  const out = await h.runtime.run(step());
+  assert.equal(out.ok, true);
+  assert.equal(out.result.modelCalls, 5);
+  assert.equal(authorized, 5);
+  assert.equal(recorded, 5);
+  assert.ok(h.seen.every((s) => s.args.vision_model_kind === 'openai_api'));
+  assert.equal(h.seen[1].args.phase, 'target');
+  assert.equal(h.seen[1].args.images.length, 1);
+  assert.notEqual(h.seen[1].args.images[0].id, h.seen[0].args.images[0].id);
+  assert.equal(h.seen[1].args.targetPreview.sourceFrameId, h.seen[0].args.images[0].id);
+  assert.equal(out.result.audit[0].targetVerified, true);
+});
+
+test('text input without a native target preview capability fails before verification or delivery', async () => {
+  const h = harness(
+    (s) => ({ ok: true, result: click(s.args.observation, { action: 'type', text: 'hello' }) }),
+    { noPreview: true },
+  );
+  const out = await h.runtime.run(step());
+  assert.equal(out.error?.code, 'computer.vision.target_preview_unavailable');
+  assert.equal(h.stats().calls, 1);
+  assert.equal(h.stats().applied, 0);
+  assert.deepEqual(out.result.audit, []);
+});
+
+test('native preview binding and canonical writable identity are required before a verifier sees it', async () => {
+  const mutations = [
+    { sourceFrameId: frame(8).id },
+    { sourceSha256: 'f'.repeat(64) },
+    { id: frame().id },
+    { id: '../untrusted' },
+    { status: 'captured' },
+    { sha256: 'invalid' },
+    { width: 1601 },
+    { height: 0 },
+    { elementId: 'e404' },
+    { elementId: 'e10' },
+    { target: [-1, 0, 100, 40] },
+    { target: [0, 0, 1001, 40] },
+    { target: [0, 0, 100, 501] },
+    { target: [50, 0, 49, 40] },
+    { target: [0, 0, NaN, 40] },
+  ];
+  for (const mutation of mutations) {
+    const h = harness(
+      (s) => ({ ok: true, result: click(s.args.observation, { action: 'type', text: 'hello' }) }),
+      {
+        elements: [
+          { id: 'e9', role: 'AXTextArea', name: 'Editor' },
+          { id: 'e10', role: 'AXButton', name: 'OK' },
+        ],
+        previewTarget: async (_f, _a, _s, _expiry, preview) => ({ ...preview, ...mutation }),
+      },
+    );
+    const out = await h.runtime.run(step());
+    assert.equal(
+      out.error?.code,
+      'computer.vision.invalid_target_preview',
+      JSON.stringify(mutation),
+    );
+    assert.equal(h.stats().calls, 1);
+    assert.equal(h.stats().applied, 0);
+    assert.deepEqual(out.result.audit, []);
+  }
+  const f = frame(1, {
+    elements: [
+      { id: 'e1', role: 'AXTextArea', name: 'First' },
+      { id: 'e2', role: 'AXTextArea', name: 'Second' },
+    ],
+  });
+  assert.throws(
+    () =>
+      targetPreviewOf(
+        {
+          status: 'target_preview',
+          id: frame(100).id,
+          width: 500,
+          height: 500,
+          sha256: 'a'.repeat(64),
+          sourceFrameId: f.id,
+          sourceSha256: f.sha256,
+          elementId: 'e2',
+          target: [0, 0, 100, 50],
+        },
+        f,
+        { ...click(f, { action: 'type', text: 'hello' }), elementId: 'e1', target: undefined },
+      ),
+    /invalid_target_preview/,
+  );
+});
+
+test('coordinate writes verify the resolved field crop and deliver that same canonical field', async () => {
+  for (const action of ['type', 'type_keys']) {
+    const delivered = [];
+    const h = harness(
+      (s) => ({
+        ok: true,
+        result:
+          s.toolId === 'llm.verify_computer_action'
+            ? verdict(s.args.observation)
+            : s.args.turn === 0
+              ? click(s.args.observation, { action, text: 'hello' })
+              : done(s.args.observation),
+      }),
+      {
+        apply: async (_f, a) => {
+          delivered.push(a);
+        },
+        previewTarget: async (_f, _a, _s, _expiry, preview) => ({
+          ...preview,
+          elementId: 'e2',
+          target: [90, 40, 210, 110],
+        }),
+        elements: [
+          { id: 'e1', role: 'AXTextField', name: 'Other' },
+          { id: 'e2', role: 'AXTextArea', name: 'Resolved field' },
+        ],
+      },
+    );
+    const out = await h.runtime.run(step());
+    assert.equal(out.ok, true);
+    const target = h.seen.find((s) => s.args.phase === 'target');
+    assert.deepEqual(target.args.proposedInput, { action, elementId: 'e2', text: 'hello' });
+    assert.equal(target.args.images[0].id, target.args.targetPreview.id);
+    assert.notEqual(target.args.images[0].id, target.args.observation.id);
+    assert.equal(target.args.frames[0].id, target.args.targetPreview.sourceFrameId);
+    assert.deepEqual(target.args.targetPreview.target, [90, 40, 210, 110]);
+    assert.equal(delivered.length, 1);
+    assert.equal(delivered[0].elementId, 'e2');
+    assert.equal('target' in delivered[0], false);
+    assert.equal(delivered[0].frameId, target.args.targetPreview.sourceFrameId);
+  }
+});
+
+test('approval expiry or cancellation during read-only preview prevents verification and input', async () => {
+  for (const mode of ['expiry', 'cancellation']) {
+    let clock = now;
+    const controller = new AbortController();
+    const h = harness(
+      (s) => ({ ok: true, result: click(s.args.observation, { action: 'type', text: 'hello' }) }),
+      {
+        previewTarget: async (_f, _a, _s, _expiry, preview) => {
+          if (mode === 'expiry') clock += 600_001;
+          else controller.abort();
+          return preview;
+        },
+        config: { now: () => clock },
+      },
+    );
+    const out = await h.runtime.run(step(), controller.signal);
+    assert.equal(
+      out.error?.code,
+      `computer.vision.${mode === 'expiry' ? 'approval_required' : 'cancelled'}`,
+    );
+    assert.equal(h.stats().calls, 1);
+    assert.equal(h.stats().applied, 0);
+    assert.deepEqual(out.result.audit, []);
+  }
+});
+
+test('interruption during read-only preview discards the old proposal and obtains a fresh proof', async () => {
+  const previewed = [],
+    delivered = [];
+  let resumed = 0;
+  const h = harness(
+    (s) => ({
+      ok: true,
+      result:
+        s.toolId === 'llm.verify_computer_action'
+          ? verdict(s.args.observation)
+          : s.args.turn === 0
+            ? click(s.args.observation, { action: 'type', text: 'hello' })
+            : done(s.args.observation),
+    }),
+    {
+      previewTarget: async (f, _a, _s, _expiry, preview) => {
+        previewed.push(f.id);
+        if (previewed.length === 1) throw new VisionFailure('human_takeover');
+        return preview;
+      },
+      resume: async () => {
+        resumed++;
+      },
+      apply: async (f) => {
+        delivered.push(f.id);
+      },
+    },
+  );
+  const out = await h.runtime.run(step());
+  assert.equal(out.ok, true);
+  assert.equal(resumed, 1);
+  assert.equal(previewed.length, 2);
+  assert.notEqual(previewed[0], previewed[1]);
+  assert.deepEqual(delivered, [previewed[1]]);
+  assert.deepEqual(
+    h.seen.filter((s) => s.args.phase === 'target').map((s) => s.args.targetPreview.sourceFrameId),
+    [previewed[1]],
+  );
+});
+
+test('approval expiry or cancellation during target checking prevents input', async () => {
+  for (const mode of ['expiry', 'cancellation']) {
+    let clock = now;
+    const controller = new AbortController();
+    const h = harness(
+      (s) => {
+        const f = s.args.observation;
+        if (s.args.phase === 'target') {
+          if (mode === 'expiry') clock += 600_001;
+          else controller.abort();
+        }
+        return {
+          ok: true,
+          result:
+            s.toolId === 'llm.verify_computer_action'
+              ? verdict(f)
+              : s.args.turn === 0
+                ? click(f, { action: 'type', text: 'hello' })
+                : done(f),
+        };
+      },
+      { config: { now: () => clock } },
+    );
+    const out = await h.runtime.run(step(), controller.signal);
+    assert.equal(
+      out.error?.code,
+      `computer.vision.${mode === 'expiry' ? 'approval_required' : 'cancelled'}`,
+    );
+    assert.equal(h.stats().applied, 0);
+  }
+});
+
+test('a target verdict that aged its frame is discarded and checked again on a fresh frame', async () => {
+  let clock = now,
+    checks = 0;
+  const checked = [],
+    delivered = [];
+  const h = harness(
+    (s) => {
+      const f = s.args.observation;
+      if (s.args.phase === 'target') {
+        checked.push(f.id);
+        if (++checks === 1) clock += 60_001;
+      }
+      return {
+        ok: true,
+        result:
+          s.toolId === 'llm.verify_computer_action'
+            ? verdict(f)
+            : s.args.turn === 0
+              ? click(f, { action: 'type', text: 'hello' })
+              : done(f),
+      };
+    },
+    {
+      config: { now: () => clock },
+      apply: async (f) => {
+        delivered.push(f.id);
+      },
+    },
+  );
+  const out = await h.runtime.run(step());
+  assert.equal(out.ok, true);
+  assert.equal(checks, 2);
+  assert.notEqual(checked[0], checked[1]);
+  assert.deepEqual(delivered, [checked[1]]);
+});
+
+test('a failed capture after delivery still records and discloses the sent input', async () => {
+  const h = harness(happy, { after: { windowId: 99 } });
+  const out = await h.runtime.run(step());
+  assert.equal(out.error.code, 'computer.vision.target_changed');
+  assert.match(out.error.message, /すでに1件の入力を画面へ送っています/);
+  assert.equal(out.result.audit.length, 1);
+  assert.equal(out.result.audit[0].event, 'click');
+  assert.equal(out.result.audit[0].verified, false);
+  assert.equal(out.result.audit[0].evidence, 'uncertain');
+});
+
+test('a failed effect verifier still records and discloses the sent input', async () => {
+  const h = harness((s) =>
+    s.toolId === 'llm.verify_computer_action'
+      ? { ok: false, error: { code: 'model_failed' } }
+      : happy(s),
+  );
+  const out = await h.runtime.run(step());
+  assert.equal(out.error.code, 'computer.vision.model_failed');
+  assert.match(out.error.message, /すでに1件の入力を画面へ送っています/);
+  assert.equal(out.result.audit.length, 1);
+  assert.equal(out.result.audit[0].verified, false);
+});
+
+test('a possibly partial input stops without retry and is disclosed as delivery unknown', async () => {
+  for (const code of [
+    'input_effect_unconfirmed',
+    'background_interference',
+    'background_keys_not_literal',
+    'helper_failed',
+    'helper_unavailable',
+    'input_unconfirmed',
+    'new_unknown_error',
+    'failed',
+  ]) {
+    let resumed = 0;
+    const h = harness(happy, {
+      apply: async () => {
+        throw code === 'failed' ? new Error('lost connection') : new VisionFailure(code);
+      },
+      resume: async () => {
+        resumed++;
+      },
+    });
+    const out = await h.runtime.run(step());
+    assert.equal(out.error.code, `computer.vision.${code}`);
+    assert.equal(h.stats().applied, 1);
+    assert.equal(h.stats().calls, 1);
+    assert.equal(resumed, 0);
+    assert.equal(out.result.audit.length, 1);
+    assert.equal(out.result.audit[0].delivery, 'unknown');
+    assert.equal(out.result.audit[0].verified, false);
+    assert.match(out.error.message, /一部が届いている場合/);
+    assert.doesNotMatch(
+      out.error.message,
+      /すでに1件|入力は送っていません|操作は行っていません|取り消しました/,
+    );
+  }
+});
+
+test('cancelling an in-flight apply preserves an unknown-delivery audit row', async () => {
+  const controller = new AbortController();
+  const h = harness(happy, {
+    apply: async () => {
+      controller.abort();
+      await new Promise(() => {});
+    },
+  });
+  const out = await h.runtime.run(step(), controller.signal);
+  assert.equal(out.error.code, 'computer.vision.cancelled');
+  assert.equal(h.stats().applied, 1);
+  assert.equal(out.result.audit[0].delivery, 'unknown');
+  assert.match(out.error.message, /一部が届いている場合/);
+});
+
+test('a definite native pre-dispatch refusal records no delivered or unknown input', async () => {
+  for (const code of [
+    'policy_secure_field',
+    'user_cancelled',
+    'approval_expired',
+    'session_stopped',
+    'background_target_offscreen',
+    'background_link_unsupported',
+  ]) {
+    const h = harness(happy, {
+      apply: async () => {
+        throw new VisionFailure(code);
+      },
+    });
+    const out = await h.runtime.run(step());
+    assert.equal(out.error.code, `computer.vision.${code}`);
+    assert.deepEqual(out.result.audit, []);
+    assert.doesNotMatch(out.error.message, /すでに|一部が届いている場合/);
+  }
+});
+
+test('the target-check prompt checks the exact destination and text against the user request', () => {
+  const prompt = visionPromptFor('llm.verify_computer_action', {
+    phase: 'target',
+    goal: 'Fill in the name',
+    proposedInput: { action: 'type', elementId: 'e2', text: 'PRIVATE-TEXT' },
+    candidates: [{ id: 'e2', role: 'AXTextField', name: 'Address' }],
+    observation: frame(),
+  });
+  assert.match(prompt, /BEFORE any input/);
+  assert.match(prompt, /exact target/);
+  assert.match(prompt, /original user request/);
+  assert.match(prompt, /PRIVATE-TEXT/);
+  assert.match(prompt, /Address/);
+  assert.match(prompt, /untrusted/);
+  assert.doesNotMatch(prompt, /BEFORE and AFTER screenshots/);
+});
+
+test('copying the target verifier response schema preserves the actual current frame identity', () => {
+  const current = frame(17);
+  const prompt = visionPromptFor('llm.verify_computer_action', {
+    phase: 'target',
+    goal: 'Fill in the name',
+    frames: [{ id: current.id, width: current.width, height: current.height }],
+    observation: current,
+    proposedInput: { action: 'type', elementId: 'e2', text: 'Genie' },
+  });
+  // The actual local model copied the old schema's literal "latest frame id".
+  // Copying today's schema must satisfy the strict identity parser instead.
+  const schemaLine = prompt.split('\n').find((line) => line.startsWith('Return {'));
+  const copied = JSON.parse(schemaLine.slice('Return '.length, -1));
+  assert.equal(copied.frameId, current.id);
+  assert.match(prompt, /Copy this exact ID/);
+  assert.match(prompt, /target outlined in red/);
+  assert.match(prompt, /enlarged target crop below it/);
+  assert.match(prompt, /Other visible fields are context, never substitute targets/);
+  assert.match(prompt, /ORIGINAL source screenshot/);
+  assert.equal(verdictOf({ ...copied, outcome: 'satisfied' }, current).outcome, 'satisfied');
+  assert.throws(
+    () => verdictOf({ ...copied, frameId: 'latest frame id', outcome: 'satisfied' }, current),
+    /invalid_verdict/,
+  );
+  assert.throws(
+    () => verdictOf({ ...copied, frameId: frame(16).id, outcome: 'satisfied' }, current),
+    /invalid_verdict/,
+  );
+});
+
+test('explicit append is background-only, never replacement, and reaches both target check and delivery', async () => {
+  const f = frame(1, { deliveryMode: 'background' });
+  const append = click(f, { action: 'type', text: ' suffix', textMode: 'append' });
+  assert.equal(decisionOf(append, f).textMode, 'append');
+  assert.equal(decisionOf(click(f, { action: 'type', text: 'new' }), f).textMode, undefined);
+  for (const bad of [
+    { ...append, textMode: 'replace' },
+    { ...append, textMode: null },
+    { ...append, action: 'click' },
+    { ...append, action: 'type_keys' },
+  ]) assert.throws(() => decisionOf(bad, f), /invalid_text/);
+  assert.throws(() => decisionOf(append, frame(1)), /invalid_text/);
+  const delivered = [];
+  const h = harness((s) => ({ ok: true, result: s.toolId === 'llm.verify_computer_action'
+    ? verdict(s.args.observation) : s.args.turn === 0
+      ? click(s.args.observation, { action: 'type', text: ' suffix', textMode: 'append' })
+      : done(s.args.observation) }), {
+    background: true,
+    apply: async (_f, action) => delivered.push(action),
+  });
+  const outcome = await h.runtime.run(step({ args: { goal: 'Append suffix to the existing memo' } }));
+  assert.equal(outcome.ok, true);
+  assert.equal(delivered.length, 1);
+  assert.equal(delivered[0].textMode, 'append');
+  assert.equal(delivered[0].text, ' suffix');
+  assert.equal(h.seen.find((s) => s.args.phase === 'target').args.proposedInput.textMode, 'append');
+  assert.match(visionPromptFor('llm.verify_computer_action', { phase: 'target' }), /existing contents are preserved/);
+});
+
+test('coordinate grounding reaches the 61st native field without expanding public candidate context', async () => {
+  const elements = Array.from({ length: 60 }, (_, i) => ({ id: `e${i}`, role: 'AXButton', name: `button ${i}` }));
+  const delivered = [];
+  const h = harness((s) => ({ ok: true, result: s.toolId === 'llm.verify_computer_action'
+    ? verdict(s.args.observation) : s.args.turn === 0
+      ? click(s.args.observation, { action: 'type', text: 'draft' }) : done(s.args.observation) }), {
+    elements,
+    previewTarget: async (_f, _a, _s, _expiry, preview) => ({ ...preview,
+      elementId: 'e61', elementRole: 'AXTextField', target: [90, 40, 210, 110] }),
+    apply: async (_f, action) => delivered.push(action),
+  });
+  const outcome = await h.runtime.run(step());
+  assert.equal(outcome.ok, true);
+  assert.equal(h.seen[0].args.observation.elements.length, 60);
+  assert.equal(h.seen.find((s) => s.args.phase === 'target').args.targetPreview.elementRole, 'AXTextField');
+  assert.equal(delivered.length, 1);
+  assert.equal(delivered[0].elementId, 'e61');
+  assert.equal(delivered[0].target, undefined);
+});
+
+test('unlisted preview requires native text-role attestation and the exact requested point', () => {
+  const f = frame(1, { elements: [{ id: 'e1', role: 'AXButton', name: 'button' }] });
+  const action = click(f, { action: 'type', text: 'hello' });
+  const preview = { status: 'target_preview', id: frame(100).id, width: 500, height: 500,
+    sha256: 'a'.repeat(64), sourceFrameId: f.id, sourceSha256: f.sha256,
+    elementId: 'e61', elementRole: 'AXTextArea', target: [90, 40, 210, 110] };
+  assert.equal(targetPreviewOf(preview, f, action).elementId, 'e61');
+  for (const changed of [
+    { elementRole: undefined }, { elementRole: 'AXButton' }, { elementRole: 'AXSecureTextField' },
+    { elementId: 'e1' }, { elementId: 'unbounded-id' },
+    { target: [200, 40, 310, 110] }, { target: [90, 80, 210, 130] },
+    { sourceFrameId: frame(2).id }, { sourceSha256: 'b'.repeat(64) },
+  ]) assert.throws(() => targetPreviewOf({ ...preview, ...changed }, f, action), /invalid_target_preview/);
+  assert.throws(() => targetPreviewOf(preview, f, { ...action, elementId: 'e1' }), /invalid_target_preview/);
+});
+
+
+test('scroll contract allows background vertical navigation only and never accepts model distance', () => {
+  const f=frame(1,{deliveryMode:'background',elements:[{id:'e2',role:'AXScrollArea',name:'catalog'}]});
+  const a=click(f,{action:'scroll',direction:'down',element_id:'e2',distance:1e9});
+  assert.equal(decisionOf(a,f).direction,'down');
+  assert.equal(decisionOf(a,f).distance,undefined);
+  for(const change of [{direction:'left'},{direction:undefined},{risk:'draft'},{text:'x'},{key:'DOWN'},{textMode:'append'}])
+    assert.throws(()=>decisionOf({...a,...change},f));
+  assert.throws(()=>decisionOf(a,{...f,deliveryMode:undefined}),/invalid_scroll/);
+  assert.throws(()=>decisionOf(click(f,{direction:'down'}),f),/invalid_scroll/);
+  const p={status:'target_preview',id:frame(200).id,width:500,height:500,sha256:'a'.repeat(64),
+    sourceFrameId:f.id,sourceSha256:f.sha256,elementId:'e2',elementRole:'AXScrollArea',target:[100,50,200,100]};
+  assert.equal(targetPreviewOf(p,f,decisionOf(a,f)).elementRole,'AXScrollArea');
+  assert.throws(()=>targetPreviewOf({...p,elementRole:'AXTextArea'},f,decisionOf(a,f)),/invalid_target_preview/);
+});
+
+const scrollReply = s => ({ok:true,result:s.toolId === 'llm.verify_computer_action' ? verdict(s.args.observation)
+  : s.args.turn === 0 ? click(s.args.observation,{action:'scroll',direction:'down',element_id:'e2'}) : done(s.args.observation)});
+const scrollOptions = {background:true,elements:[{id:'e2',role:'AXScrollArea',name:'catalog'}]};
+const scrollReceipt = {direction:'down',before:0,after:0.1,deltaPoints:100,viewportPoints:200};
+
+test('scroll verifies the exact preview then keeps native offset readback and still verifies the goal', async () => {
+  const h=harness(scrollReply,{...scrollOptions,apply:async()=>({route:'ax_scroll',effect:'confirmed',scroll:scrollReceipt})});
+  const outcome=await h.runtime.run(step({args:{goal:'Reveal the next catalog items'}}));
+  assert.equal(outcome.ok,true);
+  const target=h.seen.find(s=>s.args.phase==='target');
+  assert.equal(target.args.proposedInput.direction,'down');
+  assert.equal(target.args.targetPreview.elementRole,'AXScrollArea');
+  assert.deepEqual(outcome.result.audit[0].scroll,scrollReceipt);
+  assert.equal(outcome.result.audit[0].targetVerified,true);
+  assert.equal(outcome.result.audit[0].evidence,'target');
+  assert.ok(h.seen.some(s=>s.args.phase==='goal'));
+  assert.ok(!h.seen.some(s=>s.args.phase==='action'));
+});
+
+test('missing, stationary, reversed or excessive scroll readback is unknown and never resent', async () => {
+  const a=click(frame(),{action:'scroll',direction:'down'});
+  for(const bad of [undefined,{...scrollReceipt,after:0},{...scrollReceipt,deltaPoints:0},
+    {...scrollReceipt,deltaPoints:-100},{...scrollReceipt,deltaPoints:102},{...scrollReceipt,after:NaN},
+    {...scrollReceipt,direction:'up'}]) {
+    assert.throws(()=>scrollReadbackOf(bad,a),/input_effect_unconfirmed/);
+    const h=harness(scrollReply,{...scrollOptions,apply:async()=>({route:'ax_scroll',effect:'confirmed',scroll:bad})});
+    const outcome=await h.runtime.run(step());
+    assert.equal(outcome.ok,false);
+    assert.equal(h.stats().applied,1);
+    assert.equal(outcome.result.audit[0].delivery,'unknown');
+    assert.ok(!h.seen.some(s=>s.args.phase==='action'||s.args.phase==='goal'));
+  }
+});
+
+test('scroll edge or unsupported geometry is an unsent refusal with no alternate delivery retry', async () => {
+  for(const code of ['background_scroll_boundary','background_scroll_unsupported']) {
+    const h=harness(scrollReply,{...scrollOptions,apply:async()=>{throw new VisionFailure(code)}});
+    const outcome=await h.runtime.run(step());
+    assert.equal(outcome.ok,false);
+    assert.equal(h.stats().applied,1);
+    assert.deepEqual(outcome.result.audit,[]);
+  }
+  const prompt=visionPromptFor('llm.plan_computer_action',{observation:{deliveryMode:'background'}});
+  assert.match(prompt,/at most half its viewport/);
+  assert.match(prompt,/Horizontal scrolling, drag and clipboard are unsupported/);
 });

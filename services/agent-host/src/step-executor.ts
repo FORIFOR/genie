@@ -25,10 +25,28 @@ export { HostOfflineError as HostOffline } from '@genie/contracts';
 /** 端末が「できなかった」と答えた。**これは失敗。** */
 export class HostStepFailed extends Error {
   readonly code: string;
-  constructor(code: string, message: string) {
+  constructor(
+    code: string,
+    message: string,
+    readonly result?: unknown,
+  ) {
     super(message);
     this.name = 'HostStepFailed';
     this.code = code;
+  }
+}
+
+/**
+ * 仕事が止められ、端末はまだ取っていなかった。**何も走っていない。**
+ *
+ * 失敗とも端末の不在とも混ぜない。失敗にすると止めた仕事が FAILED で残り、
+ * 不在にすると戻るのを待ち始める。
+ */
+export class HostStepCancelled extends Error {
+  static readonly TYPE = 'HostStepCancelled';
+  constructor() {
+    super('停止したため、端末へ渡す前に取り下げました。');
+    this.name = 'HostStepCancelled';
   }
 }
 
@@ -67,6 +85,7 @@ export interface HostStepExecutorDeps {
      * 別の step の承認で送信できてしまう。
      */
     toolId: string;
+    args: Record<string, unknown>;
   }) => Promise<ApprovalProof | null>;
   /** 端末の返事を待つ上限。 */
   readonly waitMs?: number;
@@ -103,6 +122,7 @@ export class HostStepExecutor {
         taskId: input.taskId,
         stepIndex: step.index,
         toolId: step.toolId,
+        args: step.args,
       })) ?? null;
 
     const request = await bridge.request({
@@ -122,7 +142,7 @@ export class HostStepExecutor {
         code: 'host.step_failed',
         message: '端末で実行できませんでした。',
       };
-      throw new HostStepFailed(error.code, error.message);
+      throw new HostStepFailed(error.code, error.message, settled.result);
     }
     // §6.1: どの tool で動いたかは出さない。どこで動いたかだけ言う。
     return { result: settled.result, detail: '端末で実行しました' };
@@ -140,6 +160,13 @@ export class HostStepExecutor {
         throw new HostOfflineError('端末がこの操作を受け取りませんでした。');
       }
       if (current.status === 'DONE' || current.status === 'FAILED') return current;
+      // 止められた仕事の依頼は、もう誰も取りに来ない。上限まで待たない。
+      if (
+        current.status === 'PENDING' &&
+        (await this.#deps.bridge.withdrawUnclaimed(input.tenantId, request.id))
+      ) {
+        throw new HostStepCancelled();
+      }
 
       this.#deps.onWaiting?.(elapsed);
       await sleep(pollMs);

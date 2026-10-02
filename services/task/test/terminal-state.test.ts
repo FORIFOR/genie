@@ -175,6 +175,103 @@ describe.skipIf(!url)('terminal transitions with real PostgreSQL', () => {
     expect((await terminalEvents(input.taskId)).map((e) => e.type)).toEqual(['task.failed']);
   });
 
+  it.each([false, true])(
+    'finalizes stop with the unknown business identity intact (signal received=%s)',
+    async (signalled) => {
+      const { input } = await fixture();
+      const transaction = {
+        mode: 'simulation' as const,
+        provider: 'fixture',
+        account: 'fixture-account',
+        orderKey: 'fixture-order',
+        quoteHash: 'a'.repeat(64),
+        status: 'unknown' as const,
+      };
+      const unknown = {
+        ...error,
+        message: 'Order outcome unconfirmed',
+        transaction_result: transaction,
+      };
+      if (!signalled) await service.cancel(tenantId, input.taskId, 'signal not yet received');
+      const options = {
+        preserveCancellation: true as const,
+        ...(signalled ? { cancellationReason: 'user_requested' } : {}),
+      };
+      expect(await activities.failTask(input, unknown, options)).toEqual({
+        status: 'CANCELLED',
+        artifactId: null,
+      });
+      const stored = await service.get(tenantId, input.taskId);
+      expect(stored.status).toBe('CANCELLED');
+      expect(stored.error).toMatchObject(unknown);
+      const events = await terminalEvents(input.taskId);
+      expect(events.map((e) => e.type)).toEqual(['task.cancelled']);
+      expect(events[0]!.payload).toMatchObject({
+        reason: 'user_requested',
+        message:
+          'Genieの操作を停止しました。注文結果は未確認です。再注文せず、同じ注文の履歴を照会してください。',
+        error: unknown,
+      });
+      const audits = await withTenant(db, tenantId, (tx) =>
+        tx
+          .selectFrom('audit_events')
+          .select('payload')
+          .where('task_id', '=', input.taskId)
+          .where('action', '=', 'task.cancelled')
+          .execute(),
+      );
+      expect(audits).toHaveLength(1);
+      expect(audits[0]!.payload).toMatchObject({ error: unknown });
+      // Late failures and repeated finalization cannot erase the original unknown identity.
+      await activities.failTask(input, { ...error, message: 'late failure' }, options);
+      await activities.cancelTask(input, 'duplicate');
+      expect(await service.get(tenantId, input.taskId)).toEqual(stored);
+      expect(await terminalEvents(input.taskId)).toEqual(events);
+    },
+  );
+
+  it('returns an existing completed receipt instead of replacing it with stop or failure', async () => {
+    const { input, artifact } = await fixture();
+    const committed = await activities.completeTask(input, artifact.id);
+    expect(
+      await activities.failTask(input, error, {
+        preserveCancellation: true,
+        cancellationReason: 'late stop',
+      }),
+    ).toEqual(committed);
+    expect((await service.get(tenantId, input.taskId)).error).toBeNull();
+    expect((await terminalEvents(input.taskId)).map((e) => e.type)).toEqual(['task.completed']);
+  });
+
+  it('concurrent stop and in-flight transaction failure cannot overwrite an accepted stop', async () => {
+    for (let round = 0; round < 8; round++) {
+      const { input } = await fixture();
+      const unknown = {
+        ...error,
+        transaction_result: {
+          mode: 'simulation' as const,
+          provider: 'fixture',
+          account: 'fixture-account',
+          orderKey: `race-${round}`,
+          quoteHash: 'a'.repeat(64),
+          status: 'unknown' as const,
+        },
+      };
+      const [cancel, failure] = await Promise.allSettled([
+        service.cancel(tenantId, input.taskId, 'concurrent stop'),
+        activities.failTask(input, unknown, { preserveCancellation: true }),
+      ]);
+      expect(failure.status).toBe('fulfilled');
+      const stored = await service.get(tenantId, input.taskId);
+      // A stop committed first must win; a stop after a terminal failure is rejected.
+      expect(stored.status).toBe(cancel.status === 'fulfilled' ? 'CANCELLED' : 'FAILED');
+      expect(stored.error).toMatchObject(unknown);
+      expect((await terminalEvents(input.taskId)).map((event) => event.type)).toEqual([
+        stored.status === 'CANCELLED' ? 'task.cancelled' : 'task.failed',
+      ]);
+    }
+  });
+
   it('a different tenant cannot cancel or finalize this task', async () => {
     const { input, artifact } = await fixture();
     const stranger = uuidv7();

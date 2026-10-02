@@ -177,7 +177,7 @@ export class ConversationService {
             response: {
               ...(row.prepared_response as Record<string, unknown>),
               task_id: task,
-              notice: null,
+              // Keep prepared capability limits/disclosures when dispatch acknowledgement is lost.
             },
           };
       }
