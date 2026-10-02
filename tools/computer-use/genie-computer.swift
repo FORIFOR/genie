@@ -28,6 +28,8 @@ struct Frame: Codable {
 struct Action: Decodable {
     let action: String; let frameId: String; let expectation: String
     let confidence: Double; let risk: String; let text: String?; let key: String?
+    var textMode: String? = nil
+    var direction: String? = nil
     /*
      * 操作対象の指定は 2 通り。**要素で指せるなら、そちらを使う。**
      * 座標はモデルに当てさせる値で、実測では 224x68 のボタンを 95px 外した。
@@ -36,9 +38,23 @@ struct Action: Decodable {
     let elementId: String?
     let target: [Double]?
 }
+/// A caller may narrow consent to an owned process; this never grants consent.
+struct ExpectedTarget: Decodable {
+    let pid: Int32
+    let bundleId: String
+    enum CodingKeys: String, CodingKey { case pid, bundleId }
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        pid = try values.decode(Int32.self, forKey: .pid)
+        bundleId = try values.decode(String.self, forKey: .bundleId)
+        guard pid > 0, !bundleId.isEmpty, bundleId.count <= 255 else { throw Failure("invalid_expected_target") }
+    }
+    func matches(pid: Int32, bundleId: String) -> Bool { self.pid == pid && self.bundleId == bundleId }
+}
 struct Request: Decodable {
     let op: String; let id: String?; let outputPath: String?; let referencePath: String?
     let goal: String?; let recipient: String?; let scope: Frame?; let action: Action?; let authorizationExpiresAt: Double?
+    let expectedTarget: ExpectedTarget?
 }
 struct Target {
     let bundleId: String; let windowId: UInt32; let pid: Int32; let bounds: Bounds
@@ -77,183 +93,272 @@ func point(_ a: Action, _ f: Frame, _ bounds: Bounds) throws -> CGPoint {
 }
 
 /*
- * 操作中の印。**AI がいまどこを触っているか**をその場に出す。
- *
- * reference : 並走運用の指針（2026-09-19 受領）「AI 専用カーソルは操作の可視化として
- *             実装する。普段は邪魔にならないようにする」。
- * hypothesis: いまの印は地の色が windowBackgroundColor（輝度 1.000）で、白い Web ページの
- *             上では地と同値。出ていても気づけない。対象の矩形を accent で囲み、
- *             操作の前後に少し留めれば、どこで何が起きたか分かる。
- * measured  : 初回 = 46x14pt / 11pt 文字 / 地 windowBackgroundColor（白との輝度差 0/255）。
- *             採用 B = accent 2pt 囲み + 11pt 札 / 保持 600ms。実機では、覆われた窓では
- *             出ず、出ても小さくて気づけなかった。
- * candidates: A = B のまま。
- *             C = 3pt の accent 囲み + 白 5pt の裏線 + 14% の塗り + 操作点を指す矢印
- *                 + 12pt semibold の札、保持 900ms。
- *             D = C に影を足す。
- * gate      : 機械が測る。① 白地との輝度差 > 16/255 ② 入力を横取りしない
- *             ③ 前面アプリ・クリップボードを変えない ④ 対象点が覆われていたら出さない。
- *             D は DESIGN.md §0「分離に影を使わない」に反するため候補から落とした。採用 = C。
- *             白の裏線は影の代わりで、暗い面でも縁が消えないようにするためのもの。
+ * AI 専用のポインター。人のマウスは動かさず、どのアプリをどこで操作しているか示す。
+ * 色・寸法の正本は tokens.json。設計と測定は computer-pointer/ROUND.md に記録。
+ * show は待たない。呼ぶ側が操作直前に対象・停止・世代を再検証する。
  */
 @available(macOS 14.4, *)
 @MainActor
 enum Marker {
-    /// 操作の後も印を残す時間。人が目で追えるだけの長さにする。
-    static let hold: UInt64 = 900_000_000
-    static var accent: NSColor {
-        let dark = NSApp.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
-        return dark ? NSColor(srgbRed: 0x8A / 255.0, green: 0x7D / 255.0, blue: 0xFF / 255.0, alpha: 1)
-                    : NSColor(srgbRed: 0x5B / 255.0, green: 0x4C / 255.0, blue: 0xF0 / 255.0, alpha: 1)
-    }
+    static let hold = PointerMetrics.holdNanoseconds
+    static var accent: NSColor { PointerMetrics.accent }
+    private static var current: Panel?
+    private static var movement: Timer?
+    private static var destination: NSRect?
+    private static var destinationTip: NSPoint?
+    private static var signature: String?
+
     final class Panel: NSPanel {
         override var canBecomeKey: Bool { false }
         override var canBecomeMain: Bool { false }
     }
+
+    /// Geometry is pure so negative-origin, stacked and edge displays can be verified without hardware.
+    struct Layout {
+        let frame: NSRect
+        let focus: NSRect
+        let badge: NSRect
+        let tip: NSPoint
+        let directionX: CGFloat
+        let directionY: CGFloat
+        let screen: NSRect
+    }
+
+    static func layout(rect: CGRect, primaryMaxY: CGFloat, screens: [NSRect], badgeSize: NSSize,
+                       compact: Bool) -> Layout? {
+        guard rect.width > 2, rect.height > 2,
+              [rect.minX, rect.minY, rect.width, rect.height].allSatisfy({ $0.isFinite }) else { return nil }
+        let tip = NSPoint(x: rect.midX, y: primaryMaxY - rect.midY)
+        guard let screen = screens.first(where: { $0.contains(tip) }) else { return nil }
+        let pad = PointerMetrics.focusPadding
+        let target = NSRect(x: rect.minX - pad, y: primaryMaxY - rect.maxY - pad,
+                            width: rect.width + 2 * pad, height: rect.height + 2 * pad).intersection(screen)
+        let edge = PointerMetrics.outerStroke / 2
+        let dx: CGFloat = tip.x + PointerMetrics.pointerWidth + edge > screen.maxX ? -1 : 1
+        let dy: CGFloat = tip.y - PointerMetrics.pointerHeight - edge < screen.minY ? -1 : 1
+        let pointer = Ring.pointerBodyBox(tip, directionX: dx, directionY: dy)
+        let glow = Ring.glowBox(tip, directionX: dx, directionY: dy)
+        let margin = PointerMetrics.screenMargin
+        let width = min(badgeSize.width, max(1, screen.width - 2 * margin))
+        var badge = NSRect(x: pointer.maxX + PointerMetrics.badgeGap,
+                           y: tip.y - badgeSize.height, width: width, height: badgeSize.height)
+        if badge.maxX > screen.maxX - margin { badge.origin.x = pointer.minX - PointerMetrics.badgeGap - width }
+        badge.origin.x = min(max(badge.minX, screen.minX + margin), screen.maxX - margin - badge.width)
+        badge.origin.y = min(max(badge.minY, screen.minY + margin), screen.maxY - margin - badge.height)
+        // AppKit rounds panel origins to screen points. Align the outer frame now,
+        // then express the exact action tip inside it, so the glow's fractional
+        // center cannot introduce a visible action-point offset at native display.
+        let frame = (compact ? pointer : pointer.union(target.insetBy(dx: -edge, dy: -edge))).union(glow).union(badge).integral
+        return Layout(frame: frame,
+                      focus: target.offsetBy(dx: -frame.minX, dy: -frame.minY),
+                      badge: badge.offsetBy(dx: -frame.minX, dy: -frame.minY),
+                      tip: NSPoint(x: tip.x - frame.minX, y: tip.y - frame.minY),
+                      directionX: dx, directionY: dy, screen: screen)
+    }
+
     final class Ring: NSView {
-        /// 対象が他の窓に覆われているとき。人の画面を塞がないよう、指し示すものだけ描く。
         var compact = false
-        /*
-         * 札に出す文字。**どのアプリを操作しているかを書く。**
-         * 隠れた対象の印を手前の別アプリの上に描くので、「Genie」とだけ出すと
-         * 今使っているアプリが操作されていると誤解されうる。
-         */
         var label = "Genie"
-        /*
-         * 対象そのものの位置（このビュー座標）。**窓の枠と対象の枠を分ける。**
-         * 以前は窓＝対象にしていたため、寿司の絵のような小さな対象では
-         * 札が枠に入らず黙って消えていた（`drawBadge` の guard）。
-         * 札と矢印のぶんだけ窓を広げ、対象はこの `focus` で描く。
-         */
+        var status = "操作中"
         var focus = NSRect.zero
-        /// 札の位置（このビュー座標）。対象の外側に出すので呼ぶ側が決める。
         var badge = NSRect.zero
-        static let badgeAttributes: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: 14, weight: .semibold),
-            .foregroundColor: NSColor.white,
-        ]
-        /// 札に要る大きさ。白の裏線（太さ 3）のぶんも含める。
-        static func badgeSize(_ text: String) -> NSSize {
-            let size = (text as NSString).size(withAttributes: badgeAttributes)
-            return NSSize(width: ceil(size.width) + 12 + 3, height: ceil(size.height) + 6 + 3)
+        var tip = NSPoint.zero
+        var directionX: CGFloat = 1
+        var directionY: CGFloat = 1
+        override func hitTest(_ point: NSPoint) -> NSView? { nil }
+        static var badgeAttributes: [NSAttributedString.Key: Any] {
+            let paragraph = NSMutableParagraphStyle()
+            paragraph.lineBreakMode = .byTruncatingTail
+            return [.font: NSFont.systemFont(ofSize: PointerMetrics.titleSize, weight: .semibold),
+                    .foregroundColor: PointerMetrics.text, .paragraphStyle: paragraph]
         }
-        /// 矢印が必要とする範囲（中心からの張り出し）。小さな対象でも切れないように。
-        static func pointerBox(_ center: NSPoint) -> NSRect {
-            NSRect(x: center.x - 8, y: center.y - 20, width: 30, height: 44)
+        static var statusAttributes: [NSAttributedString.Key: Any] {
+            var attrs = badgeAttributes
+            attrs[.font] = NSFont.systemFont(ofSize: PointerMetrics.statusSize, weight: .regular)
+            return attrs
+        }
+        static func badgeSize(_ label: String, status: String = "操作中") -> NSSize {
+            let title = (label as NSString).size(withAttributes: badgeAttributes)
+            let state = (status as NSString).size(withAttributes: statusAttributes)
+            return NSSize(width: min(PointerMetrics.badgeMaxWidth,
+                                     max(PointerMetrics.badgeMinWidth, ceil(max(title.width, state.width)) + 2 * PointerMetrics.badgePaddingH)),
+                          height: ceil(title.height) + ceil(state.height) + 2 * PointerMetrics.badgePaddingV)
+        }
+        static func pointerBodyBox(_ point: NSPoint, directionX: CGFloat = 1, directionY: CGFloat = 1) -> NSRect {
+            let width = PointerMetrics.pointerWidth, height = PointerMetrics.pointerHeight
+            return NSRect(x: point.x + (directionX < 0 ? -width : 0),
+                          y: point.y + (directionY > 0 ? -height : 0), width: width, height: height)
+                .insetBy(dx: -PointerMetrics.outerStroke / 2, dy: -PointerMetrics.outerStroke / 2)
+        }
+        static func glowBox(_ point: NSPoint, directionX: CGFloat = 1, directionY: CGFloat = 1) -> NSRect {
+            let center = NSPoint(x: point.x + PointerMetrics.pointerWidth * 0.44 * directionX,
+                                 y: point.y - PointerMetrics.pointerHeight * 0.45 * directionY)
+            let radius = PointerMetrics.glowRadius
+            return NSRect(x: center.x - radius, y: center.y - radius, width: 2 * radius, height: 2 * radius)
+        }
+        func pointerPath() -> NSBezierPath {
+            let path = NSBezierPath()
+            let w = PointerMetrics.pointerWidth, h = PointerMetrics.pointerHeight
+            // First vertex is the actual action point; direction only mirrors the remaining body at display edges.
+            // A compact stemless dart: the source screenshot's recognizable silhouette,
+            // drawn in Genie blue rather than altering the person's system cursor.
+            let vertices: [(CGFloat, CGFloat)] = [(0, 0), (1, -0.18), (0.62, -0.52), (0.47, -1)]
+            for (index, vertex) in vertices.enumerated() {
+                let point = NSPoint(x: tip.x + vertex.0 * w * directionX,
+                                    y: tip.y + vertex.1 * h * directionY)
+                if index == 0 { path.move(to: point) } else { path.line(to: point) }
+            }
+            path.close()
+            path.lineJoinStyle = .round
+            return path
         }
         override func draw(_ dirty: NSRect) {
-            let color = Marker.accent
             if !compact, focus.width > 2, focus.height > 2 {
-                // 白の裏線を先に置く。暗い面でも明るい面でも縁が消えない（影の代わり）。
-                let outline = NSBezierPath(roundedRect: focus.insetBy(dx: 2, dy: 2), xRadius: 10, yRadius: 10)
-                outline.lineWidth = 7
-                NSColor.white.withAlphaComponent(0.9).setStroke()
-                outline.stroke()
-                let ring = NSBezierPath(roundedRect: focus.insetBy(dx: 2, dy: 2), xRadius: 10, yRadius: 10)
-                ring.lineWidth = 4
-                color.setStroke()
+                let ring = NSBezierPath(roundedRect: focus.insetBy(dx: 2, dy: 2),
+                                        xRadius: PointerMetrics.badgeRadius, yRadius: PointerMetrics.badgeRadius)
+                PointerMetrics.outline.setStroke()
+                ring.lineWidth = PointerMetrics.focusStroke + PointerMetrics.innerStroke
                 ring.stroke()
-                // 対象をうっすら塗る。枠だけだと背景に紛れる。
-                color.withAlphaComponent(0.14).setFill()
-                NSBezierPath(roundedRect: focus.insetBy(dx: 3, dy: 3), xRadius: 8, yRadius: 8).fill()
+                Marker.accent.setStroke()
+                ring.lineWidth = PointerMetrics.focusStroke
+                ring.stroke()
+                Marker.accent.withAlphaComponent(PointerMetrics.focusFillAlpha).setFill()
+                ring.fill()
             }
-            drawPointer(at: NSPoint(x: focus.midX, y: focus.midY), color: color)
-            drawBadge(color: color)
-        }
-        /// 操作点そのものを指す矢印。どこを触ったかが一目で分かるようにする。
-        /// 通常のカーソルより一回り大きく描く。人のカーソルと見間違えないため。
-        private func drawPointer(at p: NSPoint, color: NSColor) {
-            let k: CGFloat = 1.7
-            let arrow = NSBezierPath()
-            arrow.move(to: NSPoint(x: p.x, y: p.y + 13 * k))
-            arrow.line(to: NSPoint(x: p.x, y: p.y - 9 * k))
-            arrow.line(to: NSPoint(x: p.x + 4.5 * k, y: p.y - 4.5 * k))
-            arrow.line(to: NSPoint(x: p.x + 8 * k, y: p.y - 11 * k))
-            arrow.line(to: NSPoint(x: p.x + 11 * k, y: p.y - 9.5 * k))
-            arrow.line(to: NSPoint(x: p.x + 7.5 * k, y: p.y - 3 * k))
-            arrow.line(to: NSPoint(x: p.x + 13 * k, y: p.y - 2 * k))
-            arrow.close()
-            NSColor.white.setStroke()
-            arrow.lineWidth = 4
+            // Transparent at its measured boundary, so the halo is never clipped by
+            // the panel and can be removed atomically with the same passive view.
+            let glow = Ring.glowBox(tip, directionX: directionX, directionY: directionY)
+            let colors = [1.0, 0.56, 0.13, 0.0].map {
+                Marker.accent.withAlphaComponent(PointerMetrics.glowAlpha * $0).cgColor
+            } as CFArray
+            if let context = NSGraphicsContext.current?.cgContext,
+               let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors,
+                                         locations: [0, 0.35, 0.70, 1]) {
+                let center = CGPoint(x: glow.midX, y: glow.midY)
+                context.drawRadialGradient(gradient, startCenter: center, startRadius: 0,
+                                           endCenter: center, endRadius: PointerMetrics.glowRadius, options: [])
+            }
+            let arrow = pointerPath()
+            PointerMetrics.darkOutline.setStroke()
+            arrow.lineWidth = PointerMetrics.outerStroke
             arrow.stroke()
-            color.setFill()
+            PointerMetrics.outline.setStroke()
+            arrow.lineWidth = PointerMetrics.innerStroke
+            arrow.stroke()
+            Marker.accent.setFill()
             arrow.fill()
+            drawBadge()
         }
-        private func drawBadge(color: NSColor) {
+        private func drawBadge() {
             guard badge.width > 1, badge.height > 1 else { return }
-            let edge = NSBezierPath(roundedRect: badge.insetBy(dx: 1.5, dy: 1.5), xRadius: 7, yRadius: 7)
-            edge.lineWidth = 3
-            NSColor.white.withAlphaComponent(0.9).setStroke()
-            edge.stroke()
-            color.setFill()
-            NSBezierPath(roundedRect: badge.insetBy(dx: 1.5, dy: 1.5), xRadius: 7, yRadius: 7).fill()
-            (label as NSString).draw(at: NSPoint(x: badge.minX + 1.5 + 6, y: badge.minY + 1.5 + 3),
+            let plate = NSBezierPath(roundedRect: badge.insetBy(dx: 1, dy: 1),
+                                     xRadius: PointerMetrics.badgeRadius, yRadius: PointerMetrics.badgeRadius)
+            PointerMetrics.outline.setStroke()
+            plate.lineWidth = 2
+            plate.stroke()
+            PointerMetrics.surface.setFill()
+            plate.fill()
+            let left = badge.minX + PointerMetrics.badgePaddingH
+            let bottom = badge.minY + PointerMetrics.badgePaddingV
+            let width = badge.width - 2 * PointerMetrics.badgePaddingH
+            let statusHeight = ceil((status as NSString).size(withAttributes: Ring.statusAttributes).height)
+            (status as NSString).draw(in: NSRect(x: left, y: bottom, width: width, height: statusHeight),
+                                      withAttributes: Ring.statusAttributes)
+            (label as NSString).draw(in: NSRect(x: left, y: bottom + statusHeight, width: width,
+                                               height: badge.height - 2 * PointerMetrics.badgePaddingV - statusHeight),
                                      withAttributes: Ring.badgeAttributes)
         }
     }
-    /*
-     * どこを操作しているかは、**対象が隠れていても分かるようにする。**
-     * 背景操作では対象が他の窓の後ろにあるのが普通で、そこで何も出さないと
-     * 「AI がどこを触っているか」が誰にも分からない。
-     * ただし人の画面を塞がないよう、隠れているときは矢印と札だけにする。
-     * どちらの形でも入力は透過し（当たり判定を持たない）、焦点も奪わない。
-     */
-    /*
-     * `from` を渡すと、そこから対象まで滑って移動する。**動きが見えないと、
-     * どこからどこへ動いたのかが分からない。**ヘルパーは 1 操作ごとに起動し直されるので、
-     * 前回の操作点は呼ぶ側が覚えて渡す。
-     */
+
+    static func hide() {
+        movement?.invalidate()
+        movement = nil
+        current?.orderOut(nil)
+        destination = nil
+        destinationTip = nil
+        signature = nil
+    }
+
+    /// Reuses one passive panel. Motion never pumps a nested run loop, sleeps or moves the person's pointer.
     static func show(around rect: CGRect, window: UInt32, from: CGPoint? = nil,
-                     target: String? = nil) -> Panel? {
-        guard let primary = NSScreen.screens.first, rect.width > 2, rect.height > 2 else { return nil }
+                     target: String? = nil, status: String = "操作中", animate: Bool = true) -> Panel? {
+        guard let primary = NSScreen.screens.first else { hide(); return nil }
         let covered = !Helper.topmost(at: CGPoint(x: rect.midX, y: rect.midY), is: window)
-        let area = rect.insetBy(dx: -6, dy: -6)
-        // 対象の枠（AppKit 座標）。Quartz は上が 0、AppKit は下が 0。
-        let spot = NSRect(x: area.origin.x, y: primary.frame.maxY - area.origin.y - area.height,
-                          width: area.width, height: area.height)
-        let text = (target?.isEmpty == false) ? "Genie → \(target!)" : "Genie"
-        let size = Ring.badgeSize(text)
-        // 札は対象の上に出す。上端に余地が無ければ下へ、右端を越えるなら左へ寄せる。
-        var plate = NSRect(x: spot.minX, y: spot.maxY + 4, width: size.width, height: size.height)
-        if plate.maxY > primary.frame.maxY { plate.origin.y = spot.minY - 4 - size.height }
-        if plate.maxX > primary.frame.maxX { plate.origin.x = primary.frame.maxX - size.width }
-        if plate.minX < primary.frame.minX { plate.origin.x = primary.frame.minX }
-        let frame = spot.union(Ring.pointerBox(NSPoint(x: spot.midX, y: spot.midY))).union(plate)
-        let panel = Panel(contentRect: frame, styleMask: [.borderless, .nonactivatingPanel],
+        let label = target?.isEmpty == false ? "Genie · \(target!)" : "Genie"
+        let state = covered && !status.contains("背面") ? "背面 · \(status)" : status
+        guard let plan = layout(rect: rect, primaryMaxY: primary.frame.maxY,
+                                screens: NSScreen.screens.map(\.frame),
+                                badgeSize: Ring.badgeSize(label, status: state), compact: covered) else { hide(); return nil }
+        let nextSignature = "\(label)|\(state)|\(covered)|\(plan.tip)|\(plan.focus)|\(plan.badge)"
+        let panel: Panel
+        if let existing = current { panel = existing }
+        else {
+            panel = Panel(contentRect: plan.frame, styleMask: [.borderless, .nonactivatingPanel],
                           backing: .buffered, defer: false)
-        let ring = Ring(frame: NSRect(origin: .zero, size: frame.size))
+            panel.isOpaque = false
+            panel.backgroundColor = .clear
+            panel.ignoresMouseEvents = true
+            panel.hidesOnDeactivate = false
+            panel.isReleasedWhenClosed = false
+            panel.hasShadow = false
+            panel.level = .floating
+            panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
+            panel.animationBehavior = .none
+            current = panel
+        }
+        if destination == plan.frame, signature == nextSignature, panel.isVisible { return panel }
+        let previousTip: NSPoint?
+        if panel.isVisible, let previousRing = panel.contentView as? Ring {
+            previousTip = NSPoint(x: panel.frame.minX + previousRing.tip.x, y: panel.frame.minY + previousRing.tip.y)
+        } else { previousTip = nil }
+        movement?.invalidate()
+        movement = nil
+        let ring = (panel.contentView as? Ring) ?? Ring(frame: NSRect(origin: .zero, size: plan.frame.size))
+        ring.setFrameSize(plan.frame.size)
         ring.compact = covered
-        ring.label = text
-        ring.focus = NSRect(x: spot.minX - frame.minX, y: spot.minY - frame.minY,
-                            width: spot.width, height: spot.height)
-        ring.badge = NSRect(x: plate.minX - frame.minX, y: plate.minY - frame.minY,
-                            width: plate.width, height: plate.height)
+        ring.label = label
+        ring.status = state
+        ring.focus = plan.focus
+        ring.badge = plan.badge
+        ring.tip = plan.tip
+        ring.directionX = plan.directionX
+        ring.directionY = plan.directionY
+        ring.setAccessibilityLabel("\(label)、\(state)")
         panel.contentView = ring
-        panel.isOpaque = false
-        panel.backgroundColor = .clear
-        panel.ignoresMouseEvents = true
-        panel.hidesOnDeactivate = false
-        panel.isReleasedWhenClosed = false
-        panel.hasShadow = false
-        panel.level = .floating
-        panel.order(.above, relativeTo: Int(window))
-        if let from {
-            // 前回の点から始めて、そこへ寄せる。だいたい 0.35 秒で着く速さにする。
-            // 動かす基準は窓の中心ではなく**矢印の先（対象の中心）**。窓は札のぶん偏っている。
-            let start = NSRect(x: from.x - ring.focus.midX,
-                               y: primary.frame.maxY - from.y - ring.focus.midY,
-                               width: frame.width, height: frame.height)
-            panel.setFrame(start, display: true)
-            let steps = 14
-            for step in 1...steps {
-                let t = Double(step) / Double(steps)
-                let eased = t * t * (3 - 2 * t)   // 端がなめらかになるよう補間する
-                panel.setFrame(NSRect(x: start.origin.x + (frame.origin.x - start.origin.x) * eased,
-                                      y: start.origin.y + (frame.origin.y - start.origin.y) * eased,
-                                      width: frame.width, height: frame.height), display: true)
-                RunLoop.current.run(until: Date().addingTimeInterval(0.025))
+        let absoluteTip = NSPoint(x: plan.frame.minX + plan.tip.x, y: plan.frame.minY + plan.tip.y)
+        let moved = destinationTip != absoluteTip
+        destination = plan.frame
+        destinationTip = absoluteTip
+        signature = nextSignature
+        let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        let start: NSRect?
+        if animate, !reduceMotion, moved {
+            if let from {
+                start = NSRect(x: from.x - plan.tip.x, y: primary.frame.maxY - from.y - plan.tip.y,
+                               width: plan.frame.width, height: plan.frame.height)
+            } else if let previousTip {
+                start = NSRect(x: previousTip.x - plan.tip.x, y: previousTip.y - plan.tip.y,
+                               width: plan.frame.width, height: plan.frame.height)
             }
-            panel.setFrame(frame, display: true)
+            else { start = nil }
+        } else { start = nil }
+        panel.setFrame(start ?? plan.frame, display: true)
+        panel.orderFrontRegardless()
+        ring.needsDisplay = true
+        if let start, start.origin != plan.frame.origin {
+            let began = ProcessInfo.processInfo.systemUptime
+            let timer = Timer(timeInterval: 1.0 / 60.0, repeats: true) { timer in
+                MainActor.assumeIsolated {
+                    let t = min(1, (ProcessInfo.processInfo.systemUptime - began) / PointerMetrics.moveSeconds)
+                    let eased = t * t * (3 - 2 * t)
+                    panel.setFrame(NSRect(x: start.minX + (plan.frame.minX - start.minX) * eased,
+                                          y: start.minY + (plan.frame.minY - start.minY) * eased,
+                                          width: plan.frame.width, height: plan.frame.height), display: true)
+                    if t >= 1 { timer.invalidate(); movement = nil }
+                }
+            }
+            movement = timer
+            RunLoop.main.add(timer, forMode: .common)
         }
         return panel
     }
@@ -667,6 +772,9 @@ struct Helper {
         guard fsync(fd) == 0 else { throw Failure("cache_write_failed") }
     }
     static func respond(_ request: Request) async throws -> Data {
+        // The legacy foreground helper does not implement constrained consent.
+        // Never silently ignore a caller's narrower target boundary.
+        guard request.expectedTarget == nil else { throw Failure("target_constraint_unsupported") }
         try checkPermissions()
         stage("op-\(request.op)")
         if request.op == "begin" || request.op == "capture" {
@@ -691,6 +799,7 @@ struct Helper {
         else { throw Failure("invalid_request") }
         guard let expires = request.authorizationExpiresAt, expires.isFinite,
               expires > Date().timeIntervalSince1970 * 1000 else { throw Failure("approval_expired") }
+        guard a.textMode == nil, a.direction == nil, a.action != "scroll" else { throw Failure("policy_action_not_allowed") }
         stage("rescope")
         var t = try await rescopeActivating(f)
         /*

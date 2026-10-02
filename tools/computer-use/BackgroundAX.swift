@@ -3,11 +3,108 @@ import ApplicationServices
 import ScreenCaptureKit
 import Foundation
 
-// No CGEvent dispatch, app activation, focused-element mutation, or clipboard writes.
+// No shared cursor/global input, app activation, or clipboard writes.
+// Native events address the selected process/window; field focus stays within that window.
 // Legacy foreground code is compiled only for shared data/capture utilities; never called as fallback.
 @available(macOS 14.4, *) @MainActor
 struct BackgroundAX {
     private static var watchers: [String: (NSObjectProtocol, Any)] = [:]
+    private static var activityViews: [String: ActivityView] = [:]
+
+    /// Display-only state. No screen text, typed text, or authority is stored here.
+    /// A run has a five-minute lease independent of the reusable consent's lifetime.
+    struct Activity: Codable {
+        var phase: String
+        var rect: Bounds // window-relative, follows a moved window
+        let expires: Double
+    }
+    static func activity(_ path: String, target: Target, phase: String,
+                         rect: CGRect? = nil, begin: Bool = false) throws {
+        let old = begin ? nil : try? readPrivate(Activity.self, path + ".activity")
+        let local = rect.map { $0.offsetBy(dx: -target.bounds.x, dy: -target.bounds.y) }
+            ?? old?.rect.rect ?? CGRect(x: max(24, target.bounds.width - 72), y: 48, width: 24, height: 24)
+        let value = Activity(phase: phase,
+            rect: Bounds(x: local.minX, y: local.minY, width: local.width, height: local.height),
+            expires: old?.expires ?? Date().timeIntervalSince1970 + runLimit)
+        let temporary = path + ".activity-" + UUID().uuidString
+        try privateFile(JSONEncoder().encode(value), temporary)
+        defer { unlink(temporary) }
+        guard rename(temporary, path + ".activity") == 0 else { throw Failure("cache_write_failed") }
+    }
+
+    /// Irreversible for this consent. The native dispatch gates read this before input.
+    static func stopSession(_ path: String) throws {
+        let temporary = path + ".stop-" + UUID().uuidString
+        try privateFile(Data("session_stopped".utf8), temporary)
+        defer { unlink(temporary) }
+        guard rename(temporary, path + ".interrupted") == 0 else { throw Failure("cache_write_failed") }
+        try advanceEpoch(path)
+    }
+
+    /// Owned by the existing conflict watcher, so the cursor stays visible during model calls.
+    @MainActor final class ActivityView: NSObject {
+        let path: String
+        let grant: Grant
+        private(set) var stopPanel: Indicator?
+        private(set) var stopButton: NSButton?
+        private(set) var phase: String?
+        init(path: String, grant: Grant) { self.path = path; self.grant = grant }
+        func hide() { Marker.hide(); stopPanel?.orderOut(nil); phase = nil }
+        @objc func stop() {
+            do { try BackgroundAX.stopSession(path) }
+            catch {
+                // Losing the watcher heartbeat revokes input even if the stop receipt could not be written.
+                unlink(path + ".watching")
+            }
+            refresh()
+        }
+        func refresh() {
+            guard let value = try? readPrivate(Activity.self, path + ".activity"),
+                  value.expires.isFinite, value.expires > Date().timeIntervalSince1970,
+                  let bounds = try? Helper.windowBounds(pid: grant.pid, windowId: grant.window),
+                  (try? generation(grant.pid, bundle: grant.bundle)) == grant.generation,
+                  [value.rect.x, value.rect.y, value.rect.width, value.rect.height].allSatisfy({ $0.isFinite }),
+                  value.rect.width > 0, value.rect.height > 0 else { hide(); return }
+            let stopped = explicitlyStopped(path)
+            let paused = FileManager.default.fileExists(atPath: path + ".interrupted")
+            let state = stopped ? "stopped" : paused ? "paused" : value.phase
+            let label: String
+            switch state {
+            case "click": label = "クリック中"
+            case "type", "type_keys", "key": label = "入力中"
+            case "scroll": label = "スクロール中"
+            case "paused": label = "操作が終わるのを待っています"
+            case "stopped": label = "停止しました"
+            default: label = "画面を確認中"
+            }
+            let rect = value.rect.rect.offsetBy(dx: bounds.x, dy: bounds.y)
+            let name = NSRunningApplication(processIdentifier: grant.pid)?.localizedName ?? "対象アプリ"
+            _ = Marker.show(around: rect, window: grant.window, target: name, status: label)
+            phase = state
+            if stopPanel == nil {
+                let panel = Indicator(contentRect: NSRect(x: 0, y: 0, width: PointerMetrics.stopWidth, height: PointerMetrics.stopHeight),
+                    styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+                panel.isOpaque = false; panel.backgroundColor = .clear; panel.hasShadow = false
+                panel.hidesOnDeactivate = false; panel.isReleasedWhenClosed = false
+                panel.level = .floating; panel.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
+                let button = NSButton(title: "■ 停止", target: self, action: #selector(stop))
+                button.bezelStyle = .rounded; button.font = .systemFont(ofSize: PointerMetrics.statusSize); button.frame = NSRect(origin: .zero, size: panel.frame.size)
+                button.setAccessibilityLabel("Genie のバックグラウンド操作を停止")
+                button.toolTip = "以降の入力を止めます。入力済みの内容は元に戻しません。"
+                panel.contentView = button; stopPanel = panel; stopButton = button
+            }
+            // Stable position, outside the moving pointer: the stop button never evades a click.
+            let top = NSScreen.screens.first?.frame.maxY ?? 0
+            let appkitPoint = NSPoint(x: bounds.rect.midX, y: top - bounds.rect.midY)
+            if let screen = NSScreen.screens.first(where: { $0.frame.contains(appkitPoint) }) ?? NSScreen.screens.first {
+                let area = screen.visibleFrame
+                stopPanel?.setFrameOrigin(NSPoint(x: area.maxX - PointerMetrics.stopWidth - 16, y: area.minY + 16))
+            }
+            stopButton?.isEnabled = !stopped
+            stopButton?.title = stopped ? "停止済み" : "■ 停止"
+            stopPanel?.orderFrontRegardless()
+        }
+    }
     final class Indicator: NSPanel {
         override var canBecomeKey: Bool { false }
         override var canBecomeMain: Bool { false }
@@ -16,7 +113,7 @@ struct BackgroundAX {
      * 操作中の印。以前は 11pt の文字を windowBackgroundColor の地に置いていたが、
      * その地は輝度 1.000 で白い Web ページと同値——白地の上では原理的に見えない
      * （DS-04 の下限 16/255 未満）。共有の `Marker`（accent の囲み。白との輝度差 163/255）
-     * に寄せた。入力を横取りしない点と、人の窓が手前なら出さない点は変えていない。
+     * に寄せた。入力を横取りせず、覆われた対象には「背面」の札で出す。
      */
     static func indicator(at point: CGPoint, window: UInt32) -> Marker.Panel? {
         indicator(around: CGRect(x: point.x - 24, y: point.y - 12, width: 48, height: 24), window: window)
@@ -39,8 +136,25 @@ struct BackgroundAX {
          * 同一性にも含める（valueHash と同じ扱い。変わったら対象が変わったと見る）。
          */
         let detail: String
+        var scroll: ScrollState? = nil
+        var webLink: WebLinkState? = nil
         /// この撮影の中で一意。モデルにはこれだけを選ばせ、位置はこちらで取り直す。
         var id: String { "e" + path.map(String.init).joined(separator: "-") }
+    }
+    struct ScrollState: Codable, Equatable {
+        let barIndex: Int, contentIndex: Int
+        let barIdentity: String, contentIdentity: String
+        let bar: Bounds, content: Bounds, viewport: Bounds
+        let value: Double
+        func sameLayout(as other: ScrollState) -> Bool {
+            barIndex == other.barIndex && contentIndex == other.contentIndex &&
+            barIdentity == other.barIdentity && contentIdentity == other.contentIdentity &&
+            bar == other.bar && viewport == other.viewport &&
+            content.x == other.content.x && content.width == other.content.width && content.height == other.content.height
+        }
+    }
+    struct WebLinkState: Codable, Equatable {
+        let documentHash: String, destinationHash: String
     }
     struct Snapshot: Codable {
         let frame: Frame
@@ -113,6 +227,64 @@ struct BackgroundAX {
         }
         return matches[0]
     }
+    /// Only a standard, single-content vertical area whose geometry agrees with
+    /// its normalized scrollbar. No nearest-pane or event delivery fallback.
+    static func scrollState(_ area: AXUIElement, bounds: Bounds) -> ScrollState? {
+        guard string(area, kAXRoleAttribute) == kAXScrollAreaRole,
+              let viewport = Helper.elementRect(area), bounds.rect.contains(viewport), viewport.height >= 2,
+              attribute(area,kAXHorizontalScrollBarAttribute) == nil,
+              let rawBar = attribute(area, kAXVerticalScrollBarAttribute), CFGetTypeID(rawBar) == AXUIElementGetTypeID(),
+              let contents = attribute(area, kAXContentsAttribute) as? [AXUIElement], contents.count == 1,
+              let contentElement = contents.first else { return nil }
+        let bar = rawBar as! AXUIElement
+        let nodes = children(area)
+        let barIndices = nodes.indices.filter { CFEqual(nodes[$0], bar) }
+        let contentIndices = nodes.indices.filter { CFEqual(nodes[$0], contentElement) }
+        var areaPID: pid_t = 0, barPID: pid_t = 0, contentPID: pid_t = 0
+        guard barIndices.count == 1, contentIndices.count == 1, barIndices != contentIndices,
+              AXUIElementGetPid(area, &areaPID) == .success,
+              AXUIElementGetPid(bar, &barPID) == .success, AXUIElementGetPid(contentElement, &contentPID) == .success,
+              areaPID == barPID, areaPID == contentPID,
+              let areaWindow = attribute(area, kAXWindowAttribute),
+              let barWindow = attribute(bar, kAXWindowAttribute), let contentWindow = attribute(contentElement, kAXWindowAttribute),
+              CFEqual(areaWindow, barWindow), CFEqual(areaWindow, contentWindow),
+              string(bar, kAXRoleAttribute) == kAXScrollBarRole,
+              string(bar, kAXOrientationAttribute) == kAXVerticalOrientationValue,
+              attribute(bar, kAXEnabledAttribute) as? Bool == true,
+              attribute(area, kAXEnabledAttribute) as? Bool != false,
+              attribute(contentElement, "AXProtectedContent") as? Bool != true,
+              string(contentElement, kAXSubroleAttribute) != kAXSecureTextFieldSubrole,
+              // AppKit's legacy scroller reports a one-point decoration outside
+              // its area. Ownership is still exact; only that border gets slack.
+              let barRect = Helper.elementRect(bar), viewport.insetBy(dx:-2,dy:-2).contains(barRect),
+              let contentRect = Helper.elementRect(contentElement),
+              let value = (attribute(bar, kAXValueAttribute) as? NSNumber)?.doubleValue,
+              // NSScroller omits min/max. Missing bounds are accepted only with
+              // the normalized position/document-offset equality below.
+              (attribute(bar, kAXMinValueAttribute) == nil || (attribute(bar, kAXMinValueAttribute) as? NSNumber)?.doubleValue == 0),
+              (attribute(bar, kAXMaxValueAttribute) == nil || (attribute(bar, kAXMaxValueAttribute) as? NSNumber)?.doubleValue == 1),
+              value.isFinite, value >= 0, value <= 1,
+              [viewport.minX, viewport.minY, viewport.width, viewport.height,
+               contentRect.minX, contentRect.minY, contentRect.width, contentRect.height].allSatisfy({ $0.isFinite }),
+              contentRect.height > viewport.height, contentRect.height <= 10_000_000,
+              contentRect.width > 0, contentRect.minX >= viewport.minX - 1, contentRect.maxX <= viewport.maxX + 1,
+              abs(viewport.minY - contentRect.minY - value * (contentRect.height - viewport.height)) <= 2
+        else { return nil }
+        var settable: DarwinBoolean = false
+        guard AXUIElementIsAttributeSettable(bar, kAXValueAttribute as CFString, &settable) == .success,
+              settable.boolValue else { return nil }
+        func identity(_ e: AXUIElement) -> String? {
+            let text = string(e, kAXValueAttribute)
+            guard text.utf16.count <= 100_000 else { return nil }
+            let parts = [string(e,kAXRoleAttribute),string(e,kAXSubroleAttribute),string(e,kAXIdentifierAttribute),string(e,kAXTitleAttribute),text]
+            guard let data = try? JSONSerialization.data(withJSONObject:parts) else { return nil }
+            return digest(data)
+        }
+        guard let barIdentity = identity(bar), let contentIdentity = identity(contentElement) else { return nil }
+        func box(_ r: CGRect) -> Bounds { Bounds(x:r.minX,y:r.minY,width:r.width,height:r.height) }
+        return ScrollState(barIndex:barIndices[0],contentIndex:contentIndices[0],barIdentity:barIdentity,
+                           contentIdentity:contentIdentity,bar:box(barRect),content:box(contentRect),viewport:box(viewport),value:value)
+    }
     static func describe(_ e: AXUIElement, path: [Int], bounds: Bounds) -> Element? {
         let role = string(e, kAXRoleAttribute), subrole = string(e, kAXSubroleAttribute)
         /*
@@ -120,7 +292,7 @@ struct BackgroundAX {
          * 絵やリンクを載せておけば、モデルは「どれか」を選ぶだけで済み、
          * 28x17 の絵の座標を当てる必要がなくなる（実測: そこで外していた）。
          */
-        guard [kAXButtonRole, kAXTextFieldRole, kAXTextAreaRole, kAXImageRole, "AXLink"].contains(role),
+        guard [kAXButtonRole, kAXTextFieldRole, kAXTextAreaRole, kAXImageRole, "AXLink", kAXScrollAreaRole].contains(role),
               subrole != kAXSecureTextFieldSubrole,
               ![kAXCloseButtonSubrole, kAXMinimizeButtonSubrole, kAXZoomButtonSubrole].contains(subrole),
               let rect = Helper.elementRect(e), !rect.isEmpty,
@@ -144,11 +316,14 @@ struct BackgroundAX {
         // 値を持つべきなのは文字を入れる欄だけ。絵やリンクに AXValue は要らない。
         if [kAXTextFieldRole, kAXTextAreaRole].contains(role),
            attribute(e, kAXValueAttribute) as? String == nil { return nil }
+        let scroll = role == kAXScrollAreaRole ? scrollState(e, bounds: bounds) : nil
+        if role == kAXScrollAreaRole, scroll == nil { return nil }
         return Element(path: path, role: role, subrole: subrole,
                        identifier: string(e, kAXIdentifierAttribute), title: string(e, kAXTitleAttribute),
                        valueHash: digest(Data(string(e, kAXValueAttribute).utf8)),
                        x: rect.minX-bounds.x, y: rect.minY-bounds.y, width: rect.width, height: rect.height,
-                       detail: String(string(e, kAXDescriptionAttribute).prefix(60)))
+                       detail: String(string(e, kAXDescriptionAttribute).prefix(60)), scroll: scroll,
+                       webLink: role == "AXLink" ? webLinkState(e) : nil)
     }
     /*
      * 秘匿欄の拒否を**明示にする**。スナップショットが秘匿欄を落とす設計はそのまま
@@ -198,6 +373,42 @@ struct BackgroundAX {
             current = parent as! AXUIElement
         }
         return false
+    }
+    /// Only one top-level WebArea. An iframe is not the selected document.
+    static func topWebArea(containing element: AXUIElement) -> AXUIElement? {
+        var current=element, found: AXUIElement?
+        for _ in 0..<30 {
+            if string(current,kAXRoleAttribute) == "AXWebArea" {
+                if found != nil { return nil }
+                found=current
+            }
+            if string(current,kAXRoleAttribute) == kAXWindowRole { return found }
+            guard let parent=attribute(current,kAXParentAttribute), CFGetTypeID(parent) == AXUIElementGetTypeID() else { return nil }
+            current=parent as! AXUIElement
+        }
+        return nil
+    }
+    static func webLinkState(_ element: AXUIElement) -> WebLinkState? {
+        var pid:pid_t=0
+        guard AXUIElementGetPid(element,&pid) == .success,
+              BackgroundWebLink.enabled(bundle:NSRunningApplication(processIdentifier:pid)?.bundleIdentifier ?? ""),
+              string(element,kAXRoleAttribute) == "AXLink",let area=topWebArea(containing:element),
+              let source=attribute(area,kAXURLAttribute) as? URL,
+              let destination=attribute(element,kAXURLAttribute) as? URL,
+              BackgroundWebLink.eligible(document:source,destination:destination) else { return nil }
+        return WebLinkState(documentHash:digest(Data(source.absoluteString.utf8)),destinationHash:digest(Data(destination.absoluteString.utf8)))
+    }
+    static func documentURLHash(in target: Target) throws -> String? {
+        var areas:[AXUIElement]=[], visited=0
+        func visit(_ element: AXUIElement,_ depth:Int) throws {
+            visited += 1
+            guard visited <= 2000, depth <= 30 else { throw Failure("background_tree_limit") }
+            if string(element,kAXRoleAttribute) == "AXWebArea" { areas.append(element);return }
+            for child in children(element) { try visit(child,depth+1) }
+        }
+        try visit(window(target),0)
+        guard areas.count == 1,let url=attribute(areas[0],kAXURLAttribute) as? URL else { return nil }
+        return digest(Data(url.absoluteString.utf8))
     }
     static func tree(_ t: Target) throws -> [Element] {
         var result: [Element] = [], visited = 0
@@ -362,7 +573,7 @@ struct BackgroundAX {
     }
     /// 1 回の依頼に認める長さ。同意の文面で言っている「5 分」と同じ。
     static let runLimit: TimeInterval = 300
-    static func reusableGrant(_ dir: URL, recipient: String?) -> (Target, String)? {
+    static func reusableGrant(_ dir: URL, recipient: String?, expectedTarget: ExpectedTarget? = nil) -> (Target, String)? {
         guard let recipient, !recipient.isEmpty else { return nil }
         guard let names = try? FileManager.default.contentsOfDirectory(atPath: dir.path) else { return nil }
         for name in names {
@@ -378,6 +589,7 @@ struct BackgroundAX {
              */
             guard let grant = try? readPrivate(Grant.self, path),
                   grant.recipient == recipient,
+                  expectedTarget?.matches(pid: grant.pid, bundleId: grant.bundle) ?? true,
                   grant.expires > Date().timeIntervalSince1970 + runLimit,
                   !explicitlyStopped(path),
                   let generationNow = try? generation(grant.pid, bundle: grant.bundle),
@@ -413,10 +625,11 @@ struct BackgroundAX {
      * 同意ダイアログと、試験専用の無人経路が**同じ一覧を使う**ようにしてある。
      */
     static let genieBundles: Set<String> = ["com.astra.mac", "com.astra.desktop"]
-    static func selectableWindows(_ content: SCShareableContent) -> [SCWindow] {
+    static func selectableWindows(_ content: SCShareableContent, expectedTarget: ExpectedTarget? = nil) -> [SCWindow] {
         content.windows.filter { w in
             guard let owner = w.owningApplication else { return false }
             let id=owner.bundleIdentifier
+            guard expectedTarget?.matches(pid: owner.processID, bundleId: id) ?? true else { return false }
             // Genie 自身（開発版 com.astra.mac / 配布版 com.astra.desktop）の窓は対象にしない。
             // 自分の確認カードや Dock を撮って外へ送り、そこを操作することになる。
             return w.windowLayer == 0 && w.frame.width > 0 && w.frame.height > 0 && owner.processID != getpid()
@@ -457,10 +670,12 @@ final class ConsentAccessoryView: NSView {
     private(set) var currentWindows: [SCWindow] = []
     private var timer: Timer?
     private let goal: String
+    private let expectedTarget: ExpectedTarget?
     private weak var alert: NSAlert?
 
-    init(goal: String, initialWindows: [SCWindow], alert: NSAlert) {
+    init(goal: String, initialWindows: [SCWindow], alert: NSAlert, expectedTarget: ExpectedTarget? = nil) {
         self.goal = goal
+        self.expectedTarget = expectedTarget
         self.currentWindows = initialWindows
         self.alert = alert
         super.init(frame: NSRect(x: 0, y: 0, width: 460, height: 66))
@@ -519,6 +734,7 @@ final class ConsentAccessoryView: NSView {
     }
 
     @objc private func onLaunch() {
+        guard expectedTarget == nil else { return }
         let lower = goal.lowercased()
         if lower.contains("safari") {
             let script = NSAppleScript(source: "tell application \"Safari\" to make new document")
@@ -538,14 +754,19 @@ final class ConsentAccessoryView: NSView {
     private func poll(forceSelectTarget: Bool = false) async {
         do {
             let content = try await SCShareableContent.excludingDesktopWindows(true, onScreenWindowsOnly: true)
-            let windows = BackgroundAX.selectableWindows(content)
+            let windows = BackgroundAX.selectableWindows(content, expectedTarget: expectedTarget)
             updateWindows(windows, forceSelectTarget: forceSelectTarget)
         } catch {
             // ignore temporary capture polling error
         }
     }
 
-    func updateWindows(_ windows: [SCWindow], forceSelectTarget: Bool = false) {
+    func updateWindows(_ candidates: [SCWindow], forceSelectTarget: Bool = false) {
+        // Refreshes cannot widen an adapter's owned-target constraint.
+        let windows = candidates.filter { w in
+            guard let owner = w.owningApplication else { return false }
+            return expectedTarget?.matches(pid: owner.processID, bundleId: owner.bundleIdentifier) ?? true
+        }
         let prevSelected = popup.indexOfSelectedItem > 0 && popup.indexOfSelectedItem - 1 < currentWindows.count
             ? currentWindows[popup.indexOfSelectedItem - 1].windowID : nil
         self.currentWindows = windows
@@ -564,8 +785,8 @@ final class ConsentAccessoryView: NSView {
         }
 
         let lower = goal.lowercased()
-        let mentionsSafari = lower.contains("safari")
-        let mentionsChrome = lower.contains("chrome")
+        let mentionsSafari = expectedTarget == nil && lower.contains("safari")
+        let mentionsChrome = expectedTarget == nil && lower.contains("chrome")
         let hasSafari = windows.contains { $0.owningApplication?.bundleIdentifier == "com.apple.Safari" }
         let hasChrome = windows.contains { $0.owningApplication?.bundleIdentifier == "com.google.Chrome" }
 
@@ -602,7 +823,7 @@ final class ConsentAccessoryView: NSView {
 
     static func select(_ request: Request, dir: URL) async throws -> (Target,String) {
 
-        if let live = reusableGrant(dir, recipient: request.recipient) { return live }
+        if let live = reusableGrant(dir, recipient: request.recipient, expectedTarget: request.expectedTarget) { return live }
         let content = try await SCShareableContent.excludingDesktopWindows(true,onScreenWindowsOnly:true)
         /*
          * 出荷ビルドでは、生きた許可が無ければ**必ず下の選択ダイアログを通る。**
@@ -612,7 +833,7 @@ final class ConsentAccessoryView: NSView {
          * 開いているタブを書き換え、別のアプリを起動・前面化していた（承認カードの「範囲」と食い違う）。
          * 自動選択は下の試験専用の経路にだけ残す。
          */
-        let windows = selectableWindows(content)
+        let windows = selectableWindows(content, expectedTarget: request.expectedTarget)
         #if GENIE_UNATTENDED_TEST
         /*
          * 反復試験のためだけの経路。**出荷する実行ファイルには入らない**
@@ -641,7 +862,7 @@ final class ConsentAccessoryView: NSView {
             return try await establish(hits[0], dir: dir, recipient: request.recipient)
         }
         // 対象の名前が無い試験では、目的の語から窓を選ぶ（出荷ビルドには入らない。上の注意）。
-        if let autoTarget = await autoResolveTargetWindow(goal: request.goal ?? "", content: content) {
+        if request.expectedTarget == nil, let autoTarget = await autoResolveTargetWindow(goal: request.goal ?? "", content: content) {
             stage("auto-selected-target-\(autoTarget.owningApplication?.applicationName ?? "app")")
             return try await establish(autoTarget, dir: dir, recipient: request.recipient)
         }
@@ -650,7 +871,7 @@ final class ConsentAccessoryView: NSView {
         alert.messageText="バックグラウンドで操作する対象"
         // 送信先は内部の種別名ではなく、画像が届く提供元の名前で見せる（前面の選択ダイアログと同じ対応表）。
         alert.informativeText="目的: \(request.goal ?? "")\n画像の送信先: \(imageDestinationLabel(request.recipient))\n選んだ窓だけ。1 回の依頼につき最大12操作・5分で、この許可は20分間そのまま使えます（その間の追加の依頼では、画像の送信先が同じならこの画面は出ません）。個別確認はしません。共有マウス・キー・クリップボードは使いません。対象を前面で使うと停止します。未対応の操作は前面操作へ切り替えません。"
-        let accessory = ConsentAccessoryView(goal: request.goal ?? "", initialWindows: windows, alert: alert)
+        let accessory = ConsentAccessoryView(goal: request.goal ?? "", initialWindows: windows, alert: alert, expectedTarget: request.expectedTarget)
         alert.accessoryView = accessory
         alert.addButton(withTitle:"バックグラウンド操作を許可")
         alert.addButton(withTitle:"中止")
@@ -681,6 +902,7 @@ final class ConsentAccessoryView: NSView {
         accessory.cleanUp()
         guard ret == .alertFirstButtonReturn, accessory.popup.indexOfSelectedItem > 0 else { throw Failure("user_cancelled") }
         let w=accessory.currentWindows[accessory.popup.indexOfSelectedItem-1], owner=w.owningApplication!
+        guard request.expectedTarget?.matches(pid: owner.processID, bundleId: owner.bundleIdentifier) ?? true else { throw Failure("target_changed") }
         // 選ばれたアプリの名前だけを残す（窓の題・中身は残さない）。止まったとき、違う窓が選ばれていたかが分かる。
         stage("selected-app-\(owner.applicationName.replacingOccurrences(of: " ", with: "_"))")
         NSApp.hide(nil)
@@ -880,6 +1102,8 @@ final class ConsentAccessoryView: NSView {
          */
         if request.op == "end", let f=request.scope, let s=f.backgroundSession, let reference=request.referencePath {
             let path=try sessionPath(URL(fileURLWithPath:reference).deletingLastPathComponent(),s)
+            unlink(path + ".activity")
+            activityViews[path]?.hide()
             if FileManager.default.fileExists(atPath:path+".interrupted") || readGrantExpired(path) {
                 try? FileManager.default.removeItem(atPath:path)
             }
@@ -921,6 +1145,10 @@ final class ConsentAccessoryView: NSView {
             let t:Target, session:String
             if request.op == "begin" { (t,session)=try await select(request,dir:dir) }
             else { guard let f=request.scope,let s=f.backgroundSession else { throw Failure("invalid_scope") };t=try permitted(f,dir:dir);session=s }
+            let activityPath = try sessionPath(dir, session)
+            try activity(activityPath, target: t, phase: "checking", begin: request.op == "begin")
+            var captured = false
+            defer { if !captured { unlink(activityPath + ".activity") } }
             /*
              * 木を 2 度読んで、撮った写真と一致していることを確かめる。
              * **一度違っただけで諦めない。**読み直す。
@@ -965,9 +1193,10 @@ final class ConsentAccessoryView: NSView {
                 ["id":e.id,"role":e.role,
                  "name":String(([e.identifier,e.title,e.detail].first { !$0.isEmpty } ?? "").prefix(60))]
             }
+            captured = true
             return try JSONSerialization.data(withJSONObject:payload,options:[.sortedKeys])
         }
-        guard request.op == "apply",let f=request.scope,let a=request.action,let reference=request.referencePath,
+        guard ["apply", "preview_target"].contains(request.op),let f=request.scope,let a=request.action,let reference=request.referencePath,
               URL(fileURLWithPath:reference).lastPathComponent == "\(f.id).png",
               let expires=request.authorizationExpiresAt,expires>Date().timeIntervalSince1970*1000,
               Date().timeIntervalSince1970*1000-f.capturedAt <= 60_000 else { throw Failure("invalid_request") }
@@ -981,15 +1210,25 @@ final class ConsentAccessoryView: NSView {
         func current() throws -> Target {
             let scope=try permitted(f,dir:dir)
             guard (f.backgroundEpoch ?? 0) == epoch(sessionFile) else { throw Failure("stale_generation") }
+            let display = try readPrivate(Activity.self, sessionFile + ".activity")
+            guard display.expires > Date().timeIntervalSince1970 else { throw Failure("session_stopped") }
             return scope
         }
         let t=try current()
+        guard a.textMode == nil || (a.action == "type" && a.textMode == "append")
+        else { throw Failure("policy_text_rejected") }
+        guard (a.direction == nil && a.action != "scroll") ||
+              (a.action == "scroll" && ["up", "down"].contains(a.direction ?? "") && a.risk == "navigation" &&
+               a.text == nil && a.key == nil && a.textMode == nil && a.frameId == f.id)
+        else { throw Failure("policy_action_not_allowed") }
         let snapshot=try readPrivate(Snapshot.self,reference+".snapshot.json")
         guard snapshot.frame.id == f.id, snapshot.frame.sha256 == f.sha256,
               snapshot.frame.bundleId == f.bundleId, snapshot.frame.bounds == f.bounds,
               snapshot.frame.width == f.width, snapshot.frame.height == f.height,
               snapshot.frame.capturedAt == f.capturedAt,
+              snapshot.frame.deliveryMode == f.deliveryMode,
               snapshot.frame.backgroundSession == f.backgroundSession,
+              snapshot.frame.backgroundEpoch == f.backgroundEpoch,
               snapshot.frame.pid == f.pid, snapshot.frame.windowId == f.windowId,
               try generation(t.pid,bundle:t.bundleId) == snapshot.generation else { throw Failure("stale_frame") }
         /*
@@ -1007,9 +1246,65 @@ final class ConsentAccessoryView: NSView {
         let p: CGPoint
         if let rect=chosenRect { p = point(rect, t.bounds) } else { p = try point(a,f,t.bounds) }
         let local=CGPoint(x:p.x-t.bounds.x, y:p.y-t.bounds.y)
+        let primaryTop = NSScreen.screens.first?.frame.maxY ?? 0
+        let visiblePoint = NSPoint(x: p.x, y: primaryTop - p.y)
+        guard NSScreen.screens.contains(where: { $0.frame.contains(visiblePoint) }) else {
+            throw Failure("background_target_offscreen")
+        }
 
         // 経路によらず禁じているもの。能力の不足ではないので、別経路でも回避させない。
         if secureFieldContains(p, in: t) { throw Failure("policy_secure_field") }
+
+        // Freeze the actual text element before the model checks intent. This path
+        // reads only: no focus change, input, replay mark, or activity mutation.
+        if request.op == "preview_target" {
+            guard ["type", "type_keys", "scroll"].contains(a.action), a.frameId == f.id,
+                  let output = request.outputPath, let id = request.id,
+                  URL(fileURLWithPath: output).deletingLastPathComponent().standardizedFileURL == dir.standardizedFileURL,
+                  !FileManager.default.fileExists(atPath: reference + ".used")
+            else { throw Failure("target_preview_unavailable") }
+            let targetRoles = a.action == "scroll" ? [kAXScrollAreaRole] : [kAXTextFieldRole, kAXTextAreaRole]
+            let candidates = chosen.map { [$0] } ?? snapshot.elements.filter { e in
+                targetRoles.contains(e.role) && CGRect(x: e.x, y: e.y, width: e.width, height: e.height).contains(local)
+            }
+            guard candidates.count == 1, let selected = candidates.first,
+                  targetRoles.contains(selected.role) else { throw Failure(a.action == "scroll" ? "background_scroll_unsupported" : "background_target_unresolved") }
+            let resolved = try resolve(selected.path, in: t)
+            guard describe(resolved, path: selected.path, bounds: t.bounds) == selected else { throw Failure("target_changed") }
+            guard string(resolved, kAXSubroleAttribute) != kAXSecureTextFieldSubrole else { throw Failure("policy_secure_field") }
+            guard attribute(resolved, kAXEnabledAttribute) as? Bool != false else { throw Failure("background_disabled") }
+            if a.action == "scroll" {
+                guard let state=selected.scroll else { throw Failure("background_scroll_unsupported") }
+                do { _ = try BackgroundScroll.plan(value:state.value,viewport:state.viewport.height,
+                                                   content:state.content.height,direction:a.direction ?? "") }
+                catch let error as BackgroundScroll.Rejected { throw Failure(error.rawValue) }
+            }
+            let sx = Double(f.width) / f.bounds.width, sy = Double(f.height) / f.bounds.height
+            let left = floor(selected.x * sx), top = floor(selected.y * sy)
+            let right = ceil((selected.x + selected.width) * sx), bottom = ceil((selected.y + selected.height) * sy)
+            let rect = CGRect(x: left, y: top, width: right - left, height: bottom - top)
+            let fd = open(reference, O_RDONLY | O_NOFOLLOW)
+            guard fd >= 0 else { throw Failure("target_preview_unavailable") }
+            defer { close(fd) }
+            var info = stat()
+            guard fstat(fd, &info) == 0, (info.st_mode & S_IFMT) == S_IFREG,
+                  info.st_uid == getuid(), (info.st_mode & 0o077) == 0,
+                  info.st_size > 0, info.st_size <= 20 * 1024 * 1024 else { throw Failure("invalid_cache") }
+            let png = try FileHandle(fileDescriptor: fd, closeOnDealloc: false).readToEnd() ?? Data()
+            guard png.count == info.st_size, digest(png) == f.sha256 else { throw Failure("image_mismatch") }
+            let preview = try TargetPreview.render(png, frame: f, rect: rect)
+            guard try current().bounds == t.bounds,
+                  expires > Date().timeIntervalSince1970 * 1000,
+                  Date().timeIntervalSince1970 * 1000 - f.capturedAt <= 60_000,
+                  describe(resolved, path: selected.path, bounds: t.bounds) == selected
+            else { throw Failure("target_changed") }
+            try Helper.privateWrite(preview.data, id: id, path: output)
+            return try JSONSerialization.data(withJSONObject: [
+                "status": "target_preview", "id": id, "width": preview.width, "height": preview.height,
+                "sha256": digest(preview.data), "sourceFrameId": f.id, "sourceSha256": f.sha256,
+                "elementId": selected.id, "elementRole": selected.role, "target": [left, top, right, bottom]
+            ], options: [.sortedKeys])
+        }
 
         /*
          * **配送経路は送る前に 1 つ決める。**送ってみて駄目だったから別経路、はしない。
@@ -1018,13 +1313,31 @@ final class ConsentAccessoryView: NSView {
          *  - キーの押下／解放は AXValue で代用しない。練習サイトは物理キーで判定する。
          *  - AX に操作の無い絵を押すときだけ、対象を指定した背景マウスを使う。
          */
-        enum Route: String { case axPress = "ax_press", axValue = "ax_value",
+        enum Route: String { case axPress = "ax_press", axValue = "ax_value", axScroll = "ax_scroll", axWebLink = "ax_web_link",
                              nativeMouse = "native_mouse", nativeKey = "native_key" }
         var route: Route
         var element: AXUIElement?
         var codes: [CGKeyCode] = []
+        var valueForInput: String?
+        var scrollBefore: ScrollState?, scrollPlan: BackgroundScroll.Plan?, scrollBar: AXUIElement?, scrollContent: AXUIElement?
+        var scrollReceipt: [String: Any]?
 
         switch a.action {
+        case "scroll":
+            let candidates = chosen.map { [$0] } ?? snapshot.elements.filter { e in
+                e.role == kAXScrollAreaRole && CGRect(x:e.x,y:e.y,width:e.width,height:e.height).contains(local)
+            }
+            guard candidates.count == 1, let old = candidates.first, old.role == kAXScrollAreaRole,
+                  let before = old.scroll else { throw Failure("background_scroll_unsupported") }
+            let resolved = try resolve(old.path, in:t)
+            guard describe(resolved,path:old.path,bounds:t.bounds) == old else { throw Failure("target_changed") }
+            do { scrollPlan = try BackgroundScroll.plan(value:before.value,viewport:before.viewport.height,
+                                                        content:before.content.height,direction:a.direction ?? "") }
+            catch let error as BackgroundScroll.Rejected { throw Failure(error.rawValue) }
+            let nodes = children(resolved)
+            guard nodes.indices.contains(before.barIndex), nodes.indices.contains(before.contentIndex) else { throw Failure("target_changed") }
+            scrollBefore = before; scrollBar = nodes[before.barIndex]; scrollContent = nodes[before.contentIndex]
+            chosen = old; element = resolved; route = .axScroll
         case "key":
             guard let name=a.key, let code=NativeInput.keyCode(forName:name)
             else { throw Failure("policy_action_not_allowed") }
@@ -1061,6 +1374,7 @@ final class ConsentAccessoryView: NSView {
                    settable.boolValue {
                     AXUIElementSetAttributeValue(resolved,kAXFocusedAttribute as CFString,kCFBooleanTrue)
                 }
+                chosen = want
                 element = resolved
             }
             route = .nativeKey; codes = text.lowercased().compactMap { NativeInput.keyCodes[$0] }
@@ -1068,7 +1382,7 @@ final class ConsentAccessoryView: NSView {
             // 要素で指されていれば、その 1 つが候補。座標指定のときだけ点から絞る。
             let candidates: [Element] = chosen.map { [$0] } ?? snapshot.elements.filter { e in
                 CGRect(x:t.bounds.x+e.x,y:t.bounds.y+e.y,width:e.width,height:e.height).contains(p)
-                && (a.action == "click" ? e.role == kAXButtonRole : [kAXTextFieldRole,kAXTextAreaRole].contains(e.role))
+                && (a.action == "click" ? (e.role == kAXButtonRole || (e.role == "AXLink" && BackgroundWebLink.enabled(bundle:t.bundleId))) : [kAXTextFieldRole,kAXTextAreaRole].contains(e.role))
             }
             // 文字を入れる先は、文字を入れられる役割であること。絵やリンクには書かない。
             if a.action == "type", let only=candidates.first,
@@ -1078,21 +1392,32 @@ final class ConsentAccessoryView: NSView {
                 let resolved=try resolve(old.path,in:t)
                 guard describe(resolved,path:old.path,bounds:t.bounds) == old else { throw Failure("target_changed") }
                 if attribute(resolved,kAXEnabledAttribute) as? Bool == false { throw Failure("background_disabled") }
+                chosen = old
                 element = resolved
             }
             if a.action == "type" {
                 // 値を設定する経路は、対象が AX で特定できたときだけ。座標では書かない。
                 guard let resolved=element else { throw Failure("background_target_unresolved") }
-                guard let text=a.text,!text.isEmpty,text.utf16.count<=2000,
-                      text.unicodeScalars.allSatisfy({ $0.value >= 32 && $0.value != 127 })
+                guard let text=a.text, let currentValue=attribute(resolved,kAXValueAttribute) as? String
                 else { throw Failure("policy_text_rejected") }
-                guard string(resolved,kAXValueAttribute).isEmpty else { throw Failure("background_field_not_empty") }
+                guard digest(Data(currentValue.utf8)) == chosen?.valueHash else { throw Failure("target_changed") }
+                do { valueForInput = try BackgroundTextEdit.value(current: currentValue, text: text, mode: a.textMode) }
+                catch let error as BackgroundTextEdit.Rejected { throw Failure(error.rawValue) }
                 var settable:DarwinBoolean=false
                 guard AXUIElementIsAttributeSettable(resolved,kAXValueAttribute as CFString,&settable) == .success,
                       settable.boolValue else { throw Failure("background_no_text_delivery") }
                 route = .axValue
             } else if let resolved=element {
                 guard attribute(resolved,kAXEnabledAttribute) as? Bool == true else { throw Failure("background_disabled") }
+                if chosen?.role == "AXLink", BackgroundWebLink.enabled(bundle:t.bundleId) {
+                    guard a.risk == "navigation",let state=chosen?.webLink,
+                          try documentURLHash(in:t) == state.documentHash else { throw Failure("background_link_unsupported") }
+                    var actions:CFArray?
+                    guard AXUIElementCopyActionNames(resolved,&actions) == .success,
+                          (actions as? [String])?.contains(kAXPressAction) == true
+                    else { throw Failure("background_link_unsupported") }
+                    route = .axWebLink;break
+                }
                 // AXPress が空振りするアプリ／Web の中身。枠は取れているので、そのまま押す。
                 if pressIgnored.contains(t.bundleId) || insideWebContent(resolved) {
                     guard PrivateSPI.available else { throw Failure("background_spi_unavailable") }
@@ -1117,63 +1442,107 @@ final class ConsentAccessoryView: NSView {
             throw Failure("policy_action_not_allowed")
         }
 
-        // 送る直前にもう一度、承認・対象・停止・世代を見る。ここから先は取り消せない。
-        _ = try current()
-        guard expires>Date().timeIntervalSince1970*1000 else { throw Failure("approval_expired") }
-        try privateFile(Data("attempted".utf8),reference+".used") // 効果が不明でも再送しない印。
-        /*
-         * 自分の入力を「人が触った」と数えないための印。
-         * Chromium に受け付けさせるには焦点を対象へ移す必要があり（focusWithoutRaise）、
-         * それが見張りにはアクティブ化として見える。**自分が出した分だけ**を除くため、
-         * 操作の直前に置き、終わったら消す。人が本当に触った場合は、この窓の外か、
-         * 直後の permitted() の前面検査で捕まる。
-         */
-        let actingPath = sessionFile
-        unlink(actingPath+".acting")
-        try? privateFile(Data("acting".utf8), actingPath+".acting")
-        defer { unlink(actingPath+".acting") }
-        let front=NSWorkspace.shared.frontmostApplication?.processIdentifier
-        let clipboard=NSPasteboard.general.changeCount
         let markerRect = chosenRect.map { CGRect(x:t.bounds.x+$0.minX,y:t.bounds.y+$0.minY,width:$0.width,height:$0.height) }
                          ?? screenRect(a,f,t.bounds)
-        /*
-         * 前回どこを触ったかを、この許可の中だけで覚えておく。
-         * 印がそこから滑ってくるので、「どこからどこへ動いたか」が見える。
-         * 座標だけで、画面の中身や入力した文字は残さない。
-         */
-        let pointerPath = actingPath + ".pointer"
-        let previous: CGPoint? = {
-            guard let data = FileManager.default.contents(atPath: pointerPath),
-                  let saved = try? JSONDecoder().decode([Double].self, from: data), saved.count == 2,
-                  saved.allSatisfy({ $0.isFinite }) else { return nil }
-            return CGPoint(x: saved[0], y: saved[1])
-        }()
-        unlink(pointerPath)
-        try? privateFile(try JSONEncoder().encode([p.x, p.y]), pointerPath)
-        // 操作しているアプリの名前を札に出す。手前の別アプリと取り違えられないように。
-        let targetName = NSRunningApplication(processIdentifier: t.pid)?.localizedName
-        let marker=indicator(around:markerRect,window:t.windowId,from:previous,target:targetName)
-        defer { marker?.orderOut(nil) }
+        try activity(sessionFile, target: t, phase: a.action, rect: markerRect)
+        // The watcher renders within 100 ms, then the pointer travels for 180 ms.
+        // This wait is before the final authority/identity checks, never after them.
+        try await Task.sleep(nanoseconds: 300_000_000)
+        guard try current().bounds == t.bounds else { throw Failure("stale_frame") }
+        guard expires > Date().timeIntervalSince1970 * 1000 else { throw Failure("approval_expired") }
+        guard Date().timeIntervalSince1970 * 1000 - f.capturedAt <= 60_000 else { throw Failure("stale_frame") }
+        if let chosen, let element,
+           describe(element, path: chosen.path, bounds: t.bounds) != chosen { throw Failure("target_changed") }
+        if route == .nativeKey {
+            guard keyWindowIsTarget(t) else { throw Failure("background_key_window_not_focused") }
+            if let element {
+                let app = AXUIElementCreateApplication(t.pid)
+                guard let focused = attribute(app, kAXFocusedUIElementAttribute),
+                      CFGetTypeID(focused) == AXUIElementGetTypeID(),
+                      CFEqual(focused, element) else { throw Failure("background_target_unresolved") }
+            }
+        }
+        try privateFile(Data("attempted".utf8),reference+".used")
+        unlink(sessionFile + ".acting")
+        try? privateFile(Data("acting".utf8), sessionFile + ".acting")
+        defer {
+            unlink(sessionFile + ".acting")
+            try? activity(sessionFile, target: t, phase: "checking", rect: markerRect)
+        }
+        let front=NSWorkspace.shared.frontmostApplication?.processIdentifier
+        let clipboard=NSPasteboard.general.changeCount
+        func inputStillAllowed() -> Bool {
+            guard let scope = try? current(), scope.bounds == t.bounds,
+                  expires > Date().timeIntervalSince1970 * 1000 else { return false }
+            if route == .nativeKey {
+                guard keyWindowIsTarget(t) else { return false }
+                if let element {
+                    let app = AXUIElementCreateApplication(t.pid)
+                    guard let focused = attribute(app, kAXFocusedUIElementAttribute),
+                          CFGetTypeID(focused) == AXUIElementGetTypeID(), CFEqual(focused, element) else { return false }
+                }
+            }
+            return true
+        }
 
         // どの経路でどこを押したか。座標と経路だけで、画面の中身や打った文字は残さない。
         stage("route \(route.rawValue) by \(chosen == nil ? "coords" : "element") point \(Int(p.x)),\(Int(p.y)) local \(Int(local.x)),\(Int(local.y))")
         var effect = "unconfirmed"
         switch route {
+        case .axWebLink:
+            guard try current().bounds == t.bounds else { throw Failure("stale_frame") }
+            guard expires > Date().timeIntervalSince1970 * 1000 else { throw Failure("approval_expired") }
+            guard let expected=chosen,let held=element,let fresh=try? resolve(expected.path,in:t),CFEqual(fresh,held),
+                  describe(fresh,path:expected.path,bounds:t.bounds) == expected,
+                  let state=expected.webLink,try documentURLHash(in:t) == state.documentHash
+            else { throw Failure("target_changed") }
+            guard AXUIElementPerformAction(fresh,kAXPressAction as CFString) == .success
+            else { throw Failure("input_effect_unconfirmed") }
         case .axPress:
             guard AXUIElementPerformAction(element!,kAXPressAction as CFString) == .success
             else { throw Failure("input_effect_unconfirmed") }
         case .axValue:
-            guard AXUIElementSetAttributeValue(element!,kAXValueAttribute as CFString,a.text! as CFString) == .success
+            // Replay marking may involve filesystem I/O. Check again at the setter;
+            // AX has no atomic compare-and-set, so never describe this as a lock.
+            guard let expected=chosen, let targetElement=element,
+                  describe(targetElement,path:expected.path,bounds:t.bounds) == expected
+            else { throw Failure("target_changed") }
+            guard AXUIElementSetAttributeValue(targetElement,kAXValueAttribute as CFString,valueForInput! as CFString) == .success
+            else { throw Failure("input_effect_unconfirmed") }
+        case .axScroll:
+            // Authority and the complete scroll geometry/value are rechecked
+            // after the attempt journal I/O, immediately adjacent to the setter.
+            guard try current().bounds == t.bounds else { throw Failure("stale_frame") }
+            guard expires > Date().timeIntervalSince1970 * 1000 else { throw Failure("approval_expired") }
+            guard let expected=chosen, let targetElement=element,
+                  let freshArea=try? resolve(expected.path,in:t), CFEqual(freshArea,targetElement),
+                  describe(targetElement,path:expected.path,bounds:t.bounds) == expected,
+                  let bar=scrollBar, let content=scrollContent, let before=scrollBefore, let plan=scrollPlan,
+                  let rawFreshBar=attribute(freshArea,kAXVerticalScrollBarAttribute), CFGetTypeID(rawFreshBar) == AXUIElementGetTypeID()
+            else { throw Failure("target_changed") }
+            let freshNodes=children(freshArea), freshBar=rawFreshBar as! AXUIElement
+            guard freshNodes.indices.contains(before.barIndex), freshNodes.indices.contains(before.contentIndex),
+                  CFEqual(freshNodes[before.barIndex],freshBar),CFEqual(freshBar,bar),
+                  CFEqual(freshNodes[before.contentIndex],content) else { throw Failure("target_changed") }
+            guard AXUIElementSetAttributeValue(freshBar,kAXValueAttribute as CFString,NSNumber(value:plan.after)) == .success
             else { throw Failure("input_effect_unconfirmed") }
         case .nativeMouse:
-            if case .notSent(let code) = await NativeInput.click(pid:t.pid,window:t.windowId,screen:p,local:local) {
-                throw Failure(code)   // 未送信。呼び出し側は別の手を選んでよい。
+            let outcome = await NativeInput.click(pid:t.pid,window:t.windowId,screen:p,local:local,
+                                                   stillAllowed: inputStillAllowed)
+            switch outcome {
+            case .notSent(let code): throw Failure(code)
+            case .interrupted: throw Failure("input_effect_unconfirmed")
+            case .attempted: break
             }
         case .nativeKey:
             // 1 打ごとに停止を見る。止まったら、押した鍵だけを同じ対象へ解放して終える。
             let outcome = await NativeInput.keys(codes,pid:t.pid,window:t.windowId,
-                                                 stillAllowed:{ (try? current()) != nil })
-            if case .notSent(let code) = outcome { throw Failure(code) }
+                                                 stillAllowed: inputStillAllowed)
+            switch outcome {
+            case .notSent(let code): throw Failure(code)
+            case .interrupted: throw Failure("input_effect_unconfirmed")
+            case .attempted: break
+            }
         }
         try await Task.sleep(nanoseconds:100_000_000)
         /*
@@ -1188,10 +1557,43 @@ final class ConsentAccessoryView: NSView {
                 : nowFront == t.pid ? "target-activated" : "other-activated"))
             throw Failure("background_interference")
         }
-        _ = try current()
-        // 効果を確かめられるのは値の設定だけ。他は「送った」までしか言わない。
-        if route == .axValue {
-            guard string(element!,kAXValueAttribute) == a.text else { throw Failure("input_effect_unconfirmed") }
+        // An interruption AFTER dispatch is an unknown effect, not an unsent action.
+        // Never let the host resume and replay a click or a partially delivered string.
+        do { _ = try current() }
+        catch { throw Failure("input_effect_unconfirmed") }
+        // Confirm only the specific observed effect: a URL change, scroll offset
+        // or exact text value. Navigation is not page-load or business completion.
+        if route == .axWebLink {
+            guard let destination=chosen?.webLink?.destinationHash else { throw Failure("input_effect_unconfirmed") }
+            var reached=false
+            for _ in 0..<20 {
+                // Read-only wait for asynchronous navigation. Never send another
+                // press or switch to mouse delivery after the first attempt.
+                guard let live=try? current(), live.bounds == t.bounds,
+                      NSWorkspace.shared.frontmostApplication?.processIdentifier == front,
+                      NSPasteboard.general.changeCount == clipboard else { throw Failure("input_effect_unconfirmed") }
+                if (try? documentURLHash(in:t)) == destination { reached=true;break }
+                try await Task.sleep(nanoseconds:100_000_000)
+            }
+            guard reached else { throw Failure("input_effect_unconfirmed") }
+            effect = "confirmed"
+        } else if route == .axScroll {
+            guard let area=element, let before=scrollBefore, let plan=scrollPlan,
+                  let bar=scrollBar, let content=scrollContent,
+                  let picked=chosen, let resolvedAgain=try? resolve(picked.path,in:t), CFEqual(resolvedAgain,area),
+                  string(area,kAXIdentifierAttribute) == picked.identifier, string(area,kAXTitleAttribute) == picked.title,
+                  let after=scrollState(area,bounds:t.bounds), before.sameLayout(as:after),
+                  BackgroundScroll.confirmed(plan,value:after.value,documentDelta:before.content.y-after.content.y)
+            else { throw Failure("input_effect_unconfirmed") }
+            let readbackNodes=children(area)
+            guard readbackNodes.indices.contains(after.barIndex),readbackNodes.indices.contains(after.contentIndex),
+                  CFEqual(readbackNodes[after.barIndex],bar),CFEqual(readbackNodes[after.contentIndex],content)
+            else { throw Failure("input_effect_unconfirmed") }
+            effect = "confirmed"
+            scrollReceipt = ["direction":a.direction!,"before":before.value,"after":after.value,
+                             "deltaPoints":before.content.y-after.content.y,"viewportPoints":before.viewport.height]
+        } else if route == .axValue {
+            guard string(element!,kAXValueAttribute) == valueForInput else { throw Failure("input_effect_unconfirmed") }
             effect = "confirmed"
         } else if route == .nativeKey, a.action == "type_keys", let resolved = element,
                   let text = a.text, let after = attribute(resolved, kAXValueAttribute) as? String {
@@ -1217,8 +1619,10 @@ final class ConsentAccessoryView: NSView {
             if now != picked { effect = "confirmed" }
         }
         // 操作が済んだあとも印を残す。100ms では目で追えない。
-        if marker != nil { try await Task.sleep(nanoseconds: Marker.hold) }
-        return Data("{\"status\":\"applied\",\"deliveryMode\":\"background\",\"route\":\"\(route.rawValue)\",\"effect\":\"\(effect)\"}".utf8)
+        try await Task.sleep(nanoseconds: Marker.hold)
+        var result: [String: Any] = ["status":"applied","deliveryMode":"background","route":route.rawValue,"effect":effect]
+        if let scrollReceipt { result["scroll"] = scrollReceipt }
+        return try JSONSerialization.data(withJSONObject:result,options:[.sortedKeys])
     }
     static func watch(_ path:String) throws {
         let grant=try readPrivate(Grant.self,path)
@@ -1277,17 +1681,22 @@ final class ConsentAccessoryView: NSView {
         }
         guard monitor != nil else { throw Failure("background_monitor_unavailable") }
         watchers[path] = (observer, monitor!)
+        let view = ActivityView(path: path, grant: grant)
+        activityViews[path] = view
         try privateFile(JSONEncoder().encode(getpid()),path+".watching")
-        Timer.scheduledTimer(withTimeInterval:0.2,repeats:true) { _ in
+        Timer.scheduledTimer(withTimeInterval:0.1,repeats:true) { _ in
             MainActor.assumeIsolated {
                 do { try FileManager.default.setAttributes([.modificationDate: Date()], ofItemAtPath: path+".watching") }
                 catch { exit(2) }
+                view.refresh()
                 if Date().timeIntervalSince1970 >= grant.expires || !FileManager.default.fileExists(atPath:path) {
                     if let tokens = watchers.removeValue(forKey: path) {
                         NSWorkspace.shared.notificationCenter.removeObserver(tokens.0)
                         NSEvent.removeMonitor(tokens.1)
                     }
-                    for suffix in ["", ".watching", ".interrupted", ".acting", ".pointer", ".epoch", ".lastinput"] { try? FileManager.default.removeItem(atPath:path+suffix) }
+                    view.hide()
+                    activityViews.removeValue(forKey: path)
+                    for suffix in ["", ".watching", ".interrupted", ".acting", ".pointer", ".activity", ".epoch", ".lastinput"] { try? FileManager.default.removeItem(atPath:path+suffix) }
                     exit(0)
                 }
             }
@@ -1297,7 +1706,7 @@ final class ConsentAccessoryView: NSView {
 
 /// 申告する能力は、実際に選べる経路と一致させる。SPI が無ければ後ろ 3 つは出さない。
 @MainActor func capabilities() -> [String] {
-    var list = ["ax_press", "empty_text_field"]
+    var list = ["ax_press", "empty_text_field", "append_text_field", "vertical_ax_scroll", "safari_same_origin_link", "target_preview"]
     if PrivateSPI.available { list += ["native_click", "native_keys", "space_key"] }
     return list
 }

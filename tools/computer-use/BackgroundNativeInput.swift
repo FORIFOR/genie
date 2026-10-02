@@ -12,6 +12,7 @@ enum NativeInput {
     enum Outcome {
         case notSent(String)   // 理由コード。別経路を選び直してよいのはここだけ。
         case attempted         // 送信した。効果の確認は呼び出し側の再観測で行う。
+        case interrupted       // 一部を送った後で停止した。結果は未確認で、再送してはいけない。
     }
 
     /*
@@ -45,7 +46,9 @@ enum NativeInput {
      * これが無いと合成 mouseDown が控えの外に落ち、NSButton が発火しない。
      */
     @MainActor
-    static func click(pid: pid_t, window: UInt32, screen: CGPoint, local: CGPoint) async -> Outcome {
+    static func click(pid: pid_t, window: UInt32, screen: CGPoint, local: CGPoint,
+                      stillAllowed: () -> Bool) async -> Outcome {
+        guard !Task.isCancelled, stillAllowed() else { return .notSent("session_stopped") }
         guard PrivateSPI.available else { return .notSent("background_spi_unavailable") }
         guard PrivateSPI.focusWithoutRaise(pid: pid, window: window) else { return .notSent("background_spi_unavailable") }
         let source = CGEventSource(stateID: .hidSystemState)
@@ -56,11 +59,16 @@ enum NativeInput {
         else { return .notSent("background_event_unavailable") }
         // 人が押している修飾キーを引き継がない。対象へ送る状態はこちらで決める。
         for event in [move, down, up] { event.flags = [] }
+        guard !Task.isCancelled, stillAllowed() else { return .notSent("session_stopped") }
         PrivateSPI.postMouse(move, pid: pid, window: window, local: local, clickState: 0, button: 0, clickGroup: group)
         try? await Task.sleep(nanoseconds: 40_000_000)
+        // hover を届けて待つ間にも停止は来る。押下の直前に再確認する。
+        guard !Task.isCancelled, stillAllowed() else { return .notSent("session_stopped") }
         PrivateSPI.postMouse(down, pid: pid, window: window, local: local, clickState: 1, button: 0, clickGroup: group)
         try? await Task.sleep(nanoseconds: 50_000_000)
+        // 押したボタンの解放だけは、停止していても同じ対象へ届ける。
         PrivateSPI.postMouse(up, pid: pid, window: window, local: local, clickState: 1, button: 0, clickGroup: group)
+        guard !Task.isCancelled, stillAllowed() else { return .interrupted }
         return .attempted
     }
 
@@ -72,16 +80,17 @@ enum NativeInput {
     @MainActor
     static func keys(_ codes: [CGKeyCode], pid: pid_t, window: UInt32,
                      stillAllowed: () -> Bool) async -> Outcome {
+        guard !Task.isCancelled, stillAllowed() else { return .notSent("session_stopped") }
         guard PrivateSPI.available else { return .notSent("background_key_route_unavailable") }
         guard !codes.isEmpty else { return .notSent("policy_text_rejected") }
         guard PrivateSPI.focusWithoutRaise(pid: pid, window: window) else { return .notSent("background_spi_unavailable") }
         let source = CGEventSource(stateID: .hidSystemState)
         var sentAny = false
         for code in codes {
-            guard stillAllowed() else { return sentAny ? .attempted : .notSent("session_stopped") }
+            guard !Task.isCancelled, stillAllowed() else { return sentAny ? .interrupted : .notSent("session_stopped") }
             guard let down = CGEvent(keyboardEventSource: source, virtualKey: code, keyDown: true),
                   let up = CGEvent(keyboardEventSource: source, virtualKey: code, keyDown: false)
-            else { return sentAny ? .attempted : .notSent("background_event_unavailable") }
+            else { return sentAny ? .interrupted : .notSent("background_event_unavailable") }
             down.flags = []; up.flags = []
             PrivateSPI.postKey(down, pid: pid)
             sentAny = true
@@ -89,6 +98,7 @@ enum NativeInput {
             // 解放は必ず出す。停止が挟まっても押しっぱなしにしない。
             PrivateSPI.postKey(up, pid: pid)
             try? await Task.sleep(nanoseconds: 40_000_000)
+            guard !Task.isCancelled, stillAllowed() else { return .interrupted }
         }
         return .attempted
     }

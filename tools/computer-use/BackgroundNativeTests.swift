@@ -2,6 +2,7 @@
 //  見るもの: 重複が無いこと・押下と解放が対応すること・AXPress の無い面を押せること・
 //            入力の途中で止めたときに鍵を残さないこと・修飾キーが残らないこと。
 import AppKit
+import ScreenCaptureKit
 
 @main struct NativeTests {
     @MainActor static func main() {
@@ -89,14 +90,14 @@ import AppKit
             return String(data: out, encoding: .utf8) ?? ""
         }
         /// 画面座標の矩形を、そのフレームの画像ピクセルの矩形に直して送る。
-        func apply(_ f: Frame, _ path: String, _ action: String, rect: CGRect, text: String? = nil) async throws -> String {
+        func apply(_ f: Frame, _ path: String, _ action: String, rect: CGRect, text: String? = nil, op: String = "apply") async throws -> String {
             let sx = Double(f.width) / f.bounds.width, sy = Double(f.height) / f.bounds.height
             var a: [String: Any] = ["action": action, "frameId": f.id, "confidence": 1,
                 "risk": action == "click" ? "navigation" : "draft", "expectation": "native input regression",
                 "target": [(rect.minX - f.bounds.x) * sx, (rect.minY - f.bounds.y) * sy,
                            (rect.maxX - f.bounds.x) * sx, (rect.maxY - f.bounds.y) * sy]]
             if let text { a["text"] = text }
-            let request: [String: Any] = ["op": "apply", "action": a, "referencePath": path,
+            let request: [String: Any] = ["op": op, "action": a, "referencePath": path,
                 "scope": try JSONSerialization.jsonObject(with: JSONEncoder().encode(f)),
                 "authorizationExpiresAt": Date().timeIntervalSince1970 * 1000 + 60000]
             let out = try await BackgroundAX.respond(
@@ -150,6 +151,70 @@ import AppKit
         guard try readback().plateClicks == 1 else { throw Failure("plate_clicks_\(try readback().plateClicks)") }
         evidence["axlessClickDelivered"] = true
 
+        /*
+         * 配送途中の停止。許可の関門だけを試験で閉じ、実際の fixture の受信件数を読む。
+         * hover 後の待ち時間で止まったクリックは押下しない。文字を一部送った場合は
+         * 「全部送った」「何も送っていない」のどちらにもせず、再送禁止の結果を返す。
+         */
+        try BackgroundAX.privateFile(Data("acting".utf8), sessionPath + ".acting")
+        let clickBeforeStop = try readback().plateClicks
+        let plate = try element("native-plate")
+        let clickPoint = CGPoint(x: plate.midX, y: plate.midY)
+        var clickChecks = 0
+        let stoppedClick = await NativeInput.click(pid: target.pid, window: target.windowId,
+            screen: clickPoint,
+            local: CGPoint(x: clickPoint.x - target.bounds.x, y: clickPoint.y - target.bounds.y),
+            stillAllowed: {
+                clickChecks += 1
+                return clickChecks < 3 // hover の送信後、mouseDown の直前で停止。
+            })
+        guard case .notSent("session_stopped") = stoppedClick else { throw Failure("click_stop_not_reported") }
+        try await Task.sleep(nanoseconds: 250_000_000)
+        guard try readback().plateClicks == clickBeforeStop else { throw Failure("mouse_down_after_stop") }
+        evidence["stopBetweenHoverAndMouseDownRefused"] = true
+
+        var interruptedClickChecks = 0
+        let interruptedClick = await NativeInput.click(pid: target.pid, window: target.windowId,
+            screen: clickPoint,
+            local: CGPoint(x: clickPoint.x - target.bounds.x, y: clickPoint.y - target.bounds.y),
+            stillAllowed: {
+                interruptedClickChecks += 1
+                return interruptedClickChecks <= 3 // 押下の後に止まったクリックは再送できない。
+            })
+        guard case .interrupted = interruptedClick else { throw Failure("sent_click_reported_as_unsent") }
+        try await Task.sleep(nanoseconds: 250_000_000)
+        guard try readback().plateClicks == clickBeforeStop + 1 else { throw Failure("interrupted_click_not_delivered_once") }
+        evidence["clickInterruptedAfterDispatchReportsUnknown"] = true
+
+        let partialBefore = try readback()
+        var keyChecks = 0
+        let partialKeys = await NativeInput.keys([0, 1, 2], pid: target.pid, window: target.windowId,
+            stillAllowed: {
+                keyChecks += 1
+                return keyChecks <= 2 // 1 打の押下・解放後に停止。後続の 2 打は配送しない。
+            })
+        guard case .interrupted = partialKeys else { throw Failure("partial_keys_reported_as_complete") }
+        try await Task.sleep(nanoseconds: 250_000_000)
+        let partialAfter = try readback()
+        guard partialAfter.keyDowns == partialBefore.keyDowns + 1,
+              partialAfter.keyUps == partialBefore.keyUps + 1 else { throw Failure("partial_keys_not_balanced") }
+        evidence["partialKeysReportInterruption"] = true
+        evidence["partialKeysReleasedWithoutSendingRemainder"] = true
+
+        // 呼び出し元の取消も、関門が true のままでも入力を止める。
+        let cancelledBefore = try readback()
+        let cancelledKeys = Task { @MainActor in
+            await NativeInput.keys([0], pid: target.pid, window: target.windowId, stillAllowed: { true })
+        }
+        cancelledKeys.cancel()
+        guard case .notSent("session_stopped") = await cancelledKeys.value else {
+            throw Failure("cancelled_keys_reported_as_sent")
+        }
+        try await Task.sleep(nanoseconds: 150_000_000)
+        guard try readback().keyDowns == cancelledBefore.keyDowns else { throw Failure("key_after_task_cancel") }
+        evidence["cancelledTaskSendsNoKeys"] = true
+        try FileManager.default.removeItem(atPath: sessionPath + ".acting")
+
         // ③ 要素で指す経路。位置はモデルではなく製品が決める。
         let (f4, p4) = try await frame()
         guard !lastCandidates.isEmpty else { throw Failure("no_candidates_returned") }
@@ -191,6 +256,48 @@ import AppKit
         guard live.0.pid == target.pid, live.0.windowId == target.windowId, live.1 == session
         else { throw Failure("reused_grant_mismatch") }
         evidence["liveGrantReused"] = true
+        // A simulator's pinned target must not inherit another app/process's grant.
+        func expected(_ expectedPID: Int32, _ expectedBundle: String) throws -> ExpectedTarget {
+            let data = try JSONSerialization.data(withJSONObject:["pid":expectedPID,"bundleId":expectedBundle])
+            return try JSONDecoder().decode(ExpectedTarget.self,from:data)
+        }
+        let exactTarget = try expected(target.pid, target.bundleId)
+        let otherPID = try expected(target.pid == Int32.max ? target.pid - 1 : target.pid + 1, target.bundleId)
+        let otherBundle = try expected(target.pid, "org.genie.other-test-target")
+        guard BackgroundAX.reusableGrant(root, recipient:"local", expectedTarget:exactTarget)?.1 == session,
+              BackgroundAX.reusableGrant(root, recipient:"local", expectedTarget:otherPID) == nil,
+              BackgroundAX.reusableGrant(root, recipient:"local", expectedTarget:otherBundle) == nil
+        else { throw Failure("constrained_grant_widened") }
+        let narrowedRequest = try JSONDecoder().decode(Request.self, from:JSONSerialization.data(withJSONObject:[
+            "op":"begin", "expectedTarget":["pid":target.pid,"bundleId":target.bundleId]]))
+        guard narrowedRequest.expectedTarget?.matches(pid:target.pid,bundleId:target.bundleId) == true else {
+            throw Failure("constraint_request_lost")
+        }
+        for bad: [String:Any] in [["pid":0,"bundleId":bundle], ["pid":pid,"bundleId":""], ["pid":pid], ["bundleId":bundle]] {
+            do { _ = try JSONDecoder().decode(Request.self,from:JSONSerialization.data(withJSONObject:["op":"begin","expectedTarget":bad]));throw Failure("bad_constraint_allowed") }
+            catch let e as Failure where e.code == "bad_constraint_allowed" { throw e }
+            catch { }
+        }
+        let content = try await SCShareableContent.excludingDesktopWindows(true,onScreenWindowsOnly:true)
+        let ownedWindows = content.windows.filter { $0.owningApplication?.processID == pid }
+        guard !ownedWindows.isEmpty else { throw Failure("constraint_fixture_not_visible") }
+        // Use real SCWindow objects; the accessory must retain the constraint on
+        // initial population and every refresh, even if a caller supplies a broad list.
+        let consent = BackgroundAX.ConsentAccessoryView(goal:"Safari",initialWindows:content.windows,alert:NSAlert(),expectedTarget:exactTarget)
+        defer { consent.cleanUp() }
+        guard consent.currentWindows.count == ownedWindows.count,
+              consent.currentWindows.allSatisfy({ $0.owningApplication?.processID == pid && $0.owningApplication?.bundleIdentifier == bundle }),
+              consent.launchBtn.isHidden else { throw Failure("constrained_consent_initial_widened") }
+        consent.updateWindows(content.windows)
+        guard consent.currentWindows.count == ownedWindows.count else { throw Failure("constrained_consent_refresh_widened") }
+        let excludedConsent = BackgroundAX.ConsentAccessoryView(goal:"",initialWindows:content.windows,alert:NSAlert(),expectedTarget:otherBundle)
+        defer { excludedConsent.cleanUp() }
+        guard excludedConsent.currentWindows.isEmpty,
+              BackgroundAX.selectableWindows(content,expectedTarget:otherBundle).isEmpty,
+              BackgroundAX.selectableWindows(content,expectedTarget:exactTarget).allSatisfy({ $0.owningApplication?.processID == pid && $0.owningApplication?.bundleIdentifier == bundle })
+        else { throw Failure("constrained_candidates_widened") }
+        evidence["consentTargetConstraintPreserved"] = true
+        evidence["otherTargetGrantNotReused"] = true
         /*
          * 画像の送信先が変わったら使い回さない。選択画面で見せた送信先と違う所へ、
          * 新しい送信先を一度も見せないまま画像を送ることになる。分からない送信先も同じ。
@@ -381,6 +488,16 @@ import AppKit
         catch let error as Failure { afterResumeCode = error.code }
         evidence["oldFrameStillRefusedAfterResume"] = afterResumeCode == "stale_generation"
         guard afterResumeCode == "stale_generation" else { throw Failure("old_frame_accepted_\(afterResumeCode)") }
+        // The caller cannot relabel an old screenshot with the new live epoch.
+        var forgedEpoch = fGen
+        forgedEpoch.backgroundEpoch = BackgroundAX.epoch(pathGen)
+        for op in ["apply", "preview_target"] {
+            do {
+                _ = try await apply(forgedEpoch, pGen, "type_keys", rect: try element("native-field"), text: "zzz", op: op)
+                throw Failure("old_snapshot_relabelled_\(op)")
+            } catch let error as Failure where error.code == "stale_frame" { }
+        }
+        evidence["oldSnapshotCannotRelabelEpoch"] = true
         // 撮り直せば、新しい世代の写真で続きができる。
         let (fGenB, _) = try await frame(sessionGen)
         evidence["freshFrameCarriesNewEpoch"] = (fGenB.backgroundEpoch ?? -1) == BackgroundAX.epoch(pathGen)

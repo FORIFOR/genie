@@ -1,15 +1,12 @@
 #!/usr/bin/env node
 /** Local preview client; all execution and authorization stay in the existing task runtime. */
 import { readFile, open, realpath } from 'node:fs/promises';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
 import { randomUUID } from 'node:crypto';
-import { resolve, join, dirname } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { resolve, join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { DEFAULT_STATE, validateConfig, privateJSON, lockPort } from './local-preview/config.mjs';
 import { desktopEmail } from './start-local-host.mjs';
 
-const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const HELP = `Genie Computer Use（Mac / ローカルプレビュー）
   node scripts/computer-use.mjs check [--state-dir PATH]
   node scripts/computer-use.mjs start --goal "目的" --criteria "確認する結果" --run-file PATH
@@ -23,7 +20,8 @@ check は撮影・入力・OS許可要求を行いません。start は受付の
 status の approval ID を確認して approve すると、対象アプリの選択ダイアログが出ます。
 同意後はその窓だけ最大12操作・5分。個別操作の確認はありません。
 バックグラウンドAX操作のみ。対象を前面で使うと停止し、自動再開しません。
-送信先はプレビューのローカルモデル。画面や入力内容を外部へ送りません。
+送信先は check に表示されるモデルです。外部モデルで画面を扱うには、起動時の
+--allow-external-screen と対象窓の同意が必要です。会話の --allow-cloud だけでは許可しません。
 run-file は新しい依頼ごとに別名を使い、削除しないでください。
 応答喪失時は recover が保存した同一キー・入力で受付を照合します（新しい依頼は作りません）。
 停止要求は cancel。既に行った入力は取り消しません。status で取消確定を確認してください。
@@ -84,6 +82,38 @@ export function client(base, token, fetcher = fetch) {
   };
 }
 
+/** Read the running launcher's actual helper; never execute a path returned over HTTP. */
+export function readiness(control, config) {
+  const helper = control?.computerHelper;
+  const permissions = helper?.status ?? null;
+  const provider = config.modelProvider ?? 'local';
+  const reasons = [];
+  if (control?.project !== config.project) reasons.push('保存先が起動中のサービスと一致しません。');
+  if (control?.phase !== 'ready' || control?.computerUse !== true)
+    reasons.push('--computer-use でサービスを起動してください。');
+  if (control?.model !== config.model || control?.modelProvider !== provider)
+    reasons.push('モデル設定が起動中のサービスと一致しません。再起動してください。');
+  if (control?.computerDelivery !== 'background' || permissions?.deliveryMode !== 'background')
+    reasons.push('バックグラウンド対応helperを確認できません。');
+  if (helper?.error || typeof helper?.path !== 'string' || !helper.path || permissions?.ready !== true)
+    reasons.push('実際に使用するhelperの準備が未完了です。アクセシビリティ・画面収録の状態を確認してください。');
+  if (control?.computerHelperUnattendedTest !== false || permissions?.unattendedTest !== false)
+    reasons.push('通常の対象窓同意を使うhelperであることを確認できません。');
+  if (provider !== 'local' && control?.externalScreenAllowed !== true)
+    reasons.push('外部への画面送信には --allow-external-screen を指定してください。');
+  return {
+    ready: reasons.length === 0,
+    permissions,
+    helperPath: helper?.path ?? null,
+    computerUse: control?.computerUse === true,
+    model: control?.model ?? null,
+    modelProvider: control?.modelProvider ?? null,
+    recipient: control?.recipient ?? null,
+    externalScreenAllowed: control?.externalScreenAllowed === true,
+    next: reasons.length === 0 ? 'start で依頼を作成できます。対象窓への同意は実行時に確認します。' : reasons.join('\n'),
+  };
+}
+
 export async function perform(command, record, request, approvalId) {
   if (
     record.version !== 1 ||
@@ -132,38 +162,13 @@ async function main(options) {
   validateConfig(config);
   const base = `http://127.0.0.1:${config.port}`;
   if (options.command === 'check') {
-    const { stdout } = await promisify(execFile)(join(ROOT, '.build/computer/genie-computer-background'), [
-      '--status',
-    ]);
-    const permissions = JSON.parse(stdout);
     const control = await client(
       `http://127.0.0.1:${lockPort(stateDir)}`,
       config.controlToken,
-    )('/status');
-    const ready =
-      permissions.ready &&
-      control.phase === 'ready' &&
-      control.computerUse === true &&
-      control.computerDelivery === 'background' &&
-      permissions.deliveryMode === 'background' &&
-      control.project === config.project;
-    console.log(
-      JSON.stringify(
-        {
-          ready,
-          permissions,
-          computerUse: control.computerUse === true,
-          model: config.model,
-          gateway: base,
-          next: ready
-            ? 'start で依頼を作成できます。'
-            : '--computer-use で起動し、システム設定のプライバシーとセキュリティで、このhelperの起動元のアクセシビリティ・画面収録を確認してください。',
-        },
-        null,
-        2,
-      ),
-    );
-    if (!ready) process.exitCode = 1;
+    )('/computer/status');
+    const result = readiness(control, config);
+    console.log(JSON.stringify({ ...result, gateway: base }, null, 2));
+    if (!result.ready) process.exitCode = 1;
     return;
   }
   const file = resolve(options.runFile);

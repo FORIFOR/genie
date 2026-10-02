@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseArgs, perform, client } from '../computer-use.mjs';
+import { parseArgs, perform, client, readiness } from '../computer-use.mjs';
 const record = () => ({
   version: 1,
   key: '11111111-1111-4111-8111-111111111111',
@@ -88,4 +88,55 @@ test('transport blocks redirects and does not retry errors', async () => {
   });
   await assert.rejects(req('/v1/tasks', 'POST', record().request, 'saved-key'));
   assert.equal(calls, 1);
+});
+
+const configuration = { project: 'owned-preview', model: 'gpt-6-sol', modelProvider: 'codex' };
+const runningComputer = () => ({
+  ...configuration,
+  phase: 'ready',
+  computerUse: true,
+  computerDelivery: 'background',
+  computerHelperUnattendedTest: false,
+  computerHelper: {
+    path: '/private/owned/Final.app/Contents/MacOS/Helper',
+    error: null,
+    status: { ready: true, deliveryMode: 'background', unattendedTest: false },
+  },
+  externalScreenAllowed: true,
+  recipient: 'OpenAI / Codex: gpt-6-sol',
+});
+test('check uses the actual running helper and explicit screen recipient', () => {
+  const control = runningComputer();
+  const result = readiness(control, configuration);
+  assert.equal(result.ready, true);
+  assert.equal(result.helperPath, control.computerHelper.path);
+  assert.deepEqual(result.permissions, control.computerHelper.status);
+  assert.equal(result.recipient, control.recipient);
+});
+test('conversation cloud permission alone is not screen readiness', () => {
+  const control = runningComputer();
+  control.externalScreenAllowed = false;
+  assert.equal(readiness(control, configuration).ready, false);
+  assert.match(readiness(control, configuration).next, /allow-external-screen/);
+  control.modelProvider = 'local';
+  assert.equal(readiness(control, { ...configuration, modelProvider: 'local' }).ready, true);
+});
+test('check refuses stale, wrong, test-only or unavailable helper status', () => {
+  const invalid = [
+    { project: 'different' },
+    { phase: 'stopping' },
+    { computerUse: false },
+    { model: 'different' },
+    { modelProvider: 'local' },
+    { computerDelivery: 'foreground' },
+    { computerHelperUnattendedTest: true },
+    { computerHelperUnattendedTest: null },
+    { computerHelper: null },
+    { computerHelper: { path: '/owned/helper', error: 'timeout', status: runningComputer().computerHelper.status } },
+    { computerHelper: { path: '/owned/helper', status: { ready: true, deliveryMode: 'foreground', unattendedTest: false } } },
+    { computerHelper: { path: '/owned/helper', status: { ready: true, deliveryMode: 'background' } } },
+    { computerHelper: { path: '/owned/helper', status: { ready: 'true', deliveryMode: 'background', unattendedTest: false } } },
+  ];
+  for (const patch of invalid) assert.equal(readiness({ ...runningComputer(), ...patch }, configuration).ready, false, JSON.stringify(patch));
+  assert.equal(readiness(null, configuration).ready, false);
 });

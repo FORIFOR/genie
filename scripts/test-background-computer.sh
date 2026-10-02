@@ -17,9 +17,13 @@ SPI_FLAG="-D GENIE_PRIVATE_SPI"
 if [[ "${GENIE_NO_PRIVATE_SPI:-0}" == "1" ]]; then SPI_FLAG=""; fi
 # shellcheck disable=SC2086
 swiftc -D GENIE_BACKGROUND_TEST $SPI_FLAG -parse-as-library \
-  "$ROOT/tools/computer-use/genie-computer.swift" \
+  "$ROOT/tools/computer-use/genie-computer.swift" "$ROOT/tools/computer-use/GeneratedPointerMetrics.swift" \
   "$ROOT/tools/computer-use/PrivateSPIBridge.swift" \
   "$ROOT/tools/computer-use/BackgroundNativeInput.swift" \
+  "$ROOT/tools/computer-use/BackgroundTextEdit.swift" \
+  "$ROOT/tools/computer-use/BackgroundScroll.swift" \
+  "$ROOT/tools/computer-use/BackgroundWebLink.swift" \
+  "$ROOT/tools/computer-use/TargetPreview.swift" \
   "$ROOT/tools/computer-use/BackgroundAX.swift" \
   "$ROOT/tools/computer-use/BackgroundAXTests.swift" -o "$WORK/Verify" > "$WORK/build.log" 2>&1
 for role in target sentinel; do
