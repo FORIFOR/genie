@@ -14,6 +14,10 @@ enum ApprovalAnswer: ~Copyable {
     case declined
     /// 答えが無い（時間切れ・カードを出せない・headless）。承認は PENDING のまま残す。
     case unanswered
+    /// The displayed bounded permission was saved and the server reserved this order atomically.
+    case delegated
+    /// A clicked permission request may have reached the server; do not claim the order was not sent.
+    case authorizationUnknown
 }
 
 /// 戻せない操作の前に一度だけ聞く。
@@ -50,7 +54,12 @@ enum Confirm {
     @MainActor
     static func approve(_ confirmation: ActionConfirmation, timeout: TimeInterval = 120) async -> ApprovalAnswer {
         guard confirmation.risk.needsConfirmation else { return .unanswered }
-        switch await answer(confirmation, timeout: timeout) {
+        let answer = await answer(confirmation, timeout: timeout)
+        let delegation = TransactionAuthorizationState.shared.drafts[confirmation.id]
+        defer { TransactionAuthorizationState.shared.remove(confirmation.id) }
+        if delegation?.created != nil { return .delegated }
+        if delegation?.frozenBody != nil { return .authorizationUnknown }
+        switch answer {
         case true?: return .approved(ApprovalLedger.issue(forPressedCard: confirmation.id))
         case false?: return .declined
         case nil: return .unanswered
@@ -185,6 +194,26 @@ extension ActionConfirmation {
     /// （先頭 4 行で切っていたので、computer.run の「画像の送信先」が常に落ちていた。
     /// 外へ画像が出ることを、唯一の人の関門で一度も見せないことになる）。
     init(backendApproval a: BackendApproval) {
+        if a.risk == "FINANCIAL" {
+            // 注文の承認は、全商品の数量・合計・配送先などを省略してはいけない。
+            // 既存の下見スクロールに全文を渡す。R3 なので「直す」は出ず、サーバーの確定値のまま。
+            let rows = a.details.compactMap { d -> String? in
+                guard let label = Self.backendDetailLabel(d.label),
+                      !d.value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+                return "\(label): \(d.value)"
+            }
+            var details = a.details.filter { $0.label == "合計（税・手数料・チップ込み）" }
+                .map { "\($0.label): \($0.value)" }
+            if let impact = a.impact {
+                if !impact.reversible { details.append(impact.recoveryNote ?? "実行後は取り消せません。") }
+                else if let note = impact.recoveryNote { details.append(note) }
+            }
+            self.init(app: nil, appIcon: nil,
+                      title: a.summary.isEmpty ? "この操作を実行します" : a.summary,
+                      preview: rows.joined(separator: "\n\n"), details: details, risk: .r3,
+                      confirmLabel: a.impact?.primaryActionLabel ?? "実行する")
+            return
+        }
         var rows: [(label: String, line: String)] = []
         var seen: Set<String> = []
         for d in a.details {

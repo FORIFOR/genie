@@ -22,7 +22,7 @@ extension SelfTest {
 
         // 本人の設定・今月の使用量に触れない。
         let suite = "genie.selftest.gemini.\(getpid())"
-        let settings = GeminiLiveSettings(defaults: UserDefaults(suiteName: suite)!)
+        let settings = GeminiLiveSettings(defaults: UserDefaults(suiteName: suite)!, initialHasKey: false)
         settings.setMonthlyMinutes(5)
         var lost: String?
         guard let provider = GeminiLiveProvider.forLocalFake(url: fake, settings: settings,

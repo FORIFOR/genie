@@ -113,6 +113,7 @@ final class GenieStateStore: ObservableObject {
 
     /// 仕事を動かしている側の「止める」。Dock の止めるボタンは、表示を変えるだけでなくこれを呼ぶ。
     private var stopHandlers: [UUID: () -> Void] = [:]
+    private var stopDetails: [UUID: String] = [:]
 
     /// `onStop`: 本人が「止める」を押したときに、実際に仕事を止める処理（待ちの取り消し・backend の取り消し）。
     func startTask(_ task: AgentTask, onStop: (() -> Void)? = nil) {
@@ -145,6 +146,7 @@ final class GenieStateStore: ObservableObject {
         guard state.board.apply(event) else { return false }
         if let task = state.board.task(event.taskId), task.isTerminal {
             stopHandlers[task.id] = nil
+            stopDetails[task.id] = nil
             // 前に出していた結果は縮める（履歴は Work に残る）。動いている他の仕事は消さない。
             if let previous = state.focusedResultID, previous != task.id { state.board.forget(previous) }
             state.focusedResultID = task.id
@@ -164,14 +166,16 @@ final class GenieStateStore: ObservableObject {
     func stopTask(_ id: UUID) {
         guard let task = state.board.task(id), task.isActive else { return }
         if state.activeTask?.id == id { stopTask(); return }
+        let detail = stopDetails.removeValue(forKey: id) ?? Facts.taskStoppedDetail
         stopHandlers.removeValue(forKey: id)?()
-        apply(event(id, .cancelled(Facts.taskStoppedDetail)))
+        apply(event(id, .cancelled(detail)))
     }
 
     /// 一覧から外す（動いていても）。すぐ答えが出た依頼・追うのをやめた依頼用。Work には残る。
     func discardTask(_ id: UUID) {
         guard state.board.task(id) != nil else { return }
         stopHandlers[id] = nil
+        stopDetails[id] = nil
         state.board.discard(id)
         if state.focusedResultID == id { state.focusedResultID = nil }
         if state.ack?.id == id, state.ack?.rejected == nil { state.ack = nil }
@@ -179,7 +183,10 @@ final class GenieStateStore: ObservableObject {
     }
 
     /// 仕事を止める手を登録する（声の依頼は ask が backend の取り消しを渡す）。
-    func setStopHandler(_ id: UUID, _ handler: @escaping () -> Void) { stopHandlers[id] = handler }
+    func setStopHandler(_ id: UUID, detail: String? = nil, _ handler: @escaping () -> Void) {
+        stopHandlers[id] = handler
+        stopDetails[id] = detail
+    }
 
     /// 受付の応答を短く出す。受け付けたときは 1.7 秒で、動いている仕事の面へ移る。
     /// 受け付けられなかったときは、閉じるまで残す（理由を読む前に消さない）。
@@ -251,6 +258,7 @@ final class GenieStateStore: ObservableObject {
     /// 動いていた段に「取り消しました」と書いて、できなかった結果として残す。音声の停止とは別の操作。
     func stopTask() {
         guard var task = state.activeTask, !task.status.isTerminal else { return }
+        let detail = stopDetails.removeValue(forKey: task.id) ?? Facts.taskStoppedDetail
         stopHandlers.removeValue(forKey: task.id)?()
         if let i = task.steps.firstIndex(where: { $0.state == .running }) ?? task.steps.firstIndex(where: { $0.state == .pending }) {
             task.steps[i].state = .failed
@@ -259,13 +267,14 @@ final class GenieStateStore: ObservableObject {
         task.status = .failed
         state.activeTask = task
         LocalStore.shared.save(task)
-        apply(event(task.id, .cancelled(Facts.taskStoppedDetail)))
+        apply(event(task.id, .cancelled(detail)))
     }
 
     func finishTask(_ status: AgentRunState) {
         // 一度終わった仕事の結果は変えない（止めた後に届いた成功で ✓ にしない）。
         guard var task = state.activeTask, !task.status.isTerminal else { return }
         stopHandlers[task.id] = nil
+        stopDetails[task.id] = nil
         task.status = status
         state.activeTask = task
         LocalStore.shared.save(task)
@@ -446,7 +455,7 @@ final class GenieStateStore: ObservableObject {
     /// テスト用に初期化する。
     func reset() {
         state = GenieState()
-        revs = [:]; stopHandlers = [:]; confirmationQueue = []
+        revs = [:]; stopHandlers = [:]; stopDetails = [:]; confirmationQueue = []
         ackGeneration += 1; holdGeneration += 1
         bus.reset()
     }

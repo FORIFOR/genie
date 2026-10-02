@@ -39,6 +39,7 @@ public static class Metrics
     public const double DockConfirmWidth = 560;
     public const double DockConfirmHeight = 176;
     public const double DockConfirmPrimaryMinWidth = 96;
+    public const double DockAuthorizationBodyMaxHeight = 160;
     public const double DockMeetingWidth = 820;
     public const double DockMeetingHeight = 76;
     public const double DockMeetingExpandedHeight = 460;

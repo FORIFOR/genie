@@ -76,6 +76,7 @@ struct TaskDetailView: View {
     @State private var copied = false
     @State private var exportMessage = ""
     @State private var showRequest = false
+    @State private var showTransactionAuthorizations = false
     @State private var editingDraft: TaskDocumentDraft?
     @ObservedObject private var voice = VoiceHUDState.shared
     @Environment(\.colorScheme) private var scheme
@@ -138,7 +139,11 @@ struct TaskDetailView: View {
                     Button("この依頼を使う") {
                         MainNav.shared.intentDraft = record.request
                         MainNav.shared.select(.home)
-                    }.accessibilityIdentifier("taskReuseRequest")
+                    }
+                    .disabled(!record.canReuse)
+                    .accessibilityIdentifier("taskReuseRequest")
+                    Button("任せている注文の条件・取消") { showTransactionAuthorizations = true }
+                        .accessibilityIdentifier("taskTransactionAuthorizations")
                 } else { legacyRecord }
             }
             .font(.system(size: TypeScale.secondarySize))
@@ -149,6 +154,7 @@ struct TaskDetailView: View {
         .background(Palette.canvas(dark))
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("taskDetail")
+        .sheet(isPresented: $showTransactionAuthorizations) { TransactionAuthorizationListView() }
         .onChange(of: shown.requestRecord?.hasResult) { _, ready in if ready == true { showRequest = false } }
         // 開いただけでは読むだけ。承認待ちでもカードは出さない（出すのは「状況を確認」を押したときだけ）。
         .onAppear { reload(); showRequest = shown.requestRecord?.hasResult != true; voice.refreshRequest(task.id, interactive: false) }

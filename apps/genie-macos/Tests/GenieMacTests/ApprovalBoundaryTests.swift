@@ -33,6 +33,8 @@ import GenieCore
         case .approved: return "approved"
         case .declined: return "declined"
         case .unanswered: return "unanswered"
+        case .delegated: return "delegated"
+        case .authorizationUnknown: return "authorizationUnknown"
         }
     }
 
@@ -226,6 +228,36 @@ import GenieCore
 
     // MARK: - 確認カードは 1 枚ずつ、描いたカードに答える
 
+    func testFinancialCardPreservesEveryTermWithoutTruncatingItsScrollPreview() throws {
+        let longItem = String(repeating: "トッピング・数量の確認", count: 16)
+        let rows: [(String, String)] = [
+            ("実行方法", "シミュレーション（実際の注文・決済・株取引は行いません）"),
+            ("注文先 / アカウント", "local-simulation / paper-account"),
+            ("配送先・対象", "模擬配送先 (simulation-home)"),
+            ("支払方法", "模擬払い"),
+            ("希望時刻", "できるだけ早く"),
+            ("商品・数量 1", "ピザ × 2\n\(longItem)"),
+            ("内訳", "商品 JPY 2,000\n税 JPY 200\n手数料 JPY 100\nチップ JPY 0"),
+            ("合計（税・手数料・チップ込み）", "JPY 2,300"),
+            ("注文 / 見積もり", "order-1 / quote-1"),
+            ("見積もりの有効期限", "2026-10-02T12:00:00Z"),
+            ("承認する範囲", "この見積もりの内容で1回だけ注文します。"),
+            // 同じ値でも、別の条件なら行を落とさない。
+            ("依頼の上限金額", "JPY 2,300"),
+        ]
+        let card = ActionConfirmation(backendApproval: BackendApproval(
+            id: "ap-order", summary: "この内容で注文をシミュレーションします", risk: "FINANCIAL",
+            details: rows.map { .init(label: $0.0, value: $0.1) },
+            impact: .init(primaryActionLabel: "注文をシミュレーションする", affectedCount: 1,
+                          external: false, reversible: false, recoveryNote: "実際の注文や支払いは発生しません")))
+        XCTAssertEqual(card.risk, .r3)
+        XCTAssertTrue(card.params.isEmpty, "サーバー側の確定値をローカル編集できない")
+        XCTAssertEqual(card.preview, rows.map { "\($0.0): \($0.1)" }.joined(separator: "\n\n"))
+        XCTAssertTrue(card.previewOverflows)
+        XCTAssertTrue(card.details.contains("合計（税・手数料・チップ込み）: JPY 2,300"), "合計はスクロール外でも常に読める")
+        XCTAssertLessThanOrEqual(try XCTUnwrap(DockContentMeasure.height(of: .confirmation(card), width: Metrics.dockConfirmWidth)), 360)
+    }
+
     /// 新しいカードが、表示中のカードを上書きしない。答えは id が合うカードにだけ付く。
     func testCardsAreShownOneAtATimeAndAnswersNeedTheShownCardsID() {
         let store = GenieStateStore.shared
@@ -256,6 +288,22 @@ import GenieCore
         let store = GenieStateStore.shared
         let voice = VoiceHUDState.shared
         let previous = store.dock
+        let capture = VoiceCaptureFixture()
+        let previousCapture = voice.voiceCapture
+        let previousMic = Permissions.simulatedMicrophone
+        let previousSpeech = Permissions.simulatedSpeechRecognition
+        let previousHeadless = WindowCoordinator.headless
+        voice.voiceCapture = capture.input
+        Permissions.simulatedMicrophone = .granted
+        Permissions.simulatedSpeechRecognition = .granted
+        WindowCoordinator.headless = true
+        defer {
+            voice.cancelListening()
+            voice.voiceCapture = previousCapture
+            Permissions.simulatedMicrophone = previousMic
+            Permissions.simulatedSpeechRecognition = previousSpeech
+            WindowCoordinator.headless = previousHeadless
+        }
         let c = card("外へ送ります")
         store.requireConfirmation(c)
         var started = 0
@@ -267,11 +315,14 @@ import GenieCore
         Dictation.dryRun = { _ in true }
         defer { Dictation.dryRun = previousDryRun }
         voice.beginDictation()
-        if started > 0 {
-            XCTAssertEqual(store.dock, .listening(partial: ""), "本人が始めた聞き取りが前に出ない")
-            XCTAssertEqual(store.state.confirmation, c, "聞き始めただけでカードに答えが付いた")
-        }
+        XCTAssertEqual(started, 1)
+        XCTAssertEqual(capture.opens, 1)
+        XCTAssertTrue(capture.listening)
+        XCTAssertEqual(store.dock, .listening(partial: ""), "本人が始めた聞き取りが前に出ない")
+        XCTAssertEqual(store.state.confirmation, c, "聞き始めただけでカードに答えが付いた")
         voice.cancelListening()
+        XCTAssertEqual(capture.closes, 1)
+        XCTAssertFalse(capture.listening)
         XCTAssertEqual(store.dock, .confirmation(c), "聞き取りをやめたのにカードへ戻らない")
         voice.beginConversation()
         XCTAssertFalse(voice.conversation.isActive, "カードの間に会話を始めた")
@@ -491,6 +542,22 @@ import GenieCore
         XCTAssertTrue(record.canRefresh, "「状況を確認」で確認カードを出し直せる")
     }
 
+    func testPendingStateIsPublishedBeforeWaitingForThePersonsAnswer() async throws {
+        var events: [String] = []
+        let first = TaskFollowUp(reply: TaskReply(text: "", phase: .waiting), pendingApprovals: [approval("ap-1")])
+        _ = try await VoiceHUDState.settleApprovals(first, waitMs: 1,
+            onPending: { events.append("waiting") },
+            ask: { _ in
+                XCTAssertEqual(events, ["waiting"], "確認カードを待つ間も Main に作成中と表示した")
+                events.append("card")
+                return .unanswered
+            },
+            approve: { _, _ in XCTFail("未回答なのに承認した") },
+            reject: { _ in XCTFail("未回答なのに却下した") },
+            follow: { _ in XCTFail("未回答なのに再読込した"); return first })
+        XCTAssertEqual(events, ["waiting", "card"])
+    }
+
     // MARK: - 返信: 見せた下書きの承認だけに答える
 
     func testReplyApprovalMustMatchTheShownDraft() throws {
@@ -509,4 +576,3 @@ import GenieCore
         XCTAssertFalse(ReplyFlow.approvalMatches(a([("subject", draft.subject)], tool: "computer.run"), draft: draft))
     }
 }
-

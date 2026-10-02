@@ -8,7 +8,7 @@ final class SettingsWindowController {
     private var window: NSWindow?
     /// 検査専用: 設定の窓（キー入力を受けられるかを確かめる）。
     var windowForTest: NSWindow? { window }
-    func show() {
+    func show(settingsView: SettingsView? = nil) {
         if window == nil {
             let win = NSWindow(
                 contentRect: NSRect(x: 0, y: 0, width: 460, height: 540),
@@ -18,7 +18,7 @@ final class SettingsWindowController {
             win.titlebarAppearsTransparent = true
             win.isReleasedWhenClosed = false
             win.center()
-            let content = NSHostingView(rootView: SettingsView())
+            let content = NSHostingView(rootView: settingsView ?? SettingsView())
             win.contentView = content
             win.setContentSize(content.fittingSize)
             window = win

@@ -34,6 +34,7 @@ struct TaskReader {
     var wait: (UInt64) throws -> TaskStatus
     var content: (String) throws -> String
     var approvals: () throws -> [BackendApproval]
+    var outcomeContext: () throws -> TaskOutcomeContext? = { nil }
     var now: () -> Date = Date.init
     var pause: (UInt64) -> Void = { Thread.sleep(forTimeInterval: Double($0) / 1000) }
 
@@ -42,7 +43,12 @@ struct TaskReader {
         TaskReader(
             wait: { try GenieCoreBridge.waitTask(base, accessToken: token, taskId: taskId, timeoutMs: $0) },
             content: { try GenieCoreBridge.artifactContent(base, accessToken: token, artifactId: $0) },
-            approvals: { try GenieCoreBridge.pendingApprovals(base, accessToken: token, taskId: taskId) })
+            approvals: { try GenieCoreBridge.pendingApprovals(base, accessToken: token, taskId: taskId) },
+            outcomeContext: {
+                let json = try GenieCoreBridge.taskGet(base, accessToken: token, taskId: taskId)
+                guard let context = TaskOutcomeContext.decode(json) else { throw ApiError.Decode(message: "仕事の結果を読み取れませんでした。") }
+                return context
+            })
     }
 }
 
@@ -56,11 +62,29 @@ struct VoiceGeneration: Equatable {
     func isCurrent(_ generation: Int) -> Bool { generation == value }
 }
 
+/// Voice state tests replace device I/O while exercising the same entry and stop paths.
+/// Production always uses RecordingRuntime, including its permission and generation gates.
+@MainActor
+struct VoiceCaptureInput {
+    var begin: (Bool, @escaping () -> Void, @escaping (String) -> Void, @escaping (String) -> Void) -> Bool
+    var end: () -> Void
+    var isListening: () -> Bool
+
+    static var live: Self {
+        Self(begin: { echoCancellation, firstFrame, partial, final in
+            RecordingRuntime.shared.beginVoiceListening(echoCancellation: echoCancellation,
+                onFirstFrame: firstFrame, onPartial: partial, onFinal: final)
+        }, end: { RecordingRuntime.shared.endVoiceListening() },
+             isListening: { RecordingRuntime.shared.voiceListening })
+    }
+}
+
 /// 上部 Voice OS ピルの状態。idle は静か、listening は声を拾っている、thinking は Agent に問い合わせ中。
 /// 実フロー: ショートカット→声/テキストの依頼→`ask()`→thinking→Agent 応答→回答面（または idle）。
 @MainActor
 final class VoiceHUDState: ObservableObject {
     static let shared = VoiceHUDState()
+    var voiceCapture: VoiceCaptureInput = .live
     /// Dock の表示。**ここには持たない** —— 実体は `GenieStateStore` にある。
     ///
     /// 仕様書 §31「UI ごとに勝手に状態を持たせない」。以前はここが真の置き場だったので、
@@ -146,6 +170,7 @@ final class VoiceHUDState: ObservableObject {
     func configureBackend(base: String, token: String, renewal: Bool = false) {
         if !renewal || apiBase != base { conversationId = nil }
         apiBase = base; apiToken = token
+        TransactionAuthorizationState.shared.configure(base: base, token: token)
     }
 
     /// 声を使い始める。§26 マイクだけを、この瞬間に要求する。
@@ -302,18 +327,18 @@ final class VoiceHUDState: ObservableObject {
     @discardableResult
     private func openMicrophone(echoCancellation: Bool = false, onFirstFrame: (() -> Void)? = nil, onFinal: ((String) -> Void)? = nil) -> Bool {
         let generation = voice.open()
-        let started = RecordingRuntime.shared.beginVoiceListening(
-            echoCancellation: echoCancellation,
-            onFirstFrame: { [weak self] in
+        let started = voiceCapture.begin(
+            echoCancellation,
+            { [weak self] in
                 guard let self, self.voice.isCurrent(generation) else { return }
                 self.listeningAwaitingAudio = false
                 onFirstFrame?()
             },
-            onPartial: { [weak self] text in
+            { [weak self] text in
                 guard let self, self.voice.isCurrent(generation), !self.isListeningMuted else { return }
                 self.updatePartial(text)
             },
-            onFinal: { [weak self] text in
+            { [weak self] text in
                 guard let self, self.voice.isCurrent(generation), !text.isEmpty, !self.isListeningMuted else { return }
                 if let onFinal { onFinal(text) } else { self.speak(text) }
             })
@@ -325,7 +350,7 @@ final class VoiceHUDState: ObservableObject {
     /// マイクを閉じる。**先に世代を進めて**から止める（止める途中に届いたものも古い世代になる）。
     private func closeMicrophone() {
         voice.close()
-        RecordingRuntime.shared.endVoiceListening()
+        voiceCapture.end()
     }
 
     /// マイクの聞き取りを一時停止/再開する（ミュート切り替え）。
@@ -442,11 +467,21 @@ final class VoiceHUDState: ObservableObject {
     // MARK: - Dock の仕事の一覧（声・文字の依頼）
 
     /// backend に仕事ができた依頼を、Dock の一覧の 1 行にする。止めるは backend の取り消し。
-    func trackOnDock(_ id: UUID, title: String, backendTaskId: String, base: String, token: String) {
+    func trackOnDock(_ id: UUID, title: String, backendTaskId: String, base: String, token: String,
+                     taskKind: String? = nil) {
         let store = GenieStateStore.shared
         store.apply(store.event(id, .started(title: title, step: Facts.taskWorking)))
-        store.setStopHandler(id) { [weak self] in
-            self?.updateRequest(id) { $0.phase = .cancelled; $0.message = Facts.taskStoppedDetail }
+        let transaction = taskKind?.hasPrefix("transaction.") == true
+        let uncertain = transaction || taskKind == nil
+        let detail = transaction ? TaskOutcomeContext.stoppingTransaction
+            : (taskKind == nil ? TaskOutcomeContext.stoppingUnidentifiedTask : Facts.taskStoppedDetail)
+        store.setStopHandler(id, detail: detail) { [weak self] in
+            self?.updateRequest(id) {
+                $0.stopRequested = true
+                $0.phase = uncertain ? .unknown : .cancelled
+                $0.transactionResultUnknown = transaction
+                $0.message = detail
+            }
             Task.detached {
                 do { _ = try GenieCoreBridge.cancelTask(base, accessToken: token, taskId: backendTaskId) }
                 catch { NSLog("dock: cancel not delivered: \(error)") }
@@ -464,6 +499,11 @@ final class VoiceHUDState: ObservableObject {
 
     /// 依頼の結果を一覧の結果にする。**成果物を確かめられた完了だけが完了**（`taskReply` が本文を読んでいる）。
     func finishOnDock(_ id: UUID, reply: TaskReply, title: String) {
+        if reply.transactionResultUnknown {
+            // A repeated submission is unsafe; retain the explanation without a retry action.
+            dockEvent(id, .unconfirmed(reply.text))
+            return
+        }
         switch reply.phase {
         case .complete where !reply.artifactID.isEmpty:
             dockEvent(id, .succeeded(DockArtifact(kind: Facts.resultKindAnswer, title: title,
@@ -543,7 +583,7 @@ final class VoiceHUDState: ObservableObject {
             return
         }
         if case .listening = dock { return }
-        guard RecordingRuntime.shared.voiceListening else { return }
+        guard voiceCapture.isListening() else { return }
         closeMicrophone()
         inputLevel = 0
         inputLevels = []
@@ -564,7 +604,7 @@ final class VoiceHUDState: ObservableObject {
         // Quick Actions の面には「聞いています」も止める手も無い。マイクや会話を開いたまま
         // 面だけ差し替えると、メニューバーにマイクの印が出たまま止め方が消える（2026-09-28 実機）。
         // 先に閉じてから開く（`--selftest micrelease`）。
-        if conversation.isActive || RecordingRuntime.shared.voiceListening { cancelListening() }
+        if conversation.isActive || voiceCapture.isListening() { cancelListening() }
         mode = mode == .quickActions ? .idle : .quickActions
         // 開いた間は Esc で閉じられるよう、Dock がキー入力を受ける（閉じたら元のアプリへ返す）。
         if mode == .quickActions { WindowCoordinator.shared.focusDockForQuickActions() }
@@ -608,22 +648,30 @@ final class VoiceHUDState: ObservableObject {
     // MARK: - Genie と会話（段階 2）
 
     /// 会話を始める。一回の音声入力（`beginListening`）とは別の入口。
-    func beginConversation() {
+    func beginConversation(geminiSettings: GeminiLiveSettings? = nil) {
+        guard !DesktopConnectionBootstrap.isInvalid else {
+            answer = DesktopConnectionBootstrap.issueMessage; mode = .answer(answer); return
+        }
         guard GenieStateStore.shared.state.confirmation == nil, !conversation.isActive else { return }
         guard Permissions.microphone == .granted else {
-            PermissionGuideCoordinator.shared.explain(.microphone) { [weak self] in self?.beginConversation() }
+            PermissionGuideCoordinator.shared.explain(.microphone) { [weak self] in self?.beginConversation(geminiSettings: geminiSettings) }
             return
         }
         if Permissions.speechRecognition == .notDetermined { Permissions.requestSpeechRecognition { _ in } }
         GenieSpeechOutput.shared.stop()
         // 本人が Gemini Live を有効にし、キーと月の上限を置いていればそれを使う。欠けていれば既存の経路。
         // 上限に達していたら始めない（**既存の経路へも黙って切り替えない**。何が起きたかを言う）。
-        let gemini = GeminiLiveSettings.shared
+        let gemini = geminiSettings ?? GeminiLiveSettings.shared
         let provider: ConversationProvider
+        if gemini.enabled, gemini.checkingKey || gemini.keyAccessIssue != nil {
+            answer = gemini.keyAccessIssue ?? "キーを確認しています。もう一度試してください。"
+            mode = .answer(answer)
+            return
+        }
         if gemini.enabled, gemini.hasKey {
             let check = gemini.budget.canStart(at: Date())
             guard check.ok, let key = gemini.apiKey() else {
-                answer = check.reason ?? "Gemini Live のキーを読めませんでした。"
+                answer = check.reason ?? gemini.keyAccessIssue ?? "Gemini Live のキーを読めませんでした。"
                 mode = .answer(answer)
                 return
             }
@@ -925,9 +973,19 @@ final class VoiceHUDState: ObservableObject {
         }
     }
 
+    /// Local preparation and nearby places keep their existing offline entry path.
+    static func homeIntentNeedsGateway(_ text: String, visualContext: [VisualContextArtifact]?) -> Bool {
+        guard visualContext?.isEmpty != false else { return true }
+        let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return ConsumerJourneyKind.detect(text) == nil && NearbyPlaceIntent.detect(text) == nil
+    }
+
     /// 声/テキストの依頼を Agent に投げる。listening→thinking→answer→idle と状態を進める。
     @discardableResult
     func ask(_ text: String, newConversation: Bool = false, visualContext: [VisualContextArtifact]? = nil, consumerPlanning: ConsumerPlanningMode? = nil) -> Bool {
+        guard !DesktopConnectionBootstrap.isInvalid else {
+            answer = DesktopConnectionBootstrap.issueMessage; mode = .idle; return false
+        }
         let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return false }
         // 前の依頼に答えている途中。**黙って捨てない**（以前は false を返すだけで、Dock は
@@ -955,7 +1013,9 @@ final class VoiceHUDState: ObservableObject {
             return true
         }
         guard let base = apiBase, let token = apiToken else {
-            answer = "接続を確認してください。入力した内容は残しています。"; mode = .idle; return false
+            answer = MainData.shared.connectionIssue?.message
+                ?? "接続を確認してください。入力した内容は残しています。"
+            mode = .idle; return false
         }
         // 「あと、テストも追加して」: 直前の仕事がまだ動いていれば、新しい依頼ではなくその仕事への追加指示。
         if consumerPlanning == nil, visualContext == nil, let target = followUpTarget(for: text) {
@@ -1012,22 +1072,25 @@ final class VoiceHUDState: ObservableObject {
                         requestId: receiptID, text: text, attachments: attachments, replyCandidatesJson: replyCandidates)
 
                 }
+                let taskContext = outcome.taskId.isEmpty ? nil
+                    : (try? GenieCoreBridge.taskGet(base, accessToken: token, taskId: outcome.taskId)).flatMap(TaskOutcomeContext.decode)
                 await MainActor.run {
-                    self?.updateRequest(task.id) { $0.backendTaskID = outcome.taskId; $0.phase = .working }
+                    self?.updateRequest(task.id) {
+                        $0.backendTaskID = outcome.taskId; $0.backendTaskKind = taskContext?.kind; $0.phase = .working
+                    }
                     // backend に仕事ができた。Dock の一覧の 1 行になる（止めるは backend の取り消し）。
                     if !outcome.taskId.isEmpty {
-                        self?.trackOnDock(task.id, title: task.title, backendTaskId: outcome.taskId, base: base, token: token)
+                        self?.trackOnDock(task.id, title: task.title, backendTaskId: outcome.taskId,
+                                          base: base, token: token, taskKind: taskContext?.kind)
                     }
                 }
                 // 承認待ちで止まったら、この依頼をいま出した本人に確認カードで聞く。
                 // 押されたカードの承認だけを中継する。「やめる」なら REJECTED で、実行しない。
                 // 答えが無い（時間切れ・カードが見えない）なら何も送らず、承認を待ったまま残す。
                 let followed = try Self.follow(outcome, base: base, token: token, waitMs: 12_000)
-                if !followed.pendingApprovals.isEmpty {
-                    await MainActor.run { self?.dockEvent(task.id, .awaitingApproval) }
-                }
                 let first = try await Self.settleApprovals(followed,
-                    taskId: outcome.taskId, base: base, token: token, waitMs: 12_000)
+                    taskId: outcome.taskId, base: base, token: token, waitMs: 12_000,
+                    onPending: { self?.recordApprovalWait(task.id) })
                 let reply = first.reply
                 // 受け付けられなかった（仕事ができず、答えも無く、知らせだけが返った）。
                 let rejected = outcome.taskId.isEmpty && outcome.answer.isEmpty && !outcome.needsClarification
@@ -1087,7 +1150,8 @@ final class VoiceHUDState: ObservableObject {
                         guard stillShown else { break }
                         later = try await Self.settleApprovals(
                             Self.follow(outcome, base: base, token: token, waitMs: 120_000),
-                            taskId: outcome.taskId, base: base, token: token, waitMs: 120_000).reply
+                            taskId: outcome.taskId, base: base, token: token, waitMs: 120_000,
+                            onPending: { self?.recordApprovalWait(task.id) }).reply
                         waited += 120_000
                     }
                     let laterDraft: ReplyFlow.Draft? = await MainActor.run {
@@ -1120,7 +1184,13 @@ final class VoiceHUDState: ObservableObject {
             } catch {
                 await MainActor.run {
                     self?.updateRequest(task.id) {
+                        if !$0.canReuse { return }
                         $0.phase = .unknown
+                        if $0.backendTaskKind?.hasPrefix("transaction.") == true {
+                            $0.transactionResultUnknown = true
+                            $0.message = TaskOutcomeContext.transactionUnknown
+                            return
+                        }
                         $0.message = $0.backendTaskID.isEmpty
                             ? ($0.canRefresh ? "受付を確認できませんでした。「状況を確認」で照会できます。依頼は再送しません。" : "受付を確認できませんでした。二重実行を防ぐため、自動では再送しません。")
                             : "通信が切れました。状況を確認すると、同じ仕事の続きが読み込まれます。"
@@ -1180,7 +1250,8 @@ final class VoiceHUDState: ObservableObject {
             while true {
                 let remaining = UInt64(max(0, deadline.timeIntervalSince(reader.now())) * 1000)
                 let done = try waitForTask(waitMs: remaining, now: reader.now, pause: reader.pause, wait: reader.wait)
-                let reply = try taskReply(status: done.status, artifactID: done.resultArtifactId) {
+                let context = ["FAILED", "CANCELLED"].contains(done.status) ? try reader.outcomeContext() : nil
+                let reply = try taskReply(status: done.status, artifactID: done.resultArtifactId, context: context) {
                     try reader.content(done.resultArtifactId)
                 }
                 guard TaskWaitState(status: done.status) == .approvalPending else { return TaskFollowUp(reply: reply) }
@@ -1243,9 +1314,14 @@ final class VoiceHUDState: ObservableObject {
     /// REJECTED を送るのは人が「やめる」/ Escape を押したときだけ。時間切れ・カードが見えない・
     /// 窓を出せないときは**何も送らず**、承認は PENDING のまま残す（「状況を確認」で出し直せる）。
     nonisolated static func settleApprovals(_ first: TaskFollowUp, taskId: String, base: String, token: String,
-                                            waitMs: UInt64) async throws -> TaskFollowUp {
+                                            waitMs: UInt64,
+                                            onPending: (@MainActor () -> Void)? = nil) async throws -> TaskFollowUp {
         let outcome = TurnOutcome(needsClarification: false, answer: "", taskId: taskId, notice: "", replyJson: "")
-        return try await settleApprovals(first, waitMs: waitMs,
+        return try await settleApprovals(first, waitMs: waitMs, onPending: onPending,
+            prepareCard: { card, approval in
+                await TransactionAuthorizationState.shared.prepare(card, approval: approval,
+                    api: TransactionAuthorizationAPI(base: base, token: token))
+            },
             approve: { id, proof in try GenieCoreBridge.taskApprove(base, accessToken: token, taskId: taskId, approvalId: id, approval: proof) },
             reject: { id in try GenieCoreBridge.taskReject(base, accessToken: token, taskId: taskId, approvalId: id) },
             follow: { ms in try follow(outcome, base: base, token: token, waitMs: ms) })
@@ -1255,6 +1331,8 @@ final class VoiceHUDState: ObservableObject {
     /// 差し替えても「押されていないのに APPROVED」は作れない）。
     nonisolated static func settleApprovals(
         _ first: TaskFollowUp, waitMs: UInt64,
+        onPending: (@MainActor () -> Void)? = nil,
+        prepareCard: (@MainActor (ActionConfirmation, BackendApproval) async -> ActionConfirmation)? = nil,
         ask: @escaping @MainActor (ActionConfirmation) async -> ApprovalAnswer = { await Confirm.approve($0) },
         approve: (String, consuming UserApproval) throws -> Void,
         reject: (String) throws -> Void,
@@ -1264,7 +1342,10 @@ final class VoiceHUDState: ObservableObject {
         var shown: Set<String> = []
         while let approval = current.pendingApprovals.first(where: { !shown.contains($0.id) }) {
             shown.insert(approval.id)
-            let card = ActionConfirmation(backendApproval: approval)
+            var card = ActionConfirmation(backendApproval: approval)
+            if let prepareCard { card = await prepareCard(card, approval) }
+            // カードへの返答を待つ間も、Main の記録を「作成中」に残さない。
+            await onPending?()
             let answer = await ask(card)
             switch consume answer {
             case .approved(let proof):
@@ -1280,6 +1361,12 @@ final class VoiceHUDState: ObservableObject {
                 // 答えが無いのは「やめた」ではない。取り消さずに、承認を待ったまま返す。
                 return TaskFollowUp(reply: TaskReply(text: "承認待ちです。この操作はまだ実行していません。「状況を確認」で確認カードを出し直せます。", phase: .waiting),
                                     leftPending: true)
+            case .delegated:
+                // The create endpoint already reserved quota, approved this ID and resumed the task.
+                // Sending the ordinary approve endpoint again would create a second approval path.
+                break
+            case .authorizationUnknown:
+                return TaskFollowUp(reply: TaskReply(text: "許可と今回の注文の結果は未確認です。「状況を確認」と設定の「任せている注文」で確認してください。注文は再送しません。", phase: .unknown), leftPending: true)
             }
             current = try follow(waitMs)
         }
@@ -1292,7 +1379,14 @@ final class VoiceHUDState: ObservableObject {
         return .answer(reply.text)
     }
 
-    nonisolated static func taskReply(status: String, artifactID: String, content: () throws -> String) rethrows -> TaskReply {
+    nonisolated static func taskReply(status: String, artifactID: String, context: TaskOutcomeContext? = nil,
+                                    content: () throws -> String) rethrows -> TaskReply {
+        // A workflow terminal state alone cannot establish an external order's outcome.
+        // This also covers older servers and lost host responses without structured details.
+        if ["FAILED", "CANCELLED"].contains(status), context?.isTransaction == true {
+            return TaskReply(text: status == "CANCELLED" ? TaskOutcomeContext.stoppedTransactionUnknown : TaskOutcomeContext.transactionUnknown,
+                             phase: .unknown, taskKind: context?.kind, transactionResultUnknown: true)
+        }
         switch status {
         case "COMPLETED":
             guard !artifactID.isEmpty else { return TaskReply(text: "処理は終了しましたが、成果物は返されませんでした。", phase: .needsInput) }
@@ -1333,11 +1427,43 @@ final class VoiceHUDState: ObservableObject {
         unsavedRequests.removeValue(forKey: id)
     }
 
-    private func applyReply(_ reply: TaskReply, to id: UUID) {
-        updateRequest(id) {
+    func applyReply(_ reply: TaskReply, to id: UUID, store: LocalStore = .shared) {
+        updateRequest(id, store: store) {
+            // Missing context, an empty artifact, or a generic terminal status cannot
+            // resolve an existing uncertain order. Only verified content clears it.
+            let confirmed = reply.phase == .complete && !reply.artifactID.isEmpty
+                && !reply.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            if !$0.canReuse && !confirmed && !reply.transactionResultUnknown { return }
+            if $0.stopRequested == true, [.working, .submitting, .waiting].contains(reply.phase) { return }
+            if $0.backendTaskKind?.hasPrefix("transaction.") == true,
+               [.failed, .cancelled].contains(reply.phase) {
+                $0.phase = .unknown
+                $0.transactionResultUnknown = true
+                $0.message = reply.phase == .cancelled ? TaskOutcomeContext.stoppedTransactionUnknown
+                    : TaskOutcomeContext.transactionUnknown
+                return
+            }
+            if let kind = reply.taskKind { $0.backendTaskKind = kind }
+            $0.transactionResultUnknown = reply.transactionResultUnknown
             $0.phase = reply.phase; $0.artifactID = reply.artifactID
             if reply.phase == .complete { $0.result = reply.text; $0.message = "" }
             else { $0.message = reply.text }
+        }
+    }
+
+    private func recordApprovalWait(_ id: UUID) {
+        applyReply(TaskReply(text: "承認待ちです。確認カードで内容を確認してください。この操作はまだ実行していません。", phase: .waiting), to: id)
+        dockEvent(id, .awaitingApproval)
+    }
+
+    func recordReadFailure(_ id: UUID, message: String, store: LocalStore = .shared) {
+        updateRequest(id, store: store) {
+            guard $0.canReuse else { return }
+            if $0.backendTaskKind?.hasPrefix("transaction.") == true {
+                $0.phase = .unknown
+                $0.transactionResultUnknown = true
+                $0.message = TaskOutcomeContext.transactionUnknown
+            } else { $0.message = message }
         }
     }
 
@@ -1350,7 +1476,7 @@ final class VoiceHUDState: ObservableObject {
               let record = (unsavedRequests[id] ?? LocalStore.shared.loadTasks().first(where: { $0.id == id }))?.requestRecord,
               record.canRefresh else { return }
         guard let base = apiBase, let token = apiToken, base == record.base else {
-            updateRequest(id) { $0.message = "この仕事を依頼した接続が見つかりません。接続を確認してください。" }
+            recordReadFailure(id, message: "この仕事を依頼した接続が見つかりません。接続を確認してください。")
             return
         }
         // The initial submit is already waiting for this job; don't start another poll.
@@ -1375,12 +1501,13 @@ final class VoiceHUDState: ObservableObject {
                 }
                 let first = try Self.follow(outcome, base: base, token: token, waitMs: 12_000)
                 let reply = interactive
-                    ? try await Self.settleApprovals(first, taskId: outcome.taskId, base: base, token: token, waitMs: 12_000).reply
+                    ? try await Self.settleApprovals(first, taskId: outcome.taskId, base: base, token: token, waitMs: 12_000,
+                        onPending: { self?.recordApprovalWait(id) }).reply
                     : first.reply
                 await MainActor.run { self?.applyReply(reply, to: id); self?.refreshingRequests.remove(id) }
             } catch {
                 await MainActor.run {
-                    self?.updateRequest(id) { $0.message = "状況を取得できませんでした。接続を確認してから、もう一度状況を確認できます。" }
+                    self?.recordReadFailure(id, message: "状況を取得できませんでした。接続を確認してから、もう一度状況を確認できます。")
                     self?.refreshingRequests.remove(id)
                 }
             }

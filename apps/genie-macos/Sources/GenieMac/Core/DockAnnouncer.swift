@@ -11,7 +11,7 @@ enum DockAnnouncer {
         case .ack(let ack):
             return ack.rejected.map { "\(Facts.taskRejected)。\($0)" } ?? "\(Facts.taskAccepted)。\(ack.title)"
         case .result(let r):
-            let head = r.cancelled ? "止めました" : (r.failed ? "できませんでした" : "\(r.kind ?? "成果物")ができました")
+            let head = r.unconfirmed ? "結果は未確認です" : (r.cancelled ? "止めました" : (r.failed ? "できませんでした" : "\(r.kind ?? "成果物")ができました"))
             return "\(head)。\(r.title)"
         case .agent:
             if case .agent = previous { return nil }

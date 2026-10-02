@@ -12,12 +12,13 @@ enum NearbyPlaces {
     static let mapHeight = Int(Metrics.dockCardImageHeight)
 
     enum Failure: Error, Equatable {
-        case needsKey, limitReached, locationDenied, locationUnavailable, rejected, quota, network
+        case needsKey, keychainUnavailable, limitReached, locationDenied, locationUnavailable, rejected, quota, network
 
         /// 何ができないかと、次の一手（Dock の回答面にそのまま出す）。
         var message: String {
             switch self {
             case .needsKey: return "近くの店を探すには、設定で Google Maps Platform のキーと月の上限を決めてください。"
+            case .keychainUnavailable: return KeychainStore.accessMessage
             case .limitReached: return "今月の検索の上限に達しました。設定で上限を変えられます。"
             case .locationDenied: return "現在地を使う許可がありません。システム設定の「位置情報サービス」で Genie を許可してください。"
             case .locationUnavailable: return "現在地を取得できませんでした。少し待ってからもう一度頼んでください。"
@@ -30,9 +31,11 @@ enum NearbyPlaces {
 
     static func search(_ intent: NearbyPlaceIntent, settings: PlacesSettings = .shared,
                        location: CurrentLocation = .shared) async -> Result<PlacesCard, Failure> {
+        await settings.refreshKeyPresence()
+        guard settings.keyAccessIssue == nil else { return .failure(.keychainUnavailable) }
         guard settings.hasKey, settings.monthlyLimit > 0 else { return .failure(.needsKey) }
         guard settings.canSearch() else { return .failure(.limitReached) }
-        guard let key = settings.apiKey(), !key.isEmpty else { return .failure(.needsKey) }
+        guard let key = settings.apiKey(), !key.isEmpty else { return .failure(settings.keyAccessIssue == nil ? .needsKey : .keychainUnavailable) }
         let here: CLLocation
         do { here = try await location.once() } catch CurrentLocation.Failure.denied {
             return .failure(.locationDenied)

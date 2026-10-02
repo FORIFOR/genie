@@ -23,6 +23,7 @@ import SwiftUI
 /// 同じ environment（dark / UIScale）で測るので、窓の中でだけ違う高さになることはない。
 enum DockContentMeasure {
     private static var cache: (key: Key, height: CGFloat)?
+    static func invalidate() { cache = nil }
 
     /// 中身が変わったら測り直す。`GenieState` 全体を鍵にする —— 文脈の棚（listening の
     /// ContextStrip / contextDetail の格子）や結果の行は `dock` の外にあるため。

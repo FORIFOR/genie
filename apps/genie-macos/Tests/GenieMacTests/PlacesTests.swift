@@ -98,17 +98,24 @@ final class PlacesTests: XCTestCase {
 
     @MainActor
     func testSettingsCountSearchesPerMonthAndRequireALimit() {
-        let defaults = UserDefaults(suiteName: "PlacesTests-\(UUID())")!
-        let settings = PlacesSettings(defaults: defaults)
+        let suite = "PlacesTests-\(UUID())"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let settings = PlacesSettings(defaults: defaults, initialHasKey: true)
         let sept = Date(timeIntervalSince1970: 1_790_000_000)   // 2026-09
         let oct = sept.addingTimeInterval(40 * 86_400)
-        XCTAssertFalse(settings.canSearch(at: sept) && settings.monthlyLimit > 0, "上限を決めるまでは探さない")
+        XCTAssertFalse(settings.canSearch(at: sept), "キーがあっても、上限を決めるまでは探さない")
         settings.setMonthlyLimit(2)
+        XCTAssertTrue(settings.canSearch(at: sept))
         settings.recordSearch(at: sept); settings.recordSearch(at: sept)
         XCTAssertEqual(settings.usedThisMonth(at: sept), 2)
+        XCTAssertFalse(settings.canSearch(at: sept), "上限に達したら探さない")
         XCTAssertEqual(settings.usedThisMonth(at: oct), 0, "月が替われば数え直す")
+        XCTAssertTrue(settings.canSearch(at: oct))
         settings.recordSearch(at: oct)
         XCTAssertEqual(settings.usedThisMonth(at: oct), 1)
+        let withoutKey = PlacesSettings(defaults: defaults, initialHasKey: false)
+        XCTAssertFalse(withoutKey.canSearch(at: oct), "上限が残っていても、キーがなければ探さない")
     }
 
     @MainActor

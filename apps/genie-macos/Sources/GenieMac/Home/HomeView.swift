@@ -28,6 +28,7 @@ struct HomeView: View {
     private var intentPlaceholder: String { hasScreenshot ? "この画像について、何を知りたいですか？" : Facts.homeIntentPlaceholder }
     @ObservedObject private var nav = MainNav.shared
     @State private var submitIssue = ""
+    @State private var connectionTask: Task<Void, Never>?
     @State private var showContext = false
     /// 実データ。無ければその節ごと出さない。
     @State private var recentTasks: [AgentTask] = []
@@ -46,6 +47,8 @@ struct HomeView: View {
     @ObservedObject private var initialProfile = InitialProfileStore.shared
     @ObservedObject private var work = WorkContextStore.shared
     @ObservedObject private var consumer = ConsumerJourneyStore.shared
+    @ObservedObject private var backend = MainData.shared
+    @ObservedObject private var credentialRecovery = MainData.shared.credentialRecovery
     @FocusState private var intentFocused: Bool
 
     static func greetingForNow(_ date: Date = Date()) -> String {
@@ -74,6 +77,7 @@ struct HomeView: View {
         .animation(.easeOut(duration: 0.14), value: sheetOpener.isOpen)
         .onChange(of: nav.intentFocusRequest) { _, request in focusIntent(request) }
         .onAppear { if nav.intentVisualContext != nil { intentFocused = true } }
+        .onDisappear { connectionTask?.cancel() }
         .sheet(item: $consumer.active) { draft in
             ConsumerJourneyView(draft: draft, onClose: { consumer.close($0) }, onResearch: { prompt, mode in
                 guard voice.ask(prompt, newConversation: true, visualContext: [], consumerPlanning: mode) else { return false }
@@ -129,8 +133,14 @@ struct HomeView: View {
                 // Accepted requests have their own persistent workspace. Only preflight
                 // failures belong beside the draft; never repeat a full result here.
                 if !submitIssue.isEmpty {
-                    Text(submitIssue).font(.system(size: S.type(TypeScale.secondarySize)))
-                        .foregroundStyle(Palette.warning(dark)).textSelection(.enabled)
+                    if backend.connectionIssue == .credentialAccess {
+                        GatewayCredentialRecoveryView(state: credentialRecovery.state) {
+                            Task { await backend.confirmCredentialReadAfterUserRequest() }
+                        }
+                    } else {
+                        Text(submitIssue).font(.system(size: S.type(TypeScale.secondarySize)))
+                            .foregroundStyle(Palette.warning(dark)).textSelection(.enabled)
+                    }
                 }
                 starterRequests
                 DisclosureGroup("映画・旅行・デリバリー") {
@@ -267,11 +277,11 @@ struct HomeView: View {
                     Image(systemName: "mic").frame(width: 28, height: 28)
                 }
                 .buttonStyle(GenieControlStyle(radius: 8, filled: false))
-                .disabled(voice.requestInFlight)
+                .disabled(voice.requestInFlight || credentialRecovery.isChecking)
                 .accessibilityLabel("声で依頼する")
                 .help("声で依頼する")
                 .accessibilityIdentifier("homeIntentMic")
-                Text(voice.requestInFlight ? "依頼を処理しています…" : Facts.homeSubmitHint)
+                Text(connectionTask != nil ? "接続を確認しています…" : (voice.requestInFlight ? "依頼を処理しています…" : Facts.homeSubmitHint))
                     .font(.system(size: S.type(TypeScale.microSize)))
                     .foregroundStyle(Palette.muted(dark))
                 Spacer(minLength: 0)
@@ -282,7 +292,7 @@ struct HomeView: View {
                 }
                 .buttonStyle(.borderedProminent).tint(Palette.accent(dark))
                 .keyboardShortcut(UserShortcut.submitRequest.key, modifiers: UserShortcut.submitRequest.modifiers)
-                .disabled(nav.intentDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || voice.requestInFlight)
+                .disabled(nav.intentDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || voice.requestInFlight || connectionTask != nil || credentialRecovery.isChecking)
                 .accessibilityIdentifier("homeIntentSend")
             }
         }
@@ -339,13 +349,31 @@ struct HomeView: View {
     }
 
     private func submitIntent() {
+        guard connectionTask == nil, !voice.requestInFlight, !credentialRecovery.isChecking else { return }
+        let text = nav.intentDraft
+        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        let images = nav.intentVisualContext
         submitIssue = ""
-        if voice.ask(nav.intentDraft, newConversation: true, visualContext: nav.intentVisualContext) {
-            nav.finishIntentSubmission()
-            if let id = voice.latestRequestID {
-                nav.openTask = LocalStore.shared.loadTasks().first { $0.id == id }
+        connectionTask = Task { @MainActor in
+            defer { connectionTask = nil }
+            let result = await HomeIntentSubmission.run(
+                needsConnection: VoiceHUDState.homeIntentNeedsGateway(text, visualContext: images),
+                connect: { await MainData.shared.ensureConnected(afterUserAction: true) },
+                isCurrent: { nav.intentDraft == text && nav.intentVisualContext?.map(\.id) == images?.map(\.id) },
+                submit: { voice.ask(text, newConversation: true, visualContext: images) })
+            switch result {
+            case .submitted:
+                nav.finishIntentSubmission()
+                if let id = voice.latestRequestID {
+                    nav.openTask = LocalStore.shared.loadTasks().first { $0.id == id }
+                }
+            case .unavailable:
+                submitIssue = MainData.shared.connectionIssue?.message
+                    ?? "接続を確認してください。入力は残しています。"
+            case .rejected: submitIssue = voice.answer
+            case .cancelled, .draftChanged: break
             }
-        } else { submitIssue = voice.answer }
+        }
     }
 
     private var starterRequests: some View {

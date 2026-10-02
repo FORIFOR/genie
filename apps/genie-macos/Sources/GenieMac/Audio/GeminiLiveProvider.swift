@@ -19,18 +19,53 @@ final class GeminiLiveSettings: ObservableObject {
     @Published private(set) var hasKey: Bool
 
     private let defaults: UserDefaults
+    @Published private(set) var checkingKey = false
+    @Published private(set) var keyAccessIssue: String?
+    private let presenceReader: (@Sendable () throws -> Bool)?
+    private var presenceTask: Task<Result<Bool, Error>, Never>?
+    private var presenceGeneration = 0
 
-    init(defaults: UserDefaults = .standard) {
+    /// Fixtures can supply key presence without reading the person's Keychain.
+    /// Normal construction never synchronously reads secret data on the main actor.
+    init(defaults: UserDefaults = .standard, initialHasKey: Bool? = nil,
+         presenceReader: (@Sendable () throws -> Bool)? = nil) {
         self.defaults = defaults
         enabled = defaults.bool(forKey: Self.enabledKey)
         budget = GeminiLiveBudget(monthlyMinutes: defaults.integer(forKey: Self.minutesKey),
                                   usedSeconds: defaults.double(forKey: Self.usedKey),
                                   month: defaults.string(forKey: Self.monthKey) ?? "")
-        hasKey = ((try? KeychainStore.get(Self.keychainKey)) ?? nil)?.isEmpty == false
+        hasKey = initialHasKey ?? false
+        let key = Self.keychainKey
+        self.presenceReader = initialHasKey != nil && presenceReader == nil ? nil
+            : (presenceReader ?? { try KeychainStore.contains(key) })
+        if self.presenceReader != nil {
+            checkingKey = true
+            Task { [weak self] in await self?.refreshKeyPresence() }
+        }
+    }
+
+    /// Coalesce settings appearances and explicit use; no key bytes enter this probe.
+    func refreshKeyPresence() async {
+        guard let read = presenceReader else { return }
+        let task: Task<Result<Bool, Error>, Never>
+        if let pending = presenceTask { task = pending }
+        else {
+            checkingKey = true; presenceGeneration += 1
+            task = Task.detached { Result { try read() } }
+            presenceTask = task
+        }
+        let generation = presenceGeneration
+        let result = await task.value
+        guard generation == presenceGeneration, presenceTask != nil else { return }
+        presenceTask = nil; checkingKey = false
+        switch result {
+        case .success(let present): hasKey = present; keyAccessIssue = nil
+        case .failure: hasKey = false; keyAccessIssue = KeychainStore.accessMessage
+        }
     }
 
     /// 会話でこの提供元を使うか。どれか 1 つでも欠けていれば使わない（いまの経路のまま）。
-    var active: Bool { enabled && hasKey && budget.monthlyMinutes > 0 }
+    var active: Bool { enabled && hasKey && !checkingKey && keyAccessIssue == nil && budget.monthlyMinutes > 0 }
 
     func setEnabled(_ on: Bool) { enabled = on; defaults.set(on, forKey: Self.enabledKey) }
 
@@ -42,17 +77,26 @@ final class GeminiLiveSettings: ObservableObject {
     /// キーを置く・消す（空で消す）。成否だけ返す。キーそのものは返さない。
     @discardableResult
     func setKey(_ key: String) -> Bool {
+        guard !checkingKey, keyAccessIssue == nil else { return false }
         let trimmed = key.trimmingCharacters(in: .whitespacesAndNewlines)
         do {
             if trimmed.isEmpty { try KeychainStore.delete(Self.keychainKey) } else { try KeychainStore.set(Self.keychainKey, trimmed) }
-            hasKey = !trimmed.isEmpty
+            hasKey = !trimmed.isEmpty; keyAccessIssue = nil
             return true
         } catch {
+            keyAccessIssue = KeychainStore.accessMessage
             return false
         }
     }
 
-    func apiKey() -> String? { (try? KeychainStore.get(Self.keychainKey)) ?? nil }
+    func apiKey() -> String? {
+        do {
+            guard let value = try KeychainStore.get(Self.keychainKey) else { return nil }
+            guard !value.isEmpty else { throw KeychainStore.KeychainError.invalidData }
+            return value
+        }
+        catch { keyAccessIssue = KeychainStore.accessMessage; return nil }
+    }
 
     func record(seconds: Double, at date: Date = Date()) {
         budget.record(seconds: seconds, at: date)

@@ -37,6 +37,10 @@ struct TaskRequestRecord: Codable, Equatable {
     /// Saved before submission. Older records have no receipt and cannot infer acceptance.
     var turnRequestID: String?
     var backendTaskID = ""
+    /// Optional to keep older history readable. Never infer an order from the user's prose.
+    var backendTaskKind: String?
+    var stopRequested: Bool?
+    var transactionResultUnknown: Bool?
     var artifactID = ""
     var phase: Phase = .submitting
     var result = ""
@@ -51,19 +55,26 @@ struct TaskRequestRecord: Codable, Equatable {
         return canLocate && phase != .complete && phase != .failed && phase != .cancelled && phase != .needsInput
     }
     var hasResult: Bool { phase == .complete && !result.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+    var canReuse: Bool { transactionResultUnknown != true && !(stopRequested == true && phase == .unknown) }
 }
 
 struct TaskReply {
     var text: String
     var phase: TaskRequestRecord.Phase
     var artifactID = ""
+    var taskKind: String?
+    var transactionResultUnknown = false
     /// 例外のカード（天気・ニュース…）の答えなら、そのカード。`text` はカードの文（Work にはこちらを残す）。
     var card: DockCard? = nil
     var settled: Bool { phase != .working && phase != .waiting }
 }
 
 extension AgentTask {
-    var stateTitle: String { requestRecord?.phase.title ?? status.displayTitle }
+    var stateTitle: String {
+        if let record = requestRecord, record.phase == .cancelled,
+           record.backendTaskKind?.hasPrefix("transaction.") == true { return "操作を止めました" }
+        return requestRecord?.phase.title ?? status.displayTitle
+    }
     var summary: String {
         guard let record = requestRecord else { return failureReason ?? startedAt.formatted(date: .abbreviated, time: .shortened) }
         guard record.hasResult else { return record.message }

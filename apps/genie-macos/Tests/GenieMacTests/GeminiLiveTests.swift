@@ -122,15 +122,20 @@ final class GeminiLiveTests: XCTestCase {
 
     @MainActor
     func testGeminiIsActiveOnlyWithConsentKeyAndLimit() {
-        let defaults = UserDefaults(suiteName: "genie.gemini.test.\(UUID().uuidString)")!
-        let settings = GeminiLiveSettings(defaults: defaults)
-        settings.setEnabled(true)
-        settings.setMonthlyMinutes(30)
-        XCTAssertEqual(settings.active, settings.hasKey, "キーが無ければ使わない")
-        settings.setMonthlyMinutes(0)
-        XCTAssertFalse(settings.active, "上限が無ければ使わない")
-        settings.setMonthlyMinutes(30)
-        settings.setEnabled(false)
-        XCTAssertFalse(settings.active, "本人がオンにしていなければ使わない")
+        let suite = "genie.gemini.test.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        for hasKey in [false, true] {
+            let settings = GeminiLiveSettings(defaults: defaults, initialHasKey: hasKey)
+            XCTAssertFalse(settings.active, "本人がオンにするまでは使わない")
+            settings.setEnabled(true)
+            settings.setMonthlyMinutes(30)
+            XCTAssertEqual(settings.active, hasKey, "同意・上限があってもキーが無ければ使わない")
+            settings.setMonthlyMinutes(0)
+            XCTAssertFalse(settings.active, "上限が無ければ使わない")
+            settings.setMonthlyMinutes(30)
+            settings.setEnabled(false)
+            XCTAssertFalse(settings.active, "本人がオンにしていなければ使わない")
+        }
     }
 }

@@ -8,6 +8,7 @@ extension SelfTest {
     @MainActor
     static func geminiSmoke() async {
         let settings = GeminiLiveSettings.shared
+        await settings.refreshKeyPresence()
         guard settings.active, let key = settings.apiKey() else {
             print("SELFTEST_SKIP geminismoke: Gemini Live is not enabled with a key and a monthly limit"); exit(0)
         }

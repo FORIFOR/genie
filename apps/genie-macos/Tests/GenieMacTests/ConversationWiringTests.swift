@@ -89,6 +89,44 @@ final class ConversationWiringTests: XCTestCase {
         XCTAssertFalse(hud.conversation.isActive, "開けないマイクで会話中を名乗らない")
     }
 
+    func testInjectedMicFixtureSelectsPipelineWhileEnabledProviderLimitsStillFailClosed() {
+        let capture = VoiceCaptureFixture()
+        let previousCapture = hud.voiceCapture
+        let previousMic = Permissions.simulatedMicrophone
+        let previousSpeech = Permissions.simulatedSpeechRecognition
+        hud.voiceCapture = capture.input
+        Permissions.simulatedMicrophone = .granted
+        Permissions.simulatedSpeechRecognition = .granted
+        let suite = "genie.test.micrelease.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer {
+            hud.endConversation(.user)
+            hud.voiceCapture = previousCapture
+            Permissions.simulatedMicrophone = previousMic
+            Permissions.simulatedSpeechRecognition = previousSpeech
+            defaults.removePersistentDomain(forName: suite)
+        }
+
+        let isolated = GeminiLiveSettings(defaults: defaults, initialHasKey: false)
+        XCTAssertFalse(isolated.checkingKey, "the fixture must not schedule a Keychain presence read")
+        hud.beginConversation(geminiSettings: isolated)
+        XCTAssertEqual(hud.conversationProvider.name, "pipeline")
+        XCTAssertEqual(capture.opens, 1)
+        XCTAssertTrue(hud.conversation.isActive)
+        hud.endConversation(.user)
+        XCTAssertFalse(capture.listening)
+
+        // An enabled provider with no budget must still explain the constraint;
+        // dependency injection cannot turn a normal user's limit into fallback.
+        let limited = GeminiLiveSettings(defaults: defaults, initialHasKey: true)
+        limited.setEnabled(true)
+        limited.setMonthlyMinutes(0)
+        hud.beginConversation(geminiSettings: limited)
+        XCTAssertEqual(capture.opens, 1, "must not open the pipeline after a paid-provider refusal")
+        XCTAssertFalse(hud.conversation.isActive)
+        XCTAssertFalse(hud.answer.isEmpty)
+    }
+
     func testTheClockEndsTheConversationAfterFiveMinutes() {
         let fake = FakeProvider()
         let t0 = Date()
@@ -115,10 +153,24 @@ final class ConversationWiringTests: XCTestCase {
     }
 
     func testDictationNeverAsksGenieAndPointsToConversation() {
+        let capture = VoiceCaptureFixture()
+        let previousCapture = hud.voiceCapture
+        let previousMic = Permissions.simulatedMicrophone
+        let previousSpeech = Permissions.simulatedSpeechRecognition
+        hud.voiceCapture = capture.input
+        Permissions.simulatedMicrophone = .granted
+        Permissions.simulatedSpeechRecognition = .granted
+        defer {
+            hud.cancelListening()
+            hud.voiceCapture = previousCapture
+            Permissions.simulatedMicrophone = previousMic
+            Permissions.simulatedSpeechRecognition = previousSpeech
+        }
         var inserted: [String] = []
         Dictation.dryRun = { _ in false }            // 入れる欄が無い
         defer { Dictation.dryRun = nil }
         hud.beginDictation()
+        XCTAssertEqual(capture.opens, 1)
         let before = hud.latestRequestID
         _ = hud.speak("明日の天気教えて")
         XCTAssertEqual(hud.latestRequestID, before, "音声入力は Genie に送らない")

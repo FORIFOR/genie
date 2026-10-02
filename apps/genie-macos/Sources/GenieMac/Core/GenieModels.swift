@@ -171,6 +171,8 @@ struct AgentResult: Equatable {
     var kind: String? = nil
     /// 本人が止めた（失敗とは別。再試行は出さない）。
     var cancelled: Bool = false
+    /// The external result is unknown, so neither success nor cancellation is asserted.
+    var unconfirmed: Bool = false
     /// 仕事の結果なら、その仕事（`DockTaskBoard`）。会議の結果・始められなかった知らせは nil。
     var taskID: UUID? = nil
 
@@ -377,6 +379,8 @@ struct ActionConfirmation: Identifiable, Equatable {
     var params: [Param] = []
     /// ④ 中身の下見。長ければここだけ流す。
     var preview: String?
+    /// Fixed, server-validated simulation scope; no credentials are stored in presentation state.
+    var transactionAuthorization: TransactionAuthorizationContext?
     /// ⑤ 出所。
     var source: Source?
     let details: [String]

@@ -235,6 +235,35 @@ enum UIGeometry {
 
     // MARK: - 保存と読み出し
 
+    enum RecordingError: LocalizedError {
+        case incomplete
+
+        var errorDescription: String? {
+            "6状態すべての実寸が必要です。欠落・空の状態または計測エラーがあります"
+        }
+    }
+
+    /// Incomplete captures must never replace a reference or report a successful
+    /// recording. File failures also propagate to the selftest's FAIL result.
+    static func record(_ snapshots: [String: Snapshot], expectedStates: [String],
+                       hasProblems: Bool, to directory: String) throws -> Int {
+        guard !hasProblems, expectedStates.count == 6, Set(expectedStates).count == 6,
+              Set(snapshots.keys) == Set(expectedStates),
+              snapshots.values.allSatisfy({ !$0.isEmpty }) else {
+            throw RecordingError.incomplete
+        }
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        // Encode all states before touching existing references.
+        let data = try expectedStates.map { ($0, try encoder.encode(snapshots[$0]!)) }
+        let folder = URL(fileURLWithPath: directory, isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        for (name, value) in data {
+            try value.write(to: folder.appendingPathComponent(name + ".json"), options: .atomic)
+        }
+        return data.count
+    }
+
     static func write(_ snapshot: Snapshot, to path: String) {
         let enc = JSONEncoder()
         enc.outputFormatting = [.prettyPrinted, .sortedKeys]

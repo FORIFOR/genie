@@ -37,9 +37,10 @@ extension SelfTest {
             // 止めた直後は「停止しました」の結果（3 秒で縮む。One Continuous Surface）。
             let cancelledShown: Bool = { if case .result(let r) = store.dock { return r.cancelled }; return false }()
             var sawSuccess = false
-            // 取り消しが届くのと、後から届くかもしれない結果を待つ。
+            // 取り消しが**終わる**のを待つ（最大 30 秒）。CANCELLING は受け付けただけで、終わっていない。
+            // 以前は CANCELLING でも通していたので、5 分後に FAILED へ変わる仕事を「止められた」と数えていた。
             var server = ""
-            for _ in 0..<30 {
+            for _ in 0..<100 {
                 await pause(0.3)
                 let json = try GenieCoreBridge.taskGet(base, accessToken: token, taskId: job)
                 server = (try? JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any])?["status"] as? String ?? ""
@@ -54,7 +55,7 @@ extension SelfTest {
             let report = "job=\(job.prefix(8)) server=\(server) local=\(stoppedStatus?.rawValue ?? "nil")→\(finalStatus?.rawValue ?? "nil") 面=停止の結果:\(cancelledShown) 成功に変わった:\(sawSuccess)"
             // backend が先に終わっていたら（COMPLETED）取り消しは 409 で届かない。それは「取り消せた」ではない。
             if server == "COMPLETED" { print("SELFTEST_SKIP aistop: 止める前に backend が終わっていた \(report)"); exit(0) }
-            let ok = ["CANCELLED", "CANCELLING"].contains(server) && finalStatus == .failed && cancelledShown && !sawSuccess
+            let ok = server == "CANCELLED" && finalStatus == .failed && cancelledShown && !sawSuccess
             print((ok ? "SELFTEST_OK" : "SELFTEST_FAIL") + " aistop: " + report)
             exit(ok ? 0 : 2)
         } catch { print("SELFTEST_FAIL aistop error=\(error)"); exit(3) }

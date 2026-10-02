@@ -130,7 +130,15 @@ enum SelfTest {
         case "recoveryoffline": recoveryOffline(args); return true
         case "fulllifecycle": fullLifecycle(args); return true
         case "e2e001": e2e001(args); return true
-        case "shots": shots(args); return true
+        case "shots":
+            // Finish AppKit's launch notification before showing fixture windows.
+            // shots pumps a nested run loop while waiting for on-screen windows;
+            // entering it during launch can postpone MainWindow's presentation.
+            // A main-dispatch callback would also block its queued presentation.
+            RunLoop.main.perform(inModes: [.default, .modalPanel, .eventTracking]) {
+                MainActor.assumeIsolated { shots(args) }
+            }
+            return true
         case "sections": sections(args); return true
         case "a11ynames": a11ynames(args); return true
         case "egress": egress(); return true
@@ -1716,7 +1724,7 @@ enum SelfTest {
         let states = geometryStates()
 
         var problems: [(String, [String])] = []
-        var recorded = 0
+        var recordings: [String: UIGeometry.Snapshot] = [:]
         for (name, present) in states {
             present()
             settle(1.2)
@@ -1725,7 +1733,7 @@ enum SelfTest {
             }
             let path = "\(refDir)/\(name).json"
             if record {
-                UIGeometry.write(snap, to: path); recorded += 1; continue
+                recordings[name] = snap; continue
             }
             guard let want = UIGeometry.read(path) else {
                 problems.append((name, ["基準が無い（--record で作る）"])); continue
@@ -1740,8 +1748,18 @@ enum SelfTest {
         store.reset()
 
         if record {
-            print("SELFTEST_OK geometry: \(recorded)状態の実寸を基準として記録した（\(refDir)）")
-            exit(0)
+            do {
+                let recorded = try UIGeometry.record(recordings, expectedStates: states.map(\.0),
+                    hasProblems: !problems.isEmpty, to: refDir)
+                print("SELFTEST_OK geometry: \(recorded)状態の実寸を基準として記録した（\(refDir)）")
+                exit(0)
+            } catch {
+                for (name, lines) in problems {
+                    for line in lines { print("GEOMETRY \(name): \(line)") }
+                }
+                print("SELFTEST_FAIL geometry: 基準を記録できない（\(error.localizedDescription)）")
+                exit(2)
+            }
         }
         if problems.isEmpty {
             print("SELFTEST_OK geometry: 6状態の位置・寸法が基準と 2pt 以内")
@@ -3832,7 +3850,7 @@ enum SelfTest {
     ///   - Dock が出るまで < 120ms
     ///   - AX 取得 < 250ms
     ///   - アプリ変更の認識 < 150ms
-    ///   - idle のメモリ < 180MB
+    ///   - idle のメモリ < 180MB（Dock の外殻が Liquid Glass のときは + 90MB。下の `idleMemoryTargetMB`）
     /// CPU < 1% は測るのに時間の窓が要るので、ここでは idle 1 秒の実測を出す（判定は緩め）。
     @MainActor
     private static func perf() {
@@ -3864,17 +3882,29 @@ enum SelfTest {
         if appMs >= 150 { fail.append(String(format: "アプリ認識が %.0fms (目標 <150ms)", appMs)) }
 
         // idle のメモリ（footprint）。
-        var info = task_vm_info_data_t()
-        var count = mach_msg_type_number_t(MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<natural_t>.size)
-        let kr = withUnsafeMutablePointer(to: &info) {
-            $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
-                task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &count)
-            }
+        //
+        // **落ち着いてから測る。**起動から 0.2 秒ほどは、最初の描画のために GPU 側の
+        // バッファ（実測 218MB、「Owned physical footprint (graphics)」）が確保されていて、
+        // 1 秒後には全部回収される（実測 23〜29MB）。その瞬間を測っていた間は、待機時の
+        // 値ではないのに 244MB として落ちていた（2026-10-03）。run loop を回しながら
+        // 0.1 秒ごとに読み、0.5 秒間減らなくなった値を待機時とする（最長 3 秒）。
+        // 起動直後の最大値は、配信など他のアプリと同居するときの負荷なので、参考として残す。
+        var settled: Double? = nil
+        var launchPeak: Double? = nil
+        var lowest = Double.greatestFiniteMagnitude
+        var stableSince = Date()
+        let settleDeadline = Date().addingTimeInterval(3.0)
+        while Date() < settleDeadline {
+            guard let now = physFootprintMB() else { break }
+            launchPeak = max(launchPeak ?? 0, now.peak)
+            if now.current < lowest - 1 { lowest = now.current; stableSince = Date() }
+            if Date().timeIntervalSince(stableSince) >= 0.5 { settled = now.current; break }
+            RunLoop.main.run(until: Date().addingTimeInterval(0.1))
         }
-        if kr == KERN_SUCCESS {
-            let mb = Double(info.phys_footprint) / 1_048_576
-            report.append(String(format: "mem=%.0fMB", mb))
-            if mb >= 180 { fail.append(String(format: "idle メモリが %.0fMB (目標 <180MB)", mb)) }
+        if let mb = settled ?? physFootprintMB()?.current {
+            let target = idleMemoryTargetMB()
+            report.append(String(format: "mem=%.0fMB launchPeak=%.0fMB target=%.0fMB", mb, launchPeak ?? mb, target))
+            if mb >= target { fail.append(String(format: "idle メモリが %.0fMB (目標 <%.0fMB)", mb, target)) }
         } else {
             fail.append("メモリを測れない")
         }
@@ -3896,6 +3926,34 @@ enum SelfTest {
             print("SELFTEST_FAIL perf: \(fail.joined(separator: ", "))")
             exit(2)
         }
+    }
+
+    /// 待機メモリの目標。
+    ///
+    /// 基本は §29 の 180MB。Dock の外殻を Liquid Glass にしている間（macOS 26 以降、
+    /// 「透明度を下げる」オフ）は、ガラスの屈折・ぼかしのために GPU 側が 218MB を持ち続ける
+    /// （2026-10-03 実測: 直前のコミット 17MB → ガラス導入 `990f475` で 243MB。
+    /// `docs/ux-benchmark/compare/liquid-glass/ROUND.md`）。本人がガラスを選んだので、
+    /// その分だけ上げる。ガラス以外の増加は今までどおりこの検査で捕まえる。
+    @MainActor
+    private static func idleMemoryTargetMB() -> Double {
+        if #available(macOS 26.0, *), !NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency {
+            return 180 + 90
+        }
+        return 180
+    }
+
+    /// 自プロセスの physical footprint（MB）と、プロセス開始からの最大値。
+    private static func physFootprintMB() -> (current: Double, peak: Double)? {
+        var info = task_vm_info_data_t()
+        var count = mach_msg_type_number_t(MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<natural_t>.size)
+        let kr = withUnsafeMutablePointer(to: &info) {
+            $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
+                task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &count)
+            }
+        }
+        guard kr == KERN_SUCCESS else { return nil }
+        return (Double(info.phys_footprint) / 1_048_576, Double(info.ledger_phys_footprint_peak) / 1_048_576)
     }
 
     /// 自プロセスの CPU 使用率（%）を実測する。
@@ -4834,7 +4892,7 @@ enum SelfTest {
     /// ① 録音の自動 upload 旗は既定 OFF（env 無し）。② オンデバイス資産が無いロケールで
     /// `start` が throw し `recognizeFile` が nil（サーバへ落ちない）。資産の無いロケールがこの Mac に
     /// 無ければ NOT_MEASURED（静的検査は別に scripts/verify-privacy-egress.sh が持つ）。
-    /// ③ `.meeting` が求めるのはマイクだけ。
+    /// ③ `.meeting` が求めるのはマイクと音声認識だけ。
     @MainActor
     private static func egress() {
         if ProcessInfo.processInfo.environment["ASTRA_DEV_AUTO_UPLOAD"] != nil {
@@ -4868,11 +4926,23 @@ enum SelfTest {
                 let say = Process()
                 say.executableURL = URL(fileURLWithPath: "/usr/bin/say")
                 say.arguments = ["-v", "Samantha", "-o", aiff.path, "good morning"]
-                try? say.run(); say.waitUntilExit()
-                if say.terminationStatus == 0, let text = st.recognizeFile(aiff, timeout: 8), !text.isEmpty {
-                    fail.append("\(id) は資産が無いのに recognizeFile が文字を返した: \(text)")
+                do {
+                    try say.run()
+                    say.waitUntilExit()
+                    guard say.terminationReason == .exit, say.terminationStatus == 0 else {
+                        print("SELFTEST_FAIL egress: synthetic speech fixture generation failed"); exit(2)
+                    }
+                    let audio = try AVAudioFile(forReading: aiff)
+                    guard audio.length > 0 else {
+                        print("SELFTEST_FAIL egress: synthetic speech fixture is empty"); exit(2)
+                    }
+                    if let text = st.recognizeFile(aiff, timeout: 8), !text.isEmpty {
+                        fail.append("\(id) は資産が無いのに recognizeFile が文字を返した")
+                    }
+                    stt = "\(id) start=code\(code) file=nil"
+                } catch {
+                    fail.append("synthetic speech fixture could not be generated or read")
                 }
-                stt = "\(id) start=code\(code) file=nil"
             } else {
                 stt = "NOT_MEASURED(全ロケールに資産あり)"
             }
@@ -4880,7 +4950,7 @@ enum SelfTest {
         guard fail.isEmpty else {
             print("SELFTEST_FAIL egress: " + fail.joined(separator: " / ")); exit(2)
         }
-        print("SELFTEST_OK egress: autoUpload=off cloudSTTConsent=\(RecordingRuntime.cloudTranscriptionAllowed ? "on" : "off") meeting=[microphone] sttNoFallback=\(stt)")
+        print("SELFTEST_OK egress: autoUpload=off cloudSTTConsent=\(RecordingRuntime.cloudTranscriptionAllowed ? "on" : "off") meeting=[microphone,speechRecognition] sttNoFallback=\(stt)")
         exit(0)
     }
 
@@ -4896,7 +4966,7 @@ enum SelfTest {
             for dark in [false, true] {
                 let name = dark ? "dark" : "light"
                 let views: [(String, AnyView)] = [
-                    ("settings", AnyView(SettingsView().background(dark ? Color.black : Color.white))),
+                    ("settings", AnyView(settingsFixture().background(dark ? Color.black : Color.white))),
                     ("retry", AnyView(MeetingArtifactView(title: "文字起こしの確認", duration: "01:15", participants: 1,
                         summary: [], decisions: [], actionItems: [],
                         transcriptionFailure: "文字起こしサーバーに接続されていません。録音はこのMacに保存されています。",
@@ -5824,7 +5894,7 @@ enum SelfTest {
         MainWindowController.shared.hide(); settle(0.3)
 
         // Settings（5 つの許可の一覧）
-        SettingsWindowController.shared.show(); settle(1.0)
+        SettingsWindowController.shared.show(settingsView: settingsFixture()); settle(1.0)
         add(report("settings", titles: ["Genie 設定"]))
         if let w = NSApp.windows.first(where: { $0.title == "Genie 設定" && $0.isVisible }) {
             let t = tabWalk("settings", w); tabSummary.append("settings moved=\(t.moved) visible=\(t.visible) invisible=\(t.invisible) unmeasured=\(t.unmeasured)")
@@ -7008,7 +7078,7 @@ enum SelfTest {
             ("HomeView", contentScore(HomeView(attention: [HomeAttention(kind: "10:00 A社 商談", title: "前回から価格条件が変更", action: "準備する"), HomeAttention(kind: "Research complete", title: "半導体市場調査", action: "見る")], active: [HomeWork(title: "競合20社調査", meta: "12 sources · 進行中")]), NSSize(width: 820, height: 600))),
             ("RecordingWorkspace", contentScore(RecordingWorkspaceView(), NSSize(width: Metrics.workspaceWidth, height: Metrics.workspaceHeight))),
             ("MainWindow", contentScore(MainWindowView(loadBackend: false), NSSize(width: 900, height: 600))),
-            ("Settings", contentScore(SettingsView(), NSSize(width: 460, height: 420))),
+            ("Settings", contentScore(settingsFixture(), NSSize(width: 460, height: 420))),
         ]
         // 実際に描画されていれば、複数色（>=4）かつ相応の不透明面積（>=10%）を持つ。
         // カスタム描画の 2 面（HUD / Recording Workspace）は「高い再現度」の成果物なので

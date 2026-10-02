@@ -27,6 +27,8 @@ struct DockTask: Identifiable, Equatable {
         case succeeded(DockArtifact)
         case failed(String)
         case cancelled(String)
+        /// The external result is unknown. Never offer a repeat submission.
+        case unconfirmed(String)
     }
 
     var isActive: Bool {
@@ -59,6 +61,7 @@ struct DockTaskEvent: Equatable {
         case succeeded(DockArtifact)
         case failed(String)
         case cancelled(String)
+        case unconfirmed(String)
     }
 }
 
@@ -97,6 +100,7 @@ struct DockTaskBoard: Equatable {
         case .succeeded(let artifact): task.status = .succeeded(artifact); task.endedAt = now
         case .failed(let reason): task.status = .failed(reason); task.endedAt = now
         case .cancelled(let reason): task.status = .cancelled(reason); task.endedAt = now
+        case .unconfirmed(let reason): task.status = .unconfirmed(reason); task.endedAt = now
         }
         tasks[i] = task
         return true
@@ -112,7 +116,7 @@ struct DockTaskBoard: Equatable {
 }
 
 /// Dock に出す一枚を決める（純関数）。優先順:
-/// 1. 本人が始めた聞き取り・送信中（listening / thinking）
+/// 1. 本人が始めた聞き取り（listening）
 /// 2. 確認待ち（承認はカードでだけ。時間で縮めない）
 /// 3. 受付の応答（かしこまりました / 受け付けられません）
 /// 4. 本人・声が頼んだ面（答え・天気・Quick Actions・会議など）
@@ -127,9 +131,12 @@ enum DockComposer {
                         activeCount: Int,
                         conversationActive: Bool) -> DockPresentation {
         switch requested {
-        case .listening, .thinking:
+        case .listening:
             // 会話の自動の聞き直しは、確認カードを隠さない（本人が始めた聞き取りだけが前に出る）。
             if confirmation == nil || !conversationActive { return requested }
+        case .thinking:
+            // Home の送信も thinking になる。処理が承認待ちになったら、待っているカードを出す。
+            if confirmation == nil { return requested }
         default: break
         }
         if let confirmation { return .confirmation(confirmation) }
@@ -157,6 +164,8 @@ extension AgentResult {
             self.init(title: task.title, actions: [.retry], detail: reason, failed: true, taskID: task.id)
         case .cancelled(let reason):
             self.init(title: task.title, actions: [], detail: reason, failed: true, cancelled: true, taskID: task.id)
+        case .unconfirmed(let reason):
+            self.init(title: task.title, actions: [], detail: reason, failed: true, unconfirmed: true, taskID: task.id)
         }
     }
 }
@@ -167,7 +176,7 @@ enum DockResultPolicy {
         switch status {
         case .succeeded: return 8
         case .cancelled: return 3
-        case .failed, .running, .awaitingApproval: return nil
+        case .failed, .unconfirmed, .running, .awaitingApproval: return nil
         }
     }
 }

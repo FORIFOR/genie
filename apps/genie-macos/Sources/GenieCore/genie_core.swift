@@ -2908,7 +2908,7 @@ public func apiPluginDisconnect(baseUrl: String, accessToken: String, pluginId: 
 }
 }
 /**
- * gateway に届くか（GET /v1/auth/providers, 認証不要）。オフライン判定に。
+ * gateway に届くか（GET /healthz, 認証・rate limit 対象外）。依存サービスの readiness は判定しない。
  */
 public func apiReachable(baseUrl: String) -> Bool  {
     return try!  FfiConverterBool.lift(try! rustCall() {
@@ -3366,7 +3366,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_genie_core_checksum_func_api_plugin_disconnect() != 29864) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_genie_core_checksum_func_api_reachable() != 13704) {
+    if (uniffi_genie_core_checksum_func_api_reachable() != 59910) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_genie_core_checksum_func_api_recover_turn() != 13119) {

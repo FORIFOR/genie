@@ -9,6 +9,8 @@ struct ConfirmationCardView: View {
     var onResolve: (Bool) -> Void
     /// 面が出た時刻。出た直後の「実行する」は受け付けない（Dock の確認面と同じ）。
     @State private var shownAt = Date()
+    @ObservedObject private var authorizations = TransactionAuthorizationState.shared
+    private var delegation: TransactionAuthorizationState.Draft? { authorizations.drafts[confirmation.id] }
 
     @Environment(\.colorScheme) private var scheme
     private var dark: Bool { scheme == .dark }
@@ -34,7 +36,21 @@ struct ConfirmationCardView: View {
                 .foregroundStyle(Palette.text(dark))
                 .fixedSize(horizontal: false, vertical: true)
 
-            if !confirmation.details.isEmpty {
+            if confirmation.transactionAuthorization != nil { TransactionAuthorizationChoice(id: confirmation.id) }
+            if delegation?.recurring == true { TransactionAuthorizationEditor(id: confirmation.id) }
+            else if let preview = confirmation.preview, !preview.isEmpty {
+                ScrollView {
+                    Text(preview)
+                        .font(.system(size: 11))
+                        .foregroundStyle(Palette.muted(dark))
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .frame(height: confirmation.previewHeight())
+                .accessibilityIdentifier("cardPreview")
+            }
+
+            if delegation?.recurring != true, !confirmation.details.isEmpty {
                 VStack(alignment: .leading, spacing: 3) {
                     ForEach(confirmation.details, id: \.self) { d in
                         Text(d)
@@ -51,24 +67,30 @@ struct ConfirmationCardView: View {
                 // 別の id にする —— 同じ id で登録すると後勝ちで、どちらを押したか分からない。
                 // 高さと余白はラベルの中に置く（外に付けると押せる範囲が文字だけになる）。
                 ProbeButton(id: "cardCancel", action: { onResolve(false) }) {
-                    Text(Facts.confirmationCancel)
+                    Text(delegation?.frozenBody == nil ? Facts.confirmationCancel : "閉じる")
                         .font(.system(size: 11))
                         .foregroundStyle(Palette.muted(dark))
                         .frame(height: 28).padding(.horizontal, 12)
                         .contentShape(Rectangle())
                 }
                     .buttonStyle(GenieControlStyle(radius: 8, base: 0.0))
+                    .disabled(delegation?.sending == true)
                 ProbeButton(id: "cardProceed", action: {
                     guard Date().timeIntervalSince(shownAt) >= ActionConfirmation.proceedArmDelay else { return }
-                    onResolve(true)
+                    if delegation?.recurring == true {
+                        Task { if await authorizations.submit(confirmation.id) { onResolve(true) } }
+                    } else { onResolve(true) }
                 }) {
-                    Text(confirmation.confirmLabel)
+                    Text(delegation?.recurring == true
+                         ? (delegation?.sending == true ? "確認中…" : (delegation?.frozenBody == nil ? "この条件で任せて注文" : "同じ内容で再確認"))
+                         : confirmation.confirmLabel)
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(riskTint)
                         .frame(height: 28).padding(.horizontal, 14)
                         .contentShape(Rectangle())
                 }
                     .buttonStyle(GenieControlStyle(radius: 8, base: 0.06))
+                    .disabled(delegation?.sending == true || (delegation?.recurring == true && delegation?.frozenBody == nil && delegation?.spec() == nil))
             }
         }
         .padding(16)

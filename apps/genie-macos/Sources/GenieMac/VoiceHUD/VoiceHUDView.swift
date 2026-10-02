@@ -886,6 +886,8 @@ struct ConfirmationDock: View {
     @Environment(\.colorScheme) private var scheme
     private var dark: Bool { scheme == .dark }
     let confirmation: ActionConfirmation
+    @ObservedObject private var authorizations = TransactionAuthorizationState.shared
+    private var delegation: TransactionAuthorizationState.Draft? { authorizations.drafts[confirmation.id] }
 
     /// その場で直しているか。**別の窓は開かない。** 同じ面の中で入れ替える。
     @State private var editing = false
@@ -897,6 +899,10 @@ struct ConfirmationDock: View {
 
     private var riskTint: Color {
         confirmation.risk == .r3 ? Palette.danger(dark) : Palette.warning(dark)
+    }
+
+    private var proceedDisabled: Bool {
+        delegation?.sending == true || (delegation?.recurring == true && delegation?.frozenBody == nil && delegation?.spec() == nil)
     }
 
 
@@ -938,7 +944,9 @@ struct ConfirmationDock: View {
                 .foregroundStyle(riskTint)
             }
 
-            if editing { editor } else { readOnly }
+            if confirmation.transactionAuthorization != nil { TransactionAuthorizationChoice(id: confirmation.id) }
+            if delegation?.recurring == true { TransactionAuthorizationEditor(id: confirmation.id) }
+            else if editing { editor } else { readOnly }
 
             Spacer(minLength: 0)
 
@@ -979,13 +987,14 @@ struct ConfirmationDock: View {
                     // 答えは**描いたカードの id 付き**で返す（store の現在値に答えない）。
                     ProbeButton(id: "confirmCancel", action: { GenieStateStore.shared.resolveConfirmation(id: confirmation.id, approved: false) }) {
                         // 高さと余白はラベルの中に置く（外に付けると背景と押せる範囲が文字だけになる）。
-                        Text(Facts.confirmationCancel)
+                        Text(delegation?.frozenBody == nil ? Facts.confirmationCancel : "閉じる")
                             .font(.system(size: S.type(Metrics.dockRowSize)))
                             .foregroundStyle(Palette.muted(dark))
                             .frame(height: 32).padding(.horizontal, 14)
                             .contentShape(Rectangle())
                     }
                         .buttonStyle(GenieControlStyle(radius: 7, base: 0.0))
+                        .disabled(delegation?.sending == true)
                     if confirmation.risk != .r3, !confirmation.params.isEmpty || confirmation.preview != nil {
                         // 検査から押せる目印付き（Atlas dock.confirmation-edit）。走るものは 1 本。
                         // 破壊（r3・捨てる等）は二択にする。「直す」は出さない。
@@ -1006,20 +1015,31 @@ struct ConfirmationDock: View {
                     // 6 文字の Cancel（76pt）に負けていた（実測）。字数で重さが
                     // 決まってしまうので、最小幅で下から支える。
                     ProbeButton(id: "confirmProceed", action: {
-                        guard armed else { return }
-                        GenieStateStore.shared.resolveConfirmation(id: confirmation.id, approved: true, edits: edited)
+                        guard armed, !proceedDisabled else { return }
+                        if delegation?.recurring == true {
+                            Task {
+                                if await authorizations.submit(confirmation.id) {
+                                    GenieStateStore.shared.resolveConfirmation(id: confirmation.id, approved: true)
+                                }
+                            }
+                        } else {
+                            GenieStateStore.shared.resolveConfirmation(id: confirmation.id, approved: true, edits: edited)
+                        }
                     }) {
                         // 塗り・高さ・最小幅はラベルの中に置く。外に付けると、見た目は大きいのに
                         // 押せるのは文字だけだった（主たる操作なのに当たりが小さい）。
-                        Text(confirmation.confirmLabel)
+                        Text(delegation?.recurring == true
+                             ? (delegation?.sending == true ? "確認中…" : (delegation?.frozenBody == nil ? "この条件で任せて注文" : "同じ内容で再確認"))
+                             : confirmation.confirmLabel)
                             .font(.system(size: S.type(Metrics.dockRowSize), weight: .semibold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(proceedDisabled ? Palette.muted(dark) : .white)
                             .frame(height: 32).padding(.horizontal, 20)
                             .frame(minWidth: S.metric(Metrics.dockConfirmPrimaryMinWidth))
-                            .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(riskTint))
+                            .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(proceedDisabled ? Palette.border(dark) : riskTint))
                             .contentShape(Rectangle())
                     }
                         .buttonStyle(GenieControlStyle(radius: 7, base: 0.0, filled: false))
+                        .disabled(proceedDisabled)
                 }
             }
         }
@@ -1029,6 +1049,7 @@ struct ConfirmationDock: View {
         // Escape は取消。直している最中なら、直すのをやめて確認へ戻る。
         // **逃げ道は常に同じ鍵**でないと、危ないときに手が止まる。
         .escapeKey {
+            guard delegation?.sending != true else { return }
             if editing { editing = false; edited = [:] }
             else { GenieStateStore.shared.resolveConfirmation(id: confirmation.id, approved: false) }
         }
@@ -1537,6 +1558,7 @@ struct ResultDock: View {
 
     /// 1b: 1 行目。何が起きたかを先に言う（「できました」だけにしない）。
     private var outcomeLine: String {
+        if result.unconfirmed { return "結果は未確認です" }
         if result.cancelled { return "止めました" }
         if result.failed { return "できませんでした" }
         return "\(result.kind ?? "成果物")ができました"

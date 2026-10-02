@@ -58,7 +58,7 @@ struct ConnectorsPane: View {
                 _ = await MainData.shared.ensureConnected(); connections.refresh()
             }
             .sheet(isPresented: Binding(get: { preview != nil }, set: { if !$0 { preview = nil } })) {
-                if let provider = preview { purposeSheet(provider) }
+                if let provider = preview { purposeSheet(provider, dark: dark) }
             }
     }
     private func providerCard(_ provider: String) -> some View {
@@ -145,7 +145,7 @@ struct ConnectorsPane: View {
             .overlay(RoundedRectangle(cornerRadius: Metrics.paletteRadius).stroke(Palette.border(dark)))
             .accessibilityElement(children: .contain).accessibilityIdentifier("connectionGroup-\(provider)")
     }
-    private func purposeSheet(_ provider: String) -> some View {
+    func purposeSheet(_ provider: String, dark: Bool) -> some View {
         VStack(alignment: .leading, spacing: Space.largePadding) {
             Text(title(provider)).font(.system(size: TypeScale.sectionTitleSize, weight: .semibold))
             Text("つなぐと、できること").font(.system(size: TypeScale.cardTitleSize))

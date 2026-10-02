@@ -4,14 +4,15 @@ import GenieCore
 /// One refresh chain per gateway and desktop identity; access tokens stay in memory.
 /// A single in-flight task prevents rotating the same refresh token concurrently.
 actor GatewaySession {
-    struct Credentials: Codable {
+    struct Credentials: Codable, Sendable {
         let refreshToken: String
         let deviceToken: String
         var pending: Bool? = nil
     }
-    enum SessionError: Error { case renewalUncertain, rateLimited, invalidResponse }
+    enum SessionError: Error { case renewalUncertain, rateLimited, invalidResponse, credentialAccessRequired }
     typealias Exchange = (String) async throws -> Tokens
     private let read: () throws -> Credentials?
+    private let readAfterUserRequest: (@Sendable () throws -> Credentials?)?
     private let save: (Credentials) throws -> Void
     private let signIn: () async throws -> Tokens
     private let exchange: Exchange
@@ -20,14 +21,18 @@ actor GatewaySession {
     private var cached: Tokens?
     private var expiresAt = Date.distantPast
     private var inFlight: Task<Tokens, Error>?
+    private var credentialReadInFlight: Task<Bool, Error>?
     private var failure: Error?
     private var retryAt = Date.distantPast
+    private struct IssuedCredentialsNotSaved: Error { let underlying: Error }
 
     init(read: @escaping () throws -> Credentials?, save: @escaping (Credentials) throws -> Void,
          signIn: @escaping () async throws -> Tokens, exchange: @escaping Exchange,
-         now: @escaping () -> Date = Date.init, acquireLock: (() async throws -> Int32)? = nil) {
+         now: @escaping () -> Date = Date.init, acquireLock: (() async throws -> Int32)? = nil,
+         readAfterUserRequest: (@Sendable () throws -> Credentials?)? = nil) {
         self.read = read; self.save = save; self.signIn = signIn; self.exchange = exchange; self.now = now
         self.acquireLock = acquireLock
+        self.readAfterUserRequest = readAfterUserRequest
     }
 
     static func desktop(base: String, identity: String, now: @escaping () -> Date = Date.init) -> GatewaySession {
@@ -62,12 +67,31 @@ actor GatewaySession {
             guard !result.access_token.isEmpty, !result.refresh_token.isEmpty, result.expires_in > 0 else { throw SessionError.invalidResponse }
             return Tokens(accessToken: result.access_token, refreshToken: result.refresh_token,
                           deviceToken: result.device_token, expiresIn: result.expires_in)
-        }, now: now, acquireLock: { try await SessionFileLock.acquire(key) })
+        }, now: now, acquireLock: { try await SessionFileLock.acquire(key) }, readAfterUserRequest: {
+            guard let value = try KeychainStore.readGatewaySessionAfterUserRequest(account: key) else { return nil }
+            return try JSONDecoder().decode(Credentials.self, from: Data(value.utf8))
+        })
+    }
+
+    /// Read only the existing item after a person presses Home's recovery button.
+    /// No token is returned, cached, refreshed, saved or replaced by this operation.
+    func confirmCredentialReadAfterUserRequest() async throws -> Bool {
+        if let credentialReadInFlight { return try await credentialReadInFlight.value }
+        guard inFlight == nil, let readAfterUserRequest else { throw KeychainStore.KeychainError.operationInProgress }
+        let work = Task.detached {
+            guard let credentials = try readAfterUserRequest() else { return false }
+            guard !credentials.refreshToken.isEmpty, !credentials.deviceToken.isEmpty else { throw SessionError.invalidResponse }
+            return true
+        }
+        credentialReadInFlight = work
+        defer { credentialReadInFlight = nil }
+        return try await work.value
     }
 
     /// Only an explicit reconnect may abandon an uncertain refresh chain.
     /// Obtain replacement credentials before replacing the saved session.
     func tokens(reauthenticate: Bool = false) async throws -> Tokens {
+        guard credentialReadInFlight == nil else { throw KeychainStore.KeychainError.operationInProgress }
         if !reauthenticate, let failure { throw failure }
         if let inFlight { return try await inFlight.value }
         // Leave time for the longest foreground poll; wake also calls this method.
@@ -76,7 +100,10 @@ actor GatewaySession {
         let work = Task<Tokens, Error> { [read, save, signIn, exchange, acquireLock] in
             let descriptor = try await acquireLock?()
             defer { if let descriptor { SessionFileLock.release(descriptor) } }
-            let credentials = reauthenticate ? nil : try read()
+            // Even explicit reconnect must first establish access to the existing
+            // store. A denied read is never interpreted as a missing session.
+            let stored = try read()
+            let credentials = reauthenticate ? nil : stored
             let tokens: Tokens
             if var credentials {
                 guard credentials.pending != true else { throw SessionError.renewalUncertain }
@@ -90,7 +117,8 @@ actor GatewaySession {
                 }
             }
             else { tokens = try await signIn() }
-            try save(Credentials(refreshToken: tokens.refreshToken, deviceToken: tokens.deviceToken))
+            do { try save(Credentials(refreshToken: tokens.refreshToken, deviceToken: tokens.deviceToken)) }
+            catch { throw IssuedCredentialsNotSaved(underlying: error) }
             return tokens
         }
         inFlight = work
@@ -100,6 +128,16 @@ actor GatewaySession {
             failure = nil
             cached = tokens; expiresAt = now().addingTimeInterval(TimeInterval(tokens.expiresIn))
             return tokens
+        } catch let error as IssuedCredentialsNotSaved {
+            // The server has already issued a chain. A missing local item after a
+            // failed first save must never cause repeated automatic sign-ins.
+            failure = SessionError.renewalUncertain
+            if error.underlying is KeychainStore.KeychainError { throw SessionError.credentialAccessRequired }
+            throw SessionError.renewalUncertain
+        } catch is KeychainStore.KeychainError {
+            // No refresh was replayed or alternate identity created. The user may
+            // resolve access in Keychain and retry this same stored session.
+            throw SessionError.credentialAccessRequired
         } catch SessionError.rateLimited {
             retryAt = now().addingTimeInterval(60)
             throw SessionError.rateLimited

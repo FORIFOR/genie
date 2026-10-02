@@ -69,6 +69,9 @@ final class ContinuousSurfaceTests: XCTestCase {
         }
         XCTAssertEqual(c(.listening(partial: "") , card: card, active: 2), .listening(partial: ""), "本人の聞き取りが先")
         XCTAssertEqual(c(.listening(partial: ""), card: card, conversation: true), .confirmation(card), "会話の聞き直しはカードを隠さない")
+        XCTAssertEqual(c(.thinking, card: card), .confirmation(card), "Home の送信中表示が承認カードを隠さない")
+        XCTAssertEqual(c(.thinking, card: card, conversation: true), .confirmation(card))
+        XCTAssertEqual(c(.thinking, active: 1), .thinking, "承認待ちでなければ送信中表示を保つ")
         XCTAssertEqual(c(.answer("a"), card: card, ack: ack), .confirmation(card))
         XCTAssertEqual(c(.idle, ack: ack, result: done, active: 1), .ack(ack))
         XCTAssertEqual(c(.quickActions, result: done, active: 1), .quickActions, "本人が開いた面が結果より先")
@@ -104,6 +107,37 @@ final class ContinuousSurfaceTests: XCTestCase {
         XCTAssertEqual(DockResultPolicy.holdSeconds(for: .succeeded(artifact)), 8)
         XCTAssertEqual(DockResultPolicy.holdSeconds(for: .cancelled("x")), 3)
         XCTAssertNil(DockResultPolicy.holdSeconds(for: .failed("x")), "失敗は閉じるまで残す")
+    }
+
+    func testTransactionStopUsesItsOwnExplanationWithoutRetry() {
+        let store = GenieStateStore.shared
+        let id = UUID()
+        store.apply(store.event(id, .started(title: "模擬注文", step: "受付を待っています")))
+        var stops = 0
+        store.setStopHandler(id, detail: TaskOutcomeContext.stoppingTransaction) { stops += 1 }
+        store.stopTask(id)
+        guard case .result(let result) = store.dock else { return XCTFail() }
+        XCTAssertEqual(stops, 1)
+        XCTAssertEqual(result.detail, TaskOutcomeContext.stoppingTransaction)
+        XCTAssertFalse(result.detail?.contains("途中までの内容は使いません") == true)
+        XCTAssertFalse(result.actions.contains(.retry))
+        store.stopTask(id)
+        XCTAssertEqual(stops, 1)
+    }
+
+    func testUnknownTransactionTerminalDoesNotOfferRepeatSubmission() {
+        let store = GenieStateStore.shared
+        let id = UUID()
+        store.apply(store.event(id, .started(title: "模擬注文", step: "受付を待っています")))
+        VoiceHUDState.shared.finishOnDock(id,
+            reply: TaskReply(text: TaskOutcomeContext.transactionUnknown, phase: .unknown,
+                             taskKind: "transaction.order", transactionResultUnknown: true), title: "模擬注文")
+        guard case .result(let result) = store.dock else { return XCTFail() }
+        XCTAssertFalse(result.actions.contains(.retry))
+        XCTAssertEqual(result.detail, TaskOutcomeContext.transactionUnknown)
+        XCTAssertTrue(result.unconfirmed)
+        XCTAssertFalse(result.cancelled)
+        XCTAssertNil(DockResultPolicy.holdSeconds(for: .unconfirmed("unknown")))
     }
 
     func testCancelledResultShrinksAfterItsHoldButNotWhileHovered() async throws {

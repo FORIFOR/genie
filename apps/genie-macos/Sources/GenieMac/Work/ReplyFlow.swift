@@ -143,6 +143,8 @@ final class ReplyFlow: ObservableObject {
         case .unanswered:
             // 答えが無かっただけでも送らない（下書きは Work に残る）。
             return .cancelled
+        case .delegated: return .cancelled
+        case .authorizationUnknown: return .cancelled
         }
     }
 
