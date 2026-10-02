@@ -1,12 +1,43 @@
 #!/usr/bin/env bash
 # Genie の「この環境で検証できる全て」を 1 コマンドで通す最終アクセプタンス。
 # 実行時前提が要るもの（署名 .app への TCC・Windows 実機・実 OAuth 提供者）は各スクリプトが
-# SELFTEST_SKIP / SKIP で正直に飛ばす。ここが緑なら「実装＋この環境で検証可能な範囲」は健全。
+# SELFTEST_SKIP / SKIP を未実施として集計する。未実施ありは PARTIAL/exit2、失敗は exit1。
 set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+source "$ROOT/scripts/build-resource-env.sh" || exit 1
 cd "$ROOT"
 fail=0
-run() { echo; echo "== $1 =="; shift; if "$@"; then :; else echo "  ^ FAILED"; fail=1; fi; }
+REPORT_DIR="$(mktemp -d)" || exit 1
+NOT_RUN_REPORT="$REPORT_DIR/not-run.txt"
+: > "$NOT_RUN_REPORT" || exit 1
+trap 'rm -rf "$REPORT_DIR"' EXIT
+trap 'echo "VERIFY_ALL_NOT_RUN: interrupted; unfinished gates are not validated"; exit 130' INT
+trap 'echo "VERIFY_ALL_NOT_RUN: terminated; unfinished gates are not validated"; exit 143' TERM
+run() {
+  local label="$1" status log="$REPORT_DIR/gate.log" markers="$REPORT_DIR/markers.txt"
+  local -a command_status
+  shift
+  echo; echo "== $label =="
+  "$@" 2>&1 | tee "$log"
+  command_status=("${PIPESTATUS[@]}")
+  status=${command_status[0]}
+  if [[ "${command_status[1]}" -ne 0 ]]; then
+    echo "  ^ FAILED (could not record gate output)"; fail=1
+  fi
+  # C/C# gates use CABI_SKIP / CS_SKIP. Unmeasured native checks may appear
+  # as key=NOT_MEASURED(reason); neither spelling is a completed measurement.
+  grep -E '(^|[[:space:]=])(([A-Z][A-Z0-9]*_)?SKIP|NOT_RUN|NOT_MEASURED|AUTOMATION_MISSING)([[:space:]:=(]|$)' "$log" > "$markers" || true
+  # Test runners also report omitted cases in summaries without our uppercase
+  # markers. A zero exit status with skipped cases is not a complete gate.
+  grep -E '(^|[[:space:]|])[1-9][0-9]* skipped([[:space:])]|$)|^(#|ℹ)[[:space:]]+skip(ped)?[[:space:]]+[1-9][0-9]*([[:space:]]|$)|^OK \(skipped=[1-9][0-9]*\)|test result:.* [1-9][0-9]* ignored;' "$log" >> "$markers" || true
+  if [[ -s "$markers" ]]; then
+    while IFS= read -r marker; do printf '%s: %s\n' "$label" "$marker" >> "$NOT_RUN_REPORT"; done < "$markers"
+  fi
+  if grep -Eq '^(SELFTEST_FAIL|FAIL:)' "$log" ||
+     { [[ "$status" -ne 0 ]] && { [[ "$status" -ne 2 ]] || [[ ! -s "$markers" ]]; }; }; then
+    echo "  ^ FAILED (exit $status)"; fail=1
+  fi
+}
 
 # Workspace packages export dist/. Tests must resolve this checkout's modules,
 # including renamed design tokens, rather than a previous build's output.
@@ -20,7 +51,7 @@ fi
 # (or pass despite a source regression). Stop if the candidate cannot be built.
 if [[ "$(uname -s)" == Darwin ]]; then
   echo "== current macOS debug candidate =="
-  if ! swift build --package-path "$ROOT/apps/genie-macos"; then
+  if ! swift build --package-path "$ROOT/apps/genie-macos" --jobs "$GENIE_SWIFT_BUILD_JOBS"; then
     echo "VERIFY_ALL_FAIL: current macOS candidate could not be built"
     exit 1
   fi
@@ -39,12 +70,20 @@ fi
 # `cmd | grep ...` は grep の終了状態になるので、**テストが落ちても緑**になっていた。
 # 実際に 1 件落ちたまま VERIFY_ALL_OK が出た。要約だけ見せつつ、状態は元のコマンドのものを返す。
 # 落ちたときは要約だけでは追えない。**どのテストが落ちたか**を必ず残す。
-run "genie-core tests"            bash -c "cd core/genie-core && out=\$(cargo test --quiet 2>&1); st=\$?; echo \"\$out\" | grep 'test result' | head -1; [ \$st -eq 0 ] || sed -n '/^failures:/,\$p' <<<\"\$out\" | head -40; exit \$st"
-run "Tauri Rust regression"       bash -c "cd apps/desktop/src-tauri && out=\$(cargo test --quiet 2>&1); st=\$?; echo \"\$out\" | grep 'test result' | head -1; [ \$st -eq 0 ] || sed -n '/^failures:/,\$p' <<<\"\$out\" | head -40; exit \$st"
-run "Tauri desktop JS regression" bash -c "out=\$(pnpm --filter @genie/desktop test 2>&1); st=\$?; echo \"\$out\" | grep -E 'Tests +[0-9]+ passed' | tail -1; [ \$st -eq 0 ] || { echo '--- 落ちたときの全文（末尾40行）---'; tail -40 <<<\"\$out\"; }; exit \$st"
+run "genie-core tests"            bash -c "cd core/genie-core && out=\$(cargo test --quiet 2>&1); st=\$?; echo \"\$out\" | grep 'test result'; [ \$st -eq 0 ] || sed -n '/^failures:/,\$p' <<<\"\$out\" | head -40; exit \$st"
+run "Tauri Rust regression"       bash scripts/verify-tauri-tests.sh
+run "Tauri desktop JS regression" bash scripts/verify-desktop-tests.sh
 run "TCC usage descriptions"     bash scripts/verify-usage-descriptions.sh
 run "release consistency"        bash scripts/verify-release-consistency.sh
 run "release aggregation regression" python3 -m unittest discover -s scripts/tests -p 'test_*.py'
+run "managed preview lifecycle" node --test scripts/tests/managed-local-preview.test.mjs
+run "transaction regression" bash scripts/verify-transactions.sh
+run "computer vision contracts" node --test workers/agent-host/test/computer-vision.node.mjs workers/agent-host/test/computer-vision-integration.node.mjs workers/agent-host/test/background-vision.node.mjs workers/agent-host/test/computer-scroll-device.node.mjs workers/agent-host/test/cloud-budget.node.mjs scripts/tests/computer-use.test.mjs
+if [[ "$(uname -s)" == Darwin ]]; then
+  run "background text policy" bash scripts/test-background-text-edit.sh
+  run "background scroll policy" bash scripts/test-background-scroll.sh
+  run "background web link policy" bash scripts/test-background-web-policy.sh
+fi
 run "UI taste"                   bash scripts/verify-ui-taste.sh
 run "permission JIT"             bash scripts/verify-permission-jit.sh
 # 端末から出る道（Apple STT サーバ・録音の自動 upload・使っていない画面収録）が既定で閉じているか。
@@ -84,7 +123,21 @@ run "initial profile native UI"  "$ROOT/apps/genie-macos/.build/debug/GenieMac" 
 run "recording experience E2E"    bash scripts/verify-recording-experience.sh
 # 3 本の Journey を時間軸で通す（窓・鍵・面・遷移・出所 id の連続。層 A）。
 run "journeys JA/JB/JC"           bash scripts/verify-journeys.sh
-run "macOS swift unit tests"      bash -c 'cd apps/genie-macos || exit; out=$(swift test 2>&1); st=$?; echo "$out" | grep -E "Executed [0-9]+ tests" | tail -1; if [ "$st" -ne 0 ]; then tail -40 <<<"$out"; fi; exit "$st"'
+run "macOS swift unit tests"      bash scripts/verify-swift-tests.sh
+if [[ "$(uname -s)" == Darwin ]]; then
+  run "AppKit termination dispatch" bash scripts/test-app-termination.sh
+  run "Keychain confirmation quit" bash scripts/test-keychain-recovery-quit.sh
+fi
 
 echo
-if [[ $fail -eq 0 ]]; then echo "VERIFY_ALL_OK: この環境で検証できる全ゲートが緑"; else echo "VERIFY_ALL_FAIL"; exit 1; fi
+not_run_count="$(sort -u "$NOT_RUN_REPORT" | wc -l | tr -d ' ')"
+if [[ "$not_run_count" -gt 0 ]]; then
+  echo "VERIFY_ALL_NOT_RUN: $not_run_count reported checks/scopes (not passes)"
+  sort -u "$NOT_RUN_REPORT"
+fi
+if [[ "$fail" -ne 0 ]]; then echo "VERIFY_ALL_FAIL"; exit 1; fi
+if [[ "$not_run_count" -gt 0 ]]; then
+  echo "VERIFY_ALL_PARTIAL: no reported failures; $not_run_count checks/scopes not run"
+  exit 2
+fi
+echo "VERIFY_ALL_OK: 全ゲート実施・未実施報告なし"

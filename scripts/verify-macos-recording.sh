@@ -3,6 +3,9 @@
 # 断片が実際に書かれ、回復候補に出ることを確かめる（headless で再現可能）。
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+source "$ROOT/scripts/build-resource-env.sh"
+# Match the explicitly selected isolated preview; never switch the global context.
+GATEWAY="${ASTRA_GATEWAY_URL:-http://127.0.0.1:3000}"
 if [[ -x "${ASTRA_RECORD_BIN:-}" ]]; then
   BIN="$ASTRA_RECORD_BIN"
 elif [[ -x "$ROOT/dist/Genie.app/Contents/MacOS/GenieMac" ]]; then
@@ -11,10 +14,15 @@ elif [[ -x "$ROOT/apps/genie-macos/.build/Genie.app/Contents/MacOS/GenieMac" ]];
   BIN="$ROOT/apps/genie-macos/.build/Genie.app/Contents/MacOS/GenieMac"
 else
   cd "$ROOT/apps/genie-macos"
-  swift build >/dev/null
-  BIN="$(swift build --show-bin-path)/GenieMac"
+  swift build --jobs "$GENIE_SWIFT_BUILD_JOBS" >/dev/null
+  BIN="$(swift build --jobs "$GENIE_SWIFT_BUILD_JOBS" --show-bin-path)/GenieMac"
 fi
-APP="${BIN%/Contents/MacOS/GenieMac}"
+# Both supported packaging routes must keep their own LaunchServices identity.
+# build-macos-app.sh names the executable Genie; package/release use GenieMac.
+case "$BIN" in
+  */Contents/MacOS/Genie|*/Contents/MacOS/GenieMac) APP="${BIN%/Contents/MacOS/*}" ;;
+  *) APP="$BIN" ;;
+esac
 if [[ "$APP" == "$BIN" || ! -f "$APP/Contents/Info.plist" ]]; then
   echo "AUTOMATION_MISSING: E2E-001 requires a signed app launched through LaunchServices" >&2
   exit 2
@@ -22,9 +30,10 @@ fi
 codesign --verify --deep --strict "$APP" || exit 1
 # LaunchServices does not inherit the shell environment. Keep fixtures out of the
 # user's real library when the caller selects an isolated data root.
-APP_ENV=()
-for key in ASTRA_DATA_ROOT ASTRA_SELFTEST_AGENT_EMAIL ASTRA_SELFTEST_AGENT_TOKEN_PATH; do
-  if [[ -n "${!key:-}" ]]; then APP_ENV+=(--env "$key=${!key}"); fi
+# Keep the command nonempty: Bash 3.2 treats an empty array as unset under -u.
+APP_OPEN=(open -n -W)
+for key in ASTRA_DATA_ROOT ASTRA_SELFTEST_AGENT_EMAIL ASTRA_SELFTEST_AGENT_TOKEN_PATH ASTRA_GATEWAY_URL; do
+  if [[ -n "${!key:-}" ]]; then APP_OPEN+=(--env "$key=${!key}"); fi
 done
 # Tests that start recording/Speech must run as the app, not inherit the
 # terminal's TCC responsibility (which lacks NSSpeechRecognitionUsageDescription).
@@ -33,7 +42,7 @@ done
 run_app_selftest() {
   local logs status=0
   logs="$(mktemp -d)"
-  open -n -W "${APP_ENV[@]}" --stdout "$logs/stdout.txt" --stderr "$logs/stderr.txt" \
+  "${APP_OPEN[@]}" --stdout "$logs/stdout.txt" --stderr "$logs/stderr.txt" \
     "$APP" --args -astra.transcription.cloudGoogleSTT NO --selftest "$@" || status=$?
   cat "$logs/stdout.txt" 2>/dev/null || true
   cat "$logs/stderr.txt" >&2 2>/dev/null || true
@@ -100,11 +109,14 @@ OUTP="$("$BIN" --selftest pause)"; echo "$OUTP"
 [[ "$OUTP" == SELFTEST_OK* ]] || { echo "FAIL: macOS pause actually stops recording" >&2; exit 1; }
 OUTTM="$("$BIN" --selftest timer)"; echo "$OUTTM"
 [[ "$OUTTM" == SELFTEST_OK* ]] || { echo "FAIL: macOS elapsed timer" >&2; exit 1; }
-OUTA="$("$BIN" --selftest aiaction http://127.0.0.1:3000)" || { echo "$OUTA"; exit 1; }; echo "$OUTA"
+OUTA="$("$BIN" --selftest aiaction "$GATEWAY")" || { echo "$OUTA"; exit 1; }; echo "$OUTA"
 [[ "$OUTA" == SELFTEST_OK* || "$OUTA" == SELFTEST_SKIP* ]] || { echo "FAIL: macOS AI action via Agent" >&2; exit 1; }
-OUTT="$("$BIN" --selftest translate http://127.0.0.1:3000)"; echo "$OUTT"
-[[ "$OUTT" == SELFTEST_OK* || "$OUTT" == SELFTEST_SKIP* ]] || { echo "FAIL: macOS translate via Agent" >&2; exit 1; }
-OUTR="$("$BIN" --selftest recovery http://127.0.0.1:3000)"; echo "$OUTR"
+# Real model loading is an explicit separate gate. Stub translation unit tests
+# remain in normal Swift tests; they are not evidence of real-model quality.
+translation_status=0
+ASTRA_RECORD_BIN="$BIN" bash "$ROOT/scripts/verify-local-translation.sh" || translation_status=$?
+[[ "$translation_status" -eq 0 || "$translation_status" -eq 2 ]] || exit 1
+OUTR="$("$BIN" --selftest recovery "$GATEWAY")"; echo "$OUTR"
 [[ "$OUTR" == SELFTEST_OK* || "$OUTR" == SELFTEST_SKIP* ]] || { echo "FAIL: macOS crash recovery" >&2; exit 1; }
 OUTCF="$("$BIN" --selftest connectorflow)"; echo "$OUTCF"
 [[ "$OUTCF" == SELFTEST_OK* ]] || { echo "FAIL: macOS OAuth loopback flow" >&2; exit 1; }
@@ -112,16 +124,16 @@ OUTCS="$("$BIN" --selftest connectorstate)"; echo "$OUTCS"
 [[ "$OUTCS" == SELFTEST_OK* ]] || { echo "FAIL: macOS connector state" >&2; exit 1; }
 OUTCE="$("$BIN" --selftest connectorexchange)"; echo "$OUTCE"
 [[ "$OUTCE" == SELFTEST_OK* ]] || { echo "FAIL: macOS connector exchange (mock token endpoint)" >&2; exit 1; }
-OUTVA="$("$BIN" --selftest voiceask http://127.0.0.1:3000)" || { echo "$OUTVA"; exit 1; }; echo "$OUTVA"
+OUTVA="$("$BIN" --selftest voiceask "$GATEWAY")" || { echo "$OUTVA"; exit 1; }; echo "$OUTVA"
 [[ "$OUTVA" == SELFTEST_OK* || "$OUTVA" == SELFTEST_SKIP* ]] || { echo "FAIL: macOS voice ask via Agent" >&2; exit 1; }
 # Dock の止めるが backend の仕事を取り消し、後から届いた成功で ✓ にならない（2026-09-28）。
-OUTAS="$("$BIN" --selftest aistop http://127.0.0.1:3000)" || { echo "$OUTAS"; exit 1; }; echo "$OUTAS"
+OUTAS="$("$BIN" --selftest aistop "$GATEWAY")" || { echo "$OUTAS"; exit 1; }; echo "$OUTAS"
 [[ "$OUTAS" == SELFTEST_OK* || "$OUTAS" == SELFTEST_SKIP* ]] || { echo "FAIL: Dock stop cancels the backend task" >&2; exit 1; }
 # やめたらマイクが閉じる（面を差し替えても、裏でマイクを回し続けない）。実マイクなので app として動かす。
 OUTMR="$(run_app_selftest micrelease)" || { echo "$OUTMR"; exit 1; }; echo "$OUTMR" | grep -E '^SELFTEST_'
-OUTRO="$("$BIN" --selftest recoveryoffline http://127.0.0.1:3000)" || { echo "$OUTRO"; exit 1; }; echo "$OUTRO"
+OUTRO="$("$BIN" --selftest recoveryoffline "$GATEWAY")" || { echo "$OUTRO"; exit 1; }; echo "$OUTRO"
 [[ "$OUTRO" == SELFTEST_OK* || "$OUTRO" == SELFTEST_SKIP* ]] || { echo "FAIL: macOS offline recovery" >&2; exit 1; }
-OUTFL="$(run_app_selftest fulllifecycle http://127.0.0.1:3000)" || { echo "$OUTFL"; exit 1; }; echo "$OUTFL"
+OUTFL="$(run_app_selftest fulllifecycle "$GATEWAY")" || { echo "$OUTFL"; exit 1; }; echo "$OUTFL"
 [[ "$OUTFL" == SELFTEST_OK* || "$OUTFL" == SELFTEST_SKIP* ]] || { echo "FAIL: macOS full Voice HUD->Recording->save->HUD lifecycle" >&2; exit 1; }
 # UI/UX テスト仕様 v1.0 の E2E-001（Product Reality Gate）。窓を実提示したまま一本で通し、
 # HUD と Recording Workspace が同時に画面へ残らないことまで実測する。
@@ -133,8 +145,8 @@ fi
 e2e_status=0
 E2E_LOG="$(mktemp -d)"
 # 実キャプチャはバンドル自身をTCCの主体にする。openの終了0だけでは合格にしない。
-open -n -W "${APP_ENV[@]}" --stdout "$E2E_LOG/stdout.txt" --stderr "$E2E_LOG/stderr.txt" \
-  "$APP" --args -astra.transcription.cloudGoogleSTT NO --selftest e2e001 http://127.0.0.1:3000 || e2e_status=$?
+"${APP_OPEN[@]}" --stdout "$E2E_LOG/stdout.txt" --stderr "$E2E_LOG/stderr.txt" \
+  "$APP" --args -astra.transcription.cloudGoogleSTT NO --selftest e2e001 "$GATEWAY" || e2e_status=$?
 OUTE2E="$(cat "$E2E_LOG/stdout.txt" 2>/dev/null)"
 echo "$OUTE2E"
 cat "$E2E_LOG/stderr.txt" >&2
@@ -221,3 +233,7 @@ for t in screenshot waveform livemic livemeeting livescreen sttrecognize sttstre
 done
 
 [[ "$live_fail" -eq 0 ]] || exit 1
+if [[ "$translation_status" -eq 2 ]]; then
+  echo "RECORDING_PARTIAL: other recording checks finished; real-model translation fixture not run"
+  exit 2
+fi

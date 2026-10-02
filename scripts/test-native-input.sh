@@ -13,9 +13,13 @@ cleanup() { [[ -z "$FIXTURE_PID" ]] || kill "$FIXTURE_PID" 2>/dev/null || true; 
 trap cleanup EXIT
 swiftc "$ROOT/tools/computer-use/NativeInputFixture.swift" -o "$WORK/Fixture"
 swiftc -D GENIE_BACKGROUND_TEST -D GENIE_PRIVATE_SPI -parse-as-library \
-  "$ROOT/tools/computer-use/genie-computer.swift" \
+  "$ROOT/tools/computer-use/genie-computer.swift" "$ROOT/tools/computer-use/GeneratedPointerMetrics.swift" \
   "$ROOT/tools/computer-use/PrivateSPIBridge.swift" \
   "$ROOT/tools/computer-use/BackgroundNativeInput.swift" \
+  "$ROOT/tools/computer-use/BackgroundTextEdit.swift" \
+  "$ROOT/tools/computer-use/BackgroundScroll.swift" \
+  "$ROOT/tools/computer-use/BackgroundWebLink.swift" \
+  "$ROOT/tools/computer-use/TargetPreview.swift" \
   "$ROOT/tools/computer-use/BackgroundAX.swift" \
   "$ROOT/tools/computer-use/BackgroundNativeTests.swift" -o "$WORK/Verify" > "$WORK/build.log" 2>&1
 app="$WORK/GenieNativeInput.app"

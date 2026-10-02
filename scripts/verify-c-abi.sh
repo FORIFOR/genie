@@ -3,6 +3,7 @@
 # Windows(C#/P-Invoke) が使うのと同じ境界を、このホスト(clang)で実証する（build 未検証の Windows とは別）。
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+source "$ROOT/scripts/build-resource-env.sh"
 CORE="$ROOT/core/genie-core"
 # 版は package.json 1 か所から取る（Cargo.toml と一致することは verify-release-consistency が見る）。
 VERSION="$(node -p "require('$ROOT/package.json').version")"
@@ -35,7 +36,8 @@ int main(int argc, char** argv) {
     genie_core_string_free(url);
 
     /* gateway API 縦断（実バックエンド）。届かなければ skip（CI 等）。 */
-    const char* base = "http://127.0.0.1:3000";
+    const char* base = getenv("ASTRA_GATEWAY_URL");
+    if (!base || !*base) base = "http://127.0.0.1:3000";
     if (genie_core_api_reachable(base) == 1) {
         char* toks = genie_core_api_dev_sign_in(base, "cabi-selftest@astra.local", "CABI");
         if (!toks || strstr(toks, "access_token") == NULL) { printf("CABI_FAIL api sign_in\n"); return 30; }

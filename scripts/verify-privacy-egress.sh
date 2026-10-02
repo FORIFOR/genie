@@ -9,7 +9,8 @@
 set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SRC="$ROOT/apps/genie-macos/Sources/GenieMac"
-BIN="$ROOT/apps/genie-macos/.build/debug/GenieMac"
+BIN="${ASTRA_RECORD_BIN:-$ROOT/apps/genie-macos/.build/Genie.app/Contents/MacOS/GenieMac}"
+source "$ROOT/scripts/app-selftest-runner.sh"
 fail=0
 row() { printf "  %-40s %s\n" "$1" "$2"; }
 bad() { row "$1" "$2"; shift 2; printf "    %s\n" "$@" >&2; fail=1; }
@@ -215,10 +216,67 @@ if 'endpointOverride' in provider:
 if 'x-goog-api-key' not in provider or re.search(r'[?&]key=', provider):
     problems.append('GeminiLiveProvider.swift: API key must go in the x-goog-api-key header, not the URL')
 state = (src / 'VoiceHUD/VoiceHUDState.swift').read_text()
-begin = state.split('func beginConversation()')[1].split('\n    }\n')[0] if 'func beginConversation()' in state else ''
-for needle in ['gemini.enabled', 'gemini.hasKey', 'canStart(at:']:
-    if needle not in begin:
-        problems.append(f'beginConversation: missing {needle} before creating GeminiLiveProvider')
+# Ignore comments/literals when locating the function and its checks. This is a
+# bounded source guard, not a substitute for the provider's runtime tests.
+def mask_non_code(text):
+    masked = list(text)
+    offset = 0
+    while offset < len(text):
+        start = offset
+        if text.startswith('//', offset):
+            end = text.find('\n', offset)
+            offset = len(text) if end < 0 else end
+        elif text.startswith('/*', offset):
+            depth = 1
+            offset += 2
+            while offset < len(text) and depth:
+                if text.startswith('/*', offset): depth += 1; offset += 2
+                elif text.startswith('*/', offset): depth -= 1; offset += 2
+                else: offset += 1
+        else:
+            literal = re.match(r'(#+)?("""|")', text[offset:])
+            if not literal:
+                offset += 1
+                continue
+            hashes, quote = literal.group(1) or '', literal.group(2)
+            offset += len(literal.group())
+            close = quote + hashes
+            while offset < len(text):
+                if text.startswith(close, offset): offset += len(close); break
+                if text.startswith('\\' + hashes, offset):
+                    # Interpolation can contain executable expressions. This bounded
+                    # scanner rejects it in the checked function instead of treating
+                    # its contents as proof of a consent guard.
+                    offset += len(hashes) + 2
+                else: offset += 1
+        for index in range(start, min(offset, len(text))):
+            if masked[index] != '\n': masked[index] = ' '
+    return ''.join(masked)
+
+code = mask_non_code(state)
+headers = list(re.finditer(r'(?m)^\s*func\s+beginConversation\s*\([^)]*\)\s*\{', code))
+begin = ''
+start = end = -1
+if len(headers) == 1:
+    start = headers[0].end()
+    depth = 1
+    for offset in range(start, len(code)):
+        if code[offset] == '{': depth += 1
+        elif code[offset] == '}': depth -= 1
+        if depth == 0:
+            end = offset
+            begin = code[start:end]
+            break
+constructors = list(re.finditer(r'\bGeminiLiveProvider\s*\(', code))
+if not begin or len(constructors) != 1 or not (start <= constructors[0].start() < end):
+    problems.append('beginConversation: exactly one scoped GeminiLiveProvider construction is required')
+else:
+    if re.search(r'\\#*\(', state[start:end]):
+        problems.append('beginConversation: interpolated literals require explicit source-guard review')
+    before_provider = code[start:constructors[0].start()]
+    for needle in ['gemini.enabled', 'gemini.hasKey', 'canStart(at:']:
+        if needle not in before_provider:
+            problems.append(f'beginConversation: missing {needle} before creating GeminiLiveProvider')
 print('; '.join(problems))
 sys.exit(1 if problems else 0)
 CHECK
@@ -272,15 +330,31 @@ else
   bad "nearby places require key, limit, request" "FAIL" "$places_check"
 fi
 
-# 実行体（ある時だけ）: 既定 OFF と、資産の無いロケールで throw。
-if [ -x "$BIN" ]; then
-  out=$(env -u ASTRA_DEV_AUTO_UPLOAD "$BIN" --selftest egress 2>/dev/null | tail -1)
-  case "$out" in
-    SELFTEST_OK*)   row "runtime (--selftest egress)" "${out#SELFTEST_OK egress: }";;
-    SELFTEST_SKIP*) row "runtime (--selftest egress)" "SKIP";;
-    *) bad "runtime (--selftest egress)" "FAIL" "$out";;
-  esac
+# Runtime: use the selected signed app's Speech identity. Missing permission or
+# missing on-device test conditions remain unmeasured; a crash cannot count as OK.
+runtime_status=0
+prepare_app_selftest || runtime_status=$?
+not_run=0
+if [[ "$runtime_status" -eq 0 ]]; then
+  out="$(run_app_selftest egress)" || runtime_status=$?
+  printf '%s\n' "$out"
+  if [[ "$runtime_status" -ne 0 ]] || grep -q '^SELFTEST_FAIL' <<<"$out"; then
+    bad "runtime (--selftest egress)" "FAIL" "native selftest did not complete normally"
+  elif grep -q '^SELFTEST_SKIP egress:' <<<"$out"; then
+    row "runtime (--selftest egress)" "NOT_RUN: native selftest skipped"
+    not_run=1
+  elif grep -q '^SELFTEST_OK egress:' <<<"$out"; then
+    if grep -q 'NOT_MEASURED' <<<"$out"; then not_run=1; fi
+  else
+    bad "runtime (--selftest egress)" "FAIL" "missing egress result"
+  fi
+elif [[ "$runtime_status" -eq 2 ]]; then
+  not_run=1
+else
+  fail=1
 fi
 
 echo
-if [ $fail -eq 0 ]; then echo "PRIVACY_EGRESS_GATE=PASS"; else echo "PRIVACY_EGRESS_GATE=FAIL" >&2; exit 1; fi
+if [[ "$fail" -ne 0 ]]; then echo "PRIVACY_EGRESS_GATE=FAIL" >&2; exit 1; fi
+if [[ "$not_run" -ne 0 ]]; then echo "NOT_RUN: PRIVACY_EGRESS_GATE runtime incomplete"; exit 2; fi
+echo "PRIVACY_EGRESS_GATE=PASS"

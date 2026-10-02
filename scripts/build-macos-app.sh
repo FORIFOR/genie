@@ -3,6 +3,7 @@
 # usage 文言が要る。ad-hoc 署名まで行う（正式配布は Developer ID 署名 + notarize が別途必要）。
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+source "$ROOT/scripts/build-resource-env.sh"
 PKG="$ROOT/apps/genie-macos"
 APP="$PKG/build/Genie.app"
 # 版は package.json 1 か所から（release-macos.sh と同じ）。
@@ -18,8 +19,8 @@ if [[ -z "${ASTRA_CORE_LIB_DIR:-}" ]]; then
 fi
 
 cd "$PKG"
-swift build -c release >/dev/null
-BIN="$(swift build -c release --show-bin-path)/GenieMac"
+swift build -c release --jobs "$GENIE_SWIFT_BUILD_JOBS" >/dev/null
+BIN="$(swift build -c release --jobs "$GENIE_SWIFT_BUILD_JOBS" --show-bin-path)/GenieMac"
 
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"

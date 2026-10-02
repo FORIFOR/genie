@@ -4,6 +4,7 @@
 #   --check: 既存が最新か（stale なら非0）。CI 用（gen-design-tokens と同じ作法）。
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+source "$ROOT/scripts/build-resource-env.sh"
 CORE="$ROOT/core/genie-core"
 SWIFT_DEST="$ROOT/apps/genie-macos/Sources/GenieCore"
 HDR_DEST="$ROOT/apps/genie-macos/Sources/GenieCoreFFI/include"

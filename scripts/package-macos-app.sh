@@ -3,9 +3,11 @@
 # TCC プロンプトは署名 .app を LaunchServices(open) 経由で起動したときだけ出る。
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+source "$ROOT/scripts/build-resource-env.sh"
 IDENTITY="${ASTRA_SIGN_IDENTITY:-Apple Development}"   # security find-identity -v -p codesigning で確認
 APP="$ROOT/apps/genie-macos/.build/Genie.app"
-( cd "$ROOT/apps/genie-macos" && swift build -c release )
+VERSION="$(node -e 'const v=JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8")).version; if (!/^\d+\.\d+\.\d+$/.test(v)) throw Error("A numeric release version is required"); process.stdout.write(v)' "$ROOT/package.json")"
+( cd "$ROOT/apps/genie-macos" && swift build -c release --jobs "$GENIE_SWIFT_BUILD_JOBS" )
 rm -rf "$APP"; mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources/ja.lproj"
 cp "$ROOT/apps/genie-macos/.build/release/GenieMac" "$APP/Contents/MacOS/GenieMac"
 mkdir -p "$APP/Contents/Resources/plugins"
@@ -27,8 +29,8 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>CFBundleDisplayName</key><string>Genie</string>
   <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>CFBundlePackageType</key><string>APPL</string>
-  <key>CFBundleShortVersionString</key><string>1.0</string>
-  <key>CFBundleVersion</key><string>1</string>
+  <key>CFBundleShortVersionString</key><string>${VERSION}</string>
+  <key>CFBundleVersion</key><string>${VERSION}</string>
   <key>LSMinimumSystemVersion</key><string>14.0</string>
   <!-- 画面は日本語。Sparkle は**アプリの**言語に合わせて自分の窓を出すので、
        ja.lproj を持たないと更新の窓だけ英語になった（Atlas system.update-available）。 -->

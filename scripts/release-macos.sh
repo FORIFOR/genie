@@ -24,6 +24,7 @@
 # 「配布できる」と言わない（他人の Mac では開けないので）。
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+source "$ROOT/scripts/build-resource-env.sh"
 # A candidate can be built without replacing the app the user is running.
 OUT="${ASTRA_RELEASE_OUTPUT_DIR:-$ROOT/dist}"
 APP="$OUT/Genie.app"
@@ -69,11 +70,11 @@ lipo -create \
 [[ -f "$ASTRA_CORE_LIB_DIR/libgenie_core.a" ]] || {
   echo "FAIL: release の libgenie_core.a が無い" >&2; exit 1; }
 bash "$ROOT/scripts/fetch-sparkle.sh"
-( cd "$ROOT/apps/genie-macos" && swift build -c release --arch arm64 --arch x86_64 )
+( cd "$ROOT/apps/genie-macos" && swift build -c release --arch arm64 --arch x86_64 --jobs "$GENIE_SWIFT_BUILD_JOBS" )
 
 # 実行時に外の dylib を掴んでいないこと。掴んでいたら、その絶対パスが無い
 # 他人の Mac では起動しない（一度そうなっていた）。
-BIN_DIR="$(cd "$ROOT/apps/genie-macos" && swift build -c release --arch arm64 --arch x86_64 --show-bin-path)"
+BIN_DIR="$(cd "$ROOT/apps/genie-macos" && swift build -c release --arch arm64 --arch x86_64 --jobs "$GENIE_SWIFT_BUILD_JOBS" --show-bin-path)"
 BIN="$BIN_DIR/GenieMac"
 [[ -x "$BIN" ]] || { echo "FAIL: 今回のuniversal実行体が無い: $BIN" >&2; exit 1; }
 if otool -L "$BIN" | grep -q "genie_core.*dylib"; then
