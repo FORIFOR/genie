@@ -1,0 +1,69 @@
+{
+  "recordedAt": "2026-10-01T19:11:36.259126+00:00",
+  "reviewer": "/root/verification_audit",
+  "method": "Independent read-only source and saved-execution evidence review; executor root/implementation peers; no rerun or UI by this reviewer",
+  "sourceHashes": {
+    "scripts/verify-all.sh": "7a23a44c1f20d77ad0c3a715e57250cca41c153200446482961f411c1da6584a",
+    "scripts/verify-swift-tests.sh": "c1126e09bccf50e00a6b7b08e72d5bd627fdc24116c00825fa95a96617606625",
+    "scripts/verify-macos-recording.sh": "ef8342828d9221fe524383eaab58972bdbdd64cbf61e0adc1fb4078084955be6",
+    "scripts/check-generated.sh": "4c705f7a0a43ccdea91b8004b54df0b21a5f22952feac8a963143e29401356cc",
+    "scripts/dump-schema.sh": "25ef60a464ec928aebf1c3cde6cf5bbd9cbf3536be6c2237d98f184187c98fad",
+    "scripts/verify-transactions.sh": "ace7d5e79f65796d32605fde20b741c1edda2b3bab635b51aaefc5cba4a4f8c7",
+    "infra/db/schema.sql": "bcb7d7b3890329356cbcd3d1b49de9f9010dae1e3aa48a0a4f494439a97d2552",
+    "packages/db/src/generated/schema.ts": "a8b064488b12be03a2f4a763099ad42148f0eeb2db7f23151be6f23103e3cbab",
+    "services/task/test/replay-history.test.ts": "2117e883795af2ad6eaeb358bd07d827a91768895b929ae4b4b4b1f1d493e487",
+    "scripts/ui-taste-count.py": "0c86e2b7a2002d6ab144fcaf385c59d5028ddbf0d9aa0b5c8eb04dbe8f986410",
+    "scripts/tests/test_ui_taste_count.py": "57ee81f4584aa4e0e24b92e56ff7ea2b02d3f404210ced272c47eefcaa496b5d"
+  },
+  "evidenceHashes": {
+    "schema-generate.log": "0c987dc16d79008593e1cf471f81adfa35da344457bb4b12fa8b8fa61c555b15",
+    "schema-check.log": "dcbf6d04eebe43bf53853481326174c27b995770f687634b3656427cc208dccd",
+    "transaction-regression.log": "b6627ee83425c0fb04e8b27fa46fb1bc3cf8d42940a4e4a027a9a05efc36eeac",
+    "python-regression.log": "b8818191d08ac32d96c7ea1cecf3b07e7461d7b54eb9181544a4ace56eb836be",
+    "normal-quit-monitor-tests.log": "7481b076627d2511cace04518bd5b7e9b49244f8abd912e59506b9badbc70a9a",
+    "main-app-shutdown-final.json": "3420c984b8b4e93397891fda79ff6a5ea6a20dbdd92939e7ad6a18d8e5bf770f"
+  },
+  "shutdownManifestChecks": {
+    "scripts/start-local-preview.mjs": {
+      "sha256": "31316692bfd455bd8ade569855bbe5f44823160be9f8912208fb4ac0d3125646",
+      "matchesManifest": true
+    },
+    "scripts/local-preview/config.mjs": {
+      "sha256": "6a41d12e7a526c801453090ec73e0a1256d12fe3f6e1c5cd36ed28ebb85ecf34",
+      "matchesManifest": true
+    },
+    "apps/genie-macos/Sources/GenieMac/App/TerminationDispatch.swift": {
+      "sha256": "04dd23a83bfe172f726f34380c6d58d813bbda71455fc95c2b55485357050497",
+      "matchesManifest": true
+    },
+    "docs/quality/evidence/2026-10-02-completion/preview-sigterm-start.log": {
+      "sha256": "8fdf7c436976a44f5730582a1c2020b234bfe93009afec23bea353b8984e6f7b",
+      "matchesManifest": true
+    },
+    "docs/quality/evidence/2026-10-02-completion/preview-sigterm-stop.log": {
+      "sha256": "a94af33386f68ba87621f8a37e8b20c8e480442fa83d8625696958f465366c50",
+      "matchesManifest": true
+    },
+    "docs/quality/evidence/2026-10-02-completion/preview-normal-quit-start.log": {
+      "sha256": "8c85728f53e1380a8fce8d28d827a108a914d3f2979ff2688f75bb7d4768dab1",
+      "matchesManifest": true
+    }
+  },
+  "results": {
+    "schema": "PASS limited: real dump 56 tables, check-generated says schema, types and derived files current; source contains only 322 SQL/33 type additions. Root reports isolated disposable DB and exit0. No reviewer DB execution.",
+    "transaction": "PASS limited: 191 passed tests, one intentionally omitted fixture-generation operation; two actual previous-revision Temporal replay tests passed. Code+isolated DB evidence only, no live orders.",
+    "python": "PASS saved 49 tests / exit0; later current log if any is separate.",
+    "launcher": "PASS saved 34 tests / no skips / no failures.",
+    "swift": "Previously reviewed 284 ordinary +1 shutdown +1 external semantic tests; no new rerun.",
+    "idleMainApp": "PASS limited: same signed executable, managed SIGTERM PID30218 and menu Quit PID30626, supervisors exit0, processes absent and Docker project empty per root saved records. Active-child shutdown not run.",
+    "uiAllowance": "Prior duplicate-entry P2 fixed by canonical path uniqueness per kind. Same-path and ./ regression present. At review time saved ui-taste-unit.log remains old5; owner reports6, not independently log-confirmed yet.",
+    "publication": "Pattern preflight 462 files/10132773 bytes, no file>=1MiB; all five matches triaged non-live. Images not privacy-scanned by this text check."
+  },
+  "limitations": [
+    "Full verify-all has not completed on the current candidate.",
+    "Current source continues to change; these hashes bind this review checkpoint only.",
+    "The actual main app predates later disclosure-testability/disabled-button UI changes.",
+    "Noa warning cause and sustained streaming coexistence remain unproven.",
+    "The new scroll route has a separate pending stale scrollbar reference review finding."
+  ]
+}

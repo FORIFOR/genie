@@ -1,16 +1,30 @@
 # Background computer use (experimental macOS preview)
 
-The managed `--computer-use` route now selects `.build/computer/genie-computer-background`. It does not raise the target app, move the shared cursor, inject global keyboard events, use the clipboard, or fall back to the old foreground driver. The old `.build/computer/genie-computer` source/binary remains for explicit custom-host compatibility; its [previous behavior](COMPUTER_VISION_FOREGROUND.md) is **not** background-safe.
+The managed `--computer-use` route now selects `.build/computer/genie-computer-background`. It does not raise the target app, move the shared cursor, inject global keyboard events, use the clipboard, or fall back to the old foreground driver. Supported native mouse and keyboard events are addressed to the selected process/window; they do not use the shared input stream. The old `.build/computer/genie-computer` source/binary remains for explicit custom-host compatibility; its [previous behavior](COMPUTER_VISION_FOREGROUND.md) is **not** background-safe.
 
 This is a limited native AX adapter, not Codex parity or universal browser automation. No third-party driver or private Codex runtime is installed. The same existing model loop, task approval, local screenshot handover and visual verifier are used.
 
+Text operations in the current vision runtime require a helper that implements `preview_target`. Older or foreground-only helpers stop before text input instead of bypassing target verification.
+
+The product goal includes completing delivery orders and handling stock orders, but the current adapter does not implement transaction authorization, order submission or provider-side reconciliation. See [transaction completion acceptance](quality/TRANSACTION_COMPLETION.md) for the required end-to-end behavior and the distinction between planned, simulated and live execution.
+
 ## Start and control
 
-Requires macOS14.4+, Xcode Command Line Tools, existing managed-preview dependencies, an installed vision model, Accessibility and Screen Recording permissions for the helper's responsible process. Do not grant new OS permissions automatically. Start one terminal and keep it open:
+Requires macOS 14.4+, Xcode Command Line Tools, the [managed-preview dependencies](MANAGED_PREVIEW.md), and either an existing signed-in Codex CLI or an installed local vision model. Accessibility and Screen Recording permissions belong to the helper's responsible process; the launcher does not grant them. The external route does not require loading an Ollama model. Start one terminal and keep it open:
 
 ```sh
-node scripts/start-local-preview.mjs --model qwen3.5:9b --computer-use
+node scripts/start-local-preview.mjs --app apps/genie-macos/build/Genie.app --computer-use \
+  --model-provider codex --model gpt-6-sol --allow-cloud --allow-external-screen
 ```
+
+This explicitly authorizes automatic screen-image egress separately from conversation or user-attached-image requests. To choose local inference instead, use an installed vision model:
+
+```sh
+node scripts/start-local-preview.mjs --app apps/genie-macos/build/Genie.app \
+  --model-provider local --model qwen3.5:9b --computer-use
+```
+
+`--allow-cloud` alone does **not** enable automatic screen capture/egress. The additional choice is saved only in this state directory for the exact provider and model. Restarting the same selection can reuse it; changing provider/model invalidates it, and local mode cannot accept this flag. Use `--no-external-screen` on the next start to remove the saved screen permission while retaining the conversation connection. `--computer-use` remains an explicit per-start capability. The normal per-run target-window/recipient consent and task approval are still required; the flag grants neither.
 
 In a second terminal:
 
@@ -27,28 +41,35 @@ node scripts/computer-use.mjs status --run-file /tmp/genie-computer-run.json
 node scripts/computer-use.mjs cancel --run-file /tmp/genie-computer-run.json
 ```
 
-For custom storage, give every command the same `--state-dir`. `check` is read-only: it checks the new helper's permissions and the matching launcher's **background** mode, without capture/input. Setup readiness is not task success. The released v0.1.4 DMG alone does not include these source changes.
+For custom storage, give every command the same `--state-dir`. `check` is read-only: it asks the authenticated running supervisor for `/computer/status`. That supervisor probes the exact helper executable passed to its host, without capture/input. The response includes the path, current permissions/readiness/capabilities, normal-consent versus unattended-test mode, selected model/recipient and effective external-screen permission. Startup-cached permission state is not treated as current readiness; missing/invalid/unavailable status is not ready. The CLI never executes a helper path returned over HTTP. Setup readiness is not task success. The released v0.1.4 DMG alone does not include these source changes.
 
 The native consent dialog lists specific app windows, with an unselected placeholder. Select only a test window you authorize. Consent discloses the pixel recipient, one window, up to12 inputs/5minutes, and no confirmation for each individual input. The consent dialog itself is interactive; the subsequent target operations are background-only. Keep another app frontmost. Returning to the target app causes a conservative stop, not a foreground fallback or automatic resume.
 
 ## Supported operations and boundaries
 
-| Operation | Current behavior |
-|---|---|
-| Native button | AXPress on a unique, unchanged button in the selected window subtree. Window close/minimize/zoom controls excluded |
-| Empty editable field | AXValue insertion into an empty AXTextArea or an AXTextField with known non-secure subrole; requires settable support and exact readback |
-| Existing text | Refused; no whole-field overwrite or selection guessing |
-| Password/unknown field | Secure subroles excluded. Unknown/custom text-field metadata refused. Native NSTextView legitimately omits subrole and exposes AXTextArea |
-| Keys, drag, scroll, arbitrary coordinates without a supported AX element | Refused; no shared-input fallback |
-| Hidden/minimized/off-Space target, ambiguous AX window match | May be unavailable; never unhide/activate to continue |
-| Browser or custom-rendered controls | Not generally supported or verified; no Playwright/CDP adapter in this increment |
-| Operation indicator | Brief input-transparent nonactivating “↖ Genie” marker only when the action point is visible; suppressed if the human's window covers that point. It is an annotation, not an independent OS input cursor |
+| Operation                                                    | Current behavior                                                                                                                                                                                                                                |
+| ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Native button                                                | AXPress on a unique, unchanged button in the selected window subtree. Window close/minimize/zoom controls excluded                                                                                                                              |
+| Empty editable field                                         | AXValue insertion into an empty AXTextArea or an AXTextField with known non-secure subrole; requires settable support and exact readback                                                                                                        |
+| Existing text                                                | Explicit background `textMode: append` preserves the captured full value and appends requested text, with exact readback. Omitted mode still requires empty text; no selection guessing or replacement mode |
+| Password/unknown field                                       | Secure subroles excluded. Unknown/custom text-field metadata refused. Native NSTextView legitimately omits subrole and exposes AXTextArea                                                                                                       |
+| Clicks / physical keys                                       | Process/window-targeted native input when the SPI adapter is available; typed keys require the intended window and field to remain focused. Partial delivery stops without replay                                                               |
+| Vertical scroll                                              | Experimental AXScrollArea route: owned writable vertical scrollbar and stable full-document geometry, at most half a viewport per action. Native value and document-position readback required; no wheel fallback |
+| Drag / horizontal scroll                                     | Unsupported; no foreground fallback |
+| Hidden/minimized/off-Space target, ambiguous AX window match | May be unavailable; never unhide/activate to continue                                                                                                                                                                                           |
+| Safari links                                                 | Experimental AXPress route for a different HTTP(S) URL of the same origin, with snapshot URL binding and selected-window destination readback. No retry/fallback after unknown effect. Owned WebKit fixture verified; actual Safari/public-site verification is recorded separately |
+| Other browser or custom-rendered controls                     | Not generally supported or verified; no Playwright/CDP adapter in this increment |
+| Operation indicator                                          | Persistent blue 22 × 22 pt stemless dart with a soft blue halo and app/state label; [current design and measured evidence](ux-benchmark/compare/computer-pointer/ROUND-2.md). It is click-through and never moves the human's mouse. Covered targets are explicitly labelled 背面 and omit the target outline. A separate stable 停止 button stops future input |
 
 The execution layer binds the consent and snapshot to bundle ID, PID, kernel process start time, window ID and bounds. Window binding uses a unique AX window rectangle; ambiguous matches stop. Each capture saves an owner-only local AX sidecar with control path, role/subrole/identifier/title, relative bounds and value hash. The action must match that pre-model snapshot, not a newly invented target. The one-shot snapshot is consumed before AX dispatch, so a timeout or uncertain action is not repeated. Identity/value checks are not an atomic lock against arbitrary third-party app changes; changed/unavailable targets stop conservatively.
 
 A separate monitor persists activation/click/scroll takeover until session end. It observes event types/locations, never records keyboard text, and uses an expiring heartbeat. Monitoring failure or inability to record an interruption stops authority. A human can still change state in the tiny interval between verification and dispatch; arbitrary apps are not transactionally isolated. Model prompts are not a security boundary for high-risk actions. Do not use mail, payment or production consoles as initial test targets.
 
 After dispatch, the helper checks foreground app and clipboard change count; text additionally requires exact value readback. An app can itself activate as a result of AXPress: this is reported as interference/unknown and stops, without trying to restore focus. Therefore “never calls activation/global input” is a code contract, while “the target app never steals focus” needs per-app evidence. Continuous human pointer movement is not classified as interference merely because coordinates changed.
+
+Vertical scrolling currently supports a standard accessibility scroll area with one stable full-content child and an owned normalized vertical scrollbar. Custom/virtualized geometry, horizontal bars and an endpoint with no movement are refused. Scrollbar value change alone is insufficient: the same document must move the corresponding distance. Native fixtures establish this bounded route, not general browser scrolling.
+
+The Safari link route checks the pre-click destination's origin; it does not prevent a server redirect or JavaScript side effect. Its confirmed effect means that the selected window's URL reached the captured destination, not that loading or a business operation completed. Cross-origin links, nested web areas and unchanged-URL links are unsupported by this route. Production consent and the independent model goal check remain required. [Current implementation evidence and limits](quality/evidence/2026-10-02-completion/COMPUTER_USE.md).
 
 The visual loop verifies actual before/after PNGs and performs a fresh goal check. AX return success, task acceptance, and a changed cursor/image are not task completion. Visible verification does not prove remote delivery or durable saving; use structured APIs/readback for those goals.
 
@@ -70,27 +91,35 @@ The planner is also told what it has already done this run: how many inputs were
 
 When a run stops, its reason and the last audit rows are appended to that request's existing claim record under `ComputerRuns`. The claim itself is the replay lock and is never rewritten or removed; the appended line holds the stop code, action types and image hashes only — no screenshots and no typed text.
 
+## Visible background operation (2026-10-01)
+
+The existing watcher now owns the pointer for the whole run, including model waits. Its tip marks the exact action point, with a short 180 ms transition; Reduce Motion places it immediately. Labels stay on the target display. An offscreen action point is refused instead of displaying a pointer at a false position. Only the separate 88 × 32 pt stop button accepts mouse input; the pointer and label remain transparent to clicks.
+
+Before writing text, the native helper resolves the exact writable element without changing focus or sending input. It creates a marked context image and an enlarged crop from the original screenshot. A separate model call compares that selection and the exact proposed text against the original request. The host verifies the preview's source, hash and dimensions, then sends input to that same canonical element ID. Missing preview support, mismatch, uncertainty, or a malformed verdict stops before delivery; there is no raw-image fallback. This is an additional model check, not a guarantee of semantic correctness; native scope/secure-field/identity checks remain authoritative. Input errors after dispatch are recorded as an unknown effect and never automatically replayed. The final native stop/identity checks run after the pointer transition and between physical keys.
+
+Current implementation and verification: [visible background pointer](quality/VISIBLE_COMPUTER_POINTER.md).
+
 ## Storage, recovery and cancellation
 
-`start` saves a private run file before POST and refuses to overwrite it; it never approves automatically. `APPROVAL_SENT` and `CANCELLING` are not terminal success. Cancellation stops future input, not an undo of prior actions. `human_takeover` now pauses the run instead of ending it: the helper never touches the human, and the host waits (at most 3 times, up to 20s each) until the target app is not frontmost and 1.5s have passed since the last human input on it. Resuming always advances a **run generation**, so every screenshot taken before the interruption — and any decision still undelivered — is refused as `stale_generation` before input. An explicitly stopped session (`session_stopped`) is never resumed. Cancellation still works while waiting. A native history/stop control panel is **not implemented** by this change. See [docs/quality/MULTISTEP.md](quality/MULTISTEP.md); the runtime evidence for the pause/resume path is **not yet collected** (the native suite is blocked by a machine-level accessibility fault recorded there).
+`start` saves a private run file before POST and refuses to overwrite it; it never approves automatically. `APPROVAL_SENT` and `CANCELLING` are not terminal success. Cancellation stops future input, not an undo of prior actions. `human_takeover` now pauses the run instead of ending it: the helper never touches the human, and the host waits (at most 3 times, up to 20s each) until the target app is not frontmost and 1.5s have passed since the last human input on it. Resuming always advances a **run generation**, so every screenshot taken before the interruption — and any decision still undelivered — is refused as `stale_generation` before input. An explicitly stopped session (`session_stopped`) is never resumed. Cancellation still works while waiting. The pointer shows checking, clicking, typing, waiting and stopped states. Its separate 停止 button revokes the native session immediately; already delivered input is not undone. Completion/cancellation removes the display while an unused reusable grant may remain. The display and native input lease expire after five minutes even if the host disappears. Run history remains in the existing task records and journals; no separate history window is added. Native fixture pause/resume evidence is recorded in [MULTISTEP.md](quality/MULTISTEP.md); actual human parallel-work trials remain unverified.
 
 On lost acceptance, use `recover --run-file <same file>`. With an ID it uses GET; without one it repeats the original create body/key, which may retry existing PENDING workflow dispatch but cannot grant approval. Never edit the stored request/key or start a new task merely to retry an unknown mutation. The existing task API does not reject same-key/different-body requests; the client preserves the original body.
 
-Managed host and native app share `state-dir/app/VisualContext`. New run journals stay there. Old shared-cache claims are still checked read-only, preserving replay protection across migration. PNGs/AX sidecars/consumed-snapshot files are removed on normal close; the conflict watcher exits on session close/expiry. Abrupt process death can leave cache files for existing retention cleanup. Logs/audit do not include typed text or image pixels. Screenshots remain with the pinned local model unless the separately configured custom-host external-egress path has explicit user consent; the managed launcher never selects an external model.
+Managed host and native app share `state-dir/app/VisualContext`. New run journals stay there. Old shared-cache claims are still checked read-only, preserving replay protection across migration. PNGs/AX sidecars/consumed-snapshot files are removed on normal close; the conflict watcher exits on session close/expiry. Abrupt process death can leave cache files for existing retention cleanup. Logs/audit do not include typed text or image pixels. Screenshots remain with the selected local model, or use the explicitly selected external model only when the separate screen permission and per-run recipient consent allow it. The managed launcher never silently changes providers.
 
 ## Cloud models: free tier only, and never silently paid
 
-The screenshots go to whichever model is pinned. A model outside this machine additionally needs `ASTRA_COMPUTER_VISION_EXTERNAL=on` on the agent host **and** the local consent dialog, which names the recipient before the first capture. The managed launcher never selects one for you.
+The screenshots go to the pinned model. A model outside this machine additionally needs `ASTRA_COMPUTER_VISION_EXTERNAL=on` on the agent host **and** the local consent dialog, which names the recipient before the first capture. The managed launcher sets that variable only for an active `--computer-use` route with the separate saved `--allow-external-screen` choice described above. Legacy conversation-only `--allow-cloud` selections receive no implicit screen authorization.
 
-A cloud model without a spending guard does not run at all: the loop stops with `budget_required` before the first capture, so there is no path where pixels leave the machine with nothing counting the cost. The guard defaults to **free tier only**:
+A cloud model without a spending guard does not run at all: the loop stops with `budget_required` before the first capture, so there is no path where pixels leave the machine with nothing counting the cost. The guard defaults to its **free** policy label. This is a local spending policy, not a claim that Codex usage or an existing ChatGPT subscription is free; provider/account allowances and charges remain independent:
 
-| Setting | Default | Meaning |
-| --- | --- | --- |
-| `ASTRA_CLOUD_VISION_TIER` | `free` | `paid` is only ever reached by setting this by hand. Nothing upgrades on its own, and no run falls back to a different provider. |
-| `ASTRA_CLOUD_VISION_BILLED_PROJECT` | unset | Set to `yes` when the key belongs to a project with billing enabled. The API cannot be asked this, so it is your declaration — and while it is `yes`, free-tier mode refuses to run rather than calling a billed key "free". |
-| `ASTRA_CLOUD_VISION_TASK_CALLS` / `_MONTH_CALLS` | unset | Hard caps on model calls, checked **before** each call. |
-| `ASTRA_CLOUD_VISION_TASK_USD` / `_MONTH_USD` | unset | Caps on the estimate, judged including the call about to be made. |
-| `ASTRA_CLOUD_VISION_PRICE_USD` | `0` | Estimated price of one call. It is an estimate for the caps, never a bill. |
+| Setting                                          | Default | Meaning                                                                                                                                                                                                                      |
+| ------------------------------------------------ | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ASTRA_CLOUD_VISION_TIER`                        | `free`  | `paid` is only ever reached by setting this by hand. Nothing upgrades on its own, and no run falls back to a different provider.                                                                                             |
+| `ASTRA_CLOUD_VISION_BILLED_PROJECT`              | unset   | Set to `yes` when the key belongs to a project with billing enabled. The API cannot be asked this, so it is your declaration — and while it is `yes`, free-tier mode refuses to run rather than calling a billed key "free". |
+| `ASTRA_CLOUD_VISION_TASK_CALLS` / `_MONTH_CALLS` | unset   | Hard caps on model calls, checked **before** each call.                                                                                                                                                                      |
+| `ASTRA_CLOUD_VISION_TASK_USD` / `_MONTH_USD`     | unset   | Caps on the estimate, judged including the call about to be made.                                                                                                                                                            |
+| `ASTRA_CLOUD_VISION_PRICE_USD`                   | `0`     | Estimated price of one call. It is an estimate for the caps, never a bill.                                                                                                                                                   |
 
 `ASTRA_CLOUD_VISION_TIER=paid` is refused unless at least one monthly cap is set: turning billing on must not also mean turning the ceiling off.
 
@@ -104,4 +133,4 @@ The ledger is not a bill. Only the provider knows what was actually charged; the
 
 [Background acceptance and evidence](quality/BACKGROUND_COMPUTER_USE.md) distinguish native adapter tests from model-driven UI E2E and human evaluation. Run `bash scripts/test-background-computer.sh` only when two disposable fixture windows may temporarily occupy the desktop. It compiles the production adapter into a test-only harness with fixture-scoped authority; that does **not** test the real consent/model/planner loop. The target and foreground sentinel have separate structured readbacks. `GENIE_FIXTURE_PASSIVE=1` runs a different preservation-only scenario without typing into a foreground app; it does not replace the default test.
 
-The command interface is a developer preview. Natural-language native launching, arbitrary app support, user-facing resumable pause/history, true human parallel-work trials and full Codex-equivalent behavior remain outside the verified scope. Windows requires a separate implementation and Windows-native evidence.
+The command interface is a developer preview. Natural-language routing exists through the native app's task path. Arbitrary app support, a dedicated history panel, true human parallel-work trials and full Codex-equivalent behavior remain outside the verified scope. Windows requires a separate implementation and Windows-native evidence.

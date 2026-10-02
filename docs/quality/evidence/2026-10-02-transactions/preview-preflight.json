@@ -1,0 +1,105 @@
+{
+  "at": "2026-10-01T15:25:29.582Z",
+  "classification": "implementation-validation (infrastructure) / actual local managed-preview execution",
+  "commands": [
+    {
+      "file": "node",
+      "args": [
+        "scripts/start-local-preview.mjs",
+        "status",
+        "--state-dir",
+        "/private/tmp/genie-transactions-20261002/preview"
+      ],
+      "exitCode": 0,
+      "stdout": "{\"project\":\"genie-preview-f68d0fef8411\",\"phase\":\"ready\",\"gateway\":\"http://127.0.0.1:43180\",\"model\":\"qwen3.5:9b\",\"computerUse\":false,\"transactionSimulation\":false,\"computerDelivery\":null,\"computerHelperUnattendedTest\":null}\n",
+      "stderr": ""
+    },
+    {
+      "file": "docker",
+      "args": [
+        "context",
+        "show"
+      ],
+      "exitCode": 0,
+      "stdout": "colima\n",
+      "stderr": ""
+    },
+    {
+      "file": "docker",
+      "args": [
+        "--context",
+        "colima-genie-transactions-20261002",
+        "info",
+        "--format",
+        "{{json .ServerVersion}}"
+      ],
+      "exitCode": 0,
+      "stdout": "\"29.5.2\"\n",
+      "stderr": ""
+    },
+    {
+      "file": "docker",
+      "args": [
+        "--context",
+        "colima-genie-transactions-20261002",
+        "ps",
+        "--format",
+        "{{.Names}} {{.Status}} {{.Ports}}"
+      ],
+      "exitCode": 0,
+      "stdout": "genie-preview-f68d0fef8411-temporal-1 Up 3 minutes (healthy) 6933-6935/tcp, 6939/tcp, 7234-7235/tcp, 7239/tcp, 127.0.0.1:56874->7233/tcp\ngenie-preview-f68d0fef8411-redis-1 Up 3 minutes (healthy) 127.0.0.1:56873->6379/tcp\ngenie-preview-f68d0fef8411-postgres-1 Up 3 minutes (healthy) 127.0.0.1:56872->5432/tcp\n",
+      "stderr": ""
+    },
+    {
+      "file": "colima",
+      "args": [
+        "list"
+      ],
+      "exitCode": 0,
+      "stdout": "PROFILE                        STATUS     ARCH       CPUS    MEMORY    DISK     RUNTIME    ADDRESS\ndefault                        Stopped    aarch64    2       4GiB      20GiB    docker     \ngenie-transactions-20261002    Running    aarch64    4       4GiB      20GiB    docker     \n",
+      "stderr": ""
+    },
+    {
+      "file": "sw_vers",
+      "args": [],
+      "exitCode": 0,
+      "stdout": "ProductName:\t\tmacOS\nProductVersion:\t\t27.0.1\nBuildVersion:\t\t26A434\n",
+      "stderr": ""
+    },
+    {
+      "file": "node",
+      "args": [
+        "--version"
+      ],
+      "exitCode": 0,
+      "stdout": "v26.5.0\n",
+      "stderr": ""
+    },
+    {
+      "file": "git",
+      "args": [
+        "rev-parse",
+        "HEAD"
+      ],
+      "exitCode": 0,
+      "stdout": "ee857a5b13482cbd2d986a1f9b466c8e49a149c3\n",
+      "stderr": ""
+    }
+  ],
+  "health": {
+    "status": 200,
+    "body": {
+      "status": "ok",
+      "version": "0.1.0",
+      "checks": {
+        "database": "ok",
+        "redis": "ok"
+      }
+    }
+  },
+  "sourceSha256": {
+    "scripts/start-local-preview.mjs": "0feab5430ba053ccd90cea647fd2f2fcbec71dd33464fcc17c8c006ac5c2407f",
+    "scripts/local-preview/config.mjs": "8c3264ebf1323673eaa04cb2cb6b0d541542c25855736ec6cc1d8d24a8ff2d82",
+    "scripts/tests/managed-local-preview.test.mjs": "490a60afbae5d2d8f36e8d5f2eb85a9b27cd2039e4736bbf574833748016a96e"
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "recordedAt": "2026-10-01T22:59:20.130723+00:00",
+  "scope": "Generated UniFFI bindings fix after package facts crash; current working tree, no commit",
+  "priorFailure": {
+    "observedBy": "/root/pointer_ui",
+    "packageFacts": "SIGTRAP through makeRustCall/recordingSnapshot",
+    "freshFactsStderr": "UniFFI API checksum mismatch: try cleaning and rebuilding your project",
+    "freshFactsExit": -5,
+    "log": "/private/tmp/genie-transactions-20261002/gate-fixture-facts-diagnostic/facts.log"
+  },
+  "cause": {
+    "generator": "UniFFI 0.29.5",
+    "function": "api_reachable",
+    "oldSwiftChecksum": 13704,
+    "newRustChecksum": 59910,
+    "explanation": "Function metadata checksum includes its docstring. Updated reachable documentation made checked-in generated Swift stale. All API checks execute on first FFI invocation, so the recordingSnapshot stack did not identify the mismatching function.",
+    "privateGeneratedDiff": "Only apiReachable documentation and its expected checksum changed; recording snapshot API unchanged."
+  },
+  "commands": [
+    {
+      "command": "target/debug/uniffi-bindgen generate --library target/debug/libgenie_core.dylib --language swift --out-dir /private/tmp/genie-transactions-20261002/gate-fixture-bindings-new",
+      "cwd": "core/genie-core",
+      "exitCode": 0,
+      "note": "Initial invocation from repository root failed cargo metadata with no generated output; retried from core directory as the official script does."
+    },
+    {
+      "command": "CARGO_BUILD_JOBS=1 GENIE_SWIFT_BUILD_JOBS=1 bash scripts/gen-swift-bindings.sh",
+      "exitCode": 0,
+      "log": "/private/tmp/genie-transactions-20261002/gate-fixture-bindings-generate.log"
+    },
+    {
+      "command": "CARGO_BUILD_JOBS=1 GENIE_SWIFT_BUILD_JOBS=1 bash scripts/gen-swift-bindings.sh --check",
+      "exitCode": 0,
+      "result": "swift bindings are current",
+      "log": "/private/tmp/genie-transactions-20261002/gate-fixture-bindings-check.log"
+    },
+    {
+      "command": "git diff --check -- apps/genie-macos/Sources/GenieCore/genie_core.swift apps/genie-macos/Sources/GenieCoreFFI/include",
+      "exitCode": 0
+    }
+  ],
+  "sourceHashes": {
+    "core/genie-core/src/api.rs": "914c671cd14837d89a5d60cc467b13339d331c0154389790c977bad91779df79",
+    "apps/genie-macos/Sources/GenieCore/genie_core.swift": "eead7f6a8e939d25167a9d38926a127c05f06bb126dff4de97b533ca908dca15",
+    "apps/genie-macos/Sources/GenieCoreFFI/include/genie_coreFFI.h": "26d0865dc5454805c37a98135100c8e1bf9e878560108d50076bea946423afad",
+    "apps/genie-macos/Sources/GenieCoreFFI/include/module.modulemap": "c23a9725a56d6e5ca25b6ddd6de5e0849d1d77f4f93d3e00ecf9f1088a1bdbc1"
+  },
+  "staticArchiveSha256": "55fa96e8cc6c0604a5934fee0d250cac3e7f5d105b32550f06cc10d7345ca6c5",
+  "remaining": "Native package relink and facts rerun belong to pointer/root; not yet claimed passing. Installed app unchanged by this fix."
+}

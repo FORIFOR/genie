@@ -19,12 +19,13 @@
     "体感の複雑さ（層 C）: 段は 5、面は 1 枚、増えた窓 0"
   ],
   "product" : "Genie",
-  "startedAt" : "2026-09-26T19:03:53Z",
+  "startedAt" : "2026-10-02T23:10:02Z",
   "steps" : [
     {
+      "front" : "com.astra.mac",
       "interactions" : 0,
       "keyWindow" : false,
-      "ms" : 24,
+      "ms" : 35,
       "name" : "Home（Dock は待機）",
       "surface" : {
         "h" : 76,
@@ -36,12 +37,13 @@
       "windows" : 2
     },
     {
+      "front" : "com.astra.mac",
       "interactions" : 1,
       "keyWindow" : false,
       "keys" : {
         "esc" : "listening→idle"
       },
-      "ms" : 1305,
+      "ms" : 991,
       "name" : "Listening",
       "surface" : {
         "h" : 76,
@@ -54,27 +56,29 @@
       "windows" : 2
     },
     {
+      "front" : "com.astra.mac",
       "ids" : {
-        "task" : "A83374C6-F6C3-4D80-9488-3855EAF2A8B6"
+        "task" : "2201B4B9-1DCC-4142-B117-65E7CF9D5392"
       },
       "interactions" : 0,
       "keyWindow" : false,
-      "ms" : 1104,
+      "ms" : 1065,
       "name" : "Running",
       "surface" : {
-        "h" : 293,
+        "h" : 258,
         "key" : false,
         "w" : 720,
         "x" : 504,
-        "y" : 824
+        "y" : 859
       },
-      "transitionMs" : 122,
+      "transitionMs" : 191,
       "windows" : 2
     },
     {
+      "front" : "com.astra.mac",
       "ids" : {
-        "confirmation" : "FE5FD2A5-031C-49A4-99E8-A9D18A3DFB2A",
-        "resolved" : "FE5FD2A5-031C-49A4-99E8-A9D18A3DFB2A"
+        "confirmation" : "87667787-B760-41D1-989F-DED289947330",
+        "resolved" : "87667787-B760-41D1-989F-DED289947330"
       },
       "interactions" : 2,
       "keyWindow" : false,
@@ -82,25 +86,26 @@
         "cmdReturn" : "approved",
         "return" : "no-op"
       },
-      "ms" : 1874,
+      "ms" : 1819,
       "name" : "Confirmation",
       "surface" : {
-        "h" : 293,
+        "h" : 258,
         "key" : false,
         "w" : 720,
         "x" : 504,
-        "y" : 824
+        "y" : 859
       },
-      "transitionMs" : 204,
+      "transitionMs" : 209,
       "windows" : 2
     },
     {
+      "front" : "com.astra.mac",
       "interactions" : 1,
       "keyWindow" : false,
       "keys" : {
         "esc" : "result→idle"
       },
-      "ms" : 1070,
+      "ms" : 1282,
       "name" : "Done",
       "surface" : {
         "h" : 76,
@@ -109,11 +114,11 @@
         "x" : 754,
         "y" : 1041
       },
-      "transitionMs" : 0,
+      "transitionMs" : 198,
       "windows" : 2
     }
   ],
   "success" : true,
-  "totalMs" : 5381,
+  "totalMs" : 5195,
   "windowsOpened" : 0
 }

@@ -4,13 +4,13 @@
 
 **Ask about the work in front of you, then keep the answer where you work.**
 
-Genie is a native Mac app for a small, repeatable loop: bring up TaskDock, optionally attach the screen you are looking at, ask one specific question, and copy the answer without leaving the current work. Run it with Ollama or another model endpoint you choose.
+Genie is a native Mac app for a small, repeatable loop: bring up TaskDock, optionally attach the screen you are looking at, ask one specific question, and copy the answer without leaving the current work. Use your existing Codex connection with `gpt-6-sol`, or explicitly choose local inference with Ollama.
 
 Previously Astra. The app, downloads, and source are now named Genie. Existing settings and accounts are retained.
 
 [Enterprise introduction: measured workflows, limits, and L1/L2/L3 gates](docs/ENTERPRISE_READINESS.md).
 
-**Using Ollama on a Mac? Help test the preview.** Try the loop below with a fictional screen or note, then tell us the first place you get stuck. Setup feedback counts, too. No waitlist or separate signup; a GitHub account is only needed to post feedback.
+**Using Codex or Ollama on a Mac? Help test the preview.** Try the loop below with a fictional screen or note, then tell us the first place you get stuck. Setup feedback counts, too. No waitlist or separate signup; a GitHub account is only needed to post feedback.
 
 **[Watch the first workflow →](https://genie-forifor.forifor.chatgpt.site/#demo)** · [Start a first test](docs/TESTING.md) · [Download the Mac preview](https://github.com/FORIFOR/genie/releases/tag/v0.1.4) · [Report your experience](https://github.com/FORIFOR/genie/issues/new?template=tester_feedback.yml)
 
@@ -59,9 +59,16 @@ An explicitly selected route is not silently replaced by a paid provider. Local 
 
 [First success: make, edit and reopen a saved checklist](docs/FIRST_RUN.md) · [SDK and compatibility](docs/INTEGRATION.md) · [Acceptance evidence](docs/quality/RESULTS.md) · [Latest recovery verification](docs/quality/RECOVERY.md)
 
-**Developer preview — setup is required.** The Mac app currently needs a local gateway, task worker, agent host, and model. The app download alone is not a hosted service.
+**Developer preview — setup is required.** The Mac app currently needs a local gateway, task worker and agent host, plus a selected local or external model connection. The app download alone is not a hosted service.
 
-**New in source: [start the local services together](docs/MANAGED_PREVIEW.md).** With Node, Docker Desktop and an Ollama model installed, open `Start Genie.command` to prepare the database, start the services and open Home. The launcher keeps a separate preview workspace and stops its services with Ctrl+C. It is not included in the v0.1.4 DMG.
+**New in source: [start the local services together](docs/MANAGED_PREVIEW.md).** Prepare Node 22+, Docker and a same-checkout Genie.app. To use an existing signed-in Codex CLI without loading an Ollama model, start explicitly:
+
+```sh
+node scripts/start-local-preview.mjs --app apps/genie-macos/build/Genie.app \
+  --model-provider codex --allow-cloud --model gpt-6-sol
+```
+
+The selected external model receives submitted text and attachments and uses your existing account's allowance. Local inference remains an option: replace the model flags with `--model-provider local --model qwen3.5:9b` for a model you have installed. The launcher does not download models or switch providers on failure. Its unconfigured default remains local; after setup, the saved choice is reused. `Start Genie.command` reopens that saved workspace when the matching app is in Applications. The local services and Docker still run on the Mac. This source launcher is not included in the v0.1.4 DMG.
 
 - macOS 14 or later; native SwiftUI app, Apple silicon and Intel builds.
 - [Start the tester guide](docs/TESTING.md) for a matching app and source, a first task, and troubleshooting.
@@ -69,7 +76,7 @@ An explicitly selected route is not silently replaced by a paid provider. Local 
 - [Mac builds](https://github.com/FORIFOR/genie/releases): use the build and source version named together in its release notes.
 - [See the actual interface and demo](https://genie-forifor.forifor.chatgpt.site/#demo).
 
-The preview includes recording, live transcription, service connections, guided Mac permissions, and an opt-in [screenshot-grounded computer use](docs/COMPUTER_VISION.md). Computer control is off by default, requires explicit local enablement, task approval and one native consent for the bounded run, and is not a prerequisite for the local text workflow. Production-wide release acceptance is still tracked separately from this developer preview.
+The preview includes recording, live transcription, service connections, guided Mac permissions, and an opt-in [screenshot-grounded computer use](docs/COMPUTER_VISION.md). Computer control is off by default and is not required for text requests. It requires `--computer-use`, task approval and native target-window consent. Automatic screen images sent to Codex additionally require `--allow-external-screen`; conversation `--allow-cloud` alone does not grant that permission. The screen choice is bound to the saved provider/model and can be removed with `--no-external-screen`. Production-wide release acceptance is still tracked separately from this developer preview.
 
 ## Help shape Genie
 

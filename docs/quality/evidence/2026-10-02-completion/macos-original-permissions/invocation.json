@@ -1,0 +1,28 @@
+{
+  "command": [
+    "/usr/bin/open",
+    "-n",
+    "-W",
+    "--env",
+    "ASTRA_DATA_ROOT=/private/tmp/genie-transactions-20261002/macos27-original/permissions/data",
+    "--env",
+    "ASTRA_SELFTEST_EXIT_RECEIPT=/private/tmp/genie-transactions-20261002/macos27-original/permissions/exit.json",
+    "--stdout",
+    "/private/tmp/genie-transactions-20261002/macos27-original/permissions/stdout.log",
+    "--stderr",
+    "/private/tmp/genie-transactions-20261002/macos27-original/permissions/stderr.log",
+    "/Users/shuhei/Projects/genie/apps/genie-macos/.build/Genie.app",
+    "--args",
+    "-astra.transcription.cloudGoogleSTT",
+    "NO",
+    "--selftest",
+    "permissions"
+  ],
+  "openExitCode": 0,
+  "receipt": {
+    "exitCode": 0,
+    "schema": 1,
+    "normalExit": true
+  },
+  "binarySHA256": "bd494b0e664da5abd15938b1573d15ac64563dd32ec9de5763d6297ed071a6c7"
+}

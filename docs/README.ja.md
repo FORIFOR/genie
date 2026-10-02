@@ -2,13 +2,13 @@
 
 **いま見ている仕事を聞いて、答えをその場で使う。**
 
-Genieは、TaskDockを呼び出し、必要なら画面を添えて、具体的な質問を一つ送り、作業場所を離れずに答えを確認できるMacアプリです。Ollamaなど、選んだモデル経路で動かせます。
+Genieは、TaskDockを呼び出し、必要なら画面を添えて、具体的な質問を一つ送り、作業場所を離れずに答えを確認できるMacアプリです。既存のCodex接続で`gpt-6-sol`を使うか、Ollamaによる端末内処理を明示的に選べます。
 
 旧名称はAstraです。アプリ、配布物、リポジトリはGenieに統一しました。既存の設定とアカウントは引き継げます。
 
-**MacでOllamaを使う開発者のテスターを募集しています。** 下の一連の操作を、架空の画面やメモで試してください。最初につまずいたところを教えてください。セットアップで止まった報告も歓迎です。事前登録・メールアドレスの登録は不要。報告時だけGitHubアカウントを使います。
+**MacでCodexまたはOllamaを使う開発者のテスターを募集しています。** 下の一連の操作を、架空の画面やメモで試してください。最初につまずいたところを教えてください。セットアップで止まった報告も歓迎です。事前登録・メールアドレスの登録は不要。報告時だけGitHubアカウントを使います。
 
-**[最初の実演を見る →](https://genie-forifor.forifor.chatgpt.site/ja#demo)** · [日本語の初回起動ガイド](LOCAL_PREVIEW.ja.md) · [テスト内容を見る](TESTING.ja.md) · [Macプレビューを取得](https://github.com/FORIFOR/genie/releases/tag/v0.1.4) · [結果・つまずきを報告](https://github.com/FORIFOR/genie/issues/new?template=tester_feedback.yml)
+**[最初の実演を見る →](https://genie-forifor.forifor.chatgpt.site/ja#demo)** · [日本語の初回起動ガイド](MANAGED_PREVIEW.ja.md) · [テスト内容を見る](TESTING.ja.md) · [Macプレビューを取得](https://github.com/FORIFOR/genie/releases/tag/v0.1.4) · [結果・つまずきを報告](https://github.com/FORIFOR/genie/issues/new?template=tester_feedback.yml)
 
 ## 最初に試す一つの仕事
 
@@ -39,7 +39,18 @@ Genieは、TaskDockを呼び出し、必要なら画面を添えて、具体的�
 
 スクリーンショットは状況を伝えるための補助です。撮影しただけではAIに送信しません。画像を添えた質問を送るときに使います。
 
-**現在は開発者向けプレビューです。** macOS 14以降と、ローカルのGateway・Worker・Agent Host・モデルが必要です。アプリを入れるだけで使えるサービスではありません。[テスターガイド](TESTING.ja.md)で配布物と同じバージョンのセットアップを案内しています。
+**現在は開発者向けプレビューです。** macOS 14以降と、ローカルのGateway・Worker・Agent Hostと、選んだモデルへの接続が必要です。アプリを入れるだけで使えるサービスではありません。[テスターガイド](TESTING.ja.md)で配布物と同じバージョンのセットアップを案内しています。
+
+現在のソースでは、Node 22以降・Docker・同じソースから作ったGenie.appと、サインイン済みCodex CLIでまとめて起動できます。Ollamaのモデルをメモリに読み込まずに使う例です。
+
+```sh
+node scripts/start-local-preview.mjs --app apps/genie-macos/build/Genie.app \
+  --model-provider codex --allow-cloud --model gpt-6-sol
+```
+
+選んだモデルへ送信した文章・添付画像が渡り、既存アカウントの利用枠を使います。ローカル処理を選ぶ場合は、モデル指定を`--model-provider local --model qwen3.5:9b`へ置き換え、導入済みモデルを使ってください。未設定時の既定はlocalのままで、設定後は同じ保存先の選択を再利用します。起動方法と必要な道具は[まとめて起動する手順](MANAGED_PREVIEW.ja.md)を参照してください。Dockerとローカルサービスは外部モデル選択時も動きます。
+
+自動画面操作は別途`--computer-use`で有効にします。Codexへ操作対象の画像を送るには`--allow-external-screen`も必要で、`--allow-cloud`だけでは許可されません。対象窓への同意とタスク承認は引き続き必要です。画面送信許可は保存先の提供元・モデルに固定され、`--no-external-screen`で解除できます。
 
 Ollama、対応API、Codex、Claude Codeを選択できます。明示的に選んだ経路を、別の有料プロバイダーに自動で切り替えることはありません。外部モデルには送信内容が渡り、利用料金がかかる場合があります。
 

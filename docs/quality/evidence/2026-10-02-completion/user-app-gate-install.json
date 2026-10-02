@@ -1,0 +1,23 @@
+{
+  "recordedAt": "2026-10-01T23:06:22.715976+00:00",
+  "status": "PASS",
+  "scope": "Local app replacement only; no launch, user library/config mutation, permission request or service start",
+  "installed": [
+    {
+      "target": "/Applications/Genie.app",
+      "backup": "/Users/shuhei/Library/Application Support/Genie/update-backups/20261002-080622/installed-Genie.app",
+      "before": "a01378c92ef466086c4e6e0c1f8263e66a9da61ec24d026c86ef6cda0f678801",
+      "after": "8b46350c5bb3a4330320689898171c59a5fd0dc9cf1947dd6548a4d4f2af668d",
+      "strictSignature": true
+    },
+    {
+      "target": "/Users/shuhei/Projects/genie/apps/genie-macos/build/Genie.app",
+      "backup": "/Users/shuhei/Library/Application Support/Genie/update-backups/20261002-080622/source-build-Genie.app",
+      "before": "a01378c92ef466086c4e6e0c1f8263e66a9da61ec24d026c86ef6cda0f678801",
+      "after": "8b46350c5bb3a4330320689898171c59a5fd0dc9cf1947dd6548a4d4f2af668d",
+      "strictSignature": true
+    }
+  ],
+  "sourceStage": "/private/tmp/genie-transactions-20261002/user-app-gate-stage/Genie.app",
+  "sameBundleIdentifier": "com.astra.mac"
+}

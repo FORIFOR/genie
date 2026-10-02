@@ -1,0 +1,231 @@
+{
+  "status": "PASS",
+  "checkedExamples": 17,
+  "nodeVersion": "v26.5.0",
+  "files": [
+    "README.md",
+    "docs/README.ja.md",
+    "docs/FIRST_RUN.md",
+    "docs/MANAGED_PREVIEW.md",
+    "docs/MANAGED_PREVIEW.ja.md",
+    "docs/COMPUTER_VISION.md"
+  ],
+  "scope": "Pure parseOptions/modelConfiguration check only; no startup, build, model call or permission request",
+  "recordedAt": "2026-10-02T05:22:23.706645+09:00",
+  "command": [
+    "node",
+    "--input-type=module",
+    "-e",
+    "<validationSource>"
+  ],
+  "workingDirectory": "repository root",
+  "exitCode": 0,
+  "validationSource": "import {parseOptions,modelConfiguration,externalScreenAllowed} from './scripts/local-preview/config.mjs';\nlet text=''; for await (const chunk of process.stdin) text+=chunk;\nconst examples=JSON.parse(text);\nfor (const example of examples) {\n const options=parseOptions([...example.args]);\n if(options.command==='start') {\n  const config=modelConfiguration({modelURL:'http://127.0.0.1:11434/v1',model:null},options);\n  if(options.allowExternalScreen===true && !externalScreenAllowed(config,options.computerUse)) throw new Error(example.file+' screen opt-in mismatch');\n  if(options.modelProvider==='codex' && options.allowExternalScreen!==true && externalScreenAllowed(config,options.computerUse)) throw new Error(example.file+' implicit screen authorization');\n  if(example.file==='docs/COMPUTER_VISION.md' && options.app!=='apps/genie-macos/build/Genie.app') throw new Error('Computer use must name the same-checkout app');\n }\n}\nparseOptions(['--no-external-screen']);\nconsole.log(JSON.stringify({status:'PASS',checkedExamples:examples.length,nodeVersion:process.version,files:[...new Set(examples.map(e=>e.file))],scope:'Pure parseOptions/modelConfiguration check only; no startup, build, model call or permission request'},null,2));\n",
+  "stdin": [
+    {
+      "file": "README.md",
+      "args": [
+        "--app",
+        "apps/genie-macos/build/Genie.app",
+        "--model-provider",
+        "codex",
+        "--allow-cloud",
+        "--model",
+        "gpt-6-sol"
+      ]
+    },
+    {
+      "file": "docs/README.ja.md",
+      "args": [
+        "--app",
+        "apps/genie-macos/build/Genie.app",
+        "--model-provider",
+        "codex",
+        "--allow-cloud",
+        "--model",
+        "gpt-6-sol"
+      ]
+    },
+    {
+      "file": "docs/FIRST_RUN.md",
+      "args": [
+        "--app",
+        "apps/genie-macos/build/Genie.app",
+        "--model-provider",
+        "codex",
+        "--allow-cloud",
+        "--model",
+        "gpt-6-sol"
+      ]
+    },
+    {
+      "file": "docs/MANAGED_PREVIEW.md",
+      "args": [
+        "--app",
+        "apps/genie-macos/build/Genie.app",
+        "--model-provider",
+        "codex",
+        "--allow-cloud",
+        "--model",
+        "gpt-6-sol"
+      ]
+    },
+    {
+      "file": "docs/MANAGED_PREVIEW.md",
+      "args": [
+        "--app",
+        "apps/genie-macos/build/Genie.app",
+        "--model-provider",
+        "local",
+        "--model",
+        "qwen3.5:9b"
+      ]
+    },
+    {
+      "file": "docs/MANAGED_PREVIEW.md",
+      "args": [
+        "--app",
+        "apps/genie-macos/build/Genie.app",
+        "--model-provider",
+        "codex",
+        "--allow-cloud",
+        "--model",
+        "gpt-6-sol",
+        "--computer-use",
+        "--allow-external-screen"
+      ]
+    },
+    {
+      "file": "docs/MANAGED_PREVIEW.md",
+      "args": [
+        "status"
+      ]
+    },
+    {
+      "file": "docs/MANAGED_PREVIEW.md",
+      "args": [
+        "stop"
+      ]
+    },
+    {
+      "file": "docs/MANAGED_PREVIEW.md",
+      "args": [
+        "--app",
+        "apps/genie-macos/build/Genie.app",
+        "--state-dir",
+        "/tmp/genie-documentation-home/Library/Application Support/Genie/second-preview",
+        "--port",
+        "43124",
+        "--model-provider",
+        "codex",
+        "--allow-cloud",
+        "--model",
+        "gpt-6-sol"
+      ]
+    },
+    {
+      "file": "docs/MANAGED_PREVIEW.ja.md",
+      "args": [
+        "--app",
+        "apps/genie-macos/build/Genie.app",
+        "--model-provider",
+        "codex",
+        "--allow-cloud",
+        "--model",
+        "gpt-6-sol"
+      ]
+    },
+    {
+      "file": "docs/MANAGED_PREVIEW.ja.md",
+      "args": [
+        "--app",
+        "apps/genie-macos/build/Genie.app",
+        "--model-provider",
+        "local",
+        "--model",
+        "qwen3.5:9b"
+      ]
+    },
+    {
+      "file": "docs/MANAGED_PREVIEW.ja.md",
+      "args": [
+        "--app",
+        "apps/genie-macos/build/Genie.app",
+        "--model-provider",
+        "codex",
+        "--allow-cloud",
+        "--model",
+        "gpt-6-sol",
+        "--computer-use",
+        "--allow-external-screen"
+      ]
+    },
+    {
+      "file": "docs/MANAGED_PREVIEW.ja.md",
+      "args": [
+        "status"
+      ]
+    },
+    {
+      "file": "docs/MANAGED_PREVIEW.ja.md",
+      "args": [
+        "stop"
+      ]
+    },
+    {
+      "file": "docs/MANAGED_PREVIEW.ja.md",
+      "args": [
+        "--app",
+        "apps/genie-macos/build/Genie.app",
+        "--state-dir",
+        "/tmp/genie-documentation-home/Library/Application Support/Genie/second-preview",
+        "--port",
+        "43124",
+        "--model-provider",
+        "codex",
+        "--allow-cloud",
+        "--model",
+        "gpt-6-sol"
+      ]
+    },
+    {
+      "file": "docs/COMPUTER_VISION.md",
+      "args": [
+        "--app",
+        "apps/genie-macos/build/Genie.app",
+        "--computer-use",
+        "--model-provider",
+        "codex",
+        "--model",
+        "gpt-6-sol",
+        "--allow-cloud",
+        "--allow-external-screen"
+      ]
+    },
+    {
+      "file": "docs/COMPUTER_VISION.md",
+      "args": [
+        "--app",
+        "apps/genie-macos/build/Genie.app",
+        "--model-provider",
+        "local",
+        "--model",
+        "qwen3.5:9b",
+        "--computer-use"
+      ]
+    }
+  ],
+  "extraction": "Extract fenced sh blocks; join backslash-newline continuations; shlex.split each node scripts/start-local-preview.mjs line; replace $HOME with /tmp/genie-documentation-home. No command is executed.",
+  "sha256": {
+    "README.md": "afb5207faa544bb9738f30e528c9f26ca8cda72fe80643541e37b1888af5a4dd",
+    "docs/README.ja.md": "8756d7b4e3cc11db041633a9308b719d5c695c95e218bf88e76b0a5b6f27c7c2",
+    "docs/FIRST_RUN.md": "095704c3098abc93c2677fe12b2397e67e4d8337dffa06ebf1b1e7ee632bf008",
+    "docs/MANAGED_PREVIEW.md": "90c8d0d62ff2c0cbc03834b0686088eb4e72341b769a974b047b0712d49651c3",
+    "docs/MANAGED_PREVIEW.ja.md": "9463f7bcccaf4080b52fac8018e418fe204120badbc715d249ff87ac0982b358",
+    "docs/LOCAL_PREVIEW.md": "f33f9359cc2c5b35039420fe9a2b2ff9dfa3c7198482886a63166a5d75d5498f",
+    "docs/LOCAL_PREVIEW.ja.md": "c546908a89c12876de04cd2fba5ebab46b27082a8b9fa75e927d6a0f5514470e",
+    "docs/COMPUTER_VISION.md": "1a5256bbd8e984330a44af8b696f49be364fe472d94ca7faacfbee0a1b223243",
+    "scripts/local-preview/config.mjs": "15b9d16e914403cce9bead40e78c363af0f3c12c3798921ce878fd9130aa6255",
+    "scripts/start-local-preview.mjs": "5a12e7f903d48cf377a9804e7d21aae9ade3076f9b12e24f1319176871869924"
+  }
+}

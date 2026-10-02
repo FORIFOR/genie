@@ -1,6 +1,6 @@
 # Run the Mac developer preview locally
 
-Current source also provides a [managed launcher](MANAGED_PREVIEW.md) that prepares the database and starts the local services together. The steps below describe the manual path.
+**This page describes manual setup with a local Ollama model.** To use an existing external Codex connection with `gpt-6-sol`, or to have the database and services managed together, use [the managed launcher](MANAGED_PREVIEW.md). That external route does not require Ollama, `dbmate` or `psql`; the native source-build prerequisites still apply if you build the app yourself.
 
 This is a developer setup, not a one-click consumer installation. It runs a gateway, database, durable worker, and model on your Mac. Do not expose the development authentication endpoint or the supplied database credentials to a network.
 

@@ -1,0 +1,2 @@
+Genie: アプリ(1.0)とソース(0.1.4)の版が違います。同じリリースを使ってください。
+起動案内: node scripts/start-local-preview.mjs --help

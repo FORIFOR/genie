@@ -1,0 +1,53 @@
+{
+  "recordedAt": "2026-10-01T19:21:44.865733+00:00",
+  "method": "Independent source review and saved native-result/log read; executor computer_correctness; no native action/build by reviewer",
+  "sourceHashes": {
+    "tools/computer-use/BackgroundAX.swift": "d7ebb648f3f2e672a7075b8dfef0f8f59ac66949e0bdcabe225c5305e969dc85",
+    "tools/computer-use/BackgroundAXTests.swift": "d1022bbee73a36d27b1ca55f70234226b92c2825ff7d7b96593687c150a7fd34",
+    "tools/computer-use/BackgroundScroll.swift": "ddc05bec49bf3a1defabba0e1081ed58e5463d3f3149cbf9a058d0a580c2a25f"
+  },
+  "priorFinding": "Retained scrollbar AX object could be stale after a same-descriptor replacement during marker travel.",
+  "resolution": "PASS source: fresh area path CFEqual + current vertical attribute/direct children CFEqual held bar/content immediately before freshBar setter; postset area/bar/content identity checked.",
+  "nativeEvidence": {
+    "resultPath": "/private/tmp/genie-background-native.Xy5iRm/result.json",
+    "resultSHA256": "3d664d3351b940762a65a65ec64cae696120579f15ec269b2f0c6d557dea2cfd",
+    "logPath": "/private/tmp/genie-transactions-20261002/computer-scroll-native-final.log",
+    "logSHA256": "d1093c70e6278ca39b345a384e61192c87812ddcbc5ecd97d48019f934374672",
+    "status": "PASS",
+    "replacedBarRefused": true,
+    "replacementValue": 0.6,
+    "replacementCount": 1,
+    "receipt": {
+      "deliveryMode": "background",
+      "effect": "confirmed",
+      "route": "ax_scroll",
+      "scroll": {
+        "after": 0.042986425339366516,
+        "before": 0,
+        "deltaPoints": 95,
+        "direction": "down",
+        "viewportPoints": 190
+      },
+      "status": "applied"
+    },
+    "upReadback": true,
+    "boundaryRefused": true,
+    "concurrentChangeRefused": true,
+    "postDispatchUnknown": true,
+    "replayRefused": true,
+    "attemptMarkerExists": true,
+    "passivePreservation": {
+      "foregroundUnchangedDuringActions": true,
+      "cursorUnchanged": true,
+      "clipboardUnchanged": true
+    },
+    "takeoverSource": "injected sticky marker",
+    "inputSource": "none; passive preservation check only, no foreground typing test"
+  },
+  "limitations": [
+    "No native AX compare-and-set exists; this narrows, not eliminates, the last instruction-time race.",
+    "Standard owned fixture only, not arbitrary browser/virtualized app support.",
+    "Passive preservation/injected takeover marker do not replace live human typing/IME testing.",
+    "Production helper build/status for this latest scroll source still pending at this checkpoint; round3 precedes the identity fix."
+  ]
+}

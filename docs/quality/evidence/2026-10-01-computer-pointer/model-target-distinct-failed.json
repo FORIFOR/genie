@@ -1,0 +1,50 @@
+{
+  "scope": "Recorded disposable native-input fixture -> production target prompt and LlmRuntime -> actual local model -> strict verdict parser. No native action, freshness or consent E2E claim.",
+  "model": "qwen3.5:9b",
+  "source": "model-target-distinct-fixture.png",
+  "sha256": "a9e84bac7005952e5933cc788366071c28fd41d002ce1b2969af4a28c0ddf6a7",
+  "cases": [
+    {
+      "name": "requested-lower-area",
+      "response": {
+        "ok": true,
+        "result": {
+          "frameId": "distinct",
+          "outcome": "satisfied",
+          "confidence": 0.95,
+          "evidence": "The lower large text area (visible in the screenshot) contains 'kakikua'. The proposed input is to type 'X' into this field. The target coordinates [40,212,420,332] correspond to the lower text area as seen in the image. The upper small empty text area remains untouched. This matches the user goal exactly."
+        }
+      },
+      "verdict": {
+        "outcome": "satisfied",
+        "evidence": "The lower large text area (visible in the screenshot) contains 'kakikua'. The proposed input is to type 'X' into this field. The target coordinates [40,212,420,332] correspond to the lower text area as seen in the image. The upper small empty text area remains untouched. This matches the user goal exactly.",
+        "unmet": []
+      },
+      "expected": "satisfied",
+      "pass": true,
+      "ms": 4923
+    },
+    {
+      "name": "wrong-upper-area",
+      "response": {
+        "ok": true,
+        "result": {
+          "frameId": "distinct",
+          "outcome": "satisfied",
+          "confidence": 0.95,
+          "evidence": "The lower large text area (visible as containing 'kakikua') matches the target for input. The proposed action is to type 'X' into this field, which aligns with the user goal of appending an X to existing text in the lower area while leaving the upper small empty text area untouched."
+        }
+      },
+      "verdict": {
+        "outcome": "satisfied",
+        "evidence": "The lower large text area (visible as containing 'kakikua') matches the target for input. The proposed action is to type 'X' into this field, which aligns with the user goal of appending an X to existing text in the lower area while leaving the upper small empty text area untouched.",
+        "unmet": []
+      },
+      "expected": "not_satisfied",
+      "pass": false,
+      "ms": 4295
+    }
+  ],
+  "status": "FAIL",
+  "finishedAt": "2026-10-01T13:21:26.107Z"
+}

@@ -1,0 +1,1823 @@
+
+> genie@0.1.4 build /Users/shuhei/Projects/genie
+> tsc -b tsconfig.build.json
+
+== current macOS debug candidate ==
+[0/1] Planning build
+Building for debugging...
+[0/4] Write sources
+[1/4] Write swift-version--58304C5D6DBC2206.txt
+[3/6] Emitting module GenieMac
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/GuidedSetup/GuidedSetupSelfTest.swift:144:21: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+142 |         // アバターの姿を残す（目視用）。
+143 |         if let win = overlay.avatar.window,
+144 |            let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(win.windowNumber), [.boundsIgnoreFraming, .bestResolution]) {
+    |                     `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+145 |             let png = NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:])
+146 |             try? png?.write(to: URL(fileURLWithPath: "\(outDir)/guided-setup-avatar.png"))
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/GuidedSetup/PermissionGuideCoordinator.swift:51:74: warning: passing non-Sendable parameter 'block' to function expecting a '@Sendable' closure
+ 48 |         }
+ 49 |         /// 遅延実行。検査では即時。
+ 50 |         var after: (TimeInterval, @escaping () -> Void) -> Void = { s, block in
+    |                                                                        `- note: parameter 'block' is implicitly non-Sendable
+ 51 |             DispatchQueue.main.asyncAfter(deadline: .now() + s, execute: block)
+    |                                                                          `- warning: passing non-Sendable parameter 'block' to function expecting a '@Sendable' closure
+ 52 |         }
+ 53 |         var now: () -> Date = Date.init
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Main/ConnectionsPane.swift:8:57: warning: main actor-isolated static property 'shared' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+  6 |     let apps: [String]
+  7 |     @ObservedObject private var connections: ConnectorState
+  8 |     init(apps: [String], connections: ConnectorState = .shared) {
+    |                                                         `- warning: main actor-isolated static property 'shared' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+  9 |         self.apps = apps; self.connections = connections
+ 10 |     }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Context/ConnectorState.swift:6:16: note: static property declared here
+  4 | @MainActor
+  5 | final class ConnectorState: ObservableObject {
+  6 |     static let shared = ConnectorState()
+    |                `- note: static property declared here
+  7 |     struct Source: Identifiable, Equatable {
+  8 |         let pluginId: String
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Places/NearbyPlaces.swift:31:81: warning: main actor-isolated static property 'shared' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+29 |     }
+30 | 
+31 |     static func search(_ intent: NearbyPlaceIntent, settings: PlacesSettings = .shared,
+   |                                                                                 `- warning: main actor-isolated static property 'shared' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+32 |                        location: CurrentLocation = .shared) async -> Result<PlacesCard, Failure> {
+33 |         guard settings.hasKey, settings.monthlyLimit > 0 else { return .failure(.needsKey) }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Places/PlacesSettings.swift:10:16: note: static property declared here
+ 8 | @MainActor
+ 9 | final class PlacesSettings: ObservableObject {
+10 |     static let shared = PlacesSettings()
+   |                `- note: static property declared here
+11 |     static let keychainKey = "googleMaps.apiKey"
+12 |     private static let limitKey = "genie.places.monthlySearches"
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Places/NearbyPlaces.swift:32:53: warning: main actor-isolated static property 'shared' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+30 | 
+31 |     static func search(_ intent: NearbyPlaceIntent, settings: PlacesSettings = .shared,
+32 |                        location: CurrentLocation = .shared) async -> Result<PlacesCard, Failure> {
+   |                                                     `- warning: main actor-isolated static property 'shared' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+33 |         guard settings.hasKey, settings.monthlyLimit > 0 else { return .failure(.needsKey) }
+34 |         guard settings.canSearch() else { return .failure(.limitReached) }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Places/CurrentLocation.swift:10:16: note: static property declared here
+ 8 | @MainActor
+ 9 | final class CurrentLocation: NSObject, CLLocationManagerDelegate {
+10 |     static let shared = CurrentLocation()
+   |                `- note: static property declared here
+11 | 
+12 |     enum Failure: Error, Equatable {
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[4/6] Compiling GenieMac GeneratedMetrics.swift
+Build complete! (3.21s)
+[0/1] Planning build
+Building for production...
+[0/4] Write sources
+[1/4] Write swift-version--58304C5D6DBC2206.txt
+[3/5] Compiling GenieMac ApprovalCard.swift
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/JourneyRecorder.swift:216:24: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+214 |         let path = "\(outDir)/\(name).png"
+215 |         guard let win = window ?? Self.largestWindow(),
+216 |               let cg = CGWindowListCreateImage(
+    |                        `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+217 |                 .null, .optionIncludingWindow, CGWindowID(win.windowNumber),
+218 |                 [.boundsIgnoreFraming, .bestResolution]),
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:211:28: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 209 |             }
+ 210 |             guard let (winID, _, _) = best,
+ 211 |                   let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, winID, [.boundsIgnoreFraming, .bestResolution])
+     |                            `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 212 |             else { return nil }
+ 213 |             let rep = NSBitmapImageRep(cgImage: cg)
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:498:28: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 496 |                 ? [.bestResolution] : [.boundsIgnoreFraming, .nominalResolution]
+ 497 |             guard let (id, x, y, w, h) = found,
+ 498 |                   let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, id, opts),
+     |                            `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 499 |                   shadow || (cg.width == Int(w) && cg.height == Int(h))
+ 500 |             else { return nil }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:768:21: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 766 |         settle(0.8)
+ 767 |         if let big = workspaceWindow,
+ 768 |            let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, big.id, [.boundsIgnoreFraming, .nominalResolution]) {
+     |                     `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 769 |             let rep = NSBitmapImageRep(cgImage: cg)
+ 770 |             if let png = rep.representation(using: .png, properties: [:]) {
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:1220:28: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+1218 |             settle(0.6)
+1219 |             guard let win = NSApp.windows.first(where: { $0.isVisible && $0.frame.width > 900 }),
+1220 |                   let cg = CGWindowListCreateImage(
+     |                            `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+1221 |                     .null, .optionIncludingWindow, CGWindowID(win.windowNumber),
+1222 |                     [.boundsIgnoreFraming, .bestResolution]) else { return nil }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:2475:25: warning: call to main actor-isolated instance method 'shot(_:window:)' in a synchronous nonisolated context [#ActorIsolatedCall]
+2473 |                 surfaces = NSApp.windows.filter(\.isVisible).count - w0
+2474 |                 dockAnswerable = UIProbe.exists("confirmCancel")
+2475 |                 _ = rec.shot("04-confirm", window: JourneyRecorder.dockWindow())
+     |                         `- warning: call to main actor-isolated instance method 'shot(_:window:)' in a synchronous nonisolated context [#ActorIsolatedCall]
+2476 |                 _ = UIProbe.tap("confirmCancel")
+2477 |                 // 別の面が残っていたら、それも閉じる（残さないと 120 秒止まる）。
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/JourneyRecorder.swift:213:10: note: calls to instance method 'shot(_:window:)' from outside of its actor context are implicitly asynchronous
+211 |     /// 測っていた（開始直後の白紙を測ろうとして、地 91.9% と出たのがそれ）。
+212 |     @discardableResult
+213 |     func shot(_ name: String, window: NSWindow? = nil) -> Bool {
+    |          `- note: calls to instance method 'shot(_:window:)' from outside of its actor context are implicitly asynchronous
+214 |         let path = "\(outDir)/\(name).png"
+215 |         guard let win = window ?? Self.largestWindow(),
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:2475:68: warning: call to main actor-isolated static method 'dockWindow()' in a synchronous nonisolated context [#ActorIsolatedCall]
+2473 |                 surfaces = NSApp.windows.filter(\.isVisible).count - w0
+2474 |                 dockAnswerable = UIProbe.exists("confirmCancel")
+2475 |                 _ = rec.shot("04-confirm", window: JourneyRecorder.dockWindow())
+     |                                                                    `- warning: call to main actor-isolated static method 'dockWindow()' in a synchronous nonisolated context [#ActorIsolatedCall]
+2476 |                 _ = UIProbe.tap("confirmCancel")
+2477 |                 // 別の面が残っていたら、それも閉じる（残さないと 120 秒止まる）。
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/JourneyRecorder.swift:154:17: note: calls to static method 'dockWindow()' from outside of its actor context are implicitly asynchronous
+152 | 
+153 |     /// Dock（画面上端の常駐 panel）。level で見分ける。
+154 |     static func dockWindow() -> NSWindow? {
+    |                 `- note: calls to static method 'dockWindow()' from outside of its actor context are implicitly asynchronous
+155 |         NSApp.windows.first { $0.isVisible && $0.level == .statusBar }
+156 |     }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:2923:29: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+2921 |                 }
+2922 |                 // 窓 id 経由。dark へ切り替えた直後などに nil を返すことがある。
+2923 |                 var image = CGWindowListCreateImage(.null, .optionIncludingWindow, win.id,
+     |                             `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+2924 |                                                     [.boundsIgnoreFraming, .bestResolution])
+2925 |                 if image == nil {
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:2927:29: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+2925 |                 if image == nil {
+2926 |                     // 代わりに画面のその領域を撮る。窓の再描画中でもこちらは通ることが多い。
+2927 |                     image = CGWindowListCreateImage(rect, .optionOnScreenOnly, kCGNullWindowID, [.bestResolution])
+     |                             `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+2928 |                 }
+2929 |                 if let cg = image,
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:3559:24: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+3557 |                           width: f.width + pad * 2,
+3558 |                           height: f.height + pad * 2)
+3559 |         guard let cg = CGWindowListCreateImage(rect, .optionOnScreenOnly, kCGNullWindowID, [.bestResolution]),
+     |                        `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+3560 |               let png = NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:]) else {
+3561 |             print("SELFTEST_FAIL dockedge: 撮影できない"); exit(2)
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:3569:22: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+3567 |         settle(1.0)
+3568 |         let without = out.replacingOccurrences(of: ".png", with: "-without.png")
+3569 |         if let cg2 = CGWindowListCreateImage(rect, .optionOnScreenOnly, kCGNullWindowID, [.bestResolution]),
+     |                      `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+3570 |            let png2 = NSBitmapImageRep(cgImage: cg2).representation(using: .png, properties: [:]) {
+3571 |             try? png2.write(to: URL(fileURLWithPath: without))
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:4247:62: warning: conditional downcast from '(json: [String : Any], consumed: Int)?' to '(json: [String : Any], consumed: Int)' does nothing
+4245 |         // ① 1 通ぶん届いていなければ nil（エラーにしない）。
+4246 |         let full = frame(["type": "context", "payload": ["url": "https://example.com", "title": "T"]])
+4247 |         if (try? NativeMessagingHost.decode(full.prefix(3))) as? (json: [String: Any], consumed: Int) != nil {
+     |                                                              `- warning: conditional downcast from '(json: [String : Any], consumed: Int)?' to '(json: [String : Any], consumed: Int)' does nothing
+4248 |             fail.append("途中のバッファで復号した")
+4249 |         }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:4655:34: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+4653 |                 ids.removeAll(); texts.removeAll(); walk(app, 0)
+4654 |             } else { fail.append("会議と今日の状況を開けない") }
+4655 |             if let png, let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(w.windowNumber),
+     |                                  `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+4656 |                                                           [.boundsIgnoreFraming, .nominalResolution]) {
+4657 |                 try? NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:])?
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:4914:36: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+4912 |                     let until = Date().addingTimeInterval(0.4)
+4913 |                     while Date() < until { CFRunLoopRunInMode(.defaultMode, 0.05, true) }
+4914 |                     guard let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(window.windowNumber), [.boundsIgnoreFraming, .bestResolution]) else {
+     |                                    `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+4915 |                         throw CloudMeetingTranscription.Failure(message: "window capture failed")
+4916 |                     }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:4970:77: warning: backward matching of the unlabeled trailing closure is deprecated; label the argument with 'completion' to suppress this warning [#TrailingClosureMatching]
+4968 |                 }
+4969 |                 let passed = interim > 0 && final > 0 && texts.contains(where: { $0.contains("金曜日") }) && runtime.snapshot() != nil
+4970 |                 await withCheckedContinuation { continuation in runtime.end { continuation.resume() } }
+     |                                                                             `- warning: backward matching of the unlabeled trailing closure is deprecated; label the argument with 'completion' to suppress this warning [#TrailingClosureMatching]
+4971 |                 restore()
+4972 |                 guard passed else {
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/RecordingWorkspace/RecordingRuntime.swift:530:10: note: 'end(cloudCompletion:completion:)' declared here
+528 | 
+529 |     /// 停止して確定。書けた断片は残り、回復候補になる。
+530 |     func end(cloudCompletion: ((String, String?) -> Void)? = nil, completion: (() -> Void)? = nil) {
+    |          `- note: 'end(cloudCompletion:completion:)' declared here
+531 |         drainMixedAudio()
+532 |         mixTimer?.invalidate(); mixTimer = nil; mixClock = nil
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:5287:28: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+5285 |             }
+5286 |             guard winID != 0,
+5287 |                   let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, winID, [.boundsIgnoreFraming, .bestResolution])
+     |                            `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+5288 |             else { window.orderOut(nil); window.close(); return nil }
+5289 |             let rep = NSBitmapImageRep(cgImage: cg)
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:5692:28: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+5690 |         }
+5691 |         func shot(_ win: NSWindow) -> [UInt8]? {
+5692 |             guard let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(win.windowNumber),
+     |                            `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+5693 |                                                    [.boundsIgnoreFraming, .nominalResolution]),
+5694 |                   cg.width > 4, cg.height > 4 else { return nil }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:5962:21: warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+5960 |             .appendingPathComponent("meetings/screenshot-selftest").path
+5961 |         try? FileManager.default.removeItem(atPath: root)
+5962 |         guard (size ?? 0) > 1000, isPng else {
+     |                     `- warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+5963 |             print("SELFTEST_FAIL screenshot size=\(size ?? 0) isPng=\(isPng)"); exit(2)
+5964 |         }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:5963:57: warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+5961 |         try? FileManager.default.removeItem(atPath: root)
+5962 |         guard (size ?? 0) > 1000, isPng else {
+5963 |             print("SELFTEST_FAIL screenshot size=\(size ?? 0) isPng=\(isPng)"); exit(2)
+     |                                                         `- warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+5964 |         }
+5965 |         print("SELFTEST_OK screenshot: 実 PNG 保存 bytes=\(size ?? 0) isPng=\(isPng)")
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:5965:68: warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+5963 |             print("SELFTEST_FAIL screenshot size=\(size ?? 0) isPng=\(isPng)"); exit(2)
+5964 |         }
+5965 |         print("SELFTEST_OK screenshot: 実 PNG 保存 bytes=\(size ?? 0) isPng=\(isPng)")
+     |                                                              `- warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+5966 |         exit(0)
+5967 |     }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:6289:37: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+6287 |             settle(0.3)
+6288 |             let id = CGWindowID(max(0, win.windowNumber))
+6289 |             guard id != 0, let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, id, [.boundsIgnoreFraming, .bestResolution]),
+     |                                     `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+6290 |                   let png = NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:]) else {
+6291 |                 fail.append(name); return
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:6390:28: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+6388 |                   // golden は logical points で保存する。Retina の物理画素を使うと
+6389 |                   // 同じ 220x44pt の窓が 440x88px になり、別の寸法と誤判定される。
+6390 |                   let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, winID, [.boundsIgnoreFraming, .nominalResolution]),
+     |                            `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+6391 |                   cg.width == w, cg.height == h
+6392 |             else { return nil }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:7082:87: warning: mutation of captured var 'ready' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+7080 |         }
+7081 |         let readyLock = NSLock(); var ready = false
+7082 |         listener.stateUpdateHandler = { st in if case .ready = st { readyLock.lock(); ready = true; readyLock.unlock() } }
+     |                                                                                       `- warning: mutation of captured var 'ready' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+7083 |         listener.start(queue: q)
+7084 |         var waited = 0
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:7129:42: warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+7127 |         let recoverable = scanRecoverable(root: root, active: nil)
+7128 | 
+7129 |         guard closed == 1, exists, (size ?? 0) > 0, snap.elapsedLabel == "00:05",
+     |                                          `- warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+7130 |               recoverable.count == 1, recoverable[0].meetingId == "selftest"
+7131 |         else {
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:7132:80: warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+7130 |               recoverable.count == 1, recoverable[0].meetingId == "selftest"
+7131 |         else {
+7132 |             print("SELFTEST_FAIL closed=\(closed) exists=\(exists) size=\(size ?? 0) elapsed=\(snap.elapsedLabel) recoverable=\(recoverable.count)")
+     |                                                                                `- warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+7133 |             exit(3)
+7134 |         }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:7136:74: warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+7134 |         }
+7135 |         try? FileManager.default.removeItem(atPath: root)
+7136 |         print("SELFTEST_OK record: closed=\(closed) fragmentBytes=\(size ?? 0) elapsed=\(snap.elapsedLabel) recoverable=\(recoverable.count)")
+     |                                                                          `- warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+7137 |         exit(0)
+7138 |     }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTestGlassShots.swift:95:32: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 93 |                 let f = panel.frame.insetBy(dx: -24, dy: -24)
+ 94 |                 let rect = CGRect(x: f.minX, y: mainHeight - f.maxY, width: f.width, height: f.height)
+ 95 |                 guard let cg = CGWindowListCreateImage(rect, .optionOnScreenOnly, kCGNullWindowID, [.nominalResolution]) else {
+    |                                `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 96 |                     failures.append("\(groundName)/\(stateName)=撮影不可"); continue
+ 97 |                 }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTestMarkMotion.swift:30:32: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+28 |                 await pause(0.05)
+29 |                 guard let (id, _, _) = SelfTest.dockWindow(),
+30 |                       let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, id, [.boundsIgnoreFraming, .nominalResolution]) else { continue }
+   |                                `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+31 |                 let r = region(NSRect(x: 0, y: 0, width: cg.width, height: cg.height)).integral
+32 |                 guard let crop = cg.cropping(to: r) else { continue }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTestMarkMotion.swift:71:25: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+69 |         for k in 0..<2 {   // 目で確かめる用に 2 枚（0.6 秒あけて）
+70 |             if let (id, _, _) = SelfTest.dockWindow(),
+71 |                let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, id, [.boundsIgnoreFraming, .nominalResolution]),
+   |                         `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+72 |                let png = NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:]) {
+73 |                 try? png.write(to: URL(fileURLWithPath: NSTemporaryDirectory() + "markmotion-working-\(k).png"))
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTestPermissionCapabilities.swift:24:31: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 22 |             window.displayIfNeeded()
+ 23 |             try? await Task.sleep(for: .milliseconds(600))
+ 24 |             guard let image = CGWindowListCreateImage(.null, .optionIncludingWindow,
+    |                               `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 25 |                 CGWindowID(window.windowNumber), [.boundsIgnoreFraming, .nominalResolution]),
+ 26 |                 let data = NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:]) else {
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTestPermissionHelp.swift:24:31: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+22 |             window.displayIfNeeded()
+23 |             try? await Task.sleep(for: .milliseconds(600))
+24 |             guard let image = CGWindowListCreateImage(.null, .optionIncludingWindow,
+   |                               `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+25 |                 CGWindowID(window.windowNumber), [.boundsIgnoreFraming, .nominalResolution]),
+26 |                 let data = NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:]) else {
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTestRecordingJourneys.swift:26:28: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 24 |         func capture(_ name: String) {
+ 25 |             guard let win = NSApp.windows.first(where: { $0.isVisible && $0 is NSPanel }),
+ 26 |                   let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(win.windowNumber), [.boundsIgnoreFraming]),
+    |                            `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 27 |                   let png = NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:]) else {
+ 28 |                 failures.append("screenshot missing: \(name)"); return
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTestScreenshot.swift:286:24: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+284 |         settle(0.6)
+285 |         guard let win = NSApp.windows.first(where: { $0.isVisible && $0.frame.width > 100 }),
+286 |               let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(win.windowNumber),
+    |                        `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+287 |                                                [.boundsIgnoreFraming, .bestResolution]) else {
+288 |             print("SCREENSHOT_SHOT_FAIL: HUD 窓が撮れない"); exit(2)
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTestScreenshot.swift:478:28: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+476 |             WindowCoordinator.shared.showVoiceHUD(); settle(0.45)
+477 |             guard let win = NSApp.windows.first(where: { $0.isVisible && $0.frame.width > 100 }),
+478 |                   let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(win.windowNumber), [.boundsIgnoreFraming, .bestResolution]),
+    |                            `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+479 |                   let png = NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:]) else { report.append("\(name) MISSING"); return }
+480 |             try? png.write(to: URL(fileURLWithPath: "\(outDir)/\(name).png"))
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTestScreenshotQuestion.swift:44:25: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+42 |             try? await Task.sleep(for: .milliseconds(300))
+43 |             host.layoutSubtreeIfNeeded(); host.displayIfNeeded()
+44 |             if let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(window.windowNumber), [.boundsIgnoreFraming, .nominalResolution]),
+   |                         `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+45 |                let bytes = NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:]) {
+46 |                 try? bytes.write(to: output.appendingPathComponent(name + ".png"))
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTestSystemShots.swift:51:28: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 49 |         /// いま出ている窓を書く。どの窓を撮ったかは寸法で言う（絵と付き合わせられるように）。
+ 50 |         func write(_ name: String, _ win: Win) -> Bool {
+ 51 |             guard let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, win.id, [.boundsIgnoreFraming, .bestResolution]),
+    |                            `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 52 |                   let png = NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:]) else { return false }
+ 53 |             try? png.write(to: URL(fileURLWithPath: "\(outDir)/\(name).png"))
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTestTranslationJourneys.swift:33:32: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 31 |                 let key = name + (dark ? "-dark" : "-light")
+ 32 |                 guard let window = NSApp.windows.first(where: { $0.isVisible && $0 is NSPanel }),
+ 33 |                       let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(window.windowNumber), [.boundsIgnoreFraming]),
+    |                                `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 34 |                       let png = NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:]) else {
+ 35 |                     failures.append("capture " + key); continue
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTestVoiceE2E.swift:58:28: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 56 |             RunLoop.current.run(until: Date().addingTimeInterval(0.3))
+ 57 |             guard let (id, w, h) = dockWindow() else { return }
+ 58 |             guard let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, id, [.boundsIgnoreFraming, .nominalResolution]),
+    |                            `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 59 |                   let png = NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:]) else { return }
+ 60 |             try? png.write(to: URL(fileURLWithPath: "\(shotDir)/\(shots.count)-\(name).png"))
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTestVoiceE2E.swift:66:28: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 64 |         func shootNow(_ name: String) {
+ 65 |             guard let shotDir, let (id, w, h) = dockWindow(),
+ 66 |                   let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, id, [.boundsIgnoreFraming, .nominalResolution]),
+    |                            `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 67 |                   let png = NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:]) else { return }
+ 68 |             try? png.write(to: URL(fileURLWithPath: "\(shotDir)/\(shots.count)-\(name).png"))
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTestWorkContext.swift:256:31: warning: main actor-isolated static property 'decoder' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+253 |     }
+254 | 
+255 |     static func brief() -> MeetingBrief? {
+    |                 `- note: add '@MainActor' to make static method 'brief()' part of global actor 'MainActor'
+256 |         try? WorkContextStore.decoder.decode(MeetingBrief.self, from: Data(briefJSON().utf8))
+    |                               `- warning: main actor-isolated static property 'decoder' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+257 |     }
+258 | 
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Home/WorkContextStore.swift:189:16: note: static property declared here
+187 |     nonisolated(unsafe) static var previewBrief: MeetingBrief?
+188 | 
+189 |     static let decoder: JSONDecoder = {
+    |                `- note: static property declared here
+190 |         let d = JSONDecoder(); d.keyDecodingStrategy = .convertFromSnakeCase; return d
+191 |     }()
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTestWorkContext.swift:260:31: warning: main actor-isolated static property 'decoder' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+257 |     }
+258 | 
+259 |     static func context() -> WorkContext? {
+    |                 `- note: add '@MainActor' to make static method 'context()' part of global actor 'MainActor'
+260 |         try? WorkContextStore.decoder.decode(WorkContext.self, from: Data(contextJSON().utf8))
+    |                               `- warning: main actor-isolated static property 'decoder' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+261 |     }
+262 |     static func profile() -> PersonalizationProfile? {
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Home/WorkContextStore.swift:189:16: note: static property declared here
+187 |     nonisolated(unsafe) static var previewBrief: MeetingBrief?
+188 | 
+189 |     static let decoder: JSONDecoder = {
+    |                `- note: static property declared here
+190 |         let d = JSONDecoder(); d.keyDecodingStrategy = .convertFromSnakeCase; return d
+191 |     }()
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTestWorkContext.swift:263:31: warning: main actor-isolated static property 'decoder' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+260 |         try? WorkContextStore.decoder.decode(WorkContext.self, from: Data(contextJSON().utf8))
+261 |     }
+262 |     static func profile() -> PersonalizationProfile? {
+    |                 `- note: add '@MainActor' to make static method 'profile()' part of global actor 'MainActor'
+263 |         try? WorkContextStore.decoder.decode(PersonalizationProfile.self, from: Data(profileJSON().utf8))
+    |                               `- warning: main actor-isolated static property 'decoder' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+264 |     }
+265 | }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Home/WorkContextStore.swift:189:16: note: static property declared here
+187 |     nonisolated(unsafe) static var previewBrief: MeetingBrief?
+188 | 
+189 |     static let decoder: JSONDecoder = {
+    |                `- note: static property declared here
+190 |         let d = JSONDecoder(); d.keyDecodingStrategy = .convertFromSnakeCase; return d
+191 |     }()
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTestWorkspaceUX.swift:46:36: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+44 |                     // NavigationSplitView renders through AppKit/layer-backed subviews;
+45 |                     // cacheDisplay produces an empty shell on macOS 26. Capture our window.
+46 |                     guard let cg = CGWindowListCreateImage(.null, .optionIncludingWindow,
+   |                                    `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+47 |                         CGWindowID(window.windowNumber), [.boundsIgnoreFraming, .nominalResolution]),
+48 |                         let png = NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:]) else { failures.append(name); return }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SurfaceMotionGate.swift:71:13: warning: immutable property will not be decoded because it is declared with an initial value which cannot be overwritten
+ 69 | 
+ 70 |     struct Result: Codable {
+ 71 |         let product = "Genie"
+    |             |- warning: immutable property will not be decoded because it is declared with an initial value which cannot be overwritten
+    |             |- note: set the initial value via the initializer or explicitly define a CodingKeys enum including a 'product' case to silence this warning
+    |             `- note: make the property mutable instead
+ 72 |         let startedAt: String
+ 73 |         let targetFps = 60
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SurfaceMotionGate.swift:73:13: warning: immutable property will not be decoded because it is declared with an initial value which cannot be overwritten
+ 71 |         let product = "Genie"
+ 72 |         let startedAt: String
+ 73 |         let targetFps = 60
+    |             |- warning: immutable property will not be decoded because it is declared with an initial value which cannot be overwritten
+    |             |- note: set the initial value via the initializer or explicitly define a CodingKeys enum including a 'targetFps' case to silence this warning
+    |             `- note: make the property mutable instead
+ 74 |         var transitions: [Transition] = []
+ 75 |         var notMeasured: [String] = []
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SurfaceMotionGate.swift:111:27: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+109 |               let from = Bundle(for: type(of: ns)).bundleIdentifier,
+110 |               from.hasPrefix("com.apple."), from != "com.apple.AppKit", from != Bundle.main.bundleIdentifier,
+111 |               let image = CGWindowListCreateImage(.null, .optionIncludingWindow, w.id, [.boundsIgnoreFraming, .nominalResolution]),
+    |                           `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+112 |               image.width > 0, image.height > 0 else { return nil }
+113 |         // 全画素の alpha を見る（間引かない。1 画素でも描いていれば数える）。
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SurfaceMotionGate.swift:127:13: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+125 |     private static func capture(_ wins: [Win]) -> [Shot] {
+126 |         wins.compactMap { win in
+127 |             CGWindowListCreateImage(.null, .optionIncludingWindow, win.id, [.boundsIgnoreFraming, .nominalResolution])
+    |             `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+128 |                 .map { Shot(win: win, image: $0) }
+129 |         }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Audio/GeminiLiveProvider.swift:156:35: warning: capture of 'mic' with non-Sendable type 'MicCapture' in a '@Sendable' closure [#SendableClosureCaptures]
+154 |         guard streaming else { return }
+155 |         streaming = false
+156 |         micQueue.async { [mic] in mic.stop() }
+    |                                   `- warning: capture of 'mic' with non-Sendable type 'MicCapture' in a '@Sendable' closure [#SendableClosureCaptures]
+157 |         send(GeminiLive.audioStreamEnd)
+158 |     }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Audio/MicCapture.swift:8:13: note: class 'MicCapture' does not conform to the 'Sendable' protocol
+ 6 | /// **注意**: ライブ取り込みは署名済み .app + マイク許可(TCC)が要る。SwiftPM の裸実行では
+ 7 | /// 許可プロンプトが出ないため headless では動かない。ここは実装であり、実許可の検証は .app 側で。
+ 8 | final class MicCapture {
+   |             `- note: class 'MicCapture' does not conform to the 'Sendable' protocol
+ 9 |     private let engine = AVAudioEngine()
+10 |     private let targetRate: Double = 16_000
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Audio/GeminiLiveProvider.swift:411:21: warning: capture of 'mic' with non-Sendable type 'MicCapture' in a '@Sendable' closure [#SendableClosureCaptures]
+409 |         micQueue.async { [weak self, mic] in
+410 |             do {
+411 |                 try mic.start(echoCancellation: echoCancellation) { frame in
+    |                     `- warning: capture of 'mic' with non-Sendable type 'MicCapture' in a '@Sendable' closure [#SendableClosureCaptures]
+412 |                     let message = GeminiLive.json(GeminiLive.audioChunk(frame))
+413 |                     Task { @MainActor in
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Audio/MicCapture.swift:8:13: note: class 'MicCapture' does not conform to the 'Sendable' protocol
+ 6 | /// **注意**: ライブ取り込みは署名済み .app + マイク許可(TCC)が要る。SwiftPM の裸実行では
+ 7 | /// 許可プロンプトが出ないため headless では動かない。ここは実装であり、実許可の検証は .app 側で。
+ 8 | final class MicCapture {
+   |             `- note: class 'MicCapture' does not conform to the 'Sendable' protocol
+ 9 |     private let engine = AVAudioEngine()
+10 |     private let targetRate: Double = 16_000
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Context/ConnectorFlow.swift:87:34: warning: main actor-isolated property 'generation' can not be referenced from a Sendable closure
+ 14 |     private var startupTimeout: Task<Void, Never>?
+ 15 |     private var startup: CheckedContinuation<UInt16, Error>?
+ 16 |     private var generation = UUID()
+    |                 `- note: property declared here
+ 17 | 
+ 18 |     static func randomVerifier() -> String {
+    :
+ 85 |                          onCallback: @escaping (OauthCallback) -> Void) {
+ 86 |         connection.receive(minimumIncompleteLength: 1, maximumLength: 8192) { [weak self] data, _, complete, error in
+ 87 |             guard let self, self.generation == attempt else { connection.cancel(); return }
+    |                                  `- warning: main actor-isolated property 'generation' can not be referenced from a Sendable closure
+ 88 |             var bytes = buffer; bytes.append(data ?? Data())
+ 89 |             guard bytes.count <= 16384, error == nil else { self.close(connection); return }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Context/ConnectorFlow.swift:89:66: warning: call to main actor-isolated instance method 'close' in a synchronous nonisolated context [#ActorIsolatedCall]
+ 87 |             guard let self, self.generation == attempt else { connection.cancel(); return }
+ 88 |             var bytes = buffer; bytes.append(data ?? Data())
+ 89 |             guard bytes.count <= 16384, error == nil else { self.close(connection); return }
+    |                                                                  `- warning: call to main actor-isolated instance method 'close' in a synchronous nonisolated context [#ActorIsolatedCall]
+ 90 |             guard let request = String(data: bytes, encoding: .utf8), request.contains("\r\n\r\n") else {
+ 91 |                 if complete { self.close(connection) }
+    :
+107 |     }
+108 | 
+109 |     private func close(_ connection: NWConnection) {
+    |                  `- note: calls to instance method 'close' from outside of its actor context are implicitly asynchronous
+110 |         connection.cancel(); connections.removeAll { $0 === connection }
+111 |     }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Context/ConnectorFlow.swift:91:36: warning: call to main actor-isolated instance method 'close' in a synchronous nonisolated context [#ActorIsolatedCall]
+ 89 |             guard bytes.count <= 16384, error == nil else { self.close(connection); return }
+ 90 |             guard let request = String(data: bytes, encoding: .utf8), request.contains("\r\n\r\n") else {
+ 91 |                 if complete { self.close(connection) }
+    |                                    `- warning: call to main actor-isolated instance method 'close' in a synchronous nonisolated context [#ActorIsolatedCall]
+ 92 |                 else { self.receive(connection, buffer: bytes, attempt: attempt, expectedState: expectedState, path: path, onCallback: onCallback) }
+ 93 |                 return
+    :
+107 |     }
+108 | 
+109 |     private func close(_ connection: NWConnection) {
+    |                  `- note: calls to instance method 'close' from outside of its actor context are implicitly asynchronous
+110 |         connection.cancel(); connections.removeAll { $0 === connection }
+111 |     }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Context/ConnectorFlow.swift:92:29: warning: call to main actor-isolated instance method 'receive(_:buffer:attempt:expectedState:path:onCallback:)' in a synchronous nonisolated context [#ActorIsolatedCall]
+ 82 |     }
+ 83 | 
+ 84 |     private func receive(_ connection: NWConnection, buffer: Data, attempt: UUID, expectedState: String?, path: String,
+    |                  `- note: calls to instance method 'receive(_:buffer:attempt:expectedState:path:onCallback:)' from outside of its actor context are implicitly asynchronous
+ 85 |                          onCallback: @escaping (OauthCallback) -> Void) {
+ 86 |         connection.receive(minimumIncompleteLength: 1, maximumLength: 8192) { [weak self] data, _, complete, error in
+    :
+ 90 |             guard let request = String(data: bytes, encoding: .utf8), request.contains("\r\n\r\n") else {
+ 91 |                 if complete { self.close(connection) }
+ 92 |                 else { self.receive(connection, buffer: bytes, attempt: attempt, expectedState: expectedState, path: path, onCallback: onCallback) }
+    |                             `- warning: call to main actor-isolated instance method 'receive(_:buffer:attempt:expectedState:path:onCallback:)' in a synchronous nonisolated context [#ActorIsolatedCall]
+ 93 |                 return
+ 94 |             }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Context/ConnectorFlow.swift:95:33: warning: call to main actor-isolated static method 'acceptedCallback(request:expectedState:path:)' in a synchronous nonisolated context [#ActorIsolatedCall]
+ 23 |     }
+ 24 | 
+ 25 |     static func acceptedCallback(request: String, expectedState: String?, path: String = "/callback") -> OauthCallback? {
+    |                 `- note: calls to static method 'acceptedCallback(request:expectedState:path:)' from outside of its actor context are implicitly asynchronous
+ 26 |         guard let line = request.components(separatedBy: "\r\n").first else { return nil }
+ 27 |         let parts = line.split(separator: " ")
+    :
+ 93 |                 return
+ 94 |             }
+ 95 |             let callback = Self.acceptedCallback(request: request, expectedState: expectedState, path: path)
+    |                                 `- warning: call to main actor-isolated static method 'acceptedCallback(request:expectedState:path:)' in a synchronous nonisolated context [#ActorIsolatedCall]
+ 96 |             let message = callback == nil ? "認証を確認できません。元の同意画面から続けてください。" : "認証結果を受け取りました。Genieに戻ると接続状況を確認できます。"
+ 97 |             let body = "<!doctype html><html lang=\"ja\"><meta charset=\"utf-8\"><title>Genie · Connections</title><p>\(message)</p></html>"
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Context/ConnectorFlow.swift:100:18: warning: main actor-isolated property 'connections' can not be mutated from a Sendable closure
+ 10 |     enum FlowError: Error { case random, listener }
+ 11 |     private var listener: NWListener?
+ 12 |     private var connections: [NWConnection] = []
+    |                 `- note: mutation of this property is only permitted within the actor
+ 13 |     private var timeout: Task<Void, Never>?
+ 14 |     private var startupTimeout: Task<Void, Never>?
+    :
+ 98 |             let response = "HTTP/1.1 \(callback == nil ? "400 Bad Request" : "200 OK")\r\nContent-Type: text/html; charset=utf-8\r\nCache-Control: no-store\r\nContent-Security-Policy: default-src 'none'\r\nContent-Length: \(body.utf8.count)\r\nConnection: close\r\n\r\n\(body)"
+ 99 |             connection.send(content: Data(response.utf8), completion: .contentProcessed { _ in connection.cancel() })
+100 |             self.connections.removeAll { $0 === connection }
+    |                  `- warning: main actor-isolated property 'connections' can not be mutated from a Sendable closure
+101 |             if let callback {
+102 |                 // Invalidate immediately; a second callback cannot exchange another code.
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Context/ConnectorFlow.swift:103:22: warning: call to main actor-isolated instance method 'stopLoopback()' in a synchronous nonisolated context [#ActorIsolatedCall]
+101 |             if let callback {
+102 |                 // Invalidate immediately; a second callback cannot exchange another code.
+103 |                 self.stopLoopback()
+    |                      `- warning: call to main actor-isolated instance method 'stopLoopback()' in a synchronous nonisolated context [#ActorIsolatedCall]
+104 |                 onCallback(callback)
+105 |             }
+    :
+110 |         connection.cancel(); connections.removeAll { $0 === connection }
+111 |     }
+112 |     func stopLoopback() {
+    |          `- note: calls to instance method 'stopLoopback()' from outside of its actor context are implicitly asynchronous
+113 |         generation = UUID(); timeout?.cancel(); timeout = nil
+114 |         startupTimeout?.cancel(); startupTimeout = nil
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/GuidedSetup/GuidedSetupSelfTest.swift:144:21: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+142 |         // アバターの姿を残す（目視用）。
+143 |         if let win = overlay.avatar.window,
+144 |            let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(win.windowNumber), [.boundsIgnoreFraming, .bestResolution]) {
+    |                     `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+145 |             let png = NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:])
+146 |             try? png?.write(to: URL(fileURLWithPath: "\(outDir)/guided-setup-avatar.png"))
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/GuidedSetup/GuidedSetupShots.swift:57:20: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 55 |         func windowImage(_ win: NSWindow?) -> CGImage? {
+ 56 |             guard let win else { return nil }
+ 57 |             return CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(win.windowNumber), [.boundsIgnoreFraming, .bestResolution])
+    |                    `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 58 |         }
+ 59 |         /// Apple の窓（System Settings）と Genie の窓を、**それだけ**で合成する（机の上の他の窓や壁紙は入れない）。
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/GuidedSetup/GuidedSetupShots.swift:84:31: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 82 |             }
+ 83 |             let union = layers.map(\.1).reduce(CGRect.null) { $0.union($1) }
+ 84 |             guard let first = CGWindowListCreateImage(.null, .optionIncludingWindow, settingsID, [.boundsIgnoreFraming, .bestResolution]) else {
+    |                               `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 85 |                 report.append("composite: cannot capture settings window"); return nil
+ 86 |             }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/GuidedSetup/GuidedSetupShots.swift:93:60: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 91 |                                       space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+ 92 |             for (id, b) in layers {
+ 93 |                 guard let img = id == settingsID ? first : CGWindowListCreateImage(.null, .optionIncludingWindow, id, [.boundsIgnoreFraming, .bestResolution]) else {
+    |                                                            `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 94 |                     report.append("composite: window \(id) not capturable at \(b)"); continue
+ 95 |                 }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/GuidedSetup/PermissionGuideCoordinator.swift:51:74: warning: passing non-Sendable parameter 'block' to function expecting a '@Sendable' closure
+ 48 |         }
+ 49 |         /// 遅延実行。検査では即時。
+ 50 |         var after: (TimeInterval, @escaping () -> Void) -> Void = { s, block in
+    |                                                                        `- note: parameter 'block' is implicitly non-Sendable
+ 51 |             DispatchQueue.main.asyncAfter(deadline: .now() + s, execute: block)
+    |                                                                          `- warning: passing non-Sendable parameter 'block' to function expecting a '@Sendable' closure
+ 52 |         }
+ 53 |         var now: () -> Date = Date.init
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Home/SessionCard.swift:49:10: warning: 'onChange(of:perform:)' was deprecated in macOS 14.0: Use `onChange` with a two or zero parameter action closure instead. [#DeprecatedDeclaration]
+ 47 |         // 検査から「開けるか」を押す口。開けない状態では登録しない（押せたことにしない）。
+ 48 |         .onAppear { syncProbe() }
+ 49 |         .onChange(of: session.status) { _ in syncProbe() }
+    |          `- warning: 'onChange(of:perform:)' was deprecated in macOS 14.0: Use `onChange` with a two or zero parameter action closure instead. [#DeprecatedDeclaration]
+ 50 |         .onDisappear { UIProbe.unregister("session-\(session.id)") }
+ 51 |     }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Home/WorkContextStore.swift:205:54: warning: main actor-isolated static property 'decoder' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+187 |     nonisolated(unsafe) static var previewBrief: MeetingBrief?
+188 | 
+189 |     static let decoder: JSONDecoder = {
+    |                `- note: static property declared here
+190 |         let d = JSONDecoder(); d.keyDecodingStrategy = .convertFromSnakeCase; return d
+191 |     }()
+    :
+203 |             Task.detached { [base, token] in
+204 |                 let ctx = (try? GenieCoreBridge.workContext(base, accessToken: token))
+205 |                     .flatMap { try? WorkContextStore.decoder.decode(WorkContext.self, from: Data($0.utf8)) }
+    |                                                      `- warning: main actor-isolated static property 'decoder' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+206 |                 let prof = (try? GenieCoreBridge.personalization(base, accessToken: token))
+207 |                     .flatMap { try? WorkContextStore.decoder.decode(PersonalizationProfile.self, from: Data($0.utf8)) }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Home/WorkContextStore.swift:207:54: warning: main actor-isolated static property 'decoder' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+187 |     nonisolated(unsafe) static var previewBrief: MeetingBrief?
+188 | 
+189 |     static let decoder: JSONDecoder = {
+    |                `- note: static property declared here
+190 |         let d = JSONDecoder(); d.keyDecodingStrategy = .convertFromSnakeCase; return d
+191 |     }()
+    :
+205 |                     .flatMap { try? WorkContextStore.decoder.decode(WorkContext.self, from: Data($0.utf8)) }
+206 |                 let prof = (try? GenieCoreBridge.personalization(base, accessToken: token))
+207 |                     .flatMap { try? WorkContextStore.decoder.decode(PersonalizationProfile.self, from: Data($0.utf8)) }
+    |                                                      `- warning: main actor-isolated static property 'decoder' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+208 |                 let briefText = (try? GenieCoreBridge.workBriefNext(base, accessToken: token)) ?? ""
+209 |                 let brief = briefText.isEmpty ? nil
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Home/WorkContextStore.swift:210:45: warning: main actor-isolated static property 'decoder' cannot be accessed from outside of the actor; this is an error in the Swift 6 language mode
+208 |                 let briefText = (try? GenieCoreBridge.workBriefNext(base, accessToken: token)) ?? ""
+209 |                 let brief = briefText.isEmpty ? nil
+210 |                     : try? WorkContextStore.decoder.decode(MeetingBrief.self, from: Data(briefText.utf8))
+    |                                             `- warning: main actor-isolated static property 'decoder' cannot be accessed from outside of the actor; this is an error in the Swift 6 language mode
+211 |                 await MainActor.run {
+212 |                     self.brief = brief ?? (self.brief ?? WorkContextStore.previewBrief)
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Home/WorkContextStore.swift:287:49: warning: main actor-isolated static property 'decoder' cannot be accessed from outside of the actor; this is an error in the Swift 6 language mode
+285 |         Task.detached {
+286 |             if let text = try? GenieCoreBridge.personalizationUpdate(base, accessToken: token, updateJson: json),
+287 |                let prof = try? WorkContextStore.decoder.decode(PersonalizationProfile.self, from: Data(text.utf8)) {
+    |                                                 `- warning: main actor-isolated static property 'decoder' cannot be accessed from outside of the actor; this is an error in the Swift 6 language mode
+288 |                 await MainActor.run { self.profile = prof }
+289 |             } else {
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Main/ConnectionsPane.swift:8:57: warning: main actor-isolated static property 'shared' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+  6 |     let apps: [String]
+  7 |     @ObservedObject private var connections: ConnectorState
+  8 |     init(apps: [String], connections: ConnectorState = .shared) {
+    |                                                         `- warning: main actor-isolated static property 'shared' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+  9 |         self.apps = apps; self.connections = connections
+ 10 |     }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Context/ConnectorState.swift:6:16: note: static property declared here
+  4 | @MainActor
+  5 | final class ConnectorState: ObservableObject {
+  6 |     static let shared = ConnectorState()
+    |                `- note: static property declared here
+  7 |     struct Source: Identifiable, Equatable {
+  8 |         let pluginId: String
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Meeting/MeetingArtifactView.swift:162:10: warning: 'onChange(of:perform:)' was deprecated in macOS 14.0: Use `onChange` with a two or zero parameter action closure instead. [#DeprecatedDeclaration]
+160 |         // 検査が「いま右に何が出ているか」を読む口。speaker|time。
+161 |         .onAppear { UIProbe.fact("meetingShown", shown.map { "\($0.speaker)|\($0.transcriptTime)" }) }
+162 |         .onChange(of: picked?.id) { _ in
+    |          `- warning: 'onChange(of:perform:)' was deprecated in macOS 14.0: Use `onChange` with a two or zero parameter action closure instead. [#DeprecatedDeclaration]
+163 |             UIProbe.fact("meetingShown", shown.map { "\($0.speaker)|\($0.transcriptTime)" })
+164 |         }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Places/NearbyPlaces.swift:31:81: warning: main actor-isolated static property 'shared' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+29 |     }
+30 | 
+31 |     static func search(_ intent: NearbyPlaceIntent, settings: PlacesSettings = .shared,
+   |                                                                                 `- warning: main actor-isolated static property 'shared' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+32 |                        location: CurrentLocation = .shared) async -> Result<PlacesCard, Failure> {
+33 |         guard settings.hasKey, settings.monthlyLimit > 0 else { return .failure(.needsKey) }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Places/PlacesSettings.swift:10:16: note: static property declared here
+ 8 | @MainActor
+ 9 | final class PlacesSettings: ObservableObject {
+10 |     static let shared = PlacesSettings()
+   |                `- note: static property declared here
+11 |     static let keychainKey = "googleMaps.apiKey"
+12 |     private static let limitKey = "genie.places.monthlySearches"
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Places/NearbyPlaces.swift:32:53: warning: main actor-isolated static property 'shared' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+30 | 
+31 |     static func search(_ intent: NearbyPlaceIntent, settings: PlacesSettings = .shared,
+32 |                        location: CurrentLocation = .shared) async -> Result<PlacesCard, Failure> {
+   |                                                     `- warning: main actor-isolated static property 'shared' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+33 |         guard settings.hasKey, settings.monthlyLimit > 0 else { return .failure(.needsKey) }
+34 |         guard settings.canSearch() else { return .failure(.limitReached) }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Places/CurrentLocation.swift:10:16: note: static property declared here
+ 8 | @MainActor
+ 9 | final class CurrentLocation: NSObject, CLLocationManagerDelegate {
+10 |     static let shared = CurrentLocation()
+   |                `- note: static property declared here
+11 | 
+12 |     enum Failure: Error, Equatable {
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/RecordingWorkspace/RecordingRuntime.swift:171:95: warning: converting non-Sendable function value to '@MainActor @Sendable @convention(block) () -> Void' may introduce data races
+169 |                     if !live.isFinal { VoiceHUDState.shared.updatePartial(live.text) }
+170 |                 }
+171 |                 if Thread.isMainThread { deliver() } else { DispatchQueue.main.async(execute: deliver) }
+    |                                                                                               `- warning: converting non-Sendable function value to '@MainActor @Sendable @convention(block) () -> Void' may introduce data races
+172 |             }
+173 |             self.speech = st
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/RecordingWorkspace/RecordingRuntime.swift:182:99: warning: converting non-Sendable function value to '@MainActor @Sendable @convention(block) () -> Void' may introduce data races
+180 |                         self?.onTranscript?(live.text, live.isFinal)
+181 |                     }
+182 |                     if Thread.isMainThread { deliver() } else { DispatchQueue.main.async(execute: deliver) }
+    |                                                                                                   `- warning: converting non-Sendable function value to '@MainActor @Sendable @convention(block) () -> Void' may introduce data races
+183 |                 }
+184 |                 remoteSpeech = remote
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/RecordingWorkspace/RecordingRuntime.swift:296:23: warning: call to main actor-isolated instance method 'drainMixedAudio()' in a synchronous nonisolated context [#ActorIsolatedCall]
+294 |             mixClock = ProcessInfo.processInfo.systemUptime; mixedFrames = 0
+295 |             mixTimer = Timer.scheduledTimer(withTimeInterval: 0.02, repeats: true) { [weak self] _ in
+296 |                 self?.drainMixedAudio()
+    |                       `- warning: call to main actor-isolated instance method 'drainMixedAudio()' in a synchronous nonisolated context [#ActorIsolatedCall]
+297 |             }
+298 |         }
+    :
+379 |     }
+380 | 
+381 |     private func drainMixedAudio() {
+    |                  `- note: calls to instance method 'drainMixedAudio()' from outside of its actor context are implicitly asynchronous
+382 |         guard systemAudioWanted, !paused, let clock = mixClock else { return }
+383 |         let due = max(0, Int(max(0, ProcessInfo.processInfo.systemUptime - clock) * 16_000) - mixedFrames)
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/RecordingWorkspace/RecordingRuntime.swift:318:25: warning: capture of 'mic' with non-Sendable type 'MicCapture' in a '@Sendable' closure [#SendableClosureCaptures]
+316 |             micQueue.async { [weak self] in
+317 |                 do {
+318 |                     try mic.start { frame in
+    |                         `- warning: capture of 'mic' with non-Sendable type 'MicCapture' in a '@Sendable' closure [#SendableClosureCaptures]
+319 |                         DispatchQueue.main.async {
+320 |                             self?.receiveAudio(frame, channel: .localUser, generation: generation)
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Audio/MicCapture.swift:8:13: note: class 'MicCapture' does not conform to the 'Sendable' protocol
+ 6 | /// **注意**: ライブ取り込みは署名済み .app + マイク許可(TCC)が要る。SwiftPM の裸実行では
+ 7 | /// 許可プロンプトが出ないため headless では動かない。ここは実装であり、実許可の検証は .app 側で。
+ 8 | final class MicCapture {
+   |             `- note: class 'MicCapture' does not conform to the 'Sendable' protocol
+ 9 |     private let engine = AVAudioEngine()
+10 |     private let targetRate: Double = 16_000
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/RecordingWorkspace/RecordingRuntime.swift:409:42: warning: capture of 'micCapture' with non-Sendable type 'MicCapture' in a '@Sendable' closure [#SendableClosureCaptures]
+407 |     func prewarmMic() {
+408 |         guard Permissions.microphone == .granted else { return }
+409 |         micQueue.async { [micCapture] in micCapture.prewarm() }
+    |                                          `- warning: capture of 'micCapture' with non-Sendable type 'MicCapture' in a '@Sendable' closure [#SendableClosureCaptures]
+410 |     }
+411 | 
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Audio/MicCapture.swift:8:13: note: class 'MicCapture' does not conform to the 'Sendable' protocol
+ 6 | /// **注意**: ライブ取り込みは署名済み .app + マイク許可(TCC)が要る。SwiftPM の裸実行では
+ 7 | /// 許可プロンプトが出ないため headless では動かない。ここは実装であり、実許可の検証は .app 側で。
+ 8 | final class MicCapture {
+   |             `- note: class 'MicCapture' does not conform to the 'Sendable' protocol
+ 9 |     private let engine = AVAudioEngine()
+10 |     private let targetRate: Double = 16_000
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/RecordingWorkspace/RecordingRuntime.swift:458:42: warning: main actor-isolated property 'voiceListening' can not be referenced from a Sendable closure
+109 |     private var onVoiceFinal: ((String) -> Void)?
+110 |     private var voiceVad = VoiceActivityDetector()
+111 |     private(set) var voiceListening = false
+    |                      `- note: property declared here
+112 |     /// 検査専用: 次の 1 回の聞き取りで、マイクの代わりに流す音（16 kHz mono）。本番では nil。
+113 |     /// 流した音は本物のマイクの音と同じ道（VAD → オンデバイス STT）を通る。
+    :
+456 |                 var offset = 0
+457 |                 while offset < frames.count {
+458 |                     guard let self, self.voiceListening, self.micGeneration == gen else { return }
+    |                                          `- warning: main actor-isolated property 'voiceListening' can not be referenced from a Sendable closure
+459 |                     let frame = Array(frames[offset..<min(offset + chunk, frames.count)])
+460 |                     if offset == 0 { DispatchQueue.main.async { onFirstFrame() } }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/RecordingWorkspace/RecordingRuntime.swift:458:63: warning: main actor-isolated property 'micGeneration' can not be referenced from a Sendable closure
+ 49 |     private let micQueue = DispatchQueue(label: "astra.mic", qos: .userInitiated)
+ 50 |     private var micActive = false
+ 51 |     private var micGeneration = 0
+    |                 `- note: property declared here
+ 52 |     private var sysAudio: AnyObject?
+ 53 |     private var speech: SpeechTranscriber?
+    :
+456 |                 var offset = 0
+457 |                 while offset < frames.count {
+458 |                     guard let self, self.voiceListening, self.micGeneration == gen else { return }
+    |                                                               `- warning: main actor-isolated property 'micGeneration' can not be referenced from a Sendable closure
+459 |                     let frame = Array(frames[offset..<min(offset + chunk, frames.count)])
+460 |                     if offset == 0 { DispatchQueue.main.async { onFirstFrame() } }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/RecordingWorkspace/RecordingRuntime.swift:461:29: warning: main actor-isolated property 'voiceVad' can not be mutated from a Sendable closure
+108 |     private var onVoicePartial: ((String) -> Void)?
+109 |     private var onVoiceFinal: ((String) -> Void)?
+110 |     private var voiceVad = VoiceActivityDetector()
+    |                 `- note: mutation of this property is only permitted within the actor
+111 |     private(set) var voiceListening = false
+112 |     /// 検査専用: 次の 1 回の聞き取りで、マイクの代わりに流す音（16 kHz mono）。本番では nil。
+    :
+459 |                     let frame = Array(frames[offset..<min(offset + chunk, frames.count)])
+460 |                     if offset == 0 { DispatchQueue.main.async { onFirstFrame() } }
+461 |                     if self.voiceVad.accept(frame) { self.voiceSpeech?.append(frame, sampleRate: 16_000) }
+    |                             `- warning: main actor-isolated property 'voiceVad' can not be mutated from a Sendable closure
+462 |                     offset += chunk
+463 |                     Thread.sleep(forTimeInterval: 0.1)
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/RecordingWorkspace/RecordingRuntime.swift:461:59: warning: main actor-isolated property 'voiceSpeech' can not be referenced from a Sendable closure
+105 |     var onSystemAudioFailure: (() -> Void)?
+106 |     /// Listening（声で頼む）の取り込み。録音とは別で、ディスクには残さない。
+107 |     private var voiceSpeech: SpeechTranscriber?
+    |                 `- note: property declared here
+108 |     private var onVoicePartial: ((String) -> Void)?
+109 |     private var onVoiceFinal: ((String) -> Void)?
+    :
+459 |                     let frame = Array(frames[offset..<min(offset + chunk, frames.count)])
+460 |                     if offset == 0 { DispatchQueue.main.async { onFirstFrame() } }
+461 |                     if self.voiceVad.accept(frame) { self.voiceSpeech?.append(frame, sampleRate: 16_000) }
+    |                                                           `- warning: main actor-isolated property 'voiceSpeech' can not be referenced from a Sendable closure
+462 |                     offset += chunk
+463 |                     Thread.sleep(forTimeInterval: 0.1)
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/RecordingWorkspace/RecordingRuntime.swift:470:21: warning: capture of 'mic' with non-Sendable type 'MicCapture' in a '@Sendable' closure [#SendableClosureCaptures]
+468 |         micQueue.async { [weak self] in
+469 |             do {
+470 |                 try mic.start(echoCancellation: echoCancellation) { frame in
+    |                     `- warning: capture of 'mic' with non-Sendable type 'MicCapture' in a '@Sendable' closure [#SendableClosureCaptures]
+471 |                     guard let self, self.voiceListening else { return }
+472 |                     let first = !sawFirst
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Audio/MicCapture.swift:8:13: note: class 'MicCapture' does not conform to the 'Sendable' protocol
+ 6 | /// **注意**: ライブ取り込みは署名済み .app + マイク許可(TCC)が要る。SwiftPM の裸実行では
+ 7 | /// 許可プロンプトが出ないため headless では動かない。ここは実装であり、実許可の検証は .app 側で。
+ 8 | final class MicCapture {
+   |             `- note: class 'MicCapture' does not conform to the 'Sendable' protocol
+ 9 |     private let engine = AVAudioEngine()
+10 |     private let targetRate: Double = 16_000
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/RecordingWorkspace/RecordingRuntime.swift:471:42: warning: main actor-isolated property 'voiceListening' can not be referenced from a nonisolated context
+109 |     private var onVoiceFinal: ((String) -> Void)?
+110 |     private var voiceVad = VoiceActivityDetector()
+111 |     private(set) var voiceListening = false
+    |                      `- note: property declared here
+112 |     /// 検査専用: 次の 1 回の聞き取りで、マイクの代わりに流す音（16 kHz mono）。本番では nil。
+113 |     /// 流した音は本物のマイクの音と同じ道（VAD → オンデバイス STT）を通る。
+    :
+469 |             do {
+470 |                 try mic.start(echoCancellation: echoCancellation) { frame in
+471 |                     guard let self, self.voiceListening else { return }
+    |                                          `- warning: main actor-isolated property 'voiceListening' can not be referenced from a nonisolated context
+472 |                     let first = !sawFirst
+473 |                     sawFirst = true
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/RecordingWorkspace/RecordingRuntime.swift:480:29: warning: main actor-isolated property 'voiceVad' can not be mutated from a nonisolated context
+108 |     private var onVoicePartial: ((String) -> Void)?
+109 |     private var onVoiceFinal: ((String) -> Void)?
+110 |     private var voiceVad = VoiceActivityDetector()
+    |                 `- note: mutation of this property is only permitted within the actor
+111 |     private(set) var voiceListening = false
+112 |     /// 検査専用: 次の 1 回の聞き取りで、マイクの代わりに流す音（16 kHz mono）。本番では nil。
+    :
+478 |                         VoiceHUDState.shared.receiveInputLevel(level)
+479 |                     }
+480 |                     if self.voiceVad.accept(frame) { self.voiceSpeech?.append(frame, sampleRate: 16_000) }
+    |                             `- warning: main actor-isolated property 'voiceVad' can not be mutated from a nonisolated context
+481 |                 }
+482 |             } catch {
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/RecordingWorkspace/RecordingRuntime.swift:480:59: warning: main actor-isolated property 'voiceSpeech' can not be referenced from a nonisolated context
+105 |     var onSystemAudioFailure: (() -> Void)?
+106 |     /// Listening（声で頼む）の取り込み。録音とは別で、ディスクには残さない。
+107 |     private var voiceSpeech: SpeechTranscriber?
+    |                 `- note: property declared here
+108 |     private var onVoicePartial: ((String) -> Void)?
+109 |     private var onVoiceFinal: ((String) -> Void)?
+    :
+478 |                         VoiceHUDState.shared.receiveInputLevel(level)
+479 |                     }
+480 |                     if self.voiceVad.accept(frame) { self.voiceSpeech?.append(frame, sampleRate: 16_000) }
+    |                                                           `- warning: main actor-isolated property 'voiceSpeech' can not be referenced from a nonisolated context
+481 |                 }
+482 |             } catch {
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/RecordingWorkspace/RecordingRuntime.swift:505:42: warning: capture of 'micCapture' with non-Sendable type 'MicCapture' in a '@Sendable' closure [#SendableClosureCaptures]
+503 |         voiceSpeech?.finish(); voiceSpeech = nil
+504 |         voiceVad.reset()
+505 |         micQueue.async { [micCapture] in micCapture.stop(); micCapture.prewarm() }
+    |                                          `- warning: capture of 'micCapture' with non-Sendable type 'MicCapture' in a '@Sendable' closure [#SendableClosureCaptures]
+506 |     }
+507 |     func setPaused(_ paused: Bool) {
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Audio/MicCapture.swift:8:13: note: class 'MicCapture' does not conform to the 'Sendable' protocol
+ 6 | /// **注意**: ライブ取り込みは署名済み .app + マイク許可(TCC)が要る。SwiftPM の裸実行では
+ 7 | /// 許可プロンプトが出ないため headless では動かない。ここは実装であり、実許可の検証は .app 側で。
+ 8 | final class MicCapture {
+   |             `- note: class 'MicCapture' does not conform to the 'Sendable' protocol
+ 9 |     private let engine = AVAudioEngine()
+10 |     private let targetRate: Double = 16_000
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/RecordingWorkspace/RecordingRuntime.swift:553:17: warning: initialization of immutable value 'id' was never used; consider replacing with assignment to '_' or removing it [#no-usage]
+551 |             try? session?.finish()
+552 |             session = nil
+553 |             let id = activeMeetingId
+    |                 `- warning: initialization of immutable value 'id' was never used; consider replacing with assignment to '_' or removing it [#no-usage]
+554 |             meetingId = nil
+555 |             // Live results already went through onTranscript and the local transcript store.
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/RecordingWorkspace/RecordingRuntime.swift:540:46: warning: capture of 'micCapture' with non-Sendable type 'MicCapture' in a '@Sendable' closure [#SendableClosureCaptures]
+538 |             micActive = false
+539 |             // 止めたあと次の録音のために資源だけ確保し直す（IO は始めない）。
+540 |             micQueue.async { [micCapture] in micCapture.stop(); micCapture.prewarm() }
+    |                                              `- warning: capture of 'micCapture' with non-Sendable type 'MicCapture' in a '@Sendable' closure [#SendableClosureCaptures]
+541 |         }
+542 |         let transcribers = [speech, remoteSpeech].compactMap { $0 }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Audio/MicCapture.swift:8:13: note: class 'MicCapture' does not conform to the 'Sendable' protocol
+ 6 | /// **注意**: ライブ取り込みは署名済み .app + マイク許可(TCC)が要る。SwiftPM の裸実行では
+ 7 | /// 許可プロンプトが出ないため headless では動かない。ここは実装であり、実許可の検証は .app 側で。
+ 8 | final class MicCapture {
+   |             `- note: class 'MicCapture' does not conform to the 'Sendable' protocol
+ 9 |     private let engine = AVAudioEngine()
+10 |     private let targetRate: Double = 16_000
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/RecordingWorkspace/RecordingWorkspaceState.swift:282:34: warning: main actor-isolated property 'isRecording' can not be referenced from a Sendable closure
+ 59 |     static let shared = RecordingWorkspaceState()
+ 60 | 
+ 61 |     @Published var isRecording = false
+    |                    `- note: property declared here
+ 62 |     /// 録音を成り立たなくしている許可。無ければ nil。バナーで出す。
+ 63 |     @Published var permissionIssue: PermissionIssue?
+    :
+280 |         tickTimer?.invalidate()
+281 |         tickTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+282 |             guard let self, self.isRecording, !self.isPaused, !self.freezeClockForShot else { return }
+    |                                  `- warning: main actor-isolated property 'isRecording' can not be referenced from a Sendable closure
+283 |             self.elapsedSeconds += 1
+284 |         }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/RecordingWorkspace/RecordingWorkspaceState.swift:282:53: warning: main actor-isolated property 'isPaused' can not be referenced from a Sendable closure
+ 64 |     private var tickTimer: Timer?
+ 65 |     private var microphoneRequest: UUID?
+ 66 |     @Published var isPaused = false
+    |                    `- note: property declared here
+ 67 |     @Published var elapsedSeconds = 0
+ 68 |     /// 検査用: 撮影の間だけ経過時計を止める。**本番では false。** light と dark を別プロセスで撮るので、
+    :
+280 |         tickTimer?.invalidate()
+281 |         tickTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+282 |             guard let self, self.isRecording, !self.isPaused, !self.freezeClockForShot else { return }
+    |                                                     `- warning: main actor-isolated property 'isPaused' can not be referenced from a Sendable closure
+283 |             self.elapsedSeconds += 1
+284 |         }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/RecordingWorkspace/RecordingWorkspaceState.swift:282:69: warning: main actor-isolated property 'freezeClockForShot' can not be referenced from a Sendable closure
+ 68 |     /// 検査用: 撮影の間だけ経過時計を止める。**本番では false。** light と dark を別プロセスで撮るので、
+ 69 |     /// 動いたままだと同じ面が 05:21 / 05:23 とずれ、fixed（light == dark）の gate が運で通ったり落ちたりした（実測）。
+ 70 |     var freezeClockForShot = false
+    |         `- note: property declared here
+ 71 |     @Published var selectedTool: RecordingTool = .transcript
+ 72 |     @Published var ragOpen = false
+    :
+280 |         tickTimer?.invalidate()
+281 |         tickTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+282 |             guard let self, self.isRecording, !self.isPaused, !self.freezeClockForShot else { return }
+    |                                                                     `- warning: main actor-isolated property 'freezeClockForShot' can not be referenced from a Sendable closure
+283 |             self.elapsedSeconds += 1
+284 |         }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/RecordingWorkspace/RecordingWorkspaceState.swift:283:18: warning: main actor-isolated property 'elapsedSeconds' can not be mutated from a Sendable closure
+ 65 |     private var microphoneRequest: UUID?
+ 66 |     @Published var isPaused = false
+ 67 |     @Published var elapsedSeconds = 0
+    |                    `- note: mutation of this property is only permitted within the actor
+ 68 |     /// 検査用: 撮影の間だけ経過時計を止める。**本番では false。** light と dark を別プロセスで撮るので、
+ 69 |     /// 動いたままだと同じ面が 05:21 / 05:23 とずれ、fixed（light == dark）の gate が運で通ったり落ちたりした（実測）。
+    :
+281 |         tickTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+282 |             guard let self, self.isRecording, !self.isPaused, !self.freezeClockForShot else { return }
+283 |             self.elapsedSeconds += 1
+    |                  `- warning: main actor-isolated property 'elapsedSeconds' can not be mutated from a Sendable closure
+284 |         }
+285 |         // オンデバイス STT の途中経過/確定を transcript に反映する。
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/RecordingWorkspace/RecordingWorkspaceState.swift:431:64: warning: converting non-Sendable function value to '@MainActor @Sendable @convention(block) () -> Void' may introduce data races
+429 |             let pending = self.startAfterFinishing
+430 |             self.startAfterFinishing = nil
+431 |             if let pending { DispatchQueue.main.async(execute: pending) }
+    |                                                                `- warning: converting non-Sendable function value to '@MainActor @Sendable @convention(block) () -> Void' may introduce data races
+432 |         }
+433 |     }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:389:27: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+ 387 |             }
+ 388 |             await MainActor.run {
+ 389 |                 guard let self else { return }
+     |                           `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+ 390 |                 self.requestInFlight = false
+ 391 |                 if accepted { self.updateRequest(target.id) { $0.message = "追加の指示を受け取りました: \(text)" } }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1004:47: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1002 |                     else {
+1003 |                         conv = try GenieCoreBridge.startConversation(base, accessToken: token)
+1004 |                         await MainActor.run { self?.conversationId = conv }
+     |                                               `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1005 |                     }
+1006 |                     let saved = await MainActor.run {
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1008:32: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1006 |                     let saved = await MainActor.run {
+1007 |                         VisualContextStore.shared.bind(conversationID: conv, preserving: Set(attached.map(\.id)))
+1008 |                         return self?.updateRequest(task.id) { $0.conversationID = conv } ?? false
+     |                                `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1009 |                     }
+1010 |                     guard saved else { throw NSError(domain: "Genie", code: 1, userInfo: [NSLocalizedDescriptionKey: "受付IDを保存できませんでした。依頼は送信していません。"] ) }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1016:21: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1014 |                 }
+1015 |                 await MainActor.run {
+1016 |                     self?.updateRequest(task.id) { $0.backendTaskID = outcome.taskId; $0.phase = .working }
+     |                     `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1017 |                     // backend に仕事ができた。Dock の一覧の 1 行になる（止めるは backend の取り消し）。
+1018 |                     if !outcome.taskId.isEmpty {
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1019:25: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1017 |                     // backend に仕事ができた。Dock の一覧の 1 行になる（止めるは backend の取り消し）。
+1018 |                     if !outcome.taskId.isEmpty {
+1019 |                         self?.trackOnDock(task.id, title: task.title, backendTaskId: outcome.taskId, base: base, token: token)
+     |                         `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1020 |                     }
+1021 |                 }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1027:43: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1025 |                 let followed = try Self.follow(outcome, base: base, token: token, waitMs: 12_000)
+1026 |                 if !followed.pendingApprovals.isEmpty {
+1027 |                     await MainActor.run { self?.dockEvent(task.id, .awaitingApproval) }
+     |                                           `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1028 |                 }
+1029 |                 let first = try await Self.settleApprovals(followed,
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1035:21: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1033 |                 let rejected = outcome.taskId.isEmpty && outcome.answer.isEmpty && !outcome.needsClarification
+1034 |                 let draft: ReplyFlow.Draft? = await MainActor.run {
+1035 |                     self?.applyReply(reply, to: task.id)
+     |                     `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1036 |                     self?.answer = reply.text
+1037 |                     // 短い確定回答や聞き返しは、その場で確認できるよう Dock に残す。
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1036:21: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1034 |                 let draft: ReplyFlow.Draft? = await MainActor.run {
+1035 |                     self?.applyReply(reply, to: task.id)
+1036 |                     self?.answer = reply.text
+     |                     `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1037 |                     // 短い確定回答や聞き返しは、その場で確認できるよう Dock に残す。
+1038 |                     // 作業中・待機中は従来どおり静かな入口へ戻し、Work で追える状態にする。
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1040:50: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1038 |                     // 作業中・待機中は従来どおり静かな入口へ戻し、Work で追える状態にする。
+1039 |                     // 会話が次のターンを聞いている間は、聞いている面を消さない（Gemini に頼んだ仕事の答えが後から来る）。
+1040 |                     let conversationListening = (self?.conversation.isActive ?? false) && self?.conversation.phase != .waiting
+     |                                                  `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1041 |                     // 音声入力で聞いている間も面を差し替えない（差し替えるとマイクを閉じ、話している途中が消える）。
+1042 |                     // 答えは `answer` と Work に残る。
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1040:91: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1038 |                     // 作業中・待機中は従来どおり静かな入口へ戻し、Work で追える状態にする。
+1039 |                     // 会話が次のターンを聞いている間は、聞いている面を消さない（Gemini に頼んだ仕事の答えが後から来る）。
+1040 |                     let conversationListening = (self?.conversation.isActive ?? false) && self?.conversation.phase != .waiting
+     |                                                                                           `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1041 |                     // 音声入力で聞いている間も面を差し替えない（差し替えるとマイクを閉じ、話している途中が消える）。
+1042 |                     // 答えは `answer` と Work に残る。
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1043:42: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1041 |                     // 音声入力で聞いている間も面を差し替えない（差し替えるとマイクを閉じ、話している途中が消える）。
+1042 |                     // 答えは `answer` と Work に残る。
+1043 |                     let inConversation = self?.conversation.isActive == true
+     |                                          `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1044 |                     if reply.settled {
+1045 |                         // すぐ答えが出た依頼は、答えの面で見せる（一覧の行にはしない）。
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1046:25: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1044 |                     if reply.settled {
+1045 |                         // すぐ答えが出た依頼は、答えの面で見せる（一覧の行にはしない）。
+1046 |                         self?.dropFromDock(task.id)
+     |                         `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1047 |                     } else if !rejected {
+1048 |                         // 受け付けた（仕事ができて動いている）ときだけ「かしこまりました」。
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1050:48: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1048 |                         // 受け付けた（仕事ができて動いている）ときだけ「かしこまりました」。
+1049 |                         GenieStateStore.shared.showAck(DockAck(id: task.id, title: task.title))
+1050 |                         if first.leftPending { self?.dockEvent(task.id, .awaitingApproval) }
+     |                                                `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1051 |                         else if !followed.pendingApprovals.isEmpty { self?.dockEvent(task.id, .step(Facts.taskWorking)) }
+1052 |                     }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1051:70: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1049 |                         GenieStateStore.shared.showAck(DockAck(id: task.id, title: task.title))
+1050 |                         if first.leftPending { self?.dockEvent(task.id, .awaitingApproval) }
+1051 |                         else if !followed.pendingApprovals.isEmpty { self?.dockEvent(task.id, .step(Facts.taskWorking)) }
+     |                                                                      `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1052 |                     }
+1053 |                     if !conversationListening, self?.isListeningSurface != true {
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1053:48: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1051 |                         else if !followed.pendingApprovals.isEmpty { self?.dockEvent(task.id, .step(Facts.taskWorking)) }
+1052 |                     }
+1053 |                     if !conversationListening, self?.isListeningSurface != true {
+     |                                                `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1054 |                         let hasText = !reply.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+1055 |                         if rejected, !inConversation, hasText {
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1057:29: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1055 |                         if rejected, !inConversation, hasText {
+1056 |                             // 受け付けたようには見せない。同じ面で理由と「閉じる」（会話では声で理由を言う）。
+1057 |                             self?.mode = .idle
+     |                             `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1058 |                             GenieStateStore.shared.showAck(DockAck(id: task.id, title: task.title, rejected: reply.text))
+1059 |                         } else if reply.settled && hasText {
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1060:29: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1058 |                             GenieStateStore.shared.showAck(DockAck(id: task.id, title: task.title, rejected: reply.text))
+1059 |                         } else if reply.settled && hasText {
+1060 |                             self?.mode = Self.presentation(for: reply)
+     |                             `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1061 |                         } else if self?.conversation.isActive == true, hasText {
+1062 |                             // 会話中は静かな入口へ戻さない（会話の行＝状態と「会話を終了」が消え、マイクが開いたまま
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1061:35: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1059 |                         } else if reply.settled && hasText {
+1060 |                             self?.mode = Self.presentation(for: reply)
+1061 |                         } else if self?.conversation.isActive == true, hasText {
+     |                                   `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1062 |                             // 会話中は静かな入口へ戻さない（会話の行＝状態と「会話を終了」が消え、マイクが開いたまま
+1063 |                             // 何をしているか見えなくなる）。受け付けたことを面に出したまま次を聞く。
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1064:29: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1062 |                             // 会話中は静かな入口へ戻さない（会話の行＝状態と「会話を終了」が消え、マイクが開いたまま
+1063 |                             // 何をしているか見えなくなる）。受け付けたことを面に出したまま次を聞く。
+1064 |                             self?.mode = .answer(reply.text)
+     |                             `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1065 |                         } else {
+1066 |                             self?.mode = .idle
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1066:29: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1064 |                             self?.mode = .answer(reply.text)
+1065 |                         } else {
+1066 |                             self?.mode = .idle
+     |                             `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1067 |                         }
+1068 |                     }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1072:21: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1070 |                     // 受け付けた（または答えた）。以降の待ちは記録の更新だけで、次の依頼を塞がない。
+1071 |                     // 同じ依頼の二重送信は、ここまで（送信〜受付）を塞げば防げる。
+1072 |                     self?.requestInFlight = false
+     |                     `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1073 |                     self?.conversationReply(reply, draft: !outcome.replyJson.isEmpty)
+1074 |                     guard reply.settled, !outcome.replyJson.isEmpty else { return nil }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1073:21: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1071 |                     // 同じ依頼の二重送信は、ここまで（送信〜受付）を塞げば防げる。
+1072 |                     self?.requestInFlight = false
+1073 |                     self?.conversationReply(reply, draft: !outcome.replyJson.isEmpty)
+     |                     `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1074 |                     guard reply.settled, !outcome.replyJson.isEmpty else { return nil }
+1075 |                     return ReplyFlow.draft(replyJson: outcome.replyJson, body: reply.text)
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1094:25: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1092 |                     }
+1093 |                     let laterDraft: ReplyFlow.Draft? = await MainActor.run {
+1094 |                         self?.applyReply(later, to: task.id)
+     |                         `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1095 |                         guard later.settled else {
+1096 |                             // 30 分で追うのをやめる。終わったとは言わない（状況は Work で確かめられる）。
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1094:42: warning: reference to captured var 'later' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1092 |                     }
+1093 |                     let laterDraft: ReplyFlow.Draft? = await MainActor.run {
+1094 |                         self?.applyReply(later, to: task.id)
+     |                                          `- warning: reference to captured var 'later' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1095 |                         guard later.settled else {
+1096 |                             // 30 分で追うのをやめる。終わったとは言わない（状況は Work で確かめられる）。
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1095:31: warning: reference to captured var 'later' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1093 |                     let laterDraft: ReplyFlow.Draft? = await MainActor.run {
+1094 |                         self?.applyReply(later, to: task.id)
+1095 |                         guard later.settled else {
+     |                               `- warning: reference to captured var 'later' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1096 |                             // 30 分で追うのをやめる。終わったとは言わない（状況は Work で確かめられる）。
+1097 |                             self?.dropFromDock(task.id)
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1097:29: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1095 |                         guard later.settled else {
+1096 |                             // 30 分で追うのをやめる。終わったとは言わない（状況は Work で確かめられる）。
+1097 |                             self?.dropFromDock(task.id)
+     |                             `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1098 |                             return nil
+1099 |                         }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1103:39: warning: reference to captured var 'later' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1101 |                         // 会話が次のターンを聞いていないときだけ出す（聞いている面・新しい答えを上書きしない）。
+1102 |                         // それ以外は Dock の結果（何ができたかと、開く・コピー）になる。
+1103 |                         if let card = later.card, card.hasContent {
+     |                                       `- warning: reference to captured var 'later' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1104 |                             self?.dropFromDock(task.id)
+1105 |                             if let self, self.latestRequestID == task.id, !self.conversation.isActive, !self.isListeningSurface {
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1104:29: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1102 |                         // それ以外は Dock の結果（何ができたかと、開く・コピー）になる。
+1103 |                         if let card = later.card, card.hasContent {
+1104 |                             self?.dropFromDock(task.id)
+     |                             `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1105 |                             if let self, self.latestRequestID == task.id, !self.conversation.isActive, !self.isListeningSurface {
+1106 |                                 self.answer = later.text
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1105:36: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1103 |                         if let card = later.card, card.hasContent {
+1104 |                             self?.dropFromDock(task.id)
+1105 |                             if let self, self.latestRequestID == task.id, !self.conversation.isActive, !self.isListeningSurface {
+     |                                    `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1106 |                                 self.answer = later.text
+1107 |                                 self.mode = .card(card)
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1106:47: warning: reference to captured var 'later' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1104 |                             self?.dropFromDock(task.id)
+1105 |                             if let self, self.latestRequestID == task.id, !self.conversation.isActive, !self.isListeningSurface {
+1106 |                                 self.answer = later.text
+     |                                               `- warning: reference to captured var 'later' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1107 |                                 self.mode = .card(card)
+1108 |                             }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1110:29: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1108 |                             }
+1109 |                         } else {
+1110 |                             self?.finishOnDock(task.id, reply: later, title: task.title)
+     |                             `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1111 |                             if let self, self.latestRequestID == task.id { self.answer = later.text }
+1112 |                         }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1110:64: warning: reference to captured var 'later' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1108 |                             }
+1109 |                         } else {
+1110 |                             self?.finishOnDock(task.id, reply: later, title: task.title)
+     |                                                                `- warning: reference to captured var 'later' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1111 |                             if let self, self.latestRequestID == task.id { self.answer = later.text }
+1112 |                         }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1111:36: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1109 |                         } else {
+1110 |                             self?.finishOnDock(task.id, reply: later, title: task.title)
+1111 |                             if let self, self.latestRequestID == task.id { self.answer = later.text }
+     |                                    `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1112 |                         }
+1113 |                         VisualContextStore.shared.markRecent(attached)
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1111:90: warning: reference to captured var 'later' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1109 |                         } else {
+1110 |                             self?.finishOnDock(task.id, reply: later, title: task.title)
+1111 |                             if let self, self.latestRequestID == task.id { self.answer = later.text }
+     |                                                                                          `- warning: reference to captured var 'later' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1112 |                         }
+1113 |                         VisualContextStore.shared.markRecent(attached)
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1115:84: warning: reference to captured var 'later' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1113 |                         VisualContextStore.shared.markRecent(attached)
+1114 |                         guard !outcome.replyJson.isEmpty else { return nil }
+1115 |                         return ReplyFlow.draft(replyJson: outcome.replyJson, body: later.text)
+     |                                                                                    `- warning: reference to captured var 'later' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1116 |                     }
+1117 |                     if let laterDraft { await ReplyFlow.shared.present(laterDraft) }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1119:43: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1117 |                     if let laterDraft { await ReplyFlow.shared.present(laterDraft) }
+1118 |                 }
+1119 |                 await MainActor.run { _ = self?.followingRequests.remove(task.id) }
+     |                                           `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1120 |             } catch {
+1121 |                 await MainActor.run {
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1122:21: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1120 |             } catch {
+1121 |                 await MainActor.run {
+1122 |                     self?.updateRequest(task.id) {
+     |                     `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1123 |                         $0.phase = .unknown
+1124 |                         $0.message = $0.backendTaskID.isEmpty
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1131:21: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1129 |                     // その間に始まった新しい依頼の送信中を解かない（二重送信を防げなくなる）。
+1130 |                     // 行は外す（仕事が失敗したとは言えない。状況は Work で確かめられる）。
+1131 |                     self?.dropFromDock(task.id)
+     |                     `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1132 |                     if let self, self.latestRequestID == task.id {
+1133 |                         self.answer = "接続を確認してください。依頼と現在の状況は Work に保存されています。"
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1132:28: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1130 |                     // 行は外す（仕事が失敗したとは言えない。状況は Work で確かめられる）。
+1131 |                     self?.dropFromDock(task.id)
+1132 |                     if let self, self.latestRequestID == task.id {
+     |                            `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1133 |                         self.answer = "接続を確認してください。依頼と現在の状況は Work に保存されています。"
+1134 |                         if !self.conversation.isActive, !self.isListeningSurface { self.mode = .idle }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1138:24: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1136 |                     }
+1137 |                     // 会話へ返すのは、この依頼がまだいまの依頼のとき（後から始まったターンの答えにしない）。
+1138 |                     if self?.latestRequestID == task.id {
+     |                        `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1139 |                         self?.conversationReply(nil, failed: "接続できませんでした。依頼は Work に残っています。")
+1140 |                     }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1139:25: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1137 |                     // 会話へ返すのは、この依頼がまだいまの依頼のとき（後から始まったターンの答えにしない）。
+1138 |                     if self?.latestRequestID == task.id {
+1139 |                         self?.conversationReply(nil, failed: "接続できませんでした。依頼は Work に残っています。")
+     |                         `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1140 |                     }
+1141 |                     self?.followingRequests.remove(task.id)
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1141:21: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1139 |                         self?.conversationReply(nil, failed: "接続できませんでした。依頼は Work に残っています。")
+1140 |                     }
+1141 |                     self?.followingRequests.remove(task.id)
+     |                     `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1142 |                 }
+1143 |             }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1372:37: warning: result of call to 'run(resultType:body:)' is unused [#no-usage]
+1370 |                     }
+1371 |                     outcome = recovered
+1372 |                     await MainActor.run { self?.updateRequest(id) { $0.backendTaskID = recovered.taskId } }
+     |                                     `- warning: result of call to 'run(resultType:body:)' is unused [#no-usage]
+1373 |                 } else {
+1374 |                     outcome = TurnOutcome(needsClarification: false, answer: "", taskId: record.backendTaskID, notice: "", replyJson: "")
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1366:29: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1364 |                           let recovered = try GenieCoreBridge.recoverTurn(base, accessToken: token, conversationId: record.conversationID, requestId: receipt) else {
+1365 |                         await MainActor.run {
+1366 |                             self?.updateRequest(id) { $0.phase = .unknown; $0.message = "受付の処理結果はまだ確認できません。時間をおいて状況を確認してください。依頼は再送しません。" }
+     |                             `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1367 |                             self?.refreshingRequests.remove(id)
+1368 |                         }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1367:29: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1365 |                         await MainActor.run {
+1366 |                             self?.updateRequest(id) { $0.phase = .unknown; $0.message = "受付の処理結果はまだ確認できません。時間をおいて状況を確認してください。依頼は再送しません。" }
+1367 |                             self?.refreshingRequests.remove(id)
+     |                             `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1368 |                         }
+1369 |                         return
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1372:43: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1370 |                     }
+1371 |                     outcome = recovered
+1372 |                     await MainActor.run { self?.updateRequest(id) { $0.backendTaskID = recovered.taskId } }
+     |                                           `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1373 |                 } else {
+1374 |                     outcome = TurnOutcome(needsClarification: false, answer: "", taskId: record.backendTaskID, notice: "", replyJson: "")
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1380:39: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1378 |                     ? try await Self.settleApprovals(first, taskId: outcome.taskId, base: base, token: token, waitMs: 12_000).reply
+1379 |                     : first.reply
+1380 |                 await MainActor.run { self?.applyReply(reply, to: id); self?.refreshingRequests.remove(id) }
+     |                                       `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1381 |             } catch {
+1382 |                 await MainActor.run {
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1380:72: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1378 |                     ? try await Self.settleApprovals(first, taskId: outcome.taskId, base: base, token: token, waitMs: 12_000).reply
+1379 |                     : first.reply
+1380 |                 await MainActor.run { self?.applyReply(reply, to: id); self?.refreshingRequests.remove(id) }
+     |                                                                        `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1381 |             } catch {
+1382 |                 await MainActor.run {
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1383:21: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1381 |             } catch {
+1382 |                 await MainActor.run {
+1383 |                     self?.updateRequest(id) { $0.message = "状況を取得できませんでした。接続を確認してから、もう一度状況を確認できます。" }
+     |                     `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1384 |                     self?.refreshingRequests.remove(id)
+1385 |                 }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1384:21: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1382 |                 await MainActor.run {
+1383 |                     self?.updateRequest(id) { $0.message = "状況を取得できませんでした。接続を確認してから、もう一度状況を確認できます。" }
+1384 |                     self?.refreshingRequests.remove(id)
+     |                     `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+1385 |                 }
+1386 |             }
+
+[#ActorIsolatedCall]: <https://docs.swift.org/compiler/documentation/diagnostics/actor-isolated-call>
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[#SendableClosureCaptures]: <https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures>
+[#TrailingClosureMatching]: <https://docs.swift.org/compiler/documentation/diagnostics/trailing-closure-matching>
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[560](std-ddc72da0927e9db9.std.61a5f0013896dfb1-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[561](panic_unwind-63ea78ca2e1c0db3.panic_unwind.b9418b0471e31d36-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[562](object-c0adbf29d899f046.object.cf48ae80852c1dc4-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[564](addr2line-b92825ace6709456.addr2line.f3cce53e8c22052d-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[565](gimli-49cd0cae66d7f640.gimli.a9de2a852aa7a696-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[567](rustc_demangle-a5e20ae1249591d9.rustc_demangle.c8ddca633150ec1-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[569](hashbrown-7ef914ecbc5b3828.hashbrown.f3d328c4a0fd8a24-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[571](miniz_oxide-d817fa4718a8ef96.miniz_oxide.cf735aedbe58ef77-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[572](adler2-b603e41842b612c3.adler2.c400f6a6402c7116-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[576](alloc-7d19d4a84a64ec6c.alloc.650f235c7e2e357a-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[577](core-f186bd403406965f.core.aedb9fd4ead64aec-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[594](compiler_builtins-28935136ed986f39.compiler_builtins.bb8f0d37d096e781-cgu.016.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[722](compiler_builtins-28935136ed986f39.compiler_builtins.bb8f0d37d096e781-cgu.144.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[771](compiler_builtins-28935136ed986f39.compiler_builtins.bb8f0d37d096e781-cgu.193.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+[3/4] Linking GenieMac
+Build complete! (72.36s)
+/Users/shuhei/Projects/genie/apps/genie-macos/.build/Genie.app/Contents/Frameworks/Sparkle.framework/Versions/B/Autoupdate: replacing existing signature
+/Users/shuhei/Projects/genie/apps/genie-macos/.build/Genie.app/Contents/Frameworks/Sparkle.framework/Versions/B/Updater.app: replacing existing signature
+/Users/shuhei/Projects/genie/apps/genie-macos/.build/Genie.app/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Downloader.xpc: replacing existing signature
+/Users/shuhei/Projects/genie/apps/genie-macos/.build/Genie.app/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Installer.xpc: replacing existing signature
+/Users/shuhei/Projects/genie/apps/genie-macos/.build/Genie.app/Contents/Frameworks/Sparkle.framework/Autoupdate: replacing existing signature
+/Users/shuhei/Projects/genie/apps/genie-macos/.build/Genie.app/Contents/Frameworks/Sparkle.framework/Updater.app: replacing existing signature
+/Users/shuhei/Projects/genie/apps/genie-macos/.build/Genie.app/Contents/Frameworks/Sparkle.framework: replacing existing signature
+/Users/shuhei/Projects/genie/apps/genie-macos/.build/Genie.app: replacing existing signature
+--prepared:/Users/shuhei/Projects/genie/apps/genie-macos/.build/Genie.app/Contents/Frameworks/Sparkle.framework/Versions/Current/.
+--validated:/Users/shuhei/Projects/genie/apps/genie-macos/.build/Genie.app/Contents/Frameworks/Sparkle.framework/Versions/Current/.
+/Users/shuhei/Projects/genie/apps/genie-macos/.build/Genie.app: valid on disk
+/Users/shuhei/Projects/genie/apps/genie-macos/.build/Genie.app: satisfies its Designated Requirement
+Identifier=com.astra.desktop
+Authority=Apple Development: Shuhei Horio (N5DXXRWC3M)
+TeamIdentifier=6RR7572ZLU
+launch: OK（実行体は起動する）
+packaged: /Users/shuhei/Projects/genie/apps/genie-macos/.build/Genie.app
+実 Calendar 検証: open "/Users/shuhei/Projects/genie/apps/genie-macos/.build/Genie.app" --args --selftest calendarlive  → プロンプトで許可 → 結果は /tmp/astra-calendarlive.txt
+
+== genie-core tests ==
+test result: ok. 44 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.02s
+
+== Tauri Rust regression ==
+test result: ok. 67 passed; 0 failed; 3 ignored; 0 measured; 0 filtered out; finished in 0.28s
+
+== Tauri desktop JS regression ==
+      Tests  357 passed (357)
+
+== TCC usage descriptions ==
+USAGE_DESCRIPTIONS_OK: 要求しうる権限の用途説明が揃っている (6 件)
+
+== release consistency ==
+  package.json=0.1.4 tauri.conf.json=0.1.4 src-tauri/Cargo.toml=0.1.4 genie-core/Cargo.toml=0.1.4
+RELEASE_CONSISTENCY_OK: 版番号 0.1.4 で一致・配布物は外部 dylib を掴まない・Developer ID + hardened runtime
+
+== release aggregation regression ==
+.......................
+----------------------------------------------------------------------
+Ran 23 tests in 4.754s
+
+OK
+
+== UI taste ==
+== UI の癖 ==
+  gradient               4 /   4
+  角丸 >28pt           0 /   0
+  material/blur: actual=11, reviewed additions=3 (content-bound)
+  material/blur          8 /   8
+  sparkles アイコン   5 /   6
+  Capsule: actual=24, reviewed additions=5 (content-bound)
+  Capsule               19 /  20
+  shadow                 5 /   9
+  40字超の文言      6 /   6
+
+UI_TASTE_OK: 癖は上限内
+
+== permission JIT ==
+  起動経路（AppDelegate）で権限を求めていない OK
+  求めている場所:
+    apps/genie-macos/Sources/GenieMac/GuidedSetup/PermissionManager.swift:41:        Permissions.requestMicrophone(done)
+    apps/genie-macos/Sources/GenieMac/Settings/PermissionCenter.swift:88:            case .microphone: Permissions.requestMicrophone { _ in done() }
+    apps/genie-macos/Sources/GenieMac/Settings/PermissionCenter.swift:89:            case .screenRecording: Permissions.requestScreenRecording(); done()
+    apps/genie-macos/Sources/GenieMac/Settings/PermissionCenter.swift:91:            case .calendar: Permissions.requestCalendar { _ in done() }
+    apps/genie-macos/Sources/GenieMac/Settings/PermissionCenter.swift:92:            case .speechRecognition: Permissions.requestSpeechRecognition { _ in done() }
+    apps/genie-macos/Sources/GenieMac/Settings/SettingsView.swift:52:                              request: { Permissions.requestSpeechRecognition { _ in speech = Permissions.speechRecognition } })
+    apps/genie-macos/Sources/GenieMac/Settings/SettingsView.swift:54:                              request: { Permissions.requestCalendar { _ in cal = Permissions.calendar } })
+    apps/genie-macos/Sources/GenieMac/Settings/SettingsView.swift:58:                    if !Permissions.requestInputMonitoring() { Permissions.openInputMonitoringSettings() }
+    apps/genie-macos/Sources/GenieMac/Home/HomeView.swift:529:                PermissionCenter.request(.schedule) {
+    apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:200:            Permissions.requestSpeechRecognition { _ in }
+    apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:617:        if Permissions.speechRecognition == .notDetermined { Permissions.requestSpeechRecognition { _ in } }
+    apps/genie-macos/Sources/GenieMac/RecordingWorkspace/RecordingWorkspaceState.swift:319:            PermissionCenter.request(.meeting) {
+    apps/genie-macos/Sources/GenieMac/RecordingWorkspace/RecordingWorkspaceState.swift:348:        if screenAudio && requestPermissions { PermissionCenter.request(.meetingAudio) }
+  求める場所は機能の入口だけ OK
+  取扱説明書も「使うときに要るものだけ」 OK
+
+PERMISSION_JIT_OK: 起動時に求めず、使う直前に求める
+
+== privacy egress ==
+== PRIVACY_EGRESS_GATE ==
+  recording upload requires explicit cloud consent PASS
+  silent Apple STT fallback                0
+  screen audio permission follows selection PASS
+  connector egress requires user action    PASS
+  external action confirmation             PASS (Confirm.ask ×4 + Confirm.approve ×3; 面は CONFIRMATION_GATE)
+  transcription egress guide               consistent
+  current-info egress allowlist            PASS (4 hosts)
+  gemini live requires consent, key, limit PASS
+  nearby places require key, limit, request PASS
+  runtime (--selftest egress)              autoUpload=off cloudSTTConsent=off meeting=[microphone] sttNoFallback=NOT_MEASURED
+
+PRIVACY_EGRESS_GATE=PASS
+
+== no contradiction ==
+scripts/verify-no-contradiction.sh: line 28: 84902 Terminated: 15          "$BIN" --selftest hold-meeting 25 silent > /dev/null 2>&1
+NO_CONTRADICTION_OK: 画面の中で言っていることが食い違わない
+
+== confirmation surface ==
+== CONFIRMATION_GATE ==
+
+  · 面の寸法 560x286pt
+  ✓ 幅 <= 620pt
+  ✓ 高さ <= 360pt
+  ✓ ① どのアプリ / どこへ
+  ✓ ② 何が起きるか
+  ✓ ③ 決定的な値
+  ✓ ④ 中身の下見
+  ✓ ⑤ 出所
+  ✓ ⑥ 取消
+  ✓ ⑥ 直す
+  ✓ ⑥ 実行
+  ✓ 決断に不要なもの（履歴・会議ノート・sidebar）が無い
+  ✓ 主たる操作 96x32pt が逃げ道 74pt（やめる）以上
+  ✓ 中身の間の中央値 = 10.0pt（操作の手前 26.0pt は区切りとして除外）
+  ✓ 窓を増やしていない（同じ面が morph）
+
+  ✓ 窓を増やさない・焦点を奪わない・560x254pt・高さは中身で決まる（254→163）・取り消しで戻る
+
+CONFIRMATION_GATE=PASS
+
+== approval boundary ==
+== APPROVAL_BOUNDARY ==
+  files 260 / 証拠を作る入口 1 / APPROVED を送る所 1 / 違反 0
+  local servers 7 / 違反 0
+APPROVAL_BOUNDARY=PASS
+
+== approval boundary selfcheck ==
+== APPROVAL_BOUNDARY selfcheck ==
+  ✓ 落ちた — 承認待ちを見たら APPROVED を中継（元の欠陥）
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1390 "APPROVED" を GenieApproval の外で書いている
+  ✓ 落ちた — min(waitMs, 2000) で待つ時間を縮める（元の欠陥）
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1390 min(waitMs, …) で待つ時間を縮めている
+  ✓ 落ちた — follow が区切りを通らずに waitTask を直接呼ぶ
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1390 follow が waitForTask の区切りを通らずに waitTask を呼んでいる（TaskReader.live の外）
+  ✓ 落ちた — 声の「ストップ」で仕事を取り消す（元の欠陥）
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1390 声の経路から仕事を取り消している（VoiceInterruptionDetector。キーワードでの取り消しは戻さない）
+  ✓ 落ちた — 声の経路から /cancel を叩く
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1390 声の経路から /cancel を組み立てている
+  ✓ 落ちた — 声の経路から、カードの「やめる」以外で REJECTED を送る
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1390 声の経路で、確認カードの「やめる」以外から REJECTED を送っている
+  ✓ 落ちた — 生の FFI を直接呼ぶ
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1390 生の apiTaskApprove を GenieApproval の外で参照している（関数参照・補間の中も数える）
+  ✓ 落ちた — 関数参照で生の FFI を運ぶ（let relay = apiTaskApprove）
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1390 生の apiTaskApprove を GenieApproval の外で参照している（関数参照・補間の中も数える）
+  ✓ 落ちた — 文字列の補間の中に生の FFI を隠す
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1390 生の apiTaskApprove を GenieApproval の外で参照している（関数参照・補間の中も数える）
+  ✓ 落ちた — GenieCoreBridge に証拠の要らない承認の入口を足す
+      ✗ Sources/GenieMac/RecordingWorkspace/GenieCoreBridge.swift:235 生の apiTaskApprove を GenieApproval の外で参照している（関数参照・補間の中も数える）
+  ✓ 落ちた — GenieApproval に証拠を受け取らない APPROVED の関数を足す
+      ✗ decision "APPROVED" を送る所が 2 か所（ApprovalRelay.approve の 1 か所だけのはず）
+  ✓ 落ちた — GenieApproval で decision を変数で渡す
+      ✗ Sources/GenieApproval/UserApproval.swift:57 decision を文字の定数（APPROVED / REJECTED）以外で渡している
+  ✓ 落ちた — URLSession で /approve を叩く
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1390 /approve を直接組み立てている（GenieApproval の ApprovalRelay を通す）
+  ✓ 落ちた — 証拠を GenieMac で作る
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1390 UserApproval( を GenieApproval の外で使っている
+  ✓ 落ちた — 別のファイルで証拠の init を足す
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1390 extension UserApproval（改行をまたいでも数える）を GenieApproval の外で書いている
+  ✓ 落ちた — 別名（typealias）で extension を隠す
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1390 UserApproval に別名を付けている（数えるべき入口を名前から隠せる）
+  ✓ 落ちた — extension の直後で改行する
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1390 extension UserApproval（改行をまたいでも数える）を GenieApproval の外で書いている
+  ✓ 落ちた — .init(…) の省略形で作る
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1390 UserApproval を .init(…) の省略形で作っている
+  ✓ 落ちた — Unsafe…<UserApproval> で作る
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1390 UserApproval を型引数に渡している（Unsafe…<UserApproval> で作れる形）
+  ✓ 落ちた — 証拠を JSON から decode できるようにする
+      ✗ Sources/GenieMac/Components/Confirm.swift:235 extension UserApproval（改行をまたいでも数える）を GenieApproval の外で書いている
+  ✓ 落ちた — カードを出さずに証拠を作る（Confirm.swift の中の近道）
+      ✗ 証拠を作る入口（ApprovalLedger）は Confirm.approve の 1 か所だけのはず（Sources/GenieMac/Components/Confirm.swift:54, Sources/GenieMac/Components/Confirm.swift:235）
+  ✓ 落ちた — 証拠の入口を関数参照で持ち出す
+      ✗ 証拠を作る入口（ApprovalLedger）は Confirm.approve の 1 か所だけのはず（Sources/GenieMac/Components/Confirm.swift:54, Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1390）
+  ✓ 落ちた — 検査から証拠の internal init を覗く（@testable import GenieApproval）
+      ✗ Tests/GenieMacTests/ApprovalBoundaryTests.swift:513 @testable import GenieApproval（証拠の internal init が見える）
+  ✓ 落ちた — 証拠の init を public にする
+      ✗ Sources/GenieApproval/UserApproval.swift:24 UserApproval の init が public / package（GenieMac から作れる）
+  ✓ 落ちた — 証拠をコピーできる形にする（使い回せる）
+      ✗ Sources/GenieApproval/UserApproval.swift:19 UserApproval が ~Copyable ではない（1 回の「実行する」を使い回せる）
+  ✓ 落ちた — 声で「はい」をカードの承認にする（id 無し）
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1390 resolveConfirmation を id 無しで呼んでいる（描いたカードでなく store の現在値に答える）
+  ✓ 落ちた — 声で「はい」をカードの承認にする（id 付き）
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1390 resolveConfirmation(approved: true) を Dock のボタン以外から呼んでいる
+  ✓ 落ちた — Dock のボタンが描いたカードでなく現在値に答える
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDView.swift:1760 resolveConfirmation を id 無しで呼んでいる（描いたカードでなく store の現在値に答える）
+  ✓ 落ちた — 声で「はい」を、型名付きの .confirmationResolved で流す
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1390 .confirmationResolved を GenieStateStore の外で作っている（型名付き・変数経由の発行も数える）
+  ✓ 落ちた — 声で「はい」を、変数に入れた .confirmationResolved で流す
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1390 .confirmationResolved を GenieStateStore の外で作っている（型名付き・変数経由の発行も数える）
+  ✓ 落ちた — 声で「はい」を、resolveConfirmation の関数参照で答える
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1390 resolveConfirmation を呼び出し以外の形（関数参照）で使っている
+  ✓ 落ちた — 声で「はい」を、UIProbe.tap で「実行する」を押して答える
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1390 UIProbe.tap（検査の自動操作）を SelfTest の外で使っている
+  ✓ 落ちた — appendingPathComponent("approve") で承認の URL を組む
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1390 /approve を直接組み立てている（GenieApproval の ApprovalRelay を通す）
+  ✓ 落ちた — 証拠の入口を任意の UUID で呼ぶ（型では通る）
+      ✗ 証拠を作る入口（ApprovalLedger）は Confirm.approve の 1 か所だけのはず（Sources/GenieMac/Components/Confirm.swift:54, Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1390）
+  ✓ 落ちた — ローカル HTTP サーバが APPROVED を中継する
+      ✗ scripts/computer-use-ui.mjs:779 ローカル HTTP サーバが承認を中継している（承認は確認カードだけ）
+
+  ✓ 型が拒む — GenieMac から直接 init
+      'UserApproval' initializer is inaccessible due to 'internal' protection level
+  ✓ 型が拒む — .init(…) の省略形
+      'UserApproval' initializer is inaccessible due to 'internal' protection level
+  ✓ 型が拒む — 別名 + extension で let を埋める
+      'let' property 'confirmationID' may not be initialized directly; use "self.init(...)" or "self = ..." instead
+  ✓ 型が拒む — 改行をまたぐ extension
+      'let' property 'confirmationID' may not be initialized directly; use "self.init(...)" or "self = ..." instead
+  ✓ 型が拒む — JSON から decode
+      type 'UserApproval' does not conform to protocol 'Copyable'
+  ✓ 型が拒む — 1 回の証拠を 2 件の承認に使う
+      'a' consumed more than once
+  ✓ 型が拒む — 証拠をループで使い回す
+      'a' consumed in a loop
+  ✓ 型が拒む — unsafeBitCast で作る
+      global function 'unsafeBitCast(_:to:)' requires that 'UserApproval' conform to 'Copyable'
+  ✓ 型が拒む — 証拠なしで ApprovalRelay.approve
+      missing argument for parameter 'approval' in call
+  · 型では拒まない — ApprovalLedger.issue(forPressedCard: 任意の UUID)（public。字句の ⑦ だけが落とす）
+
+APPROVAL_BOUNDARY_SELFCHECK=PASS
+
+== approval boundary (real key) ==
+== APPROVAL_BOUNDARY runtime（実キー）==
+SELFTEST_OK approval-press: real_cmd_return=approved early_cmd_return=ignored real_escape=declined no_answer=pending
+APPROVAL_BOUNDARY_RUNTIME=PASS
+
+== screen terms (one word each) ==
+TERMS_OK: 画面の語は 1 語ずつ
+
+== guide facts (app words only) ==
+  facts 161 件 / ガイドが引く key 63 件 / 文字で書かれた protected 0 件 / 一字違い 0 件 / 古い綴り 0 件
+SELFTEST_OK shots: 16面を実アプリで撮影・geometry OK・面どうしが別の絵
+  guide build: written 953 KB / facts used 63
+GUIDE_FACTS_OK: ガイドの語はアプリの表示（UserFacingFacts）だけから来ている
+
+== guide facts selfcheck ==
+  selfcheck 1 一字違いの古い写し:
+    FAIL: protected の語「録音」(dock.record) がガイドに文字で書かれている（build.py:131 付近）。fact("dock.record") で引く
+    FAIL: 「録音の開始 / 停止」はアプリの語「録音を開始 / 停止」(settings.shortcutRow) と一字違い（build.py:131 付近）。古い写し。fact("settings.shortcutRow") で引く
+  selfcheck 2 許可名を文字で:
+    FAIL: protected の語「画面収録」(permission.screenRecording) がガイドに文字で書かれている（build.py:141 付近）。fact("permission.screenRecording") で引く
+  selfcheck 3 知らない key:
+    FAIL: ガイドが知らない fact を引いている: settings.noSuchRow
+GUIDE_FACTS_SELFCHECK_OK: 3 つの書き戻しを全部捕まえた
+
+== liquid orb assets fresh ==
+LIQUID_ORB_ASSETS_OK
+
+== design tokens fresh ==
+design tokens are current
+
+== type scale (no literals) ==
+TYPE_LITERALS_OK: 6 つの型の view に字の大きさの直書きは無い（5 scope）
+
+== button hit area ==
+BUTTON_HIT_AREA_OK: 216 ファイル、ボタンの高さ・余白はラベルの中
+
+== swift bindings fresh ==
+swift bindings are current
+
+== workspace fixture fresh ==
+recording-workspace fixture is current
+
+== conventions ==
+convention check passed
+
+== C ABI contract (3-way) ==
+C ABI contract ok: Rust 21 = header 21, C# が呼ぶ 21 個すべて一致
+
+== native path Tauri-free ==
+native product path is Tauri-free: 218 Swift files + genie-core に Tauri 依存なし (Done#8)
+
+== WinUI XAML well-formed ==
+xaml well-formed: 5 WinUI .xaml files OK
+
+== C# bridge -> core + gateway ==
+CS_SKIP gateway: not reachable
+CS_OK bridge->core: version=0.1.4 pkce=S256 authorizeUrl parseCallback elapsed=01:05; geometry matches shared fixture
+
+== Windows C# logic type-check ==
+CSLOGIC_OK: Windows C# 実ロジック全体(Window code-behind 含む)が型検査を通過
+
+== C ABI round-trip (C) ==
+note: default SDK cannot link here; using /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk
+CABI_OK connector: pkce=S256 authorizeUrl ok nonLoopbackRejected parseCallback ok
+CABI_SKIP api: gateway not reachable (http://127.0.0.1:3000)
+CABI_OK closed=1 ms=5000 fragmentBytes=160000 markedUploaded=1
+
+== macOS recording + live E2E ==
+SELFTEST_OK record: closed=1 fragmentBytes=160000 elapsed=00:05 recoverable=1
+SELFTEST_OK lifecycle: elapsed=00:05 recovered=true
+SELFTEST_OK shortcut: registered=true combo=⌥Space matcher=ok receivedSyntheticPress=true
+SELFTEST_OK sysaudio: capturesAudio=true sampleRate=48000 channels=2 excludesSelf=true
+SELFTEST_OK calendar: status=未確認 upcoming=0
+SELFTEST_OK screen: width=1280 height=800 pixelFormat=BGRA audio=false
+SELFTEST_OK rag: order=a,c,b topScore=1.00 reason=語が 1 件一致 · 新しい · このプロジェクト
+SELFTEST_OK keychain: roundtrip ok, absent=nil, delete idempotent, service=com.astra.mac
+SELFTEST_OK files: candidates=2(binary除外) top=oauth.txt score=0.72
+SELFTEST_OK ax: trusted=true selection=nil candidates=0
+SELFTEST_OK speech: auth=0 onDeviceCapable=true started=false appendedFrames=false serverFallback=never
+SELFTEST_OK connector: pkce=S256✓ authorizeUrl✓ nonLoopbackRejected✓ configured=0
+SELFTEST_OK permissions: mic=許可済み screen=許可済み ax=許可済み calendar=未確認 speech=0
+SELFTEST_OK shape: path matches shared fixture (14 segments); taskDock content 296.0pt fits dockWidth 296.0pt
+SELFTEST_OK hudlifecycle: HUD→Recording→保存→HUD 復帰 の window 状態遷移 OK
+SELFTEST_OK panel: 全Space=true fullscreen補助=true borderless=true 透過=true notMain=true

@@ -1,0 +1,14 @@
+
+> @genie/service-api-gateway@0.0.0 test /Users/shuhei/Projects/genie/services/api-gateway
+> vitest run --passWithNoTests test/conversations-transaction.integration.test.ts
+
+
+ RUN  v3.2.7 /Users/shuhei/Projects/genie/services/api-gateway
+
+ ✓ test/conversations-transaction.integration.test.ts (15 tests) 465ms
+
+ Test Files  1 passed (1)
+      Tests  15 passed (15)
+   Start at  00:35:53
+   Duration  1.70s (transform 413ms, setup 0ms, collect 1.04s, tests 465ms, environment 0ms, prepare 46ms)
+

@@ -1,0 +1,151 @@
+{
+  "schema": 1,
+  "recordedAt": "2026-10-01T21:13:42.659269+00:00",
+  "role": "Implementation verification for the authored runners and fixture reader; read-only prerequisite investigation elsewhere. Not independent approval of this implementation.",
+  "methods": [
+    "read source and prior gate evidence",
+    "ollama list metadata only (no inference or model loading)",
+    "GET official GitHub release metadata only",
+    "read isolated downloaded asset manifest and WAV container metadata",
+    "fake-command Python regression; no Rust/Swift compile or native execution"
+  ],
+  "ollamaList": {
+    "metadataOnly": true,
+    "models": [
+      {
+        "name": "noa-qwen35-9b-text:verified",
+        "id": "e4bc068c2a22",
+        "diskSizeDisplayed": "5.7 GB"
+      },
+      {
+        "name": "qwen3.5:4b",
+        "id": "2a654d98e6fb",
+        "diskSizeDisplayed": "3.4 GB"
+      },
+      {
+        "name": "qwen3.5:9b",
+        "id": "6488c96fa5fa",
+        "diskSizeDisplayed": "6.6 GB"
+      },
+      {
+        "name": "qwen2.5:7b",
+        "id": "845dbda0ea48",
+        "diskSizeDisplayed": "4.7 GB"
+      },
+      {
+        "name": "llama3.2:latest",
+        "id": "a80c4f17acd5",
+        "diskSizeDisplayed": "2.0 GB"
+      }
+    ],
+    "notResidentMemoryMeasurement": true
+  },
+  "sherpa": {
+    "defaultProductionAssetsAbsentAtInitialReview": true,
+    "isolatedAcquisitionBy": "root, after initial investigation",
+    "manifest": {
+      "recordedAt": "2026-10-01T21:07:55.887331+00:00",
+      "productionInstalled": false,
+      "assets": [
+        {
+          "name": "sherpa-onnx-v1.13.6-osx-arm64-shared.tar.bz2",
+          "source": "https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.13.6/sherpa-onnx-v1.13.6-osx-arm64-shared.tar.bz2",
+          "releaseMetadata": "https://api.github.com/repos/k2-fsa/sherpa-onnx/releases/tags/v1.13.6",
+          "size": 19950341,
+          "sha256": "19b90f21925edb21ffbc003489316353b45d31712c6e88d93eaa13a72c31cb84",
+          "publisherDigest": "sha256:19b90f21925edb21ffbc003489316353b45d31712c6e88d93eaa13a72c31cb84",
+          "isolatedDestination": "/private/tmp/genie-transactions-20261002/stt-assets/library"
+        },
+        {
+          "name": "sherpa-onnx-zipformer-ja-reazonspeech-2024-08-01.tar.bz2",
+          "source": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-zipformer-ja-reazonspeech-2024-08-01.tar.bz2",
+          "releaseMetadata": "https://api.github.com/repos/k2-fsa/sherpa-onnx/releases/tags/asr-models",
+          "size": 713097333,
+          "sha256": "e0981d0d5d7b446d41010831b59091ebf57d2aa7b79980f67ca37af460b5842d",
+          "publisherDigest": null,
+          "isolatedDestination": "/private/tmp/genie-transactions-20261002/stt-assets/model"
+        }
+      ]
+    },
+    "manifestSha256": "0c49d06a8a472eab7460683b73179886674e6c2a5c2292c2d57dfa0afcf2a3d2",
+    "manifestHashesNotRecomputedByThisReviewer": true,
+    "libraryDirectoryVerified": "/private/tmp/genie-transactions-20261002/stt-assets/library/sherpa-onnx-v1.13.6-osx-arm64-shared/lib",
+    "modelParentVerified": "/private/tmp/genie-transactions-20261002/stt-assets/model",
+    "fixtureMetadata": {
+      "files": [
+        "1.wav",
+        "2.wav",
+        "3.wav",
+        "4.wav",
+        "5.wav"
+      ],
+      "format": "PCM16 mono 16000Hz",
+      "dataOffset": 78,
+      "precedingMetadata": "LIST, length26",
+      "oldReaderOffset": 44,
+      "originalWavsUnchanged": true
+    }
+  },
+  "results": {
+    "privacyFakeRegression": {
+      "passed": 6,
+      "exitCode": 0
+    },
+    "tauriFakeRegression": {
+      "passed": 6,
+      "exitCode": 0
+    },
+    "journeyFakeRegression": {
+      "passed": 4,
+      "exitCode": 0
+    },
+    "resourceFakeRegression": {
+      "passed": 21,
+      "exitCode": 0
+    },
+    "bashSyntax": "PASS",
+    "rustfmt": "PASS",
+    "diffCheckOwnedFiles": "PASS",
+    "actualSherpaRecognition": "NOT_RUN by this agent; root serial execution pending",
+    "actualSignedAppEgress": "NOT_RUN by this agent; root native slot",
+    "fullGate": "NOT_RUN on changed candidate"
+  },
+  "sourceHashes": {
+    "scripts/app-selftest-runner.sh": "894224fbc001e68ba9631b688f967145b2e6983a1aeb8113ce628da628ac6a50",
+    "scripts/verify-privacy-egress.sh": "4b84e2a23baa84fd3f9bdf52fa4cf336658755759851bf98c4564157842aeb07",
+    "scripts/verify-journeys.sh": "be2023cf7b9355e2947b33242ab6abab43d19a46b2f7f9ecb675769960167c63",
+    "scripts/verify-tauri-tests.sh": "42b18478f0036f3d7dfa7793ce6644180ce8906dd1f62ee5bead660a5cbe6a91",
+    "scripts/verify-all.sh": "3ebbd77f9fb2490ee747e23edacd3165fd6b50598e91d43886ad9bf8db9c8604",
+    "scripts/tests/test_privacy_egress_launcher.py": "7a5e28a25c165038a2efd86cdf9bda9092bd7161fee92abfec1a5a74c1872a44",
+    "scripts/tests/test_tauri_test_orchestration.py": "ba905c0ad5ba863b5f6f785ce3e50b23618f1aedd456a4e5a6533b2dec401aa1",
+    "scripts/tests/test_journey_launcher.py": "421f747e7c20c9f72fb2d521c4ee42f7660bef72608dfdadad9b45382220a167",
+    "apps/desktop/src-tauri/src/stt/recognizer.rs": "55afcaf0cdb29a28a2369bb4c6c1b1ef4a2599799364653f4c0a882386467373",
+    "scripts/install-local-stt.sh": "ebac802cfbbed121e3fde636c122a2e5a3e2afdfb0a530b4081d1ae83c31f290",
+    "scripts/verify-local-translation.sh": "80e3409c624df815ac82d84be73e2bb7567db0ec978aec6993c7e4f07b6bb31d",
+    "scripts/verify-swift-tests.sh": "c1126e09bccf50e00a6b7b08e72d5bd627fdc24116c00825fa95a96617606625",
+    "scripts/tests/test_verification_resources.py": "b8b29161804319f9c39dc30eb9ad6ac38a7d52922d7c3896be23232fb69594d5"
+  },
+  "artifacts": {
+    "privacy-egress-launcher-tests.log": "b419bd5b495d16b217b9c8eb3c27b5d40c9e33828b57e832c721e8321ce5a7bf",
+    "tauri-orchestration-tests.log": "92e4db877e0549764c42a1b57628af46ec170c6b40d6ce4dd5508e40d4c12bf1",
+    "journey-shared-launcher-tests.log": "bd8bd6b7d30d862a0e60c52530a577d78e5d9af403948baa15d90bf86532f793",
+    "fullgate-resource-current-tests.log": "efd9a7c06c1652b50457918c83d6b955b3771561271852e18877d561d94bac80"
+  },
+  "followup": {
+    "recordedAt": "2026-10-01T21:14:30.214960+00:00",
+    "runBy": "root, real CPU recognition in isolated asset directories",
+    "reviewedBy": "verification_audit, saved output read-only",
+    "ordinaryPassed": 71,
+    "realPassed": 3,
+    "ignored": 0,
+    "exitCode": 0,
+    "exitCodeSource": "root report plus TAURI_TESTS_OK final marker",
+    "projectedFirstPartialMs": 1529,
+    "budgetMs": 350,
+    "latencyGoal": "FAIL (OVER), not implied by assertion suite success",
+    "quality": "observed public fixture decoding only; no accuracy acceptance threshold measured",
+    "artifact": "tauri-real-stt-current.log",
+    "sha256": "1a5e2c7b810fffe5800f8b748130aa953d010ca10373c73e03f39008880e0e56",
+    "systemPressure": "root reports 1 before/after; not a sustained memory measurement"
+  }
+}

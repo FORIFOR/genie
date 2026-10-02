@@ -1,0 +1,119 @@
+{
+  "recordedAt": "2026-10-01T17:09:12.679456+00:00",
+  "classification": "Post-run read-only scope and binary/fixture check; UI observations attributed to root. Source hashes are captured now, not guaranteed launch-time hashes. Candidate predates cancellation fix; no replay test or UI rerun here.",
+  "baseRevision": "ee857a5b13482cbd2d986a1f9b466c8e49a149c3",
+  "processes": [
+    {
+      "pid": 54258,
+      "command": "/private/tmp/genie-transactions-20261002/GenieTransactionPreviewNext.app/Contents/MacOS/GenieMac --demo main --preview-instance 8da5cf69-03bb-4df4-bba4-578e380cbe55",
+      "started": "Fri Oct  2 01:58:30 2026",
+      "selectedEnvironment": {
+        "ASTRA_LLM_CLI": "codex",
+        "ASTRA_DATA_ROOT": "/private/tmp/genie-transactions-20261002/preview/app",
+        "ASTRA_GATEWAY_URL": "http://127.0.0.1:43180",
+        "ASTRA_LOCAL_VISION": "0",
+        "ASTRA_MODEL_DISCLOSURE": "送信先: OpenAI の gpt-6-sol（Codex接続）。依頼した文章や添付画像を外部モデルへ送ります。"
+      }
+    },
+    {
+      "pid": 54174,
+      "command": "/opt/homebrew/Cellar/node/26.5.0_1/bin/node /Users/shuhei/Projects/genie/scripts/local-preview/child.mjs /Users/shuhei/Projects/genie/workers/agent-host/dist/main.js",
+      "started": "Fri Oct  2 01:58:29 2026",
+      "selectedEnvironment": {
+        "ASTRA_LLM_CLI": "codex",
+        "ASTRA_CODEX_MODEL": "gpt-6-sol",
+        "ASTRA_DATA_ROOT": "/private/tmp/genie-transactions-20261002/preview/app",
+        "ASTRA_GATEWAY_URL": "http://127.0.0.1:43180",
+        "ASTRA_API_URL": "http://127.0.0.1:43180",
+        "ASTRA_COMPUTER_VISION_EXTERNAL": "on",
+        "ASTRA_COMPUTER_VISION_HELPER": "/private/tmp/genie-transactions-20261002/GenieComputerHelperBlue.app/Contents/MacOS/GenieComputerHelper"
+      }
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "/private/tmp/genie-transactions-20261002/GenieTransactionPreviewNext.app",
+      "bundleId": "com.genie.transaction-preview",
+      "displayVersion": "0.1.4",
+      "executable": "/private/tmp/genie-transactions-20261002/GenieTransactionPreviewNext.app/Contents/MacOS/GenieMac",
+      "sha256": "a4794d4e839382b7eeec9438187d3dcc28388209cbfe01c02a9491657dfc3d0e",
+      "modifiedAt": "2026-10-01T16:33:50.435190+00:00",
+      "strictSignatureVerifyExit": 0
+    },
+    {
+      "path": "/private/tmp/genie-transactions-20261002/GenieComputerHelperBlue.app",
+      "bundleId": "com.genie.computer-helper-preview",
+      "displayVersion": "0.1.4",
+      "executable": "/private/tmp/genie-transactions-20261002/GenieComputerHelperBlue.app/Contents/MacOS/GenieComputerHelper",
+      "sha256": "8987c1751fae116b0901bdcf58183dfa4aba1770a3171a8ba00667ff621ca3e0",
+      "modifiedAt": "2026-10-01T16:58:07.074298+00:00",
+      "strictSignatureVerifyExit": 0
+    },
+    {
+      "path": "/Users/shuhei/Projects/genie/.build/computer/GenieCheckoutSimulation.app",
+      "bundleId": "org.genie.checkout.simulation",
+      "displayVersion": null,
+      "executable": "/Users/shuhei/Projects/genie/.build/computer/GenieCheckoutSimulation.app/Contents/MacOS/GenieCheckoutSimulation",
+      "sha256": "bfde5e4b0d23dd04daf0a49f05675fd2f8ed5c619d329aab478f43f92aa65aff",
+      "modifiedAt": "2026-10-01T16:58:21.407138+00:00",
+      "strictSignatureVerifyExit": 0
+    }
+  ],
+  "fixtureChecks": [
+    {
+      "directory": "6bde3a82628984a829d0c53bf9d6cc71a9115413b368872893f652ecd4f529f5",
+      "files": {
+        "quote.json": "3bc001fa04101873c6229ef081c4d48c4f4b31033ea35e1229546a55477f33ad",
+        "checkout.json": "2e03819a458a065f13ae6cde836c88c2c27f78bbad66ba597cbb451ec1384017",
+        "receipt.json": "df83b21376714ca68cf94aceadbc33fc2fa2d534aba12e6272aa7243b28310a3",
+        "window.json": "01245c9b1448cc6b6234d89a2b8023daf608fc271c685d442cdb70cfb0f1957c"
+      },
+      "canonicalQuoteSha256": "9bd5162c58db8ffdbd1d90b8b99c3a590ecf00ab4c087a395c85e6737e4aa26c",
+      "receiptQuoteHash": "9bd5162c58db8ffdbd1d90b8b99c3a590ecf00ab4c087a395c85e6737e4aa26c",
+      "quoteHashMatches": true
+    },
+    {
+      "directory": "dc50d9244bafb59aedf988eaa3a3a5668d3698045aa6b473a5e83c3526dff60e",
+      "files": {
+        "quote.json": "ac8de5f11b8041b190ade6c6b6c0040a69cb608684a5b58a550e84414e76e23d",
+        "checkout.json": "db085f10883e05435516c11eb8aea6647836382dfd6caf4e22e3b465c29ae0e3",
+        "receipt.json": "7be0986369c16960bce5b7a5da29d9a1adf43cdbdcda3d6bc01edd1cc735d85d",
+        "window.json": "f7c3475e5988a6711e5be1a26c2acf456cb32079d2906686c57c2dffbd2f7efe"
+      },
+      "canonicalQuoteSha256": "df9421df272aa912e36ccb50a041bbb383e46c2ebd226e0f9f55e418e21be334",
+      "receiptQuoteHash": "df9421df272aa912e36ccb50a041bbb383e46c2ebd226e0f9f55e418e21be334",
+      "quoteHashMatches": true
+    }
+  ],
+  "sourceHashesCapturedAfterRun": {
+    "scripts/local-preview/config.mjs": "6eb2ab8d4a445c14838647cf0b8b821f263edfd7be8e0d02d2477a3c44243107",
+    "scripts/start-local-preview.mjs": "d60e296117f5114922d0e5679d4b51be4645d564c5eb5d684a4dc2b74b8944fa",
+    "workers/agent-host/src/simulation-native-checkout.ts": "6e9893d043933f8a204c3f3d85135c32c43c7ae3f5e7a1e566fa446c1072aa3c",
+    "tools/computer-use/CheckoutSimulation.swift": "55ecaf32df458ed55b87f623eede2f9be2a76a0ca1a903018508827fa341559f",
+    "tools/computer-use/BackgroundAX.swift": "3d853b25a4e83d551cc7967b0c06d2bf567bfc62a4ac67142dbf7b7eaec31183",
+    "workers/agent-host/src/codex.ts": "3c6a9f92928f3adf8177475ee23926b505b4ac7e0c96a57a794e522d8d0601f9",
+    "workers/agent-host/src/main.ts": "75f779a91844d60aa46b95832ae552b8a84ef99c537c23140346e138c4e4a47b"
+  },
+  "rawEvidenceSha256": {
+    "bounded-ui-reuse-original.json": "85c688ced414092c11a93dc21c43c1ce6815e37c5e221bf3130fc4a68af62039",
+    "bounded-ui-reuse-readback.json": "1e01bc7fc28003e55b2421853ea91a75a23b9da4c78e3f595970985ddb409466",
+    "external-main-app-launch.log": "57bd858e14d003d5962a587cadaaa0fe9aad42a54e294b56144928a3c92a629b"
+  },
+  "processScopeNote": "Only named model/scope environment variables were retained. Adjacent lowercase npm environment fields in ps text were removed during parsing; no complete process environment was saved. Parent stopped this preview around 17:10 UTC after capture.",
+  "thirdDeclinedOrder": {
+    "taskId": "01a0f86d-28e5-7000-851a-bb927d754bd3",
+    "status": "CANCELLED",
+    "orderKey": "turn:01a0f86d-28da-7000-bbda-77d3a9a5f808",
+    "simulatorMatches": [
+      {
+        "directory": "21d6d41e74ce847fd68b3ba05329cb097ff054577aba40eaadb82447e02eb6ff",
+        "quoteSha256": "29fe29d0d20e38f98810f981bdd06b507d08eceb491dc3fde0b672e892880ff6",
+        "receiptExists": false,
+        "checkoutExists": false,
+        "windowExists": false
+      }
+    ],
+    "artifactCount": 0,
+    "actionReceiptCount": 0
+  }
+}

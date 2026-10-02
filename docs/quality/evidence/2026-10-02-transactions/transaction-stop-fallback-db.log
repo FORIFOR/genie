@@ -1,0 +1,72 @@
+
+ RUN  v3.2.7 /Users/shuhei/Projects/genie/services/task
+
+ ❯ test/transaction-approval.db.test.ts (14 tests | 7 failed) 398ms
+   ✓ transaction approvals with real PostgreSQL > persists the exact displayed args hash and quote expiry, reuses unchanged approval, and dispatches only after approval 84ms
+   ✓ transaction approvals with real PostgreSQL > rejects a valid but changed quote both on approval reuse and before dispatch 27ms
+   ✓ transaction approvals with real PostgreSQL > refuses legacy unbound approvals and expired or malformed quote contents 28ms
+   ✓ transaction approvals with real PostgreSQL > refuses cancellation or newer instructions persisted before the workflow signal arrives 44ms
+   ✓ transaction approvals with real PostgreSQL > retains only quote-bound unknown identity through the activity failure (mismatched=false) 25ms
+   ✓ transaction approvals with real PostgreSQL > retains only quote-bound unknown identity through the activity failure (mismatched=true) 25ms
+   ✓ transaction approvals with real PostgreSQL > recovers timeout identity only from an exact approved host claim: claimed 29ms
+   × transaction approvals with real PostgreSQL > recovers timeout identity only from an exact approved host claim: lost unknown details 21ms
+     → duplicate key value violates unique constraint "agent_hosts_device"
+   × transaction approvals with real PostgreSQL > recovers timeout identity only from an exact approved host claim: host crash 19ms
+     → duplicate key value violates unique constraint "agent_hosts_device"
+   × transaction approvals with real PostgreSQL > recovers timeout identity only from an exact approved host claim: before claim 17ms
+     → duplicate key value violates unique constraint "agent_hosts_device"
+   × transaction approvals with real PostgreSQL > recovers timeout identity only from an exact approved host claim: known not sent 16ms
+     → duplicate key value violates unique constraint "agent_hosts_device"
+   × transaction approvals with real PostgreSQL > recovers timeout identity only from an exact approved host claim: changed args 16ms
+     → duplicate key value violates unique constraint "agent_hosts_device"
+   × transaction approvals with real PostgreSQL > recovers timeout identity only from an exact approved host claim: unapproved 15ms
+     → duplicate key value violates unique constraint "agent_hosts_device"
+   × transaction approvals with real PostgreSQL > recovers timeout identity only from an exact approved host claim: missing proof 15ms
+     → duplicate key value violates unique constraint "agent_hosts_device"
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 7 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/transaction-approval.db.test.ts > transaction approvals with real PostgreSQL > recovers timeout identity only from an exact approved host claim: lost unknown details
+ FAIL  test/transaction-approval.db.test.ts > transaction approvals with real PostgreSQL > recovers timeout identity only from an exact approved host claim: host crash
+ FAIL  test/transaction-approval.db.test.ts > transaction approvals with real PostgreSQL > recovers timeout identity only from an exact approved host claim: before claim
+ FAIL  test/transaction-approval.db.test.ts > transaction approvals with real PostgreSQL > recovers timeout identity only from an exact approved host claim: known not sent
+ FAIL  test/transaction-approval.db.test.ts > transaction approvals with real PostgreSQL > recovers timeout identity only from an exact approved host claim: changed args
+ FAIL  test/transaction-approval.db.test.ts > transaction approvals with real PostgreSQL > recovers timeout identity only from an exact approved host claim: unapproved
+ FAIL  test/transaction-approval.db.test.ts > transaction approvals with real PostgreSQL > recovers timeout identity only from an exact approved host claim: missing proof
+error: duplicate key value violates unique constraint "agent_hosts_device"
+ ❯ ../../node_modules/.pnpm/pg@8.23.0/node_modules/pg/lib/client.js:694:17
+ ❯ PostgresConnection.executeQuery ../../node_modules/.pnpm/kysely@0.29.5/node_modules/kysely/dist/dialect/postgres/postgres-driver.js:113:28
+ ❯ ../../node_modules/.pnpm/kysely@0.29.5/node_modules/kysely/dist/query-executor/query-executor-base.js:39:24
+ ❯ SingleConnectionProvider.#run ../../node_modules/.pnpm/kysely@0.29.5/node_modules/kysely/dist/driver/single-connection-provider.js:24:16
+ ❯ DefaultQueryExecutor.executeQuery ../../node_modules/.pnpm/kysely@0.29.5/node_modules/kysely/dist/query-executor/query-executor-base.js:38:28
+ ❯ InsertQueryBuilder.execute ../../node_modules/.pnpm/kysely@0.29.5/node_modules/kysely/dist/query-builder/insert-query-builder.js:1101:24
+ ❯ test/transaction-approval.db.test.ts:282:9
+    280|       const hash = await canonicalSha256(f.submitArgs);
+    281|       await withTenant(db, tenantId, async (tx) => {
+    282|         await tx
+       |         ^
+    283|           .insertInto('agent_hosts')
+    284|           .values({
+ ❯ ../../node_modules/.pnpm/kysely@0.29.5/node_modules/kysely/dist/kysely.js:680:32
+ ❯ DefaultConnectionProvider.provideConnection ../../node_modules/.pnpm/kysely@0.29.5/node_modules/kysely/dist/driver/default-connection-provider.js:10:20
+ ❯ PostgresConnection.executeQuery ../../node_modules/.pnpm/kysely@0.29.5/node_modules/kysely/dist/dialect/postgres/postgres-driver.js:126:41
+ ❯ ../../node_modules/.pnpm/kysely@0.29.5/node_modules/kysely/dist/query-executor/query-executor-base.js:39:24
+ ❯ SingleConnectionProvider.#run ../../node_modules/.pnpm/kysely@0.29.5/node_modules/kysely/dist/driver/single-connection-provider.js:24:16
+ ❯ DefaultQueryExecutor.executeQuery ../../node_modules/.pnpm/kysely@0.29.5/node_modules/kysely/dist/query-executor/query-executor-base.js:38:28
+ ❯ InsertQueryBuilder.execute ../../node_modules/.pnpm/kysely@0.29.5/node_modules/kysely/dist/query-builder/insert-query-builder.js:1101:24
+ ❯ test/transaction-approval.db.test.ts:282:9
+ ❯ ../../node_modules/.pnpm/kysely@0.29.5/node_modules/kysely/dist/kysely.js:680:32
+ ❯ DefaultConnectionProvider.provideConnection ../../node_modules/.pnpm/kysely@0.29.5/node_modules/kysely/dist/driver/default-connection-provider.js:10:20
+ ❯ test/transaction-approval.db.test.ts:281:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/7]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  7 failed | 7 passed (14)
+   Start at  02:30:25
+   Duration  1.18s (transform 227ms, setup 0ms, collect 577ms, tests 398ms, environment 0ms, prepare 50ms)
+
+undefined
+/Users/shuhei/Projects/genie/services/task:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run test/transaction-approval.db.test.ts

@@ -1,0 +1,14 @@
+test_default_does_not_launch_a_model_and_is_not_a_pass (test_verification_resources.VerificationResourceTests.test_default_does_not_launch_a_model_and_is_not_a_pass) ... ok
+test_explicit_opt_in_uses_the_existing_semantic_selftest (test_verification_resources.VerificationResourceTests.test_explicit_opt_in_uses_the_existing_semantic_selftest) ... ok
+test_failures_win_over_skip_and_exit_two_without_skip_is_a_failure (test_verification_resources.VerificationResourceTests.test_failures_win_over_skip_and_exit_two_without_skip_is_a_failure) ... ok
+test_full_gate_keeps_swift_unit_tests_and_propagates_job_limits (test_verification_resources.VerificationResourceTests.test_full_gate_keeps_swift_unit_tests_and_propagates_job_limits) ... ok
+test_full_gate_tracks_omissions_and_never_calls_them_green (test_verification_resources.VerificationResourceTests.test_full_gate_tracks_omissions_and_never_calls_them_green) ... ok
+test_job_defaults_overrides_and_invalid_values (test_verification_resources.VerificationResourceTests.test_job_defaults_overrides_and_invalid_values) ... ok
+test_packager_keeps_release_optimization_and_limits_parallelism (test_verification_resources.VerificationResourceTests.test_packager_keeps_release_optimization_and_limits_parallelism) ... ok
+test_recording_harness_leaves_real_translation_unrun_by_default (test_verification_resources.VerificationResourceTests.test_recording_harness_leaves_real_translation_unrun_by_default) ... ok
+test_skip_failure_crash_and_missing_result_cannot_count_as_success (test_verification_resources.VerificationResourceTests.test_skip_failure_crash_and_missing_result_cannot_count_as_success) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 5.160s
+
+OK

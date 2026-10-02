@@ -1,0 +1,16 @@
+[0/1] Planning build
+Test Suite 'Selected tests' started at 2026-10-02 02:41:21.834.
+Test Suite 'genie-macosPackageTests.xctest' started at 2026-10-02 02:41:21.835.
+Test Suite 'CodexTranslationProcessTests' started at 2026-10-02 02:41:21.835.
+Test Case '-[GenieMacTests.CodexTranslationProcessTests testApplicationShutdownEntrypointCleansOwnedChildAndContext]' started.
+Test Case '-[GenieMacTests.CodexTranslationProcessTests testApplicationShutdownEntrypointCleansOwnedChildAndContext]' passed (2.209 seconds).
+Test Suite 'CodexTranslationProcessTests' passed at 2026-10-02 02:41:24.045.
+	 Executed 1 test, with 0 failures (0 unexpected) in 2.209 (2.210) seconds
+Test Suite 'genie-macosPackageTests.xctest' passed at 2026-10-02 02:41:24.045.
+	 Executed 1 test, with 0 failures (0 unexpected) in 2.209 (2.210) seconds
+Test Suite 'Selected tests' passed at 2026-10-02 02:41:24.045.
+	 Executed 1 test, with 0 failures (0 unexpected) in 2.209 (2.211) seconds
+◇ Test run started.
+↳ Testing Library Version: 1902
+↳ Target Platform: arm64e-apple-macos14.0
+✔ Test run with 0 tests in 0 suites passed after 0.001 seconds.

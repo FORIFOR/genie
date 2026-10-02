@@ -1,0 +1,20 @@
+✔ prepare pins exact quote; submit writes a durable private claim before one provider input and preserves accepted status (35.411042ms)
+✔ approval binds complete exact args including destination, budget, quantity, and requested time (6.07625ms)
+✔ invalid money, currency/content substitutions, expired quotes, and over-budget totals never reach submit (10.475417ms)
+✔ inspection changes, approval expiry, and cancellation stop before the attempt claim (6.621791ms)
+✔ unknown delivery is durable across new runtime and task IDs; submit can only reconcile it (25.80475ms)
+✔ authorization deadline is propagated to the adapter and aborts in-flight submit without resending (252.982208ms)
+✔ provider receipts must match quote identity, paid total, destination, options, and execution mode (122.776166ms)
+✔ live provider and request-supplied URLs are unsupported; read-only reconcile never creates an order (2.099875ms)
+✔ paper stock remains simulation and distinguishes acceptance, partial fills, full fills, and cancelled partials (153.782ms)
+✔ durable receipt history rejects changed provider order IDs, regressed state, and lost partial executions (92.64025ms)
+✔ multiple processes atomically claim the same order once; a crash after provider acceptance recovers read-only (518.298458ms)
+✔ a corrupt durable claim blocks a fresh attempt rather than silently forgetting it (21.590417ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1367.31525

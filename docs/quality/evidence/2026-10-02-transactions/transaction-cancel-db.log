@@ -1,0 +1,68 @@
+
+ RUN  v3.2.7 /Users/shuhei/Projects/genie
+
+ ✓ services/task/test/transaction-approval.db.test.ts (6 tests) 466ms
+ ✓ services/task/test/transaction-authorization-ledger.db.test.ts (8 tests) 921ms
+   ✓ bounded authorization atomic ledger > serializes quota in independent processes and reserves at most the total budget and count  344ms
+ ✓ services/api-gateway/test/transaction-authorizations.integration.test.ts (4 tests) 424ms
+ ❯ services/task/test/terminal-state.test.ts (13 tests | 2 failed | 1 skipped) 1156ms
+   ✓ terminal transitions with real PostgreSQL > completion after accepted cancellation emits no false completion 61ms
+   ✓ terminal transitions with real PostgreSQL > late cancellation and failure preserve completed artifact and only one terminal event 39ms
+   ✓ terminal transitions with real PostgreSQL > duplicate cancellation does not mutate timestamps or duplicate audit entries 62ms
+   ✓ terminal transitions with real PostgreSQL > failure remains immutable when terminal activities are redelivered 46ms
+   × terminal transitions with real PostgreSQL > finalizes stop with the unknown business identity intact (signal received=false) 46ms
+     → expected { reason: 'user_requested' } to match object { reason: 'user_requested', …(2) }
+   × terminal transitions with real PostgreSQL > finalizes stop with the unknown business identity intact (signal received=true) 27ms
+     → expected { reason: 'user_requested' } to match object { reason: 'user_requested', …(2) }
+   ✓ terminal transitions with real PostgreSQL > returns an existing completed receipt instead of replacing it with stop or failure 27ms
+   ✓ terminal transitions with real PostgreSQL > concurrent stop and in-flight transaction failure cannot overwrite an accepted stop  368ms
+   ✓ terminal transitions with real PostgreSQL > a different tenant cannot cancel or finalize this task 23ms
+   ✓ terminal transitions with real PostgreSQL > cancel rechecks a completion committed while waiting for the row lock 28ms
+   ✓ terminal transitions with real PostgreSQL > late start/pause/resume activities cannot erase cancellation or invent progress 52ms
+   ✓ terminal transitions with real PostgreSQL > concurrent cancellation and completion converge without opposite terminal events  350ms
+   ↓ terminal transitions with real PostgreSQL > real Temporal preserves cancellation during composition, including a lost signal
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  services/task/test/terminal-state.test.ts > terminal transitions with real PostgreSQL > finalizes stop with the unknown business identity intact (signal received=false)
+ FAIL  services/task/test/terminal-state.test.ts > terminal transitions with real PostgreSQL > finalizes stop with the unknown business identity intact (signal received=true)
+AssertionError: expected { reason: 'user_requested' } to match object { reason: 'user_requested', …(2) }
+
+- Expected
++ Received
+
+  {
+-   "error": {
+-     "code": "task.step_failed",
+-     "message": "Order outcome unconfirmed",
+-     "retryable": false,
+-     "step_index": null,
+-     "transaction_result": {
+-       "account": "fixture-account",
+-       "mode": "simulation",
+-       "orderKey": "fixture-order",
+-       "provider": "fixture",
+-       "quoteHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+-       "status": "unknown",
+-     },
+-   },
+-   "message": "Genieの操作を停止しました。注文結果は未確認です。再注文せず、同じ注文の履歴を照会してください。",
+    "reason": "user_requested",
+  }
+
+ ❯ services/task/test/terminal-state.test.ts:209:34
+    207|       const events = await terminalEvents(input.taskId);
+    208|       expect(events.map((e) => e.type)).toEqual(['task.cancelled']);
+    209|       expect(events[0]!.payload).toMatchObject({
+       |                                  ^
+    210|         reason: 'user_requested',
+    211|         message:
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+
+ Test Files  1 failed | 3 passed (4)
+      Tests  2 failed | 28 passed | 1 skipped (31)
+   Start at  02:08:51
+   Duration  1.98s (transform 689ms, setup 0ms, collect 2.56s, tests 2.97s, environment 0ms, prepare 143ms)
+

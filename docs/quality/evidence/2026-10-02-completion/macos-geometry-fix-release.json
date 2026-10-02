@@ -1,0 +1,28 @@
+{
+  "recordedAt": "2026-10-02T04:38:27.551256+09:00",
+  "scope": "Fresh release package after geometry record false-PASS correction; original bundle read-only permission status",
+  "command": "GENIE_SWIFT_BUILD_JOBS=1 CARGO_BUILD_JOBS=1 bash scripts/package-macos-app.sh",
+  "packageExitCode": 0,
+  "signature": "strict verification PASS, com.astra.desktop, Apple Development team 6RR7572ZLU",
+  "headlessFacts": "PASS",
+  "focusedTests": {
+    "class": "UIGeometryRecordingTests",
+    "passed": 5,
+    "failed": 0,
+    "skipped": 0,
+    "exitCode": 0
+  },
+  "originalBundlePermissions": "mic=未確認 screen=未確認 ax=未確認 calendar=未確認 speech=0",
+  "permissionRequests": 0,
+  "geometryStatus": "NOT_RUN: original bundle has no existing AX grant; preview geometry SKIP retained; no profile adoption",
+  "experimentalCollectorInProduction": false,
+  "hashes": {
+    "apps/genie-macos/Sources/GenieMac/App/SelfTest.swift": "578a56beb54e54cc6fdbd65856683c5ef62f0691dce0ae34248cc4f76e9ecc3a",
+    "apps/genie-macos/Sources/GenieMac/App/UIGeometry.swift": "b3bfc20eadf3aace76f76d1cf95f01132f5b162ead06ac07466416323ffa24e2",
+    "apps/genie-macos/Tests/GenieMacTests/UIGeometryRecordingTests.swift": "e121f84006d8dfa96b4292475c1eda3b2dd23be3855ad184960f02bdec03d2cf",
+    "apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDView.swift": "c0f4bb75e1e943f99bbbd87bc4a9d6c4264e574aabcd9a61d0efd897d77c156e",
+    "apps/genie-macos/Sources/GenieMac/App/TerminationDispatch.swift": "04dd23a83bfe172f726f34380c6d58d813bbda71455fc95c2b55485357050497",
+    "apps/genie-macos/Sources/GenieMac/App/GenieAppDelegate.swift": "bf1c0eacaa29c57a2c1fdfb073f05c14bc4848c8957ed306fda3fc195765ac03",
+    "apps/genie-macos/.build/Genie.app/Contents/MacOS/GenieMac": "bd494b0e664da5abd15938b1573d15ac64563dd32ec9de5763d6297ed071a6c7"
+  }
+}

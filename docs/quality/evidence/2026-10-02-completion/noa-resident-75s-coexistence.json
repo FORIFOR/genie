@@ -1,0 +1,477 @@
+{
+  "status": "PASS",
+  "scope": "75-second run with 3 synthetic generation turns followed by resident-model observation; separate simultaneous Genie external text task. No livestream/OBS/Jev/playback, no long-duration or comprehensive quality claim.",
+  "durationSeconds": 75.382,
+  "overlapWithGenieTaskSeconds": 12.19,
+  "standardGenieGatewayRunning": true,
+  "privateVerificationGatewayRunning": true,
+  "quality": {
+    "mode": "live",
+    "profile": "talk",
+    "llmProvider": "ollama",
+    "model": "qwen3.5:9b",
+    "llmURL": "http://127.0.0.1:11434/v1",
+    "generation": {
+      "temperature": 0.7,
+      "num_predict": 220,
+      "num_ctx": 4096,
+      "think": false,
+      "keep_alive": "30m"
+    },
+    "hostVoice": {
+      "provider": "aivisspeech",
+      "url": "http://127.0.0.1:10101",
+      "style": 1878365376,
+      "speed": 1,
+      "intonation": 1,
+      "tempo": 1,
+      "hostStyleMap": {}
+    },
+    "commentVoice": {
+      "enabled": true,
+      "url": "http://127.0.0.1:50021",
+      "speaker": 2,
+      "speed": 1.15
+    },
+    "speechDirection": "off",
+    "reactionAudio": false,
+    "phraseCache": false,
+    "maxTurnAudioMs": 18000,
+    "maxReadAudioMs": 10000,
+    "characterSha256": "85b5c2c6d1711d00fd7e884099389a313c2665ed178f9d415ba137194463864f"
+  },
+  "stages": [
+    {
+      "turn": 1,
+      "stage": "llm_draft_discarded",
+      "ms": 5915,
+      "chars": 43
+    },
+    {
+      "turn": 1,
+      "stage": "host_wav_discarded",
+      "ms": 1755,
+      "bytes": 591258,
+      "durationMs": 6704
+    },
+    {
+      "turn": 1,
+      "stage": "comment_wav_discarded",
+      "ms": 703,
+      "bytes": 199724,
+      "durationMs": 4160
+    },
+    {
+      "turn": 2,
+      "stage": "llm_draft_discarded",
+      "ms": 1689,
+      "chars": 31
+    },
+    {
+      "turn": 2,
+      "stage": "host_wav_discarded",
+      "ms": 1137,
+      "bytes": 508522,
+      "durationMs": 5766
+    },
+    {
+      "turn": 2,
+      "stage": "comment_wav_discarded",
+      "ms": 775,
+      "bytes": 228908,
+      "durationMs": 4768
+    },
+    {
+      "turn": 3,
+      "stage": "llm_draft_discarded",
+      "ms": 1660,
+      "chars": 45
+    },
+    {
+      "turn": 3,
+      "stage": "host_wav_discarded",
+      "ms": 1392,
+      "bytes": 650080,
+      "durationMs": 7371
+    },
+    {
+      "turn": 3,
+      "stage": "comment_wav_discarded",
+      "ms": 671,
+      "bytes": 183340,
+      "durationMs": 3819
+    }
+  ],
+  "observation": {
+    "minimumDurationSeconds": 75,
+    "residencyHold": [
+      {
+        "elapsedMs": 16117,
+        "residentCount": 1,
+        "model": "qwen3.5:9b",
+        "manifestSha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7"
+      },
+      {
+        "elapsedMs": 17286,
+        "residentCount": 1,
+        "model": "qwen3.5:9b",
+        "manifestSha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7"
+      },
+      {
+        "elapsedMs": 18434,
+        "residentCount": 1,
+        "model": "qwen3.5:9b",
+        "manifestSha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7"
+      },
+      {
+        "elapsedMs": 19575,
+        "residentCount": 1,
+        "model": "qwen3.5:9b",
+        "manifestSha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7"
+      },
+      {
+        "elapsedMs": 20731,
+        "residentCount": 1,
+        "model": "qwen3.5:9b",
+        "manifestSha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7"
+      },
+      {
+        "elapsedMs": 21893,
+        "residentCount": 1,
+        "model": "qwen3.5:9b",
+        "manifestSha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7"
+      },
+      {
+        "elapsedMs": 23045,
+        "residentCount": 1,
+        "model": "qwen3.5:9b",
+        "manifestSha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7"
+      },
+      {
+        "elapsedMs": 24208,
+        "residentCount": 1,
+        "model": "qwen3.5:9b",
+        "manifestSha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7"
+      },
+      {
+        "elapsedMs": 25331,
+        "residentCount": 1,
+        "model": "qwen3.5:9b",
+        "manifestSha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7"
+      },
+      {
+        "elapsedMs": 26464,
+        "residentCount": 1,
+        "model": "qwen3.5:9b",
+        "manifestSha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7"
+      },
+      {
+        "elapsedMs": 27610,
+        "residentCount": 1,
+        "model": "qwen3.5:9b",
+        "manifestSha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7"
+      },
+      {
+        "elapsedMs": 28769,
+        "residentCount": 1,
+        "model": "qwen3.5:9b",
+        "manifestSha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7"
+      },
+      {
+        "elapsedMs": 29920,
+        "residentCount": 1,
+        "model": "qwen3.5:9b",
+        "manifestSha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7"
+      },
+      {
+        "elapsedMs": 31070,
+        "residentCount": 1,
+        "model": "qwen3.5:9b",
+        "manifestSha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7"
+      },
+      {
+        "elapsedMs": 32227,
+        "residentCount": 1,
+        "model": "qwen3.5:9b",
+        "manifestSha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7"
+      },
+      {
+        "elapsedMs": 33387,
+        "residentCount": 1,
+        "model": "qwen3.5:9b",
+        "manifestSha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7"
+      },
+      {
+        "elapsedMs": 34524,
+        "residentCount": 1,
+        "model": "qwen3.5:9b",
+        "manifestSha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7"
+      },
+      {
+        "elapsedMs": 35682,
+        "residentCount": 1,
+        "model": "qwen3.5:9b",
+        "manifestSha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7"
+      },
+      {
+        "elapsedMs": 36848,
+        "residentCount": 1,
+        "model": "qwen3.5:9b",
+        "manifestSha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7"
+      },
+      {
+        "elapsedMs": 38008,
+        "residentCount": 1,
+        "model": "qwen3.5:9b",
+        "manifestSha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7"
+      },
+      {
+        "elapsedMs": 39166,
+        "residentCount": 1,
+        "model": "qwen3.5:9b",
+        "manifestSha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7"
+      },
+      {
+        "elapsedMs": 40322,
+        "residentCount": 1,
+        "model": "qwen3.5:9b",
+        "manifestSha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7"
+      },
+      {
+        "elapsedMs": 41462,
+        "residentCount": 1,
+        "model": "qwen3.5:9b",
+        "manifestSha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7"
+      },
+      {
+        "elapsedMs": 42608,
+        "residentCount": 1,
+        "model": "qwen3.5:9b",
+        "manifestSha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7"
+      },
+      {
+        "elapsedMs": 43764,
+        "residentCount": 1,
+        "model": "qwen3.5:9b",
+        "manifestSha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7"
+      },
+      {
+        "elapsedMs": 44925,
+        "residentCount": 1,
+        "model": "qwen3.5:9b",
+        "manifestSha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7"
+      },
+      {
+        "elapsedMs": 46062,
+        "residentCount": 1,
+        "model": "qwen3.5:9b",
+        "manifestSha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7"
+      },
+      {
+        "elapsedMs": 47220,
+        "residentCount": 1,
+        "model": "qwen3.5:9b",
+        "manifestSha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7"
+      },
+      {
+        "elapsedMs": 48384,
+        "residentCount": 1,
+        "model": "qwen3.5:9b",
+        "manifestSha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7"
+      },
+      {
+        "elapsedMs": 49513,
+        "residentCount": 1,
+        "model": "qwen3.5:9b",
+        "manifestSha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7"
+      },
+      {
+        "elapsedMs": 50669,
+        "residentCount": 1,
+        "model": "qwen3.5:9b",
+        "manifestSha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7"
+      },
+      {
+        "elapsedMs": 51831,
+        "residentCount": 1,
+        "model": "qwen3.5:9b",
+        "manifestSha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7"
+      },
+      {
+        "elapsedMs": 52997,
+        "residentCount": 1,
+        "model": "qwen3.5:9b",
+        "manifestSha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7"
+      },
+      {
+        "elapsedMs": 54155,
+        "residentCount": 1,
+        "model": "qwen3.5:9b",
+        "manifestSha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7"
+      },
+      {
+        "elapsedMs": 55315,
+        "residentCount": 1,
+        "model": "qwen3.5:9b",
+        "manifestSha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7"
+      },
+      {
+        "elapsedMs": 56463,
+        "residentCount": 1,
+        "model": "qwen3.5:9b",
+        "manifestSha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7"
+      },
+      {
+        "elapsedMs": 57599,
+        "residentCount": 1,
+        "model": "qwen3.5:9b",
+        "manifestSha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7"
+      },
+      {
+        "elapsedMs": 58737,
+        "residentCount": 1,
+        "model": "qwen3.5:9b",
+        "manifestSha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7"
+      },
+      {
+        "elapsedMs": 59887,
+        "residentCount": 1,
+        "model": "qwen3.5:9b",
+        "manifestSha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7"
+      },
+      {
+        "elapsedMs": 61060,
+        "residentCount": 1,
+        "model": "qwen3.5:9b",
+        "manifestSha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7"
+      },
+      {
+        "elapsedMs": 62225,
+        "residentCount": 1,
+        "model": "qwen3.5:9b",
+        "manifestSha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7"
+      },
+      {
+        "elapsedMs": 63384,
+        "residentCount": 1,
+        "model": "qwen3.5:9b",
+        "manifestSha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7"
+      },
+      {
+        "elapsedMs": 64522,
+        "residentCount": 1,
+        "model": "qwen3.5:9b",
+        "manifestSha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7"
+      },
+      {
+        "elapsedMs": 65671,
+        "residentCount": 1,
+        "model": "qwen3.5:9b",
+        "manifestSha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7"
+      },
+      {
+        "elapsedMs": 66828,
+        "residentCount": 1,
+        "model": "qwen3.5:9b",
+        "manifestSha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7"
+      },
+      {
+        "elapsedMs": 67994,
+        "residentCount": 1,
+        "model": "qwen3.5:9b",
+        "manifestSha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7"
+      },
+      {
+        "elapsedMs": 69160,
+        "residentCount": 1,
+        "model": "qwen3.5:9b",
+        "manifestSha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7"
+      },
+      {
+        "elapsedMs": 70326,
+        "residentCount": 1,
+        "model": "qwen3.5:9b",
+        "manifestSha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7"
+      },
+      {
+        "elapsedMs": 71480,
+        "residentCount": 1,
+        "model": "qwen3.5:9b",
+        "manifestSha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7"
+      },
+      {
+        "elapsedMs": 72631,
+        "residentCount": 1,
+        "model": "qwen3.5:9b",
+        "manifestSha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7"
+      },
+      {
+        "elapsedMs": 73776,
+        "residentCount": 1,
+        "model": "qwen3.5:9b",
+        "manifestSha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7"
+      },
+      {
+        "elapsedMs": 74935,
+        "residentCount": 1,
+        "model": "qwen3.5:9b",
+        "manifestSha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7"
+      },
+      {
+        "elapsedMs": 75135,
+        "residentCount": 1,
+        "model": "qwen3.5:9b",
+        "manifestSha256": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7"
+      }
+    ],
+    "initialResidency": {
+      "residentCount": 0
+    },
+    "observationFinishedElapsedMs": 75135,
+    "generationFinishedElapsedMs": 15965
+  },
+  "memory": {
+    "samples": 155,
+    "levels": [
+      1
+    ],
+    "minimumFreePercent": 46,
+    "warningObserved": false
+  },
+  "cleanup": {
+    "unloadRequested": true,
+    "serveStopped": true,
+    "runnersStopped": true,
+    "assetsUnchanged": true,
+    "ok": true
+  },
+  "genie": {
+    "startedAt": "2026-10-01T21:58:54.090Z",
+    "scope": "Synthetic text-only task through private gateway and real host during separate bounded Noa generation fixture",
+    "provider": "codex",
+    "model": "gpt-6-sol",
+    "nativeHome": false,
+    "states": [
+      "PENDING",
+      "RUNNING",
+      "COMPLETED"
+    ],
+    "taskId": "01a0f97a-41ce-7000-ab56-d77731fa46ea",
+    "taskStatus": "COMPLETED",
+    "artifactId": "01a0f97a-6d50-7000-a842-9e2e0bdf421d",
+    "responseLength": 93,
+    "responseSHA256": "b68841dd80b20535946eb44740779347ea4180d65757f080d93535df5604d916",
+    "contentChecks": {
+      "saturday": true,
+      "time": true,
+      "location": true,
+      "free": true,
+      "bringBook": true,
+      "welcome": true
+    },
+    "status": "PASS",
+    "finishedAt": "2026-10-01T21:59:06.280Z"
+  },
+  "originalNoaReportSHA256": "a3cbb0c4512a742acb82b080bb5e35c4a4168e2ac11508b034fa13ce235598a1",
+  "sharedSpeechCachesMayRemain": true
+}

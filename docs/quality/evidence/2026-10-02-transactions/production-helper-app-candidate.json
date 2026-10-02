@@ -1,0 +1,292 @@
+{
+  "at": "2026-10-01T16:16:03.963085+00:00",
+  "source": "/Users/shuhei/Projects/genie/.build/computer/genie-computer-background",
+  "candidate": "/private/tmp/genie-transactions-20261002/GenieComputerHelperPreview.app",
+  "executable": "/private/tmp/genie-transactions-20261002/GenieComputerHelperPreview.app/Contents/MacOS/GenieComputerHelper",
+  "bundle": "com.genie.computer-helper-preview",
+  "sourceExecutableSha256": "6eebc1df829f26965cb5491070962306b5e3cf9d02579cc4945d4831590f469b",
+  "copiedBeforeSigningSha256": "6eebc1df829f26965cb5491070962306b5e3cf9d02579cc4945d4831590f469b",
+  "signedCandidateSha256": "f12392d65cc0753dcc747294b9228f2eb1aed18811dba20b32a09b09db2812f9",
+  "sourceUnchanged": true,
+  "allMachOSectionsEqualAfterSigning": true,
+  "sections": {
+    "__TEXT:__text": {
+      "address": 4294973336,
+      "size": 273508,
+      "offset": 6040,
+      "sha256": "85eabf715dcd5264719453d605ed8cce796da0f9768ce58acdc2ea85299e031b"
+    },
+    "__TEXT:__stubs": {
+      "address": 4295246844,
+      "size": 4044,
+      "offset": 279548,
+      "sha256": "9ab56b460b3811d8514c945eccce612204bf2ed0686029ba789f71b5aa6aa773"
+    },
+    "__TEXT:__objc_stubs": {
+      "address": 4295250912,
+      "size": 4864,
+      "offset": 283616,
+      "sha256": "d74f8b229779c605b91656d81fb4e9e1f5e82c8b586bde160f794127e41cfad0"
+    },
+    "__TEXT:__objc_methlist": {
+      "address": 4295255776,
+      "size": 556,
+      "offset": 288480,
+      "sha256": "19f975272783ec2e7accf069df715b8758620cbfc0cdb7448de835848863051e"
+    },
+    "__TEXT:__const": {
+      "address": 4295256336,
+      "size": 7728,
+      "offset": 289040,
+      "sha256": "c5c53028c6f1b6a1b528addd6f24552af93e91c047a31a849c101b0f6932de4d"
+    },
+    "__TEXT:__swift5_typeref": {
+      "address": 4295264064,
+      "size": 2040,
+      "offset": 296768,
+      "sha256": "41c2672e8cf5868fdde7ef3fd0611d788bd12fc0de022ca26711a137deff2701"
+    },
+    "__TEXT:__cstring": {
+      "address": 4295266112,
+      "size": 4871,
+      "offset": 298816,
+      "sha256": "dfa88ed84556b4540f9873100867b585464135b3b77156f6d1a5b6512e856f8b"
+    },
+    "__TEXT:__objc_methname": {
+      "address": 4295270992,
+      "size": 3915,
+      "offset": 303696,
+      "sha256": "cd4a0d5214a04981159f43d298b7bce69d9d465ca796e20b6f381677da201827"
+    },
+    "__TEXT:__swift5_capture": {
+      "address": 4295274908,
+      "size": 296,
+      "offset": 307612,
+      "sha256": "00bbd65e923fcdab18b06449d8979c9addf8853882ef8b99808d153a55ef059d"
+    },
+    "__TEXT:__objc_methtype": {
+      "address": 4295275216,
+      "size": 572,
+      "offset": 307920,
+      "sha256": "7c9cb3dc6e8b4c03b82b306b7760e5643d8d9b54b2a8837195952969e3d129cf"
+    },
+    "__TEXT:__swift5_reflstr": {
+      "address": 4295275792,
+      "size": 875,
+      "offset": 308496,
+      "sha256": "4ad4b4c57f34b38d033ab21b2133a0ba775adbaca1b86c0ac43bc076ca5b685b"
+    },
+    "__TEXT:__swift5_assocty": {
+      "address": 4295276668,
+      "size": 360,
+      "offset": 309372,
+      "sha256": "fc7390b9907c76a830dfd712f1dc5d7c471f78bdbe33dffefba9aaf24221ad1c"
+    },
+    "__TEXT:__constg_swiftt": {
+      "address": 4295277028,
+      "size": 1788,
+      "offset": 309732,
+      "sha256": "8a08b8259aad3aa7467f9a547d5b09d79cd90d2dee9607c124fbe59b06a41756"
+    },
+    "__TEXT:__swift5_fieldmd": {
+      "address": 4295278816,
+      "size": 2816,
+      "offset": 311520,
+      "sha256": "15135810c5ac5dfa4628933c6dc2ccbe4fdde24a349cfb1dfcf872b1d0ccc45a"
+    },
+    "__TEXT:__objc_classname": {
+      "address": 4295281632,
+      "size": 216,
+      "offset": 314336,
+      "sha256": "220b0e6b6ec76ea20b0380c4f8329b7f66fdfbf01973b7ce37cde5032dee5587"
+    },
+    "__TEXT:__swift5_builtin": {
+      "address": 4295281848,
+      "size": 160,
+      "offset": 314552,
+      "sha256": "e2f33f2a6f274874070f2ff970f96f03d6c66b85e7ce0ab21486d6a8bc9055d7"
+    },
+    "__TEXT:__swift5_proto": {
+      "address": 4295282008,
+      "size": 428,
+      "offset": 314712,
+      "sha256": "6171db4bbc6d03a6531decac0d413e82b5b1cb39c1ea3ac0585e56c95372f3f8"
+    },
+    "__TEXT:__swift5_types": {
+      "address": 4295282436,
+      "size": 228,
+      "offset": 315140,
+      "sha256": "74b9a77662f90023341ede8f3687cd8cb51c36385f2bd01fba8926c54a548e97"
+    },
+    "__TEXT:__swift_as_entry": {
+      "address": 4295282664,
+      "size": 116,
+      "offset": 315368,
+      "sha256": "3b392c12b639bcf871390406a203aa21096bae1711b9fa8bf21bd86e6ccaa6ee"
+    },
+    "__TEXT:__swift_as_ret": {
+      "address": 4295282780,
+      "size": 224,
+      "offset": 315484,
+      "sha256": "141594b5028324b6977d8fa0dce0319258cab3b305d1b4f06b3d1764ba50c6d3"
+    },
+    "__TEXT:__swift5_entry": {
+      "address": 4295283004,
+      "size": 8,
+      "offset": 315708,
+      "sha256": "9d0a8f5c246cd0c68d52a18dd39ec95f4e82cae047b3242d2d2412955195f4d0"
+    },
+    "__TEXT:__unwind_info": {
+      "address": 4295283012,
+      "size": 3464,
+      "offset": 315716,
+      "sha256": "ee5006390a44acc8f9c845167fad08fd00b424392bb613bc0d1cfad18405ccb1"
+    },
+    "__TEXT:__eh_frame": {
+      "address": 4295286480,
+      "size": 9680,
+      "offset": 319184,
+      "sha256": "7786dac158c3cf3327d44f401fefba2f811f605128760cc60d4a85c898aea036"
+    },
+    "__DATA_CONST:__got": {
+      "address": 4295311360,
+      "size": 3576,
+      "offset": 344064,
+      "sha256": "bb0210a56890cb53a6c4761a22447905228df61cfc71e2ce847819736de5c83c"
+    },
+    "__DATA_CONST:__const": {
+      "address": 4295314936,
+      "size": 9472,
+      "offset": 347640,
+      "sha256": "26f5e97b43fda76a909da9c356513ef589661ad6d76e7105c1a5e0b7c461c22c"
+    },
+    "__DATA_CONST:__objc_classlist": {
+      "address": 4295324408,
+      "size": 40,
+      "offset": 357112,
+      "sha256": "7729515f1e639dc323282dd65dc1870bea623e7c250c3fa21c12510510677728"
+    },
+    "__DATA_CONST:__objc_protolist": {
+      "address": 4295324448,
+      "size": 16,
+      "offset": 357152,
+      "sha256": "1fc2f749122733968827041db139a966a9ed8c20859f4c3e09bf2f7c770813ec"
+    },
+    "__DATA_CONST:__objc_imageinfo": {
+      "address": 4295324464,
+      "size": 8,
+      "offset": 357168,
+      "sha256": "9430fb236b56df1c2846dc691d67b88647f3c5957aa1a8d2ceabf48690c6444b"
+    },
+    "__DATA_CONST:__objc_protorefs": {
+      "address": 4295324472,
+      "size": 8,
+      "offset": 357176,
+      "sha256": "3e357dc253f6ba0434ef7f42f1b4d5c4d8d0c17f2af71b0124d549858473e873"
+    },
+    "__DATA:__objc_const": {
+      "address": 4295327744,
+      "size": 1400,
+      "offset": 360448,
+      "sha256": "8781df849176b67262bc884ea3f3c52e6d8031e7241f903cfd21ae7e852b6959"
+    },
+    "__DATA:__objc_selrefs": {
+      "address": 4295329144,
+      "size": 1456,
+      "offset": 361848,
+      "sha256": "76d78e89b1fd909cd7e3e32765e08aa6a08d4ad525b07ba61bac22e8646ca5b6"
+    },
+    "__DATA:__objc_data": {
+      "address": 4295330600,
+      "size": 1072,
+      "offset": 363304,
+      "sha256": "00accbe74c12357ad071a2265a3bd3ad38ceb2a3bec21995f4a00f5173cf53fa"
+    },
+    "__DATA:__data": {
+      "address": 4295331672,
+      "size": 1736,
+      "offset": 364376,
+      "sha256": "ff31d2d2b2a4da6f9b129a4b4ab617cae7f279faa5e96e74ccea5080908e99bb"
+    },
+    "__DATA:__common": {
+      "address": 4295333408,
+      "size": 48,
+      "offset": 0,
+      "sha256": null
+    },
+    "__DATA:__bss": {
+      "address": 4295333456,
+      "size": 14272,
+      "offset": 0,
+      "sha256": null
+    }
+  },
+  "commands": [
+    {
+      "command": [
+        "/usr/bin/codesign",
+        "--force",
+        "--sign",
+        "Apple Development",
+        "--identifier",
+        "com.genie.computer-helper-preview",
+        "/private/tmp/genie-transactions-20261002/GenieComputerHelperPreview.app"
+      ],
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": "/private/tmp/genie-transactions-20261002/GenieComputerHelperPreview.app: replacing existing signature\n"
+    },
+    {
+      "command": [
+        "/usr/bin/codesign",
+        "--verify",
+        "--deep",
+        "--strict",
+        "--verbose=2",
+        "/private/tmp/genie-transactions-20261002/GenieComputerHelperPreview.app"
+      ],
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": "/private/tmp/genie-transactions-20261002/GenieComputerHelperPreview.app: valid on disk\n/private/tmp/genie-transactions-20261002/GenieComputerHelperPreview.app: satisfies its Designated Requirement\n"
+    }
+  ],
+  "rawStatus": {
+    "exitCode": 0,
+    "body": {
+      "accessibility": true,
+      "capabilities": [
+        "ax_press",
+        "empty_text_field",
+        "target_preview",
+        "native_click",
+        "native_keys",
+        "space_key"
+      ],
+      "deliveryMode": "background",
+      "ready": true,
+      "screenRecording": true,
+      "supported": true,
+      "unattendedTest": false
+    }
+  },
+  "candidateStatus": {
+    "exitCode": 0,
+    "body": {
+      "accessibility": true,
+      "capabilities": [
+        "ax_press",
+        "empty_text_field",
+        "target_preview",
+        "native_click",
+        "native_keys",
+        "space_key"
+      ],
+      "deliveryMode": "background",
+      "ready": true,
+      "screenRecording": true,
+      "supported": true,
+      "unattendedTest": false
+    }
+  },
+  "permissionChanges": false
+}

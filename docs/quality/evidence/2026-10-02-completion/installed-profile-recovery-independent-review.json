@@ -1,0 +1,83 @@
+{
+  "schema": 1,
+  "recordedAt": "2026-10-01T22:31:01.453314+00:00",
+  "reviewer": "/root/verification_audit",
+  "method": "Read-only final script/provenance/log/receipt/hash comparison and saved image visual review. Root performed native runs and profile adoption; reviewer performed no native execution or profile mutation.",
+  "status": "PASS",
+  "statusScope": "Adoption of separately preserved macOS27 environment profile; not whole-release approval.",
+  "profile": "docs/golden-screenshots/environments/macos-27.0.1-2x-safe-top-32",
+  "binarySHA256": "a01378c92ef466086c4e6e0c1f8263e66a9da61ec24d026c86ef6cda0f678801",
+  "checks": {
+    "publicArtifacts": 74,
+    "allPublicPrivateAndManifestHashesMatch": true,
+    "priorIndependentImageGeometryEvidenceAndReferenceHashesMatch": true,
+    "exactNineResultLabelsAndNormalExitReceipts": true,
+    "nativeGolden": {
+      "surfaces": 20,
+      "maxLightDifferencePercent": 0.118,
+      "maxDarkDifferencePercent": 0.01,
+      "unchangedTolerancePercent": 0.5
+    },
+    "geometry": {
+      "states": 6,
+      "unchangedTolerancePt": 2
+    },
+    "shape": "PASS 14 segments / taskDock content fits",
+    "occupation": "PASS 11 token-bounded surfaces",
+    "density": {
+      "recordStep": "Native measurement of prior independently reviewed candidate; not a comparison gate.",
+      "profileOverrides": [
+        "01-voice-hud-idle",
+        "02-voice-hud-listening",
+        "02b-voice-hud-preparing"
+      ],
+      "otherExistingBaselineEntriesUnchanged": true,
+      "freshComparisonSurfaces": 16,
+      "unchangedTolerancePp": 1.5
+    },
+    "adoption": {
+      "newEnvironmentDirectoryOnly": true,
+      "twentyCopiedPNGsEqualReviewedCandidate": true,
+      "sixCopiedGeometryEqualReviewedCandidate": true,
+      "captureLayoutsEqualReviewedCandidate": true,
+      "provenanceHashesMatch": true
+    }
+  },
+  "scriptReview": {
+    "initialFinding": "P2: count-only records and unbound copy sources could permit unrelated results or changed references.",
+    "resolution": "Final script requires ordered expected labels, exact candidateReference, each record binary/normalExit receipt, reviewed source hashes, explicit 20 PNG/6 geometry coverage and capture-layout entries. Final script read-only review found no remaining adoption blocker.",
+    "path": "docs/quality/evidence/2026-10-02-completion/adopt-verified-profile-reviewed.py",
+    "sha256": "4d2a77bfcbaa6616e83f4bbe80b8c75d9818ec24e4087e939a40ab83a805acb3"
+  },
+  "freshSupplementalVisualReview": {
+    "viewedImages": {
+      "docs/quality/evidence/2026-10-02-completion/installed-profile-recovery/light-images/06-main-home.png": "019ea75beb6d67f13185e967131e8fac3e76874b01e9afbca4b9d2e4d18e02c8",
+      "docs/quality/evidence/2026-10-02-completion/installed-profile-recovery/light-images/07-apps.png": "5fe8df5037d465f356c3f9cbc968e81f080bdf97180d56b2faafed7b0ca15469",
+      "docs/quality/evidence/2026-10-02-completion/installed-profile-recovery/light-images/08-meeting-detail.png": "7a0869b44875bf6c5405620cdaa7ff164c241b010017696e4c8c96e84db7ea89",
+      "docs/quality/evidence/2026-10-02-completion/installed-profile-recovery/light-images/12-recording-now.png": "28e037d398064a549e0ced18cd233b4e1e72e5feae76c9fcbdd130136a7be9a3",
+      "docs/quality/evidence/2026-10-02-completion/installed-profile-recovery/dark-images/06-main-home.png": "df70d9c0def02dc92a3928abb0d7aee1ac55546e56811f3f1837270271e3fc83",
+      "docs/quality/evidence/2026-10-02-completion/installed-profile-recovery/dark-images/07-apps.png": "89d0d7741a9ab66011addfce723fcf58fb086ec0f107fbb4580eac92d6758992",
+      "docs/quality/evidence/2026-10-02-completion/installed-profile-recovery/dark-images/08-meeting-detail.png": "909f09e09d20c7d6c9c79960ca0dbc825e9dd6de40589a717190dbedc849914a",
+      "docs/quality/evidence/2026-10-02-completion/installed-profile-recovery/dark-images/12-recording-now.png": "0a1e6789d35d8afe3c12b30dbe505f751c8fc3d6fa2073addc77fc83efde644b"
+    },
+    "observations": [
+      "Home, Apps, meeting detail and recording-now render distinct body content in both themes; no repeated empty window/content capture seen.",
+      "Home composer/disclosure, Apps service setup cards, detail summary/transcript/source column and recording Stop/time controls remain visible with no clipping or overlap.",
+      "The nonkey window chrome/sidebar is subdued. Selftest generic provider text is expected isolated metadata, not evidence of normal launch model selection.",
+      "Recording-now timestamp is dynamic and is kept as supplemental evidence, not added among the stable 20 golden references."
+    ]
+  },
+  "evidence": {
+    "resultPath": "docs/quality/evidence/2026-10-02-completion/installed-profile-recovery/result.json",
+    "resultSha256": "527456e5af01ce849323f89158fccefa0893b60ccd46b3a7de5a3ea5f9633cd5",
+    "manifestPath": "docs/quality/evidence/2026-10-02-completion/installed-profile-recovery/manifest.json",
+    "manifestSha256": "6f65b57eb0f4419a4115c9b8c6652865a775367922cf9d69ac245340ccef4b3b",
+    "profileProvenanceSha256": "0200a5754f9f5f0148da045de040eb47aad30aede720474226f38ee1b5aa5557"
+  },
+  "limits": [
+    "Earlier root/OS26 comparison failures remain historical evidence; existing reference hashes remain unchanged.",
+    "Source-aware environment profile does not attribute every prior pixel change solely to macOS.",
+    "Current full verify-all is ongoing. No commit/release/completion approval is given here.",
+    "Actual Keychain confirmation and next user send remain human verification; this synthetic profile does not exercise them."
+  ]
+}

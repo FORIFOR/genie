@@ -1,0 +1,224 @@
+{
+  "at": "2026-10-01T16:35:31.901Z",
+  "classification": "implementation native integration verification: explicit fictional test proof, production consent via operator/CUA, no real purchase",
+  "results": [
+    {
+      "key": "session-reuse-1",
+      "result": {
+        "ok": true,
+        "result": {
+          "provider": "genie.simulation",
+          "mode": "simulation",
+          "account": "demo-account",
+          "orderKey": "session-reuse-1",
+          "quoteHash": "ab0042c37c7efc078c8a8b7632537a1cce22a5ed3d9eeff79c356d23f97604e9",
+          "status": "accepted",
+          "observation": {
+            "provider": "genie.simulation",
+            "mode": "simulation",
+            "account": "demo-account",
+            "orderKey": "session-reuse-1",
+            "quoteHash": "ab0042c37c7efc078c8a8b7632537a1cce22a5ed3d9eeff79c356d23f97604e9",
+            "providerOrderId": "SIM-99731011-5432-4376-8112-953091b064cc",
+            "observedAt": "2026-10-01T16:35:25.872Z",
+            "status": "accepted",
+            "details": {
+              "currency": "JPY",
+              "totalMinor": 1500,
+              "destinationId": "demo-destination",
+              "paymentMethodRef": "demo-no-charge",
+              "requestedTime": "asap",
+              "items": [
+                {
+                  "id": "demo-pizza",
+                  "label": "模擬マルゲリータ",
+                  "quantity": 1,
+                  "options": [
+                    "M",
+                    "レギュラー生地"
+                  ],
+                  "unitMinor": 1200,
+                  "lineMinor": 1200
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "key": "session-reuse-2",
+      "result": {
+        "ok": true,
+        "result": {
+          "provider": "genie.simulation",
+          "mode": "simulation",
+          "account": "demo-account",
+          "orderKey": "session-reuse-2",
+          "quoteHash": "9b520c06b5fa196d2b3a2b55464bdf9a1b741a48dec864551d807db499af2f73",
+          "status": "accepted",
+          "observation": {
+            "provider": "genie.simulation",
+            "mode": "simulation",
+            "account": "demo-account",
+            "orderKey": "session-reuse-2",
+            "quoteHash": "9b520c06b5fa196d2b3a2b55464bdf9a1b741a48dec864551d807db499af2f73",
+            "providerOrderId": "SIM-a372da0f-9bee-4ad9-ba7e-a623c71cd870",
+            "observedAt": "2026-10-01T16:35:28.370Z",
+            "status": "accepted",
+            "details": {
+              "currency": "JPY",
+              "totalMinor": 800,
+              "destinationId": "demo-destination",
+              "paymentMethodRef": "demo-no-charge",
+              "requestedTime": "asap",
+              "items": [
+                {
+                  "id": "demo-burger",
+                  "label": "模擬バーガー",
+                  "quantity": 1,
+                  "options": [
+                    "セットなし"
+                  ],
+                  "unitMinor": 500,
+                  "lineMinor": 500
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  ],
+  "records": [
+    {
+      "directory": "/private/tmp/genie-transactions-20261002/session-reuse-native-3/provider/443a75cbd991e8c884c61c39cc7f94da84432d8e6dc49770e259dcfa8dd54e59",
+      "window": {
+        "status": "模擬受付: SIM-99731011-5432-4376-8112-953091b064cc\n状態: accepted\n次の模擬注文を待機しています（5分で閉じます）",
+        "ready": false,
+        "visible": true,
+        "onActiveSpace": true,
+        "pid": 44704,
+        "activations": 0,
+        "commandId": "6dc7072c-a966-4d88-85ec-7ad50db6ebb0",
+        "sessionId": "4ce61a79-4bab-455c-bca4-a86ec91e0187",
+        "quoteHash": "ab0042c37c7efc078c8a8b7632537a1cce22a5ed3d9eeff79c356d23f97604e9",
+        "clicks": 1,
+        "windowId": 1969
+      },
+      "receipt": {
+        "account": "demo-account",
+        "details": {
+          "totalMinor": 1500,
+          "currency": "JPY",
+          "requestedTime": "asap",
+          "destinationId": "demo-destination",
+          "items": [
+            {
+              "quantity": 1,
+              "id": "demo-pizza",
+              "label": "模擬マルゲリータ",
+              "options": [
+                "M",
+                "レギュラー生地"
+              ],
+              "unitMinor": 1200,
+              "lineMinor": 1200
+            }
+          ],
+          "paymentMethodRef": "demo-no-charge"
+        },
+        "provider": "genie.simulation",
+        "providerOrderId": "SIM-99731011-5432-4376-8112-953091b064cc",
+        "orderKey": "session-reuse-1",
+        "observedAt": "2026-10-01T16:35:25.872Z",
+        "quoteHash": "ab0042c37c7efc078c8a8b7632537a1cce22a5ed3d9eeff79c356d23f97604e9",
+        "mode": "simulation",
+        "status": "accepted"
+      }
+    },
+    {
+      "directory": "/private/tmp/genie-transactions-20261002/session-reuse-native-3/provider/a422d1f8818fcf5e930f137d1061477614186ee5d4354f1c915f15b43480ea6e",
+      "window": {
+        "status": "模擬受付: SIM-a372da0f-9bee-4ad9-ba7e-a623c71cd870\n状態: accepted\n次の模擬注文を待機しています（5分で閉じます）",
+        "ready": false,
+        "visible": true,
+        "onActiveSpace": true,
+        "pid": 44704,
+        "activations": 0,
+        "commandId": "bb07683a-c7b2-4af5-bbf2-81f260ea67c7",
+        "sessionId": "4ce61a79-4bab-455c-bca4-a86ec91e0187",
+        "quoteHash": "9b520c06b5fa196d2b3a2b55464bdf9a1b741a48dec864551d807db499af2f73",
+        "clicks": 1,
+        "windowId": 1969
+      },
+      "receipt": {
+        "account": "demo-account",
+        "details": {
+          "totalMinor": 800,
+          "currency": "JPY",
+          "requestedTime": "asap",
+          "destinationId": "demo-destination",
+          "items": [
+            {
+              "quantity": 1,
+              "id": "demo-burger",
+              "label": "模擬バーガー",
+              "options": [
+                "セットなし"
+              ],
+              "unitMinor": 500,
+              "lineMinor": 500
+            }
+          ],
+          "paymentMethodRef": "demo-no-charge"
+        },
+        "provider": "genie.simulation",
+        "providerOrderId": "SIM-a372da0f-9bee-4ad9-ba7e-a623c71cd870",
+        "orderKey": "session-reuse-2",
+        "observedAt": "2026-10-01T16:35:28.370Z",
+        "quoteHash": "9b520c06b5fa196d2b3a2b55464bdf9a1b741a48dec864551d807db499af2f73",
+        "mode": "simulation",
+        "status": "accepted"
+      }
+    }
+  ],
+  "cancelled": {
+    "ok": false,
+    "result": {
+      "provider": "genie.simulation",
+      "mode": "simulation",
+      "account": "demo-account",
+      "orderKey": "session-aborted",
+      "quoteHash": "0ec02e486300247bc52eefe3b6ab845b2940bd45d88262ba4af4d6671eb69aeb",
+      "status": "unknown"
+    },
+    "error": {
+      "code": "transaction.result_unknown",
+      "message": "注文結果を確認できていません。再注文せず、同じ注文の履歴を照会してください。"
+    }
+  },
+  "cancelRecords": [
+    {
+      "directory": "/private/tmp/genie-transactions-20261002/session-reuse-native-3/cancel-provider/b7565baf10f541f4c5e7b424ab024069f1792e9866c5f5df7ef8d3c5ac80c309",
+      "files": [
+        "checkout.json",
+        "quote.json",
+        "window.json"
+      ],
+      "window": {
+        "sessionId": "c3f025ee-fc57-4794-8ff3-62fe5fd0378c",
+        "clicks": 0,
+        "commandId": "684bd857-9870-4e4b-8690-2975709fc023",
+        "windowId": 1978,
+        "activations": 0,
+        "ready": true,
+        "onActiveSpace": true,
+        "status": "受付前",
+        "pid": 44918,
+        "quoteHash": "0ec02e486300247bc52eefe3b6ab845b2940bd45d88262ba4af4d6671eb69aeb",
+        "visible": true
+      }
+    }
+  ]
+}

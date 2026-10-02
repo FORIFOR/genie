@@ -1,0 +1,22 @@
+{
+  "recordedAt": "2026-10-01T18:31:52.158304+00:00",
+  "scope": "Source and lightweight Node regression; corrected app package/runtime pending",
+  "sourceSha256": {
+    "apps/genie-macos/Sources/GenieMac/App/GenieAppDelegate.swift": "bf1c0eacaa29c57a2c1fdfb073f05c14bc4848c8957ed306fda3fc195765ac03",
+    "apps/genie-macos/Sources/GenieMac/App/TerminationDispatch.swift": "04dd23a83bfe172f726f34380c6d58d813bbda71455fc95c2b55485357050497",
+    "apps/genie-macos/Sources/GenieMac/RecordingWorkspace/CodexTranslation.swift": "4d801f83cc7f8ee3638093bc74207cc41f3d299a94a9b4d62afc4e38f0f92188",
+    "apps/genie-macos/Sources/GenieMac/RecordingWorkspace/MeetingTranslation.swift": "120d8f61c9b53ecadc43d824af0052874cbc4f2fb1af3dae99df386eeb293a29",
+    "scripts/local-preview/config.mjs": "6a41d12e7a526c801453090ec73e0a1256d12fe3f6e1c5cd36ed28ebb85ecf34",
+    "scripts/start-local-preview.mjs": "fe3e4e7e2cfc9a81e23db3488502e4dfa3b049d11c178070579ffb4c72d263a0",
+    "scripts/tests/managed-local-preview.test.mjs": "f457ecddd87fb7c0c3ac846f75178f1a51c974d485c5ae7b02f2a7f0fcc6a8a6",
+    "scripts/test-app-termination.sh": "0e7074110d4f450b9102a6b336e97a6c432c3884344e9edc48d6dcec606420e1",
+    "scripts/tests/TerminationDispatchHarness.swift": "8d2726d9310b7aab1400c0c9b637bfd2ae761c674da94f293e7a577280136483"
+  },
+  "nodeTests": {
+    "file": "model-propagation-fixed-tests.log",
+    "passed": 32,
+    "failed": 0,
+    "skipped": 0,
+    "exitCode": 0
+  }
+}

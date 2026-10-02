@@ -1,0 +1,21 @@
+{
+  "at": "2026-10-01T15:40:02.593Z",
+  "command": "node scripts/start-local-preview.mjs --docker-context colima-genie-transactions-20261002 --state-dir /private/tmp/genie-transactions-20261002/preview --port 43180 --model qwen3.5:9b --computer-use --transaction-simulation --app /Users/shuhei/Projects/genie/apps/genie-macos/.build/Genie.app",
+  "status": {
+    "project": "genie-preview-f68d0fef8411",
+    "phase": "ready",
+    "gateway": "http://127.0.0.1:43180",
+    "model": "qwen3.5:9b",
+    "computerUse": true,
+    "transactionSimulation": true,
+    "computerDelivery": "background",
+    "computerHelperUnattendedTest": false
+  },
+  "classification": "actual managed startup; GUI behavior/transaction completion not yet assessed by this verifier",
+  "sourceSha256": {
+    "scripts/start-local-preview.mjs": "0feab5430ba053ccd90cea647fd2f2fcbec71dd33464fcc17c8c006ac5c2407f",
+    "scripts/local-preview/config.mjs": "8c3264ebf1323673eaa04cb2cb6b0d541542c25855736ec6cc1d8d24a8ff2d82",
+    "scripts/package-macos-app.sh": "5a8880622a6eb63bbd59fcf11638ca79be4c379f97ef1c44b8adcac609a468a6",
+    "apps/genie-macos/.build/Genie.app/Contents/Info.plist": "86d298b5f366b8cccbddbaaf1bd1b1fcf672f594e2d92877314466493505666b"
+  }
+}

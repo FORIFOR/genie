@@ -1,0 +1,158 @@
+{
+  "recordedAt": "2026-10-01T19:41:12.474634+00:00",
+  "classification": "Implementation verification, independent read-only source review; actual Safari production consent/public-site navigation delegated separately to root",
+  "baseCommit": "ee857a5b13482cbd2d986a1f9b466c8e49a149c3",
+  "uncommitted": true,
+  "os": {
+    "system": "Darwin",
+    "version": "27.0.1",
+    "machine": "arm64"
+  },
+  "runs": [
+    {
+      "command": "bash scripts/test-background-web-policy.sh",
+      "exitCode": 0,
+      "passedCases": 19,
+      "log": "computer-web-policy.log"
+    },
+    {
+      "command": "bash scripts/test-background-web.sh",
+      "exitCode": 0,
+      "log": "computer-web-native-round1.log",
+      "result": "computer-web-native-round1-result.json",
+      "scope": "Initial owned WKWebView success + 2 pre-dispatch refusals + replay/foreground/cursor/clipboard/sentinel preservation, before extra no-navigation test"
+    },
+    {
+      "command": "bash scripts/test-background-web.sh",
+      "exitCode": 0,
+      "log": "computer-web-native-final.log",
+      "result": "computer-web-native-final-result.json",
+      "scope": "Same cases plus navigation rejected by fixture delegate after press: unknown, attempt retained, replay refused and observed blockedNavigations stays 1. New capture/independent test then follows a different valid link; production runtime does not auto-resume unknown."
+    },
+    {
+      "command": "isolated strict tsc NodeNext/ES2022 for computer-vision/policy/prompts/device and local dependencies",
+      "exitCode": 0,
+      "log": "computer-web-types-final.log"
+    },
+    {
+      "command": "GENIE_VISION_TEST_DIST=<isolated compiled source> node --test computer-vision.node.mjs background-vision.node.mjs computer-scroll-device.node.mjs",
+      "exitCode": 0,
+      "passed": 90,
+      "failed": 0,
+      "skipped": 0,
+      "log": "computer-web-node-final.log"
+    },
+    {
+      "command": "GENIE_FIXTURE_PASSIVE=1 GENIE_NO_PRIVATE_SPI=1 GENIE_FIXTURE_SCROLL=1 bash scripts/test-background-computer.sh",
+      "exitCode": 0,
+      "log": "computer-scroll-web-combined-native.log",
+      "result": "computer-scroll-web-combined-result.json",
+      "scope": "Latest combined Safari/scroll/append source. Owned passive AppKit target+sentinel, test-created grant, no private SPI. Includes post-marker bar replacement and readback unknown. This existing script invokes Swift compilers sequentially without explicit -j; new Web policy/fixture and Final production build explicitly use -j1."
+    }
+  ],
+  "productionCandidate": {
+    "path": "/private/tmp/genie-transactions-20261002/GenieComputerHelperFinal.app",
+    "sha256": "a8b31e5d68b3a0b7ec9183f29481d423665b24a59dc6abd27294875f938eee64",
+    "bundleId": "com.genie.computer-helper-preview",
+    "signingIdentity": "Apple Development: Shuhei Horio (N5DXXRWC3M)",
+    "compileFlags": [
+      "-j",
+      "1",
+      "-D",
+      "GENIE_BACKGROUND",
+      "-D",
+      "GENIE_PRIVATE_SPI",
+      "-parse-as-library",
+      "-O"
+    ],
+    "testFlags": false,
+    "buildExit": 0,
+    "signatureVerifyExit": 0,
+    "statusExit": 0,
+    "status": {
+      "accessibility": true,
+      "capabilities": [
+        "ax_press",
+        "empty_text_field",
+        "append_text_field",
+        "vertical_ax_scroll",
+        "safari_same_origin_link",
+        "target_preview",
+        "native_click",
+        "native_keys",
+        "space_key"
+      ],
+      "deliveryMode": "background",
+      "ready": true,
+      "screenRecording": true,
+      "supported": true,
+      "unattendedTest": false
+    },
+    "oldBlueAndCompletionPreserved": true
+  },
+  "sourceSha256": {
+    "tools/computer-use/BackgroundAX.swift": "161ccd31f6303c74b6f5ce3c21cb8e5ca124619864f32db89dfc0f82d30110ec",
+    "tools/computer-use/BackgroundWebLink.swift": "c9c70db032365d6a90600ffeb98d8724489bfce2939b5c0733db92e76df100ec",
+    "tools/computer-use/BackgroundWebLinkTests.swift": "698398c5a1debd3142e3eb229f841bbe1c81186e5cfb77852a14230ff481f7bd",
+    "tools/computer-use/BackgroundWebFixture.swift": "2e1c2076b53a70f919e74e733ff29cd53a8ac2a89306b90adf5871cde837098f",
+    "tools/computer-use/BackgroundWebTests.swift": "55b0bb6ee926722d424d43d79a0ca9aa393aa0e9e3c9e8c2662f870144c81ebd",
+    "tools/computer-use/BackgroundScroll.swift": "ddc05bec49bf3a1defabba0e1081ed58e5463d3f3149cbf9a058d0a580c2a25f",
+    "tools/computer-use/BackgroundScrollTests.swift": "68123201f0aa02c85db60e663f46b337d6c86b3e25345a6da11d935ac09b5dbd",
+    "tools/computer-use/BackgroundAXTests.swift": "d1022bbee73a36d27b1ca55f70234226b92c2825ff7d7b96593687c150a7fd34",
+    "tools/computer-use/BackgroundFixture.swift": "5d9b388b121cb4ba46a71a3f82e3708e459273e56a02dcf299c667bbee12dabb",
+    "tools/computer-use/BackgroundTextEdit.swift": "be66409a0e1d699bde33da08c3a4ef49c0452033d31880f18d0a4183bc128262",
+    "tools/computer-use/genie-computer.swift": "deecc09c10519803f2efb5aa833ebbb2b5c166dd87a25d15ff8c26a1f2a1a879",
+    "tools/computer-use/GeneratedPointerMetrics.swift": "a67617adf2c8dab428a14183929d71db4d168bba02066b6a7482596595d3ea73",
+    "tools/computer-use/BackgroundNativeInput.swift": "df2ef947f62b3dda7ac71b9c86074168344f6e90bb8ee34a376194049b4ae28c",
+    "tools/computer-use/PrivateSPIBridge.swift": "a934903711d9a078ae5d99e7236a7815af7276a94ce0c33f4d0232ee1b119848",
+    "tools/computer-use/TargetPreview.swift": "8af44f34a807695e370710cd552ac1165c4e6c15d3e0cdda67f7d634699b5d97",
+    "scripts/test-background-web.sh": "d02dd3e4aebe0604bffdc9ad430c98922edba2fbd6fcab0021166cc7ddcc9308",
+    "scripts/test-background-web-policy.sh": "821e681992deab94c90df6a6138e886d5b9d1b906727e6e0d5927c29700e32b1",
+    "scripts/test-background-computer.sh": "d3d100369726cb7ad0e782a0173e37e684213bfe83e08af3c8103d6b1ea36882",
+    "scripts/build-computer-helper.sh": "4517a542649087eb068f1e8b989c87a8be33e66f5e38ef109a8a90d1f44b5a22",
+    "scripts/build-computer-helper-unattended-test.sh": "faa49d8fddce15a2fb74615693e714f89d7ad0e5b317b007675730effc467d74",
+    "scripts/test-native-input.sh": "6df808b6cd1400f088edded22a3cacadad4f2627b74cdb762d42d22f3ba0326f",
+    "workers/agent-host/src/computer-vision.ts": "5761136974c486294975c8d13d0f711ae28b1b93406f6e78de92c6ffe96d508a",
+    "workers/agent-host/src/computer-vision-policy.ts": "5f103bfe90ff896e473d7213cda453ff94869306ab7c60da178f521bf2ecc24e",
+    "workers/agent-host/src/computer-vision-prompts.ts": "e7e715e2571c0f31d111cab6bd95af52dcccc3649b8dbe1e1900b93ff6940734",
+    "workers/agent-host/src/computer-vision-device.ts": "a4d94e541d624ba91a0099d3d6bc36a879cb8b26c906649b90aa8d171f290ccf",
+    "workers/agent-host/test/computer-vision.node.mjs": "4d9f6d6d267040d2fbefd3b19473d7a115d2b2042ea8d41dae4acc1902720633",
+    "workers/agent-host/test/background-vision.node.mjs": "3c6e1b25e767b4ad1c69e2322c9e0230e66116add1adbda888077438c6e41430",
+    "workers/agent-host/test/computer-scroll-device.node.mjs": "43de474e25972b1e225df9087981809ee4b4a1fab71b1d4427eff944fc8f3782"
+  },
+  "artifactSha256": {
+    "computer-web-policy.log": "961f7e795725d797c1da7f2145f7cd3706cfe2731a81d246c9613ecfc5607b31",
+    "computer-web-native-round1.log": "fe2cb920c2f042b502f2e5c9f164e1d3cd0dbbcf50dd6a06e72f484e3af49c77",
+    "computer-web-native-final.log": "e5d2f236eb13e321f7b0fd8c6ccc97a4ccfe104a512c2c64adb84d37518d994c",
+    "computer-web-node-final.log": "e9673981082d885ccdb5e68622a7bea18259ecc3b89c40e00f6e512a36e402bf",
+    "computer-web-types-final.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "computer-scroll-web-combined-native.log": "797e760733f6f653c15db869df13611fac10236d0a6ef94f703918d96c6292d6",
+    "computer-final-helper-build.log": "2bc5c1ad1ba5e74a7d51a91a86321ca7ca42244bebbcf8ccecdd6da1ba200d59",
+    "computer-final-helper-sign.log": "989a2ea41bb7f6880af2bd95ff6db0ea63e3d1d2cbb02d36e3b3d4ebaba5b611",
+    "computer-final-helper-status.json": "6cf603d74281836644453454e9f7467397955d156fc544b0ef5c0595d882d1e2",
+    "computer-web-native-round1-result.json": "75110d7e721dd125d6ccba6fe01a79809bc3991a24ee971b00798a56a07e7b0e",
+    "computer-web-native-final-result.json": "0cea7ba756e33989886f5bcb3e992a86019a026355ade6eb148d2305810d6ff0",
+    "computer-scroll-web-combined-result.json": "3d664d3351b940762a65a65ec64cae696120579f15ec269b2f0c6d557dea2cfd"
+  },
+  "independentReview": {
+    "agent": "/root/verification_audit",
+    "scope": "Read-only route, binding, delivery/readback and initial fixture result review; no independent test execution",
+    "findings": "No new P1. Document pre-click origin does not constrain redirect/JavaScript effects and URL confirmation is navigation only."
+  },
+  "notRunByThisAgent": [
+    "Actual Safari with production target consent",
+    "Public website navigation",
+    "Model-planned browser navigation",
+    "Nested iframe/changed-link-URL native negative cases",
+    "Full workspace gate",
+    "Live orders, payments or securities transactions"
+  ],
+  "limits": [
+    "Only Safari bundle (plus isolated fixture bundle in test builds), top-level selected document, enabled AXLink with AXPress and captured same-origin HTTP(S) href. Does not claim generic web-control support.",
+    "One AXPress; mismatched or absent destination readback is unknown, no fallback or repeat. Confirmed URL is not page load or business completion.",
+    "Same-origin checking precedes click. Server redirects and JavaScript may have other effects; it is not an egress firewall.",
+    "AX checks are not an atomic transaction against concurrent UI changes.",
+    "Test-created fixture grants do not establish production consent. Passive fixture results do not generalize to all applications.",
+    "Earlier scroll round1 stale_frame and round2 unsupported geometry failures remain preserved in computer-scroll.json and COMPUTER_USE.md."
+  ]
+}

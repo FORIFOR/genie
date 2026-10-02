@@ -1,0 +1,155 @@
+{
+  "recordedAt": "2026-10-01T20:34:47.486394+00:00",
+  "scope": "Private staging only; no app launch, rebuild, installed app change, or user configuration change.",
+  "apps": {
+    "installed": {
+      "path": "/Applications/Genie.app",
+      "info": {
+        "CFBundleIdentifier": "com.astra.mac",
+        "CFBundleExecutable": "Genie",
+        "CFBundleShortVersionString": "0.1.4",
+        "CFBundleVersion": "1",
+        "LSUIElement": true
+      },
+      "executableSha256": "526f8eb65e465e67cb9ab8128be50e0d623ecd592ae61c1604b76de934175e68",
+      "signatureMetadata": [
+        "designated => identifier \"com.astra.mac\" and anchor apple generic and certificate leaf[subject.CN] = \"Apple Development: Shuhei Horio (N5DXXRWC3M)\" and certificate 1[field.1.2.840.113635.100.6.2.1] /* exists */",
+        "Identifier=com.astra.mac",
+        "Authority=Apple Development: Shuhei Horio (N5DXXRWC3M)",
+        "Authority=Apple Worldwide Developer Relations Certification Authority",
+        "Authority=Apple Root CA",
+        "TeamIdentifier=6RR7572ZLU"
+      ],
+      "signatureMetadataExitCode": 0
+    },
+    "canonical": {
+      "path": "/Users/shuhei/Projects/genie/apps/genie-macos/.build/Genie.app",
+      "info": {
+        "CFBundleIdentifier": "com.astra.desktop",
+        "CFBundleExecutable": "GenieMac",
+        "CFBundleShortVersionString": "0.1.4",
+        "CFBundleVersion": "0.1.4",
+        "LSUIElement": null
+      },
+      "executableSha256": "bd494b0e664da5abd15938b1573d15ac64563dd32ec9de5763d6297ed071a6c7",
+      "signatureMetadata": [
+        "designated => identifier \"com.astra.desktop\" and anchor apple generic and certificate leaf[subject.CN] = \"Apple Development: Shuhei Horio (N5DXXRWC3M)\" and certificate 1[field.1.2.840.113635.100.6.2.1] /* exists */",
+        "Identifier=com.astra.desktop",
+        "Authority=Apple Development: Shuhei Horio (N5DXXRWC3M)",
+        "Authority=Apple Worldwide Developer Relations Certification Authority",
+        "Authority=Apple Root CA",
+        "TeamIdentifier=6RR7572ZLU"
+      ],
+      "signatureMetadataExitCode": 0
+    },
+    "candidate": {
+      "path": "/private/tmp/genie-transactions-20261002/user-app-staging/Genie.app",
+      "info": {
+        "CFBundleIdentifier": "com.astra.mac",
+        "CFBundleExecutable": "Genie",
+        "CFBundleShortVersionString": "0.1.4",
+        "CFBundleVersion": "0.1.4",
+        "LSUIElement": true
+      },
+      "executableSha256": "2880bc06f89e4a468d8c9c2981fc2916b87265ee0868cedce86fe1348fa3d74e",
+      "signatureMetadata": [
+        "designated => identifier \"com.astra.mac\" and anchor apple generic and certificate leaf[subject.CN] = \"Apple Development: Shuhei Horio (N5DXXRWC3M)\" and certificate 1[field.1.2.840.113635.100.6.2.1] /* exists */",
+        "Identifier=com.astra.mac",
+        "Authority=Apple Development: Shuhei Horio (N5DXXRWC3M)",
+        "Authority=Apple Worldwide Developer Relations Certification Authority",
+        "Authority=Apple Root CA",
+        "TeamIdentifier=6RR7572ZLU"
+      ],
+      "signatureMetadataExitCode": 0
+    }
+  },
+  "infoDifferencesFromCanonical": {
+    "CFBundleExecutable": {
+      "canonical": "GenieMac",
+      "candidate": "Genie"
+    },
+    "CFBundleIdentifier": {
+      "canonical": "com.astra.desktop",
+      "candidate": "com.astra.mac"
+    },
+    "LSUIElement": {
+      "canonical": null,
+      "candidate": true
+    }
+  },
+  "installedIdentityPreserved": {
+    "CFBundleIdentifier": true,
+    "CFBundleExecutable": true,
+    "LSUIElement": true
+  },
+  "resourceComparisons": {
+    "Contents/Resources": {
+      "canonicalEntries": 54,
+      "candidateEntries": 54,
+      "identical": true,
+      "mismatches": []
+    },
+    "Contents/Frameworks": {
+      "canonicalEntries": 97,
+      "candidateEntries": 97,
+      "identical": true,
+      "mismatches": []
+    }
+  },
+  "managedConfigurationSafeProjection": {
+    "path": "/Users/shuhei/Library/Application Support/Genie/local-preview/runtime.json",
+    "exists": true,
+    "modelProvider": null,
+    "model": "qwen3.5:9b",
+    "port": 43123,
+    "dockerContext": null,
+    "effectiveModelProvider": "local",
+    "dockerContextMeaning": "No persisted context; launcher resolves current Docker context and verifies local unix endpoint at startup."
+  },
+  "unsignedExecutableComparison": {
+    "method": "codesign --remove-signature on separate disposable comparison copies only",
+    "copies": {
+      "canonical": {
+        "sha256": "03adb61df62b81bef38a01d27e23c5e9452020a53ce46d447440d758e1a125e2",
+        "size": 31358512
+      },
+      "candidate": {
+        "sha256": "03adb61df62b81bef38a01d27e23c5e9452020a53ce46d447440d758e1a125e2",
+        "size": 31358512
+      }
+    },
+    "identical": true
+  },
+  "designatedRequirementMatchesInstalled": true,
+  "wholeBundleComparison": {
+    "canonicalEntries": 154,
+    "candidateEntries": 154,
+    "changedPaths": [
+      "Contents/Info.plist",
+      "Contents/MacOS/Genie",
+      "Contents/MacOS/GenieMac"
+    ],
+    "onlyExpectedChanges": true,
+    "note": "Resource sealing file is unchanged; updated main executable holds the new outer signature."
+  },
+  "verification": {
+    "command": [
+      "/usr/bin/codesign",
+      "--verify",
+      "--deep",
+      "--strict",
+      "--verbose=2",
+      "/private/tmp/genie-transactions-20261002/user-app-staging/Genie.app"
+    ],
+    "exitCode": 0,
+    "log": "/private/tmp/genie-transactions-20261002/user-app-staging/sign.log",
+    "nestedCode": "Canonical frameworks copied unchanged; nested signatures preserved and verified by --deep --strict.",
+    "installedAppUnmodified": true,
+    "canonicalAppUnmodified": true
+  },
+  "limitations": [
+    "Candidate not launched or installed.",
+    "Matching identifier, designated requirement, executable name and LSUIElement preserve identity metadata; actual existing TCC grant and user setting behavior have not been exercised.",
+    "Standard managed configuration remains local/qwen3.5:9b. No external model or Docker configuration changed."
+  ]
+}

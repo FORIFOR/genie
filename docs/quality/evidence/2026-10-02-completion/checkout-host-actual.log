@@ -1,0 +1,5 @@
+{"accepted":true,"taskId":"01a0f959-35e2-7000-8894-9dc1cd117320","notice":"公式の注文画面への引き継ぎです。Genieはカートの準備・注文・支払いを行いません。サイト上の操作が必要です。"}
+task state PENDING
+task state RUNNING
+task state COMPLETED
+{"recordedAt":"2026-10-01T21:22:50.461Z","scope":"Isolated synthetic tenant, real task worker and local host, public official-site navigation request only; no cart, credentials, address or payment","taskId":"01a0f959-35e2-7000-8894-9dc1cd117320","kind":"checkout.assist","title":"注文画面への引き継ぎ（未注文）","states":["PENDING","RUNNING","COMPLETED"],"notice":"公式の注文画面への引き継ぎです。Genieはカートの準備・注文・支払いを行いません。サイト上の操作が必要です。","resultArtifactId":"01a0f959-3a4d-7000-8af0-0e39796d7aaa","taskStatus":"COMPLETED","actualBrowserRenderingVerified":false,"orderSubmitted":false}

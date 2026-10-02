@@ -1,0 +1,26 @@
+{
+  "recordedAt": "2026-10-01T17:42:10.342518+00:00",
+  "classification": "Follow-up independent read-only source review by verification_audit after implementation-owner stability notification. No rebuild, test execution, inference, or GUI operation by this reviewer. Root serial tests were in progress.",
+  "sourceHashes": {
+    "apps/genie-macos/Sources/GenieMac/RecordingWorkspace/CodexTranslation.swift": "4d801f83cc7f8ee3638093bc74207cc41f3d299a94a9b4d62afc4e38f0f92188",
+    "apps/genie-macos/Sources/GenieMac/RecordingWorkspace/MeetingTranslation.swift": "120d8f61c9b53ecadc43d824af0052874cbc4f2fb1af3dae99df386eeb293a29",
+    "apps/genie-macos/Sources/GenieMac/RecordingWorkspace/MeetingTranslationView.swift": "7606ccc2c7fc0a3c4a4af8893fce1159d2361c988773861236fd3710400fc305",
+    "apps/genie-macos/Sources/GenieMac/App/GenieAppDelegate.swift": "e347c0b398bc58c1d74a35658574407f781a84f7724bc488b8b0dce58635d700",
+    "apps/genie-macos/Tests/GenieMacTests/CodexTranslationTests.swift": "9ffe977c72d9fa84ef515a448e83b90a8daef1678d884b43f8319029fb714477",
+    "scripts/local-preview/config.mjs": "c449c9b2abfef65f463012d88df4897e1540c2f3e05ffffd2d544504ae66adbd",
+    "scripts/start-local-preview.mjs": "8e452ee8fe1ebe199c8fb9ce72de36011dbea35556a2b0fb19cca2ae22437c64",
+    "scripts/tests/managed-local-preview.test.mjs": "ae84573a4d3abda628c40c257ef3cc0100db04f61a198c5d3c1d1ad812ea81d1",
+    "workers/agent-host/src/codex.ts": "3c6a9f92928f3adf8177475ee23926b505b4ac7e0c96a57a794e522d8d0601f9"
+  },
+  "findings": {
+    "CT-5": "Resolved in source: same verified absolute Codex executable is passed to both runtimeEnv and appEnv.",
+    "CT-6": "Resolved in source for normal Quit and responsive main-app SIGTERM: caught signal -> retained DispatchSource on main -> NSApp termination -> reset + shutdown + terminateLater reply. Headless early-return paths do not install signal override.",
+    "CT-4": "Real fake-child Process tests added for cancel, timeout, cap, EPIPE, TERM ignore/KILL, parent caught-signal inheritance and separate irreversible shutdown. Execution results belong to root; not asserted by this source-only review."
+  },
+  "remainingLimits": [
+    "SIGKILL, parent crash or unresponsive main event loop are not cleanup guarantees",
+    "No actual managed-app SIGTERM-during-translation E2E run by this reviewer",
+    "No external translation semantic quality benchmark or live transcript test",
+    "Whole-product gate remains interrupted with known failures"
+  ]
+}

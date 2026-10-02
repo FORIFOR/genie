@@ -1,0 +1,93 @@
+{
+  "observedAt": "2026-10-01T18:29:56.500402+00:00",
+  "observer": "verification_audit",
+  "commands": "read-only sysctl, memory_pressure -Q, ps (pid/rss/cpu/executable basename only), ollama ps",
+  "physicalMemoryBytes": 38654705664,
+  "kernelPressureLevel": 1,
+  "memoryFreeIndicatorPercent": 63.0,
+  "swap": "total = 3072.00M  used = 2480.50M  free = 591.50M  (encrypted)",
+  "topRSS": [
+    {
+      "pid": 68703,
+      "rssKiB": 1905328,
+      "cpuPercent": 0.0,
+      "executableName": "run"
+    },
+    {
+      "pid": 53231,
+      "rssKiB": 1417744,
+      "cpuPercent": 4.7,
+      "executableName": "Codex (Renderer)"
+    },
+    {
+      "pid": 6031,
+      "rssKiB": 938272,
+      "cpuPercent": 0.0,
+      "executableName": "com.apple.WebKit.WebContent"
+    },
+    {
+      "pid": 53232,
+      "rssKiB": 936208,
+      "cpuPercent": 1.5,
+      "executableName": "codex"
+    },
+    {
+      "pid": 3320,
+      "rssKiB": 632304,
+      "cpuPercent": 0.2,
+      "executableName": "Codex (Renderer)"
+    },
+    {
+      "pid": 53183,
+      "rssKiB": 612048,
+      "cpuPercent": 2.9,
+      "executableName": "ChatGPT"
+    },
+    {
+      "pid": 53230,
+      "rssKiB": 455056,
+      "cpuPercent": 3.4,
+      "executableName": "Codex (Renderer)"
+    },
+    {
+      "pid": 3321,
+      "rssKiB": 324848,
+      "cpuPercent": 0.0,
+      "executableName": "Codex (Renderer)"
+    },
+    {
+      "pid": 99366,
+      "rssKiB": 248304,
+      "cpuPercent": 0.0,
+      "executableName": "Codex (Renderer)"
+    },
+    {
+      "pid": 53493,
+      "rssKiB": 217968,
+      "cpuPercent": 0.1,
+      "executableName": "Codex (Renderer)"
+    },
+    {
+      "pid": 484,
+      "rssKiB": 206336,
+      "cpuPercent": 0.7,
+      "executableName": "mds_stores"
+    },
+    {
+      "pid": 10432,
+      "rssKiB": 205984,
+      "cpuPercent": 0.0,
+      "executableName": "node"
+    }
+  ],
+  "obsProcess": [
+    {
+      "pid": 1892,
+      "rssKiB": 121376,
+      "cpuPercent": 9.7,
+      "executableName": "OBS"
+    }
+  ],
+  "ollamaPs": "NAME    ID    SIZE    PROCESSOR    CONTEXT    UNTIL",
+  "limits": "Point-in-time observation; RSS excludes or double-counts some shared/compressed/GPU resources and must not be summed as physical RAM ownership. No workload was started or stopped."
+}

@@ -1,0 +1,128 @@
+{
+  "schema": 1,
+  "recordedAt": "2026-10-01T21:37:49.026994+00:00",
+  "reviewer": "/root/verification_audit",
+  "method": "Independent read-only review of bootstrap/writer integration and synthetic test evidence; no source edits, native execution, builds, actual descriptor reads, Keychain/secret reads or permission changes by reviewer.",
+  "status": "PASS",
+  "statusScope": "Source boundary review only; installed direct-launch runtime and final Swift regression are not claimed.",
+  "checks": [
+    {
+      "id": "DC1",
+      "method": "source review",
+      "expected": "Only standard saved non-secret connection projected before singleton initialization",
+      "observed": "Entry install precedes NSApplication; fixed standard directory; explicit ASTRA environment and selftest/native-messaging skip saved state. Exact model/provider/authorization and loopback gateway/root/UUID only; no token, path to CLI, automatic-screen authorization or readiness assertion.",
+      "status": "PASS"
+    },
+    {
+      "id": "DC2",
+      "method": "source review",
+      "expected": "Reject malformed or replaced descriptor without fallback",
+      "observed": "Directory uid/700 and symlink resolution checked; descriptor openat NOFOLLOW/NONBLOCK, uid600 regular bounded same fd through EOF plus final stat. Reject unknown/duplicate keys, wrong workspace/model/external scope. Invalid marker gates Gateway, VoiceHUD and translation; VisualEgress reports unavailable.",
+      "status": "PASS"
+    },
+    {
+      "id": "DC3",
+      "method": "source review",
+      "expected": "Scope selection persistence cannot revive stale ready external settings",
+      "observed": "Before saving changed model selection to runtime.json, replace prior standard descriptor with private selectionPending marker. Native treats it invalid. Same scope may remain, ready recreates valid descriptor. No deletion-to-default path.",
+      "status": "PASS"
+    },
+    {
+      "id": "DC4",
+      "method": "source review",
+      "expected": "Managed and later direct-launch sessions identify same desktop",
+      "observed": "Validated descriptor desktopIdentity projects to ASTRA_DESKTOP_IDENTITY; managed app environment receives config.identity; MainData chooses that UUID for GatewaySession and scoped key.",
+      "status": "PASS"
+    },
+    {
+      "id": "DC5",
+      "method": "implementer log review",
+      "expected": "Current Node synthetic regression is green with no skipped cases",
+      "observed": "Complete final2 log:42 tests,42 pass,0 fail,0 skip. Reviewed manifest27 source/doc hashes and8 log hashes; all matched current files at this checkpoint.",
+      "status": "PASS"
+    },
+    {
+      "id": "DC6",
+      "method": "not executed",
+      "expected": "Final Swift and installed double-click route use selected service/model without Keychain stall",
+      "observed": "Earlier Swift54 predated UUID/pending marker additions; final Swift and actual direct launch remain pending.",
+      "status": "BLOCKED"
+    }
+  ],
+  "limits": [
+    "Revocation guarantee is before new model selection is persisted; a CLI attempt rejected earlier by Docker/model preflight does not replace saved settings.",
+    "Already-running app environment is not live-reconfigured by the descriptor.",
+    "File checks do not claim protection against a malicious same-uid process able to mutate the entire user profile.",
+    "Real Keychain noninteractive behavior, startup, Gateway connection and external model selection require installed-app verification.",
+    "Synthetic case success and source review are not whole-release or stream stability PASS."
+  ],
+  "sourceHashes": {
+    "apps/genie-macos/Sources/GenieMac/App/DesktopConnectionBootstrap.swift": "d8ef810f6b43deb7586211ff4e4e3b9dfb846d5876e7533cccfa91c3ecc657b1",
+    "apps/genie-macos/Sources/GenieMac/App/main.swift": "897d1134748c348eeb00f51cb405f661f1bbccec01261f5db32df2a894cf7f3f",
+    "apps/genie-macos/Sources/GenieMac/Main/MainWindowView.swift": "13ab7c1b7238b4858e9d875c80e9d25909514cc083dfaefe8227504734d06b95",
+    "apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift": "b518ea7861acdef3af7f0acf75b42bc711c91f6ce340e74a252a1e71169ce910",
+    "apps/genie-macos/Sources/GenieMac/RecordingWorkspace/MeetingTranslation.swift": "5d597b4f9acec88cd774f3077c5a679d727cbd92d54c7f42b104811ef69ac14e",
+    "apps/genie-macos/Sources/GenieMac/RecordingWorkspace/CodexTranslation.swift": "e84c13a57cd819389ffaefd3b3a293a0030eb103931aed86cd6bee1721adbf27",
+    "apps/genie-macos/Sources/GenieMac/Context/ScreenshotContext.swift": "842de396c1125458df083a4ac9ce847cf211b2f56a78e5e36edd98541261c416",
+    "apps/genie-macos/Tests/GenieMacTests/DesktopConnectionBootstrapTests.swift": "b1ce43278831bce4cdc72b0f7ec27c55d396fe458b2d5f9093a2e753020e7504",
+    "scripts/local-preview/config.mjs": "eb3e376f45edf706b7e5d2ac47a0d7ad1a981ee8040d5cb061830400d9102406",
+    "scripts/start-local-preview.mjs": "d389c7923345f659bf960754175b4bac2883291ce9b5e866bfb5ae42d8ffc19c",
+    "scripts/tests/managed-local-preview.test.mjs": "b2cbfb7b86df920f6188443a946775dcf6e5959bf3b582a22c862381268de859"
+  },
+  "manifest": {
+    "path": "docs/quality/evidence/2026-10-02-completion/connection-startup/manifest.json",
+    "sha256": "d2d44dce4ebaeacdbb452191e2d7c4de38f261de4060449811ae75ba8d5224c3",
+    "sourceOrDocCount": 27,
+    "logCount": 8,
+    "mismatches": []
+  },
+  "nodeLog": {
+    "path": "docs/quality/evidence/2026-10-02-completion/connection-startup/desktop-connection-node-tests-final2.log",
+    "sha256": "6b58f048446cc0bf927f2a2c1b5db3aca6f9721da2a63b2efb2c764b8c41b3db",
+    "exitCode": 0,
+    "exitCodeSource": "implementer report; full log independently inspected"
+  },
+  "followUp": {
+    "recordedAt": "2026-10-01T21:42:18.940256+00:00",
+    "method": "Read-only complete final Swift log and manifest verification",
+    "finalSwift": {
+      "tests": 54,
+      "failures": 0,
+      "skipped": 0,
+      "exit": 0,
+      "log": "desktop-connection-swift-tests-final.log"
+    },
+    "logSha256": "ccb8edc8edb41685aece7568953ac6a10fbe7c62c39ec7572d5453d1a9aef73e",
+    "manifestSha256": "39aaedaf861cbc49fb0acd2bfe8f39d13c943d72670eebcf15bdc9051554f357",
+    "sourceOrDocCount": 27,
+    "logCount": 9,
+    "mismatches": [],
+    "observed": "54 tests,0 failures in complete final log; secondary Swift Testing0 is not added. Includes current UUID/pending-marker source. Installed direct-launch/real Keychain recovery remain NOT_RUN."
+  },
+  "actualInstalledFollowUpReported": {
+    "recordedAt": "2026-10-01T21:58:45.896901+00:00",
+    "source": "root message; not independently reproduced by reviewer",
+    "candidateExecutablePrefix": "5a27e3f39e06",
+    "HomeAndSettingsResponsive": "PASS (root-reported actual installed app)",
+    "bareLaunchSelectedConfiguration": "FAIL (root-reported generic disclosure/default workspace despite intended saved selection)",
+    "effect": "Source/synthetic results above do not establish ordinary-launch propagation. Owner investigating; do not claim bootstrap runtime complete."
+  },
+  "freshNormalStartupEvidenceFollowUp": {
+    "recordedAt": "2026-10-01T22:18:36.418627+00:00",
+    "method": "Read-only inspection of root actual installed-app report, not an independent GUI rerun",
+    "evidence": "normal-connection-app-fresh-check.json",
+    "sha256": "254730278352f770c30d168eaa16417cb596abea6e2fcb1a3b098d138afd9760",
+    "observed": {
+      "priorAppRunning": false,
+      "normalLaunch": true,
+      "selectedModelVisible": "OpenAI / Codex gpt-6-sol",
+      "selectedWorkspaceHistoryVisible": true,
+      "bootstrapStatus": "PASS for this fresh launch; previous failed launch retained, cause not established",
+      "sendStatus": "BLOCKED_KEYCHAIN",
+      "draftPreservedOnError": true,
+      "modelRequestSent": false,
+      "keychainOrPermissionsChanged": false
+    },
+    "result": "Fresh startup propagation PASS for this observed launch, end-to-end Home answer remains BLOCKED_KEYCHAIN. Earlier failed launch remains preserved with cause unknown."
+  }
+}

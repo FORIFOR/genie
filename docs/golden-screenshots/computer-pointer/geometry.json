@@ -1,0 +1,114 @@
+{
+  "arrowWhiteOutlineContrast" : 5.4817201371394342,
+  "badgeStatusPt" : 13,
+  "badgeTextContrast" : 15.815325754053516,
+  "badgeTitlePt" : 14,
+  "coordinateCases" : [
+    {
+      "actionPoint" : [
+        600,
+        400
+      ],
+      "badgeOnTargetDisplay" : true,
+      "mirrorX" : 1,
+      "mirrorY" : 1,
+      "pointerHeightPt" : 48,
+      "tipErrorPt" : 0
+    },
+    {
+      "actionPoint" : [
+        -1100,
+        300
+      ],
+      "badgeOnTargetDisplay" : true,
+      "mirrorX" : 1,
+      "mirrorY" : 1,
+      "pointerHeightPt" : 48,
+      "tipErrorPt" : 0
+    },
+    {
+      "actionPoint" : [
+        200,
+        -500
+      ],
+      "badgeOnTargetDisplay" : true,
+      "mirrorX" : 1,
+      "mirrorY" : 1,
+      "pointerHeightPt" : 48,
+      "tipErrorPt" : 0
+    },
+    {
+      "actionPoint" : [
+        2000,
+        800
+      ],
+      "badgeOnTargetDisplay" : true,
+      "mirrorX" : 1,
+      "mirrorY" : 1,
+      "pointerHeightPt" : 48,
+      "tipErrorPt" : 0
+    },
+    {
+      "actionPoint" : [
+        1435,
+        895
+      ],
+      "badgeOnTargetDisplay" : true,
+      "mirrorX" : -1,
+      "mirrorY" : -1,
+      "pointerHeightPt" : 48,
+      "tipErrorPt" : 0
+    },
+    {
+      "actionPoint" : [
+        -1275,
+        105
+      ],
+      "badgeOnTargetDisplay" : true,
+      "mirrorX" : 1,
+      "mirrorY" : 1,
+      "pointerHeightPt" : 48,
+      "tipErrorPt" : 0
+    },
+    {
+      "actionPoint" : [
+        3035,
+        1095
+      ],
+      "badgeOnTargetDisplay" : true,
+      "mirrorX" : -1,
+      "mirrorY" : -1,
+      "pointerHeightPt" : 48,
+      "tipErrorPt" : 0
+    },
+    {
+      "actionPoint" : [
+        1195,
+        -795
+      ],
+      "badgeOnTargetDisplay" : true,
+      "mirrorX" : -1,
+      "mirrorY" : 1,
+      "pointerHeightPt" : 48,
+      "tipErrorPt" : 0
+    }
+  ],
+  "fixture" : true,
+  "moveSeconds" : 0.17999999999999999,
+  "native" : {
+    "animatedShowSeconds" : 0.0030536249978467822,
+    "animationArrivedAtExactTip" : true,
+    "clickThrough" : true,
+    "foregroundUnchanged" : true,
+    "nonactivating" : true,
+    "ownPanelListedOnScreenByWindowServer" : true,
+    "reduceMotionAtTest" : false,
+    "samePanelReused" : true,
+    "samePointStateChangeDoesNotRestartTravel" : true,
+    "showSeconds" : 0.029546916674007662,
+    "systemPointerUnchanged" : true
+  },
+  "physicalMultipleDisplaysTested" : false,
+  "pointerHeightPt" : 48,
+  "source" : "Marker.layout \/ Marker.Ring.pointerPath"
+}

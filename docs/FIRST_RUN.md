@@ -1,14 +1,15 @@
 # First success: notes → a saved checklist
 
-Use a Mac (macOS 14+), Node 22+, Docker Desktop and an installed Ollama text model. Build Genie.app from **the same checkout** as the services: [source setup](LOCAL_PREVIEW.md). An equal display version is not proof of equal source. The v0.1.4 DMG does not include the managed launcher or current document editing.
+Use a Mac (macOS 14+), Node 22+, Docker and an existing signed-in Codex CLI for the external route below. Ollama is needed only if you choose local inference. Build Genie.app from **the same checkout** as the services: [source setup](LOCAL_PREVIEW.md). An equal display version is not proof of equal source. The v0.1.4 DMG does not include the managed launcher or current document editing.
 
 ## 1. Start the managed workspace
 
 ```sh
-node scripts/start-local-preview.mjs --app apps/genie-macos/build/Genie.app --model qwen3.5:9b
+node scripts/start-local-preview.mjs --app apps/genie-macos/build/Genie.app \
+  --model-provider codex --allow-cloud --model gpt-6-sol
 ```
 
-Use a model you already have (`ollama list`); no model is downloaded automatically. The launcher downloads dependencies/container images on first setup, prepares an isolated database, checks the services, then opens Home. Keep its terminal open. Failed startup names the next action and log location; fix that cause and rerun the same command. Read [managed preview](MANAGED_PREVIEW.md) for build paths, stop/status and storage.
+This explicitly selects the existing Codex connection and avoids loading an Ollama model. Submitted text and attachments go to OpenAI through that connection and use the account's allowance; this is not a promise of free usage. To choose local inference instead, replace the model flags with `--model-provider local --model qwen3.5:9b`, using a model already shown by `ollama list`. No model is downloaded automatically and no provider is selected as a fallback. The unconfigured default remains local; an explicit choice persists in this workspace. The launcher downloads dependencies/container images on first setup, prepares an isolated database, checks the services, then opens Home. Keep its terminal open. Failed startup names the next action and log location; fix that cause and rerun the same command. Read [managed preview](MANAGED_PREVIEW.md) for build paths, stop/status and storage.
 
 **`pnpm doctor` diagnoses the older manual `.env` setup only.** It checks dbmate/psql and port 3000, not the managed workspace on port 43123. Do not install those extra tools or create `.env` just to make that diagnostic green for the managed route. For a manually configured setup, `pnpm doctor:json` returns schema_version 1, exits 0 for prerequisites checked, 1 for missing prerequisites, and 2 for an incomplete diagnostic. Neither route's readiness proves task success.
 
@@ -18,7 +19,7 @@ In Home, choose **メモをチェックリストに**. This fills an editable ex
 
 > 次のメモを、次の行動と担当者が分かるチェックリストにしてください。アプリをテストする、デモを録画する、リリースノートを書く。分からない担当者は「未定」とし、文章だけを作ってください。
 
-Send it once. The managed route uses your selected loopback Ollama model; no paid-provider fallback, microphone, screen permission or external account is needed. Other configured model routes may send content externally and incur provider charges. Do not attach private data for the first test.
+Send it once. With the command above, the request uses the selected external `gpt-6-sol` connection. If you explicitly chose the local option, it uses that loopback Ollama model. Neither route needs a microphone or screen permission for this text request, and neither silently switches providers. Use fictional content for the first test. Automatic computer-use screenshots are separate: `--computer-use` and `--allow-external-screen`, plus task approval and target-window consent, are required before the external computer-use route can send them.
 
 ## 3. Verify, edit and keep the result
 

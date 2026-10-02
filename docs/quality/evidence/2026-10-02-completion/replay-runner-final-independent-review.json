@@ -1,0 +1,54 @@
+{
+  "recordedAt": "2026-10-01T19:28:04.727732+00:00",
+  "method": "Independent source and saved execution evidence review. Executor root. Reviewer ran no tests/app/VM/model.",
+  "sourceHashes": {
+    "services/task/scripts/replay-history.capture.ts": "640f97120273ced75cf0ce6dfe1b23362e147afd0517f312a018e82e9893d418",
+    "services/task/scripts/replay-capture.config.ts": "30c43e003edc2a517c50eddc579c74243d1e8305f3be572f041ef13f4a6489b9",
+    "services/task/test/replay-history.test.ts": "fbf6b2c5266c4e37a125089a76819e238d8f74098dab4f4fae450a7320b8e562",
+    "scripts/verify-all.sh": "153d090f259f787a5bfa29b3cf584c1ef38a498b3e84c5ff4ae30584c33c10fc",
+    "scripts/verify-desktop-tests.sh": "6fb4b35a45b8242c89ee3f81ab20fd101e7f5f9923ec9506efaac202647b1718",
+    "scripts/tests/test_verification_resources.py": "74accdfcff948e565eeb8f961b60f390c2d74ae593cece5893e04e9c4b63cb93"
+  },
+  "logHashes": {
+    "runner-skip-aggregation-final.log": "663e5ae3cc0a49898855692f4f56c350771018f361b73f63fbefc8509000d0fc",
+    "desktop-tests-current.log": "730069e49034aedf73302511e62edaaa4712b3c644c835a1d92d7d95852b5e46",
+    "replay-regression-separated.log": "4bd24c5380f6a36581c47ce0ade10554a4b79ef38b8ae050285d80dee84f9b2e",
+    "replay-generator-opt-in-refusal.log": "d36b23e6b669bbab62a8627a1094b6dbd452deb233147f2e009121b0beee3ba0",
+    "replay-generator-path-refusal.log": "2c0c17afb46684d695c5cc8deb220da40d77fd01dd73d375d3c9854e7459383d",
+    "test-types-current.log": "43883bb4ba01c6accafe8d4b6d4d60d00ba12b08f410de64623f7759945b4e90",
+    "test-types-final.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "replayBodiesByteIdenticalToHEAD": true,
+  "fixtures": {
+    "services/task/test/replay-fixtures/cancelled.json": {
+      "sha256": "c3f884e4c0b65abd0eea07f698a1ec92cf3e07c4f49b473f12ac30eab5d7b4b1",
+      "matchesHEAD": true
+    },
+    "services/task/test/replay-fixtures/completed.json": {
+      "sha256": "90852ac562c2c27faea233a39423bd27102d85f553a451d4268eb85cdde7a42d",
+      "matchesHEAD": true
+    },
+    "services/task/test/replay-fixtures/provenance.json": {
+      "sha256": "bb4e6e79ed4fbc5db3d5255dcdd183ce1f1ce372ad5699cde501d8923444a6e0",
+      "matchesHEAD": true
+    }
+  },
+  "findings": {
+    "generatorExtraction": "CLOSED source: explicit write-producing tool has its own .capture.ts include/config, opt-in and absolute cached executable requirement, pinned old revision, original 60000ms Vitest deadline and assertion semantics. Two normal replay tests are unchanged.",
+    "generatorExceptionCleanup": "CLOSED source: nested finally reaches env teardown after worker rejection and temp rm after teardown rejection. Successful regeneration was not run and the old fixture bytes remain unchanged.",
+    "desktopSummaryLoss": "CLOSED source+saved harness tests: complete output retained; all-skipped becomes NOT_RUN/2; empty or zero executed summary fails. Mixed skips are captured by fullgate.",
+    "runnerOmissions": "CLOSED source+saved tests: nonzero Vitest/Node/Python skips and Rust ignored counts reach PARTIAL; zero skips do not. All Rust test result summaries retained. Failure precedence retained."
+  },
+  "savedExecution": {
+    "replay": "2 passed, no skips; actual Worker.runReplayHistory on saved synthetic old-version history",
+    "desktop": "357 passed across36files",
+    "aggregation": "14 tests passed; mocked external commands exercising production shell scripts, not full product execution",
+    "generatorGuard": "Missing explicit opt-in and missing cached path both actually refused with exit1 in saved logs before creating the fixture server or writing histories",
+    "strictTestTypes": "Initial TS7022 diagnostic preserved. Final log is empty; root explicitly reports final command exit0 after WorkflowHandle annotation. Empty content alone is not independent exit-status evidence."
+  },
+  "limitations": [
+    "A Vitest60s deadline preserves the old test-runner bound but is not proof that every unresponsive external server process is killed at timeout. No timeout/forced-process-loss execution of generator was performed.",
+    "No current full verify-all result follows from these focused tests.",
+    "No real external order/payment or production Temporal history involved."
+  ]
+}

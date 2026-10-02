@@ -1,0 +1,49 @@
+{
+  "recordedAt": "2026-10-01T18:14:00.244892+00:00",
+  "implementationOwner": "pointer_ui",
+  "executor": "root",
+  "reviewer": "verification_audit",
+  "classification": "Independent read-only source/log review. Root built a small AppKit harness using the actual production TerminationDispatch.swift helper and ran it; no main app build/relaunch, VM or model load.",
+  "command": "bash scripts/test-app-termination.sh",
+  "exitCodeReportedByRoot": 0,
+  "log": {
+    "file": "appkit-termination-regression.log",
+    "sha256": "afacf0ba83b75b113ca6b9f4468fb7c70d5dcbeda56c05c7b8f2a8bedb535594"
+  },
+  "sourceHashes": {
+    "apps/genie-macos/Sources/GenieMac/App/TerminationDispatch.swift": "04dd23a83bfe172f726f34380c6d58d813bbda71455fc95c2b55485357050497",
+    "apps/genie-macos/Sources/GenieMac/App/GenieAppDelegate.swift": "bf1c0eacaa29c57a2c1fdfb073f05c14bc4848c8957ed306fda3fc195765ac03",
+    "apps/genie-macos/Sources/GenieMac/RecordingWorkspace/CodexTranslation.swift": "4d801f83cc7f8ee3638093bc74207cc41f3d299a94a9b4d62afc4e38f0f92188",
+    "scripts/tests/TerminationDispatchHarness.swift": "8d2726d9310b7aab1400c0c9b637bfd2ae761c674da94f293e7a577280136483",
+    "scripts/test-app-termination.sh": "0e7074110d4f450b9102a6b336e97a6c432c3884344e9edc48d6dcec606420e1"
+  },
+  "cases": [
+    {
+      "mode": "legacy",
+      "status": "PASS negative control",
+      "observed": "Old direct main-dispatch terminate + Task@MainActor reproduces timeout, with should-terminate but no cleanup-started/will-terminate."
+    },
+    {
+      "mode": "scheduled",
+      "status": "PASS",
+      "observed": "Dispatch callback returns before termination; MainActor cleanup and ordered reply/will-terminate run."
+    },
+    {
+      "mode": "direct",
+      "status": "PASS",
+      "observed": "Direct dispatch-origin termination completes with detached non-MainActor cleanup and run-loop reply."
+    },
+    {
+      "mode": "signal",
+      "status": "PASS",
+      "observed": "Actual SIGTERM sent only to the harness itself follows scheduled handoff and completes MainActor cleanup/reply/termination."
+    }
+  ],
+  "sourceReview": "No additional P1 found. Signal callback leaves serial dispatch before AppKit nested loop. Cleanup runs detached and final reply via run loop. Headless early-return placement and ordinary recording confirmation are preserved. Direct path does not promise MainActor-dependent cleanup while its dispatch callback is nested; production Codex shutdown has no MainActor dependency.",
+  "historicalFailure": "Actual main-app PID 85691 SIGTERM hang remains FAIL/P1 in TERMINATION_HANG.md; these narrow regression successes do not erase it.",
+  "postRunObservationReportedByRoot": {
+    "memoryPressure": 1,
+    "memoryFreePercent": 46
+  },
+  "deploymentState": "Main app was not rebuilt or restarted. Old packaged app remains stopped; corrected source/harness only. Full-product gate remains incomplete."
+}

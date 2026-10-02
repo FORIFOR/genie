@@ -1,0 +1,35 @@
+{
+  "recordedAt": "2026-10-01T20:58:49.979099+00:00",
+  "app": "/Applications/Genie.app",
+  "bundle": "com.astra.mac",
+  "model": "gpt-6-sol",
+  "provider": "codex",
+  "stateDir": "~/Library/Application Support/Genie/local-preview",
+  "existingProjectVolumesPreserved": true,
+  "dockerContext": "colima",
+  "globalDockerContext": "default",
+  "helperInstalled": "~/Library/Application Support/Genie/helpers/GenieComputerHelper.app",
+  "helperSHA256": "a8b31e5d68b3a0b7ec9183f29481d423665b24a59dc6abd27294875f938eee64",
+  "helperStatus": {
+    "ready": true,
+    "unattendedTest": false,
+    "deliveryMode": "background"
+  },
+  "externalScreenAuthorization": null,
+  "startup": "ready",
+  "homeRecipient": "OpenAI / Codex (gpt-6-sol)",
+  "historicalTasksVisible": true,
+  "request": "Synthetic Japanese text-only memory advice; no private data or real transaction",
+  "requestResult": "NOT_SENT: Home rejected before ask because backend tokens unavailable",
+  "failureEvidence": "Sample showed GatewaySession -> KeychainStore.get -> SecItemCopyMatching waiting; settings click blocked main thread in GeminiLiveSettings.init -> KeychainStore.get",
+  "sampleSHA256": "edac89b3b4128aa1469fe0773e5c266b7d4fdbd83b1f4326b48bcadc37739002",
+  "keychainPrompt": "not inspected; SecurityAgent UI access denied by computer-use tool",
+  "keychainAccessChanged": false,
+  "memoryPressure": "1",
+  "noaReadOnly": {
+    "running": false,
+    "phase": "stopped"
+  },
+  "shutdown": "requested via supervisor, completion pending",
+  "realModelAnswerVerified": false
+}

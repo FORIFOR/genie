@@ -1,0 +1,30 @@
+{
+  "ready": true,
+  "permissions": {
+    "accessibility": true,
+    "screenRecording": true,
+    "supported": true,
+    "ready": true,
+    "unattendedTest": false,
+    "deliveryMode": "background",
+    "capabilities": [
+      "ax_press",
+      "empty_text_field",
+      "append_text_field",
+      "vertical_ax_scroll",
+      "safari_same_origin_link",
+      "target_preview",
+      "native_click",
+      "native_keys",
+      "space_key"
+    ]
+  },
+  "helperPath": "/private/tmp/genie-transactions-20261002/GenieComputerHelperFinal.app/Contents/MacOS/GenieComputerHelper",
+  "computerUse": true,
+  "model": "gpt-6-sol",
+  "modelProvider": "codex",
+  "recipient": "OpenAI / Codex (gpt-6-sol)",
+  "externalScreenAllowed": true,
+  "next": "start で依頼を作成できます。対象窓への同意は実行時に確認します。",
+  "gateway": "http://127.0.0.1:43180"
+}

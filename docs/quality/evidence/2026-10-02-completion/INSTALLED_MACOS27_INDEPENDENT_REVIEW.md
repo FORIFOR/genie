@@ -1,0 +1,20 @@
+# Installed macOS 27 profile — independent saved-evidence review
+
+Reviewed 2026-10-02. This reviewer opened **all 32 fresh native PNGs**, ten old root images and four accepted safe-top-32 images, and read the six actual system-AX snapshots. No native app, model, VM or permission action was performed. No golden, source or tolerance was changed. [Machine-readable observations and hashes](installed-macos27-independent-review.json) identify the exact source, binary and images.
+
+**Visual result: PASS within these synthetic captures. No new actionable clipping/overlap defect.** A separate macOS 27.0.1/2x/safe-top-32 profile may proceed as a candidate. Formal acceptance still requires a second geometry capture and the existing native golden/density/shape/occupation checks; no full release PASS is implied.
+
+| Surface | Direct observation |
+| --- | --- |
+| Idle/listening/preparing | All marks, input, recording/mute/escape controls visible below camera band. Window220×76/600×100 matches the accepted safe-top32 profile. Old root220×44/600×53 includes older source/layout as well as missing safe area; the47pt listening difference is not all a32pt OS inset. |
+| Recording/paused/transcript/RAG | Status and Stop remain visible, transcript rows and two mode tabs fit. Expanded sources shorten the transcript area without covering the composer. Dark borders still separate cards. |
+| Home/Apps/recording-now | Primary input, model disclosure, sample actions and service setup actions fit. Recording status and Stop are visible. Generic model text and dynamic meeting time belong to isolated fixture state; these support screenshots do not prove user-runtime model selection and are outside the20 stable golden candidates. |
+| Meeting detail | Summary, actions, selected transcript and source panel are readable. Sidebar/main start shifts about8px relative to old reference, with stable outer1240×820 and right source boundary. No visual damage; the source/OS contribution is not isolated, and this view has no exact child-frame measurement in the six-state AX set. |
+| Permission/STT/Speech failures | Distinct explanations and settings actions remain readable in both appearances; Japanese copy wraps inside its card. Disabled summary controls remain muted. |
+| Timeline/canvas | Three timeline states and all four semantic note groups fit, preserving speaker/time/source references and the separate transcript column. |
+
+The32 permanent PNG hashes and four listed source hashes match. Against the prior macOS27 candidate,16/20 stable images are file-exact and the other saved luminance diagnostics are0–0.157%. Against old root, seven light surfaces differ1.054–4.826%; blue accent, two-mode controls and updated mark/copy are documented source changes. Against the accepted safe-top26 profile, six large light surfaces differ0–0.112%, while detail differs4.685% (dark7.397%). These Pillow diagnostics are not native AppKit gate results and cannot establish OS-only causation.
+
+AX coverage was independently recomputed: **43 required container/control/text occurrences are present and positive;37 occur in the older safe-top reference,30 are within2pt, seven exceed2pt, and six identifiers are new.** The larger idle action matches its current full-height frame/content shape. The agent35pt contraction and moved steps match the already recorded progress/PLAN removal. Other measured button sizes and title positions remain consistent. The workspace title identifier is34×14pt, while the separate window key is1080×680pt; AX label frames must not be represented as complete hit regions. Enabled behavior, keyboard/VoiceOver use, real microphone work and journey continuity are outside this evidence.
+
+Recommendation: preserve old root/macOS26 references and failures, record this as a **source-aware environment candidate**, then compare a fresh independent measurement at the unchanged thresholds (geometry2pt, pixels0.5%, density1.5pp). Profile installation/copying or comparison against its own source capture is not that subsequent verification.

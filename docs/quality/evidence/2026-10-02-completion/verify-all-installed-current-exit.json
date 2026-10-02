@@ -1,0 +1,14 @@
+{
+  "startedAt": "2026-10-01T23:06:28.651647+00:00",
+  "finishedAt": "2026-10-01T23:13:24.230333+00:00",
+  "exitCode": 1,
+  "memoryGuardAbort": false,
+  "app": "/Applications/Genie.app",
+  "appSHA256": "8b46350c5bb3a4330320689898171c59a5fd0dc9cf1947dd6548a4d4f2af668d",
+  "scope": "actual installed app identity with isolated synthetic data, gateway tenant and dedicated test PostgreSQL",
+  "localTranslation": true,
+  "externalTranslation": true,
+  "realSherpaSTT": true,
+  "normalUserWorkspaceUsed": false,
+  "logSHA256": "9ff74f651f9d5b7754cd3ce941c488e534a6a5e93d0b9f0995e2fcbd04e44833"
+}

@@ -1,0 +1,27 @@
+{
+  "recordedAt": "2026-10-01T21:07:55.887331+00:00",
+  "productionInstalled": false,
+  "assets": [
+    {
+      "name": "sherpa-onnx-v1.13.6-osx-arm64-shared.tar.bz2",
+      "source": "https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.13.6/sherpa-onnx-v1.13.6-osx-arm64-shared.tar.bz2",
+      "releaseMetadata": "https://api.github.com/repos/k2-fsa/sherpa-onnx/releases/tags/v1.13.6",
+      "size": 19950341,
+      "sha256": "19b90f21925edb21ffbc003489316353b45d31712c6e88d93eaa13a72c31cb84",
+      "publisherDigest": "sha256:19b90f21925edb21ffbc003489316353b45d31712c6e88d93eaa13a72c31cb84",
+      "isolatedDestination": "/private/tmp/genie-transactions-20261002/stt-assets/library"
+    },
+    {
+      "name": "sherpa-onnx-zipformer-ja-reazonspeech-2024-08-01.tar.bz2",
+      "source": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-zipformer-ja-reazonspeech-2024-08-01.tar.bz2",
+      "releaseMetadata": "https://api.github.com/repos/k2-fsa/sherpa-onnx/releases/tags/asr-models",
+      "size": 713097333,
+      "sha256": "e0981d0d5d7b446d41010831b59091ebf57d2aa7b79980f67ca37af460b5842d",
+      "publisherDigest": null,
+      "isolatedDestination": "/private/tmp/genie-transactions-20261002/stt-assets/model"
+    }
+  ],
+  "retrievalScriptSHA256": "ad0446e90ea0c09550893a8ac244f545f78b4e1d3b11c447c28acd4962961750",
+  "productRuntimeModelUnchanged": true,
+  "purpose": "Only isolated actual STT acceptance; no production installation, no live microphone input."
+}

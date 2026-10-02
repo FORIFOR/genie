@@ -1,0 +1,78 @@
+{
+  "recordedAt": "2026-10-01T18:11:06.487635+00:00",
+  "classification": "Root-executed real managed-app stop; independent read-only evidence/source review by verification_audit. Reviewer performed no process stop, app launch, build, test, UI operation or model call.",
+  "appCandidate": "GenieTransactionMemory.app identified by memory-release-candidate.json",
+  "appPID": 85691,
+  "status": "FAIL",
+  "severity": "P1",
+  "observedFailure": "Managed SIGTERM did not terminate the actual native app for more than 50 seconds; service/VM shutdown completed but app remained.",
+  "sample": {
+    "atJST": "2026-10-02T03:06:25.082+09:00",
+    "mainSamples": 867,
+    "observedStack": "main dispatch source -> GenieAppDelegate signal callback -> NSApplication.terminate -> _shouldTerminate -> nested AppKit/CFRunLoop wait",
+    "physicalFootprintReported": "66.5 MiB",
+    "peakPhysicalFootprintReported": "311.8 MiB"
+  },
+  "rootCauseInference": "Direct terminate() inside a serial main-dispatch callback enters the terminateLater nested AppKit loop, while the previously queued Task@MainActor cleanup/reply cannot drain. The stack establishes the nested wait; pending Swift task starvation is a source-supported inference.",
+  "recoveryReportedByRoot": {
+    "waitedBeforeForce": "More than 50 seconds after normal SIGTERM",
+    "forcedStopScope": "Only PID 85691 after exact PID/argv ownership recheck; SIGKILL",
+    "completedAroundJST": "2026-10-02T03:08:00+09:00",
+    "ownedProcesses": "All owned preview app/service/VM PIDs absent",
+    "memoryPressure": 1,
+    "memoryFreePercent": 44,
+    "savedModel": "codex / gpt-6-sol unchanged",
+    "noaModel": "qwen3.5:9b, about 5.5 GB, not touched"
+  },
+  "earlierPressureObservation": {
+    "source": "Noa task local read-only sampling record",
+    "startUTC": "2026-10-01T17:58:39.355Z",
+    "endUTC": "2026-10-01T17:59:19.409Z",
+    "samples": 9,
+    "allPressureLevels": [
+      2
+    ],
+    "freePercentRange": [
+      38,
+      42
+    ],
+    "attributionLimit": "OS pressure 2 was real during the sampled interval. This does not identify its cause or establish a streaming-crash cause."
+  },
+  "historicalEvidence": "The prior source-only CT-6 resolution and 74 passing focused tests are retained. They did not cover AppKit signal/terminateLater scheduling and do not override this actual native failure.",
+  "fixState": "Implementation owner preparing production handoff helper and small standalone AppKit harness; full app rebuild/relaunch not performed.",
+  "evidence": [
+    {
+      "file": "termination-hang.sample.txt",
+      "source": "/private/tmp/genie-transactions-20261002/termination-hang.sample.txt",
+      "sha256": "8c0bb45108d958305a9f8c606a8a4e4a7e4cb7bd0b14cc4713b03b490463e5ad"
+    },
+    {
+      "file": "noa-start-memory-warm-observation.json",
+      "source": "/Users/shuhei/.local/share/noa-maintenance/memory-quality-20261002/start-memory-warm.json",
+      "sha256": "63975a5659b8f48acfbc1b5d03f9dc495c77ba83618b6e4f488c4490beb4dc50"
+    }
+  ],
+  "postStopSampling": {
+    "file": "stream-priority-after-stop.json",
+    "sha256": "77e176f26ba6aafb8a122dd6df7154f672b1ac79dac161abee22561475e93d90",
+    "executor": "root",
+    "startUTC": "2026-10-01T18:10:07.968253+00:00",
+    "endUTC": "2026-10-01T18:10:53.278162+00:00",
+    "samples": 10,
+    "allPressureLevels": [
+      1
+    ],
+    "freePercentRange": [
+      45.0,
+      46.0
+    ],
+    "everyOwnedPIDSetEmpty": true,
+    "attributionLimit": "Pressure had already returned to 1 before stopping Genie. This sequence does not establish that stopping Genie caused recovery."
+  },
+  "correctionFollowUp": {
+    "evidence": "appkit-termination-regression.json",
+    "status": "PASS for four narrow AppKit helper regression cases and read-only source review",
+    "deployment": "Main product not rebuilt/restarted; current old binary remains stopped.",
+    "initialNativeFailurePreserved": true
+  }
+}
