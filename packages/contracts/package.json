@@ -11,6 +11,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./research": {
+      "types": "./dist/research.d.ts",
+      "default": "./dist/research.js"
     }
   },
   "files": [

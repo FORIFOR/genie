@@ -4,7 +4,9 @@
  * ワークフローのコードは決定的でなければならないので、このファイルは
  * 乱数・時刻・I/O・Node の API に触れない。`@genie/contracts` も import しない
  * （uuidv7 が Web Crypto を触るため、ワークフローのサンドボックスに持ち込めない）。
+ * 例外は副作用の無い判定だけを切り出した `@genie/contracts/research`。
  */
+import { asksForJudgment } from '@genie/contracts/research';
 
 export type StepRisk =
   'READ' | 'REVERSIBLE_WRITE' | 'EXTERNAL_COMMIT' | 'DESTRUCTIVE' | 'REGULATED' | 'FINANCIAL';
@@ -353,6 +355,19 @@ function planResearch(input: Record<string, unknown>): TaskPlan {
       message: '公式資料と最新ニュースを照合中',
       args: { question },
     },
+    // 見立て（予想・比較・おすすめ）を求める問いだけ、対象が決まった後に中身を探す段を足す。
+    ...(asksForJudgment(question)
+      ? [
+          {
+            index: 2,
+            toolId: 'research.deepen',
+            risk: 'READ' as const,
+            surface: 'cloud' as const,
+            message: '見つかった対象の中身を調べています',
+            args: { question },
+          },
+        ]
+      : []),
     {
       index: 2,
       toolId: 'research.verify',
@@ -372,7 +387,8 @@ function planResearch(input: Record<string, unknown>): TaskPlan {
   ];
 
   return {
-    steps,
+    // 段の番号は並び順どおりに振り直す（深掘りの段の有無で後ろがずれる）
+    steps: steps.map((step, index) => ({ ...step, index })),
     artifact: { type: 'REPORT', title: question || '調査レポート', mimeType: 'text/markdown' },
   };
 }

@@ -50,6 +50,14 @@ describe.skipIf(!url)('research steps and the model', () => {
       seen('compose');
       return '';
     },
+    async followUp(_question, claims) {
+      seen('followUp');
+      return claims.length > 0 ? ['資料 A の続報'] : [];
+    },
+    async assess(_question, claims) {
+      seen('assess');
+      return claims.map((claim, index) => ({ text: `${claim} ので有力`, supports: [index] }));
+    },
   };
   const search: SearchProvider = {
     name: 'fixture',
@@ -119,8 +127,9 @@ describe.skipIf(!url)('research steps and the model', () => {
 
   it('never calls the model or the search while a transaction is open, in any step', async () => {
     const research = new ResearchService({ db, search, model });
-    await research.plan(tenantId, taskId, '資料 A はいつ公開されたか');
+    await research.plan(tenantId, taskId, '資料 A の公開時期を予想して');
     await research.search(tenantId, taskId);
+    const deepened = await research.deepen(tenantId, taskId);
     await research.verify(tenantId, taskId);
     const report = await research.report(tenantId, taskId);
 
@@ -128,13 +137,20 @@ describe.skipIf(!url)('research steps and the model', () => {
       'decompose',
       'search',
       'extractClaims',
+      'followUp',
+      'search',
+      'extractClaims',
       'synthesize',
+      'assess',
     ]);
     expect(scopes.filter((entry) => entry.scope !== null)).toEqual([]);
 
     // 外へ出しても、結果は同じところへ残る。
+    // 深掘りの検索も同じ代役なので、同じ出典が見つかるだけ（数は増えない）
+    expect(deepened.result).toEqual({ sources: 1, claims: 1 });
     expect(report.result).toEqual({ sources: 1 });
     expect(report.artifact?.markdown).toContain('資料 A は 2026 年に公開された。');
+    expect(report.artifact?.markdown).toContain('## 見立て');
     const run = await withTenant(db, tenantId, (tx) =>
       tx
         .selectFrom('research_runs')

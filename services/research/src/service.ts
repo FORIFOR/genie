@@ -6,6 +6,7 @@
  */
 import {
   GenieError,
+  asksForJudgment,
   canonicalSha256,
   countContradictionPairs,
   uuidv7,
@@ -22,6 +23,11 @@ import {
 } from './quality.js';
 import type { Finding, LanguageModel, SearchProvider } from './providers.js';
 import { ResearchLedgerService } from './ledger.js';
+
+export { asksForJudgment };
+
+/** 抜粋から主張を取り出す呼び出しを、同時にいくつまで端末へ頼むか。 */
+const EXTRACT_CONCURRENCY = 4;
 
 export interface ResearchDeps {
   readonly db: DbHandle;
@@ -119,38 +125,89 @@ export class ResearchService {
   /** 検索して、抜粋から主張を取り出し、評価して台帳へ積む。 */
   async search(tenantId: string, taskId: string): Promise<StepOutcome> {
     const run = await this.#require(tenantId, taskId);
-    const subQueries = run.sub_queries as string[];
     const now = this.#now();
+    const unique = dedupe(await this.#gather(run.question, run.sub_queries as string[], now));
+    const sources = await this.#store(tenantId, run.id, unique, now);
+    return { result: { sources, claims: unique.length }, detail: `${sources} sources` };
+  }
 
-    const candidates: ScoredCandidate[] = [];
+  /**
+   * 見立てを求める問いだけの段。1 回目で決まった対象の、足りない中身を探す。
+   *
+   * 「次の重賞を 1 つ選んで予想」は、1 回目でレース名までしか分からず、
+   * 出走馬や成績は誰も探していなかった（実測 2026-10-03: 結論が開催日と距離だけ）。
+   * 1 回目の主張に出た名前で、もう 1 回だけ探す。検索の段に入れると
+   * 1 つの段の時間の上限（5 分）を超えたので、段を分けた。
+   */
+  async deepen(tenantId: string, taskId: string): Promise<StepOutcome> {
+    const run = await this.#require(tenantId, taskId);
+    const known = await withTenant(this.#db, tenantId, (tx) => this.#evidenceOf(tx, run.id));
+    if (!this.#model.followUp || known.length === 0 || !asksForJudgment(run.question))
+      return { result: { sources: 0, claims: 0 }, detail: null };
+
+    const asked = run.sub_queries as string[];
+    const queries = (
+      await this.#model.followUp(
+        run.question,
+        known.map((row) => row.claim),
+        this.#maxSubQueries,
+      )
+    ).filter((query) => !asked.includes(query));
+    if (queries.length === 0) return { result: { sources: 0, claims: 0 }, detail: null };
+
+    const now = this.#now();
+    const unique = dedupe(await this.#gather(run.question, queries, now));
+    const sources = await this.#store(tenantId, run.id, unique, now);
+    return { result: { sources, claims: unique.length }, detail: `${sources} sources` };
+  }
+
+  /** 検索して、抜粋から主張を取り出す。**DB には触らない**（端末を待つので）。 */
+  async #gather(
+    question: string,
+    queries: readonly string[],
+    now: Date,
+  ): Promise<ScoredCandidate[]> {
     // 下位クエリは互いに独立なので並列でよい（正本 §8.1 parallel search）
     const results = await Promise.all(
-      subQueries.map((query) => this.#search.search(query, this.#hitsPerQuery)),
+      queries.map((query) => this.#search.search(query, this.#hitsPerQuery)),
     );
-
-    for (const hits of results) {
-      for (const hit of hits) {
-        for (const extracted of await this.#model.extractClaims(run.question, hit)) {
-          candidates.push(
-            score(
-              candidateFrom(hit, extracted.claim, extracted.supportText, this.#search.name),
-              now,
-            ),
+    const hits = results.flat();
+    const extracted: ScoredCandidate[][] = Array.from({ length: hits.length }, () => []);
+    // 取り出しも互いに独立。1 件ずつ待っていた間、12 件で 1 分以上かかっていた。
+    let next = 0;
+    const worker = async (): Promise<void> => {
+      while (next < hits.length) {
+        const at = next++;
+        const hit = hits[at]!;
+        for (const claim of await this.#model.extractClaims(question, hit)) {
+          extracted[at]!.push(
+            score(candidateFrom(hit, claim.claim, claim.supportText, this.#search.name), now),
           );
         }
       }
-    }
+    };
+    await Promise.all(
+      Array.from({ length: Math.min(EXTRACT_CONCURRENCY, hits.length) }, () => worker()),
+    );
+    // 並べ方は検索の順のまま（並列にしても結果の順が揺れない）
+    return extracted.flat();
+  }
 
-    const unique = dedupe(candidates);
-
-    await withTenant(this.#db, tenantId, async (tx) => {
+  /** 主張を台帳へ積み、この調査の出典の数を返す。 */
+  async #store(
+    tenantId: string,
+    runId: string,
+    unique: readonly ScoredCandidate[],
+    now: Date,
+  ): Promise<number> {
+    return withTenant(this.#db, tenantId, async (tx) => {
       for (const candidate of unique) {
         await tx
           .insertInto('evidence')
           .values({
             id: uuidv7(),
             tenant_id: tenantId,
-            research_run_id: run.id,
+            research_run_id: runId,
             source_url: candidate.url,
             source_type: candidate.sourceType,
             publisher: candidate.publisher,
@@ -170,16 +227,20 @@ export class ResearchService {
           .onConflict((oc) => oc.doNothing())
           .execute();
       }
-      const sources = new Set(unique.map((c) => c.normalizedUrl)).size;
+      // 出典の数は台帳全体で数える（深掘りの段で足した分も含める）
+      const rows = await tx
+        .selectFrom('evidence')
+        .select('source_url')
+        .where('research_run_id', '=', runId)
+        .execute();
+      const sources = new Set(rows.map((row) => row.source_url)).size;
       await tx
         .updateTable('research_runs')
         .set({ source_count: sources, status: 'SYNTHESIZING', updated_at: now })
-        .where('id', '=', run.id)
+        .where('id', '=', runId)
         .execute();
+      return sources;
     });
-
-    const sources = new Set(unique.map((c) => c.normalizedUrl)).size;
-    return { result: { sources, claims: unique.length }, detail: `${sources} sources` };
   }
 
   /** 突き合わせる。矛盾があれば確信度を上げない。 */
@@ -264,10 +325,13 @@ export class ResearchService {
      * （実測 2026-10-02: レポートの段だけ依頼が 1 件も残らず、10 分後に失敗）。
      * 同じトランザクションが tasks の行も掴むので、停止も失敗の記録も待たされていた。
      */
-    const summary = await this.#model.synthesize(
-      run.question,
-      rows.map((row) => row.claim),
-    );
+    const claims = rows.map((row) => row.claim);
+    const summary = await this.#model.synthesize(run.question, claims);
+    // 予想・評価を求められたときだけ、事実の結論とは別に見立てを足す。
+    const assessment =
+      this.#model.assess && claims.length > 0 && asksForJudgment(run.question)
+        ? await this.#model.assess(run.question, claims)
+        : [];
     const distinct = new Set(rows.map((row) => row.source_url));
 
     await withTenant(this.#db, tenantId, (tx) =>
@@ -281,7 +345,7 @@ export class ResearchService {
     return {
       result: { sources: distinct.size },
       detail: null,
-      artifact: { title: run.question, markdown: composeReport(run, summary, rows) },
+      artifact: { title: run.question, markdown: composeReport(run, summary, rows, assessment) },
     };
   }
 
@@ -354,6 +418,7 @@ export function composeReport(
   run: Pick<RunRow, 'question' | 'confidence'>,
   summary: readonly Finding[],
   evidence: readonly EvidenceRow[],
+  assessment: readonly Finding[] = [],
 ): string {
   const distinct = [...new Set(evidence.map((row) => row.source_url))];
   // 行数ではなく組の数。1 件の食い違いを 2 件と書かない。
@@ -380,10 +445,30 @@ export function composeReport(
             `${index + 1}. ${point.text}\n   根拠: ${point.supports
               .map((position) => evidence[position]?.source_url)
               .filter((url): url is string => typeof url === 'string')
+              .filter((url, at, all) => all.indexOf(url) === at)
               .map((url) => `[${url}](${url})`)
               .join(' / ')}`,
         )
       : ['確かなことは分かりませんでした。']),
+    ...(assessment.length > 0
+      ? [
+          '',
+          '## 見立て',
+          '',
+          // 事実の結論と混ぜない。読む人が「調べた事実」と「そこからの判断」を分けて読めるように。
+          '上の根拠からの判断です。結果を保証するものではありません。',
+          '',
+          ...assessment.map(
+            (point, index) =>
+              `${index + 1}. ${point.text}\n   根拠: ${point.supports
+                .map((position) => evidence[position]?.source_url)
+                .filter((url): url is string => typeof url === 'string')
+                .filter((url, at, all) => all.indexOf(url) === at)
+                .map((url) => `[${url}](${url})`)
+                .join(' / ')}`,
+          ),
+        ]
+      : []),
     '',
     `${distinct.length} sources · confidence: ${run.confidence ?? 'low'} · contradictions: ${contradictionCount}`,
     '',

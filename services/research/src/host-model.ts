@@ -117,6 +117,29 @@ export class HostLanguageModel implements LanguageModel {
     );
   }
 
+  async followUp(question: string, claims: readonly string[], max: number): Promise<string[]> {
+    const result = await this.#ask('llm.follow_up', { question, claims: [...claims], max });
+    return stringsOf(result, 'queries').slice(0, max);
+  }
+
+  async assess(question: string, claims: readonly string[]): Promise<Finding[]> {
+    const result = await this.#ask('llm.assess', { question, claims: [...claims] });
+    const raw = Array.isArray((result as { assessments?: unknown })?.assessments)
+      ? (result as { assessments: unknown[] }).assessments
+      : [];
+    return groundedFindings(
+      raw.map((item) => ({
+        text: stringOf(item, 'text'),
+        supports: Array.isArray((item as { supports?: unknown })?.supports)
+          ? (item as { supports: unknown[] }).supports.filter(
+              (n): n is number => typeof n === 'number',
+            )
+          : [],
+      })),
+      claims.length,
+    );
+  }
+
   async answer(
     question: string,
     context?: string,
