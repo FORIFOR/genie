@@ -6,6 +6,7 @@ import { connectionConfiguration } from './connection-configuration.js';
  *
  * **Dock とは別プロセス。**Dock を閉じても、これは動き続ける。
  */
+import { randomUUID } from 'node:crypto';
 import { cloudClient } from './cloud.js';
 import { ApiSession } from './api-session.js';
 import { acquireHostInstance } from './instance-lock.js';
@@ -32,6 +33,7 @@ import { CloudModelBudget } from './cloud-vision-budget.js';
 import { visualContextDir } from './visual-context.js';
 import { NativeVisionDevice } from './computer-vision-device.js';
 import { CheckoutAssistanceRuntime } from './checkout-assistance.js';
+import { OfficeEditRuntime } from './office/runtime.js';
 import { TransactionRuntime } from './transaction-runtime.js';
 import { SimulationOrders } from './simulation-orders.js';
 import { nativeSimulationConfirmation } from './simulation-native-checkout.js';
@@ -366,6 +368,17 @@ async function main(): Promise<void> {
       computerVision,
       transactions,
       new CheckoutAssistanceRuntime(),
+      // Word / Excel は端末で読み、端末のモデルに案を出させ、別名のコピーに書く。
+      new OfficeEditRuntime({
+        ask: async (args, signal) => {
+          const outcome = await llm.run(
+            { id: `office-${randomUUID()}`, toolId: 'llm.office_edit', args, approval: null },
+            signal,
+          );
+          if (!outcome.ok) throw new Error(outcome.error?.message ?? 'model failed');
+          return outcome.result;
+        },
+      }),
       new CurrentInfoRunner(),
       llm,
     ]),

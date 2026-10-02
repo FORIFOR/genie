@@ -37,6 +37,8 @@ export function isMeteredStep(step: { readonly toolId: string }): boolean {
       'meeting.summarize',
       'meeting.bundle',
       'video.render',
+      // 端末のモデルに案を出させる。応答が失われても、やり直すと 2 つ目のコピーと二重の利用になる。
+      'office.edit',
     ].includes(step.toolId)
   );
 }
@@ -255,6 +257,7 @@ export const KNOWN_TASK_KINDS = [
   'computer.run',
   'info.lookup',
   'checkout.assist',
+  'office.edit',
   'transaction.order',
   'transaction.reconcile',
 ] as const;
@@ -647,6 +650,26 @@ export function planTask(kind: string, input: Record<string, unknown>): TaskPlan
       return planComputerRun(input);
     case 'info.lookup':
       return planInfoLookup(input);
+    case 'office.edit': {
+      const path = input['path'];
+      const instruction = input['instruction'];
+      if (typeof path !== 'string' || typeof instruction !== 'string' || !instruction.trim())
+        throw new UnknownTaskKindError('office.edit needs a path and an instruction');
+      return {
+        steps: [
+          {
+            index: 0,
+            toolId: 'office.edit',
+            // 新しいファイルを書くだけ。原本は書き換えないので、消せば元どおり。
+            risk: 'REVERSIBLE_WRITE',
+            surface: 'local',
+            message: 'ファイルを読み、直したコピーを作っています（原本は変えません）',
+            args: { path, instruction },
+          },
+        ],
+        artifact: { type: 'OTHER', title: '文書の編集', mimeType: 'text/markdown' },
+      };
+    }
     case 'checkout.assist':
       if (
         Object.keys(input).length !== 1 ||

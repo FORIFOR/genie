@@ -6,6 +6,7 @@
  */
 export { routeLane, isDocumentRequest, type LaneDecision, type LaneInput } from './lane.js';
 export { checkoutAssistanceRequest } from './checkout-request.js';
+export { officeEditRequest, type OfficeEditRequest } from './office-request.js';
 export { simulationOrderRequest } from './transaction-request.js';
 export {
   clarificationFor,

@@ -48,4 +48,5 @@ export * from './transaction.js';
 export * from './transaction-authorization.js';
 export * from './transaction-simulation.js';
 export * from './research.js';
+export * from './office.js';
 export * from './checkout-assistance.js';
