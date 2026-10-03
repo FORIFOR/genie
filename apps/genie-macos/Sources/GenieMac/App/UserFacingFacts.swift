@@ -166,6 +166,8 @@ enum UserFacingFacts {
     /// 一回の音声入力（文章を入れるだけ）。Genie に話しかけるのは「会話」。
     static let dockDictation = "音声入力"
     static let conversationDuringRecording = "録音中は会話を始められません。録音を止めてから、もう一度どうぞ。"
+    /// Gemini のクレジット切れ・利用枠の上限で、標準の会話に切り替えたとき。
+    static let conversationSwitchedFromGemini = "Gemini が使えないため、標準の会話に切り替えました。続けてどうぞ。"
     static let dictationNeedsAccessibility = "文字を入れるには、アクセシビリティの許可が要ります。設定から許可してください。"
     static let dictationNoField = "文字を入れる欄が見つかりませんでした。Genie に聞くときは「会話」から話してください。"
     static let menuShowControls = "録音コントロールを表示"

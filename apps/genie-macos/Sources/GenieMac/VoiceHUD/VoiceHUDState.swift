@@ -663,12 +663,17 @@ final class VoiceHUDState: ObservableObject {
         // 上限に達していたら始めない（**既存の経路へも黙って切り替えない**。何が起きたかを言う）。
         let gemini = geminiSettings ?? GeminiLiveSettings.shared
         let provider: ConversationProvider
-        if gemini.enabled, gemini.checkingKey || gemini.keyAccessIssue != nil {
-            answer = gemini.keyAccessIssue ?? "キーを確認しています。もう一度試してください。"
-            mode = .answer(answer)
+        // キーの確認が終わっていなければ、終わるのを待ってから始める（「もう一度」と言わせない）。
+        if gemini.enabled, gemini.checkingKey {
+            Task { [weak self] in
+                await gemini.refreshKeyPresence()
+                guard !gemini.checkingKey else { return }
+                self?.beginConversation(geminiSettings: geminiSettings)
+            }
             return
         }
-        if gemini.enabled, gemini.hasKey {
+        // クレジット切れ・利用枠の上限の後は、しばらく標準の会話で話す。
+        if gemini.usableForConversation() {
             let check = gemini.budget.canStart(at: Date())
             guard check.ok, let key = gemini.apiKey() else {
                 answer = check.reason ?? gemini.keyAccessIssue ?? "Gemini Live のキーを読めませんでした。"
@@ -680,6 +685,15 @@ final class VoiceHUDState: ObservableObject {
                 delegate: { [weak self] request in await self?.delegateFromConversation(request) ?? "not_accepted" },
                 onLost: { [weak self] reason in
                     guard let self else { return }
+                    if GeminiLive.isBillingUnavailable(reason) {
+                        // 支払いで切れた。止めずに、標準の会話に切り替えて続ける。
+                        gemini.pauseForBilling()
+                        self.endConversation(.providerLost)
+                        self.startConversation(using: self.pipelineProvider)
+                        // 声で言うとマイクが拾うので、聞いている面の文字で知らせる（最初の言葉で置き換わる）。
+                        if self.conversation.isActive { self.mode = .listening(partial: Facts.conversationSwitchedFromGemini) }
+                        return
+                    }
                     self.answer = reason
                     self.endConversation(.providerLost)
                     self.mode = .answer(reason)
