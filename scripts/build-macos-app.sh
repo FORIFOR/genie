@@ -5,6 +5,16 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 source "$ROOT/scripts/build-resource-env.sh"
 PKG="$ROOT/apps/genie-macos"
+# 実体は build.noindex に置き、build はそこへの symlink にする。Spotlight は名前が .noindex で
+# 終わるフォルダを索引しないので、作った .app が /Applications の Genie と並んで出てこない
+# （2026-10-03: 検索で Genie が 8 個並んだ）。build/Genie.app の道はそのまま使える。
+if [[ -d "$PKG/build" && ! -L "$PKG/build" ]]; then
+  mkdir -p "$PKG/build.noindex"
+  find "$PKG/build" -mindepth 1 -maxdepth 1 -exec mv {} "$PKG/build.noindex/" \;
+  rmdir "$PKG/build"
+fi
+mkdir -p "$PKG/build.noindex"
+[[ -L "$PKG/build" ]] || ln -s build.noindex "$PKG/build"
 APP="$PKG/build/Genie.app"
 # 版は package.json 1 か所から（release-macos.sh と同じ）。
 VERSION="$(node -p "require('$ROOT/package.json').version")"
