@@ -151,6 +151,12 @@ export type VisionDecision =
       action: 'stop';
       frameId: string;
       reason: string;
+    }
+  | {
+      /** サインインの画面。本人がパスキー・Touch ID で済ませるのを待つ。 */
+      action: 'signin';
+      frameId: string;
+      reason: string;
     };
 
 /*
@@ -299,7 +305,7 @@ export function decisionOf(raw: unknown, frame: VisionFrame): VisionDecision {
   const said = d['frameId'];
   if (said !== undefined && said !== null && said !== '' && said !== frame.id)
     throw new VisionFailure('stale_plan');
-  if (d['action'] === 'done' || d['action'] === 'stop') {
+  if (d['action'] === 'done' || d['action'] === 'stop' || d['action'] === 'signin') {
     if (typeof d['reason'] !== 'string' || !d['reason'].trim() || d['reason'].length > 500)
       throw new VisionFailure('invalid_plan');
     return { action: d['action'], frameId: frame.id, reason: d['reason'] };

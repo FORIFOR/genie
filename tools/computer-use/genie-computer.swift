@@ -55,6 +55,8 @@ struct Request: Decodable {
     let op: String; let id: String?; let outputPath: String?; let referencePath: String?
     let goal: String?; let recipient: String?; let scope: Frame?; let action: Action?; let authorizationExpiresAt: Double?
     let expectedTarget: ExpectedTarget?
+    /// 撮影中に出す状態。いまは "signin"（本人のサインインを待っている）だけ。
+    var phase: String? = nil
 }
 struct Target {
     let bundleId: String; let windowId: UInt32; let pid: Int32; let bounds: Bounds

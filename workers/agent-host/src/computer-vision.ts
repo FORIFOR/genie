@@ -45,7 +45,8 @@ export interface VisionDevice {
   stopped?(requestId: string, code: string, audit: unknown[]): Promise<void>;
   /** Local consent precedes capture/egress. The selected window becomes the immutable scope. */
   begin(goal: string, recipient: string, signal: AbortSignal): Promise<VisionFrame>;
-  capture(scope: VisionFrame, signal: AbortSignal): Promise<VisionFrame>;
+  /** `phase: 'signin'` は、本人のサインインを待っている間だと窓の上に出す。 */
+  capture(scope: VisionFrame, signal: AbortSignal, phase?: 'signin'): Promise<VisionFrame>;
   /*
    * 人が割り込んだあと、**AI 側だけ**を再開してよいかを訊く。人には何もしない。
    * 人の手が止まっていなければ `human_active` を投げ、呼び出し側は待つ。
@@ -79,6 +80,8 @@ export interface VisionConfig {
   maxActions?: number;
   timeoutMs?: number;
   now?: () => number;
+  /** 本人のサインインを待つ上限（既定 2 分）。 */
+  signinWaitMs?: number;
   /**
    * 端末の外のモデルを使うときの歯止め。端末の中のモデル（`local`）には掛からない。
    * 渡さないときは歯止め無しではなく、**端末の外を使わない**設定でのみ成り立つ。
@@ -117,6 +120,9 @@ interface AuditRow {
 const TOOLS = { plan: 'llm.plan_computer_action', verify: 'llm.verify_computer_action' };
 
 /** No metadata-only fallback. Neither model `done` nor a changed pointer proves success. */
+/** サインインを待つ上限。パスキー・Touch ID・2 段階確認を済ませるのに足りる長さ。 */
+const SIGNIN_WAIT_MS = 120_000;
+
 export class ComputerVisionRuntime {
   #busy = false;
   readonly #max: number;
@@ -209,6 +215,7 @@ export class ComputerVisionRuntime {
       let feedback = '';
       /// 人の割り込みで一時停止した回数。待つのは人の手が止まるまで。
       let pauses = 0;
+      let signins = 0;
       const model = async (
         toolId: string,
         frames: VisionFrame[],
@@ -281,8 +288,10 @@ export class ComputerVisionRuntime {
        * まだ配送していない操作は、そこで全部失効する（古い世代は送る前に断られる）。
        * 再開できる装置が無ければ、これまでどおりその場で停止する。
        */
+      // サインインを待つ間は、本人が何度も触る（アカウント選択・パスキー・確認）。その間は上限を広げる。
+      let pauseLimit = 3;
       const pauseForHuman = async (code: string) => {
-        if (!device!.resume || ++pauses > 3) throw new VisionFailure(code);
+        if (!device!.resume || ++pauses > pauseLimit) throw new VisionFailure(code);
         for (let attempt = 0; attempt < 20; attempt++) {
           check(signal);
           await sleep(1000, signal);
@@ -296,12 +305,12 @@ export class ComputerVisionRuntime {
         }
         throw new VisionFailure(code);
       };
-      const capture = async (): Promise<VisionFrame> => {
+      const capture = async (phase?: 'signin'): Promise<VisionFrame> => {
         for (;;) {
           check(signal);
           try {
             const fresh = frameOf(
-              await wait(device!.capture(initial, signal), signal),
+              await wait(device!.capture(initial, signal, phase), signal),
               this.#now(),
             );
             assertScope(fresh, initial);
@@ -457,6 +466,32 @@ export class ComputerVisionRuntime {
         check(signal);
         let proposed = await plan();
         if (proposed.action === 'stop') throw new VisionFailure('planner_stopped');
+        if (proposed.action === 'signin') {
+          /*
+           * サインインの画面。**Genie は資格情報を打たない。**本人がパスキーや Touch ID で
+           * サインインするのを待ち、画面が変わって落ち着いたら続きを考える（本人の指示 2026-10-03）。
+           * 待つ間はモデルを呼ばない（撮るだけ）。待ちきれなければ、そう言って止める。
+           */
+          if (++signins > 3) throw new VisionFailure('signin_required');
+          pauseLimit = Math.max(pauseLimit, pauses + 30);
+          const start = current.sha256;
+          let previous = start;
+          let settled: VisionFrame | null = null;
+          // 待つのは撮影の回数で数える（時計を止めた試験でも終わるように）。
+          const limit = this.config.signinWaitMs ?? SIGNIN_WAIT_MS;
+          for (let waited = 0; waited < limit; waited += 2000) {
+            await sleep(2000, signal);
+            const seen = await capture('signin');
+            if (seen.sha256 !== start && seen.sha256 === previous) {
+              settled = seen;
+              break;
+            }
+            previous = seen.sha256;
+          }
+          if (!settled) throw new VisionFailure('signin_required');
+          current = settled;
+          continue;
+        }
         if (proposed.action === 'done') {
           const latest = await capture();
           const verdict = await verify(
@@ -805,6 +840,8 @@ function failure(code: string): VisionOutcome {
       '操作の配送結果が未確認のため停止しました。二重入力を防ぐため、自動では再実行しません。',
     verification_blocked:
       '確認の途中で先へ進めない画面を検出し、停止しました。画面の状態を確認してください。',
+    signin_required:
+      'サインインが必要です。Safari などでパスキーや Touch ID でサインインしてから、もう一度頼んでください。Genie はパスワードを入力しません。',
     policy_return_not_search:
       'Return キーは検索欄とアドレス欄でだけ押します。フォームの送信には使いません。',
     policy_commit_control:

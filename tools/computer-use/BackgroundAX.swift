@@ -74,6 +74,7 @@ struct BackgroundAX {
             case "type", "type_keys", "key": label = "入力中"
             case "scroll": label = "スクロール中"
             case "paused": label = "操作が終わるのを待っています"
+            case "signin": label = "サインインしてください（パスキー・Touch ID）"
             case "stopped": label = "停止しました"
             default: label = "画面を確認中"
             }
@@ -1164,7 +1165,8 @@ final class ConsentAccessoryView: NSView {
             if request.op == "begin" { (t,session)=try await select(request,dir:dir) }
             else { guard let f=request.scope,let s=f.backgroundSession else { throw Failure("invalid_scope") };t=try permitted(f,dir:dir);session=s }
             let activityPath = try sessionPath(dir, session)
-            try activity(activityPath, target: t, phase: "checking", begin: request.op == "begin")
+            try activity(activityPath, target: t, phase: request.phase == "signin" ? "signin" : "checking",
+                         begin: request.op == "begin")
             var captured = false
             defer { if !captured { unlink(activityPath + ".activity") } }
             /*

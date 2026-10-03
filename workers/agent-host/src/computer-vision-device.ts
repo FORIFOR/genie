@@ -109,8 +109,8 @@ export class NativeVisionDevice implements VisionDevice {
       signal,
     );
   }
-  async capture(scope: VisionFrame, signal: AbortSignal): Promise<VisionFrame> {
-    return this.#capture({ op: 'capture', scope }, signal);
+  async capture(scope: VisionFrame, signal: AbortSignal, phase?: 'signin'): Promise<VisionFrame> {
+    return this.#capture({ op: 'capture', scope, ...(phase ? { phase } : {}) }, signal);
   }
   /*
    * 人の手が止まったかを helper に訊く。**人には何もしない。**

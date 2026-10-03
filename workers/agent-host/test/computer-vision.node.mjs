@@ -70,6 +70,7 @@ function harness(decide, options = {}) {
     closed = 0,
     claimed = false;
   const seen = [];
+  const phases = [];
   const elements = options.elements ?? [{ id: 'e9', role: 'AXTextArea', name: 'Test field' }];
   const makePreview = (f, action) => ({
     status: 'target_preview',
@@ -102,8 +103,9 @@ function harness(decide, options = {}) {
         ...(options.background ? { deliveryMode: 'background' } : {}),
       });
     },
-    async capture() {
+    async capture(_scope, _signal, phase) {
       captures++;
+      phases.push(phase ?? null);
       return frame(++n, {
         capturedAt: options.config?.now?.() ?? now,
         elements,
@@ -144,7 +146,7 @@ function harness(decide, options = {}) {
     now: () => now,
     ...options.config,
   });
-  return { runtime, seen, stats: () => ({ calls, captures, applied, closed }) };
+  return { runtime, seen, phases, stats: () => ({ calls, captures, applied, closed }) };
 }
 function happy(s) {
   const f = s.args.observation;
@@ -722,6 +724,51 @@ test('RETURN is a key only for running a search, declared as navigation', () => 
   });
   assert.match(prompt, /RETURN is ONLY for running a search/);
   assert.match(prompt, /never use it to submit a form/);
+});
+test('a sign-in screen is handed to the person: nothing is typed, Genie waits, then continues', async () => {
+  const signin = (f) => ({ action: 'signin', frameId: f.id, reason: 'Google account chooser' });
+  const h = harness(
+    (s, calls) => {
+      const f = s.args.observation;
+      if (s.toolId === 'llm.verify_computer_action') return { ok: true, result: verdict(f) };
+      return { ok: true, result: calls === 1 ? signin(f) : done(f) };
+    },
+    // After the person signs in, the window changes once and then stays the same.
+    { after: { sha256: 'b'.repeat(64) }, config: { signinWaitMs: 20_000 } },
+  );
+  const out = await h.runtime.run(step());
+  assert.equal(out.ok, true);
+  assert.equal(h.stats().applied, 0);
+  // While waiting, the window says to sign in; no model call is made until the screen settles.
+  assert.deepEqual(h.phases.slice(0, 2), ['signin', 'signin']);
+  assert.equal(h.seen.filter((s) => s.toolId === 'llm.plan_computer_action').length, 2);
+});
+test('waiting for sign-in ends with a clear reason when nobody signs in', async () => {
+  const h = harness(
+    (s) => ({
+      ok: true,
+      result: { action: 'signin', frameId: s.args.observation.id, reason: 'login' },
+    }),
+    // Every capture differs (the screen never settles), and the wait is short for the test.
+    { config: { signinWaitMs: 3000 } },
+  );
+  const out = await h.runtime.run(step());
+  assert.equal(out.ok, false);
+  assert.equal(out.error.code, 'computer.vision.signin_required');
+  assert.match(out.error.message, /パスキーや Touch ID/);
+  assert.match(out.error.message, /パスワードを入力しません/);
+  assert.equal(h.stats().applied, 0);
+});
+test('the planner may hand a sign-in to the person, and is told never to type credentials', () => {
+  const f = frame();
+  assert.equal(
+    decisionOf({ action: 'signin', frameId: f.id, reason: 'passkey prompt' }, f).action,
+    'signin',
+  );
+  assert.throws(() => decisionOf({ action: 'signin', frameId: f.id }, f));
+  const prompt = visionPromptFor('llm.plan_computer_action', { goal: 'g' });
+  assert.match(prompt, /Never type passwords, codes or other credentials/);
+  assert.match(prompt, /"action":"signin"/);
 });
 test('shell / Enter / arbitrary modifiers are not action capabilities', () => {
   for (const bad of [
