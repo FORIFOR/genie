@@ -182,6 +182,9 @@ mod tests {
                         Err(error) => panic!("reachability listener failed: {error}"),
                     }
                 };
+                // On macOS an accepted socket inherits the listener's non-blocking mode, so a
+                // read before the client's bytes arrive failed with WouldBlock (flaky in verify-all).
+                socket.set_nonblocking(false).unwrap();
                 socket.set_read_timeout(Some(Duration::from_secs(3))).unwrap();
                 let mut request = String::new();
                 std::io::BufReader::new(&socket).read_line(&mut request).unwrap();
