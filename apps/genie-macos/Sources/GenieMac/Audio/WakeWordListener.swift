@@ -31,6 +31,9 @@ final class WakeWordListener {
         VoiceHUDState.shared.beginConversation()
     }
 
+    /// 検査用: 認識器が書いた文字を受け取る（本番では使わない・残さない）。
+    var onHeard: ((String) -> Void)?
+
     init(defaults: UserDefaults = .standard) { self.defaults = defaults }
 
     /// 既定はオン（本人が使うと決めた機能）。メニューから切れる。
@@ -85,14 +88,15 @@ final class WakeWordListener {
         else { return }
         listening = RecordingRuntime.shared.beginVoiceListening(
             onFirstFrame: {},
-            onPartial: { [weak self] text in self?.heard(text) },
-            onFinal: { [weak self] text in self?.heard(text) })
+            onPartial: { [weak self] text in self?.heard(text, final: false) },
+            onFinal: { [weak self] text in self?.heard(text, final: true) })
         // 聞いた中身は残さない。待ち受けを始めたかどうかだけ。
         if listening { NSLog("genie wake: listening") }
     }
 
-    private func heard(_ text: String) {
-        guard listening, Self.containsWakeWord(text),
+    private func heard(_ text: String, final: Bool) {
+        onHeard?(text)
+        guard listening, Self.containsWakeWord(text, final: final),
               GenieSpeechOutput.shared.owner == nil,
               Date().timeIntervalSince(lastFired) >= Self.cooldown else { return }
         lastFired = Date()
@@ -112,11 +116,24 @@ final class WakeWordListener {
             && !c.conversationActive && !c.micInUse && !c.speaking
     }
 
-    /// 「ジーニー」を含むか。ひらがな・半角・長音の揺れ、英字の Genie も同じに扱う。
-    static func containsWakeWord(_ text: String) -> Bool {
+    /*
+     * 「ジーニー」と呼ばれたか。**認識器が実際に書く形で見る。**
+     * 端末内の認識器は、短く呼んだ「ジーニー」を「ジー」「ジニ」「爺」「G」と書くことが多い
+     * （2026-10-04 実測: Kyoko の声で「ジーニー」→「ジー」、「ねえ、ジーニー」→「ジニ」）。
+     *   - はっきりした形（ジーニー・ジーニ・ジニー・Genie）は、どこに出てもすぐ起こす
+     *   - あいまいな形（ジー・ジニ・爺・G）は、**一言だけの発話が終わったとき**にだけ起こす
+     *     （「ジーンズ」の途中の「ジー」などで起こさないため）
+     */
+    static func containsWakeWord(_ text: String, final: Bool = false) -> Bool {
         let folded = text.precomposedStringWithCompatibilityMapping
             .applyingTransform(.hiraganaToKatakana, reverse: false) ?? text
-        let compact = folded.uppercased().filter { !$0.isWhitespace && !"、。,.!?！？・「」".contains($0) }
-        return ["ジーニー", "ジーニ", "GENIE"].contains { compact.contains($0) }
+        var compact = folded.uppercased().filter { !$0.isWhitespace && !"、。,.!?！？・「」〜-".contains($0) }
+        if ["ジーニー", "ジーニ", "ジニー", "ジーニイ", "GENIE"].contains(where: { compact.contains($0) }) { return true }
+        guard final else { return false }
+        // 呼びかけの前置き（ねえ・ヘイ・おい）は外して、一言だけかを見る。
+        for prefix in ["ネエ", "ネー", "ヘイ", "HEY", "オイ"] where compact.hasPrefix(prefix) {
+            compact.removeFirst(prefix.count)
+        }
+        return ["ジー", "ジニ", "ジイ", "爺", "G", "ジ"].contains(compact)
     }
 }

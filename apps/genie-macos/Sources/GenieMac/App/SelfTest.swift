@@ -102,6 +102,7 @@ enum SelfTest {
         case "aistop": Task { await aiStop(args) }; return true
         case "glassshots": Task { await glassShots(Array(args[(i + 2)...])) }; return true
         case "voicee2e": Task { await voiceE2E(args) }; return true
+        case "wakeword": Task { await wakeWord(args) }; return true
         case "geminismoke": Task { await geminiSmoke() }; return true
         case "brief": briefGate(); return true
         case "journey": journeyGate(args); return true

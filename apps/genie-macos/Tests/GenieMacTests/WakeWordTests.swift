@@ -13,6 +13,17 @@ final class WakeWordTests: XCTestCase {
         }
     }
 
+    /// 端末内の認識器は短い「ジーニー」を「ジー」「ジニ」「爺」と書く（2026-10-04 実測）。
+    func testShortCallsWrittenLooselyWakeOnlyWhenTheUtteranceIsOver() {
+        for text in ["ジー", "ジニ", "爺", "G", "ねえ、ジニ", "ヘイ ジー"] {
+            XCTAssertTrue(WakeWordListener.containsWakeWord(text, final: true), text)
+            XCTAssertFalse(WakeWordListener.containsWakeWord(text, final: false), text)
+        }
+        for text in ["ジーンズ", "ジーンズを買う", "ジニアの花", "爺さん", "Gメール"] {
+            XCTAssertFalse(WakeWordListener.containsWakeWord(text, final: true), text)
+        }
+    }
+
     func testItListensOnlyWhenNothingElseUsesTheMicrophoneOrSpeaks() {
         let ready = WakeWordListener.Conditions(enabled: true, microphoneGranted: true, speechAuthorized: true,
                                                 screenLocked: false, asleep: false,
