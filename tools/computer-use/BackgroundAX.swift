@@ -1338,6 +1338,20 @@ final class ConsentAccessoryView: NSView {
             guard nodes.indices.contains(before.barIndex), nodes.indices.contains(before.contentIndex) else { throw Failure("target_changed") }
             scrollBefore = before; scrollBar = nodes[before.barIndex]; scrollContent = nodes[before.contentIndex]
             chosen = old; element = resolved; route = .axScroll
+        case "key" where a.key == "RETURN":
+            guard PrivateSPI.available else { throw Failure("background_key_route_unavailable") }
+            guard keyWindowIsTarget(t) else { throw Failure("background_key_window_not_focused") }
+            // 焦点のある要素そのものを見る。検索欄でなければ押さない。
+            let app = AXUIElementCreateApplication(t.pid)
+            guard let focusedRef = attribute(app, kAXFocusedUIElementAttribute),
+                  CFGetTypeID(focusedRef) == AXUIElementGetTypeID() else { throw Failure("policy_return_not_search") }
+            let focused = focusedRef as! AXUIElement
+            guard NativeInput.returnAllowed(role: string(focused, kAXRoleAttribute),
+                                            subrole: string(focused, kAXSubroleAttribute),
+                                            identifier: string(focused, kAXIdentifierAttribute))
+            else { throw Failure("policy_return_not_search") }
+            // 送る直前と打つ間に、焦点がこの欄のままかを確かめる（下の共通の確認が element を見る）。
+            element = focused; route = .nativeKey; codes = [NativeInput.returnKeyCode]
         case "key":
             guard let name=a.key, let code=NativeInput.keyCode(forName:name)
             else { throw Failure("policy_action_not_allowed") }

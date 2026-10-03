@@ -37,6 +37,10 @@ final class Plate: NSView {
 
 final class Delegate: NSObject, NSApplicationDelegate {
     @objc func pressed() { buttonClicks += 1; save() }
+    /// 検索欄で Return が押されたら数える（検索を走らせた回数）。
+    @objc func searched() { searchSubmits += 1; save() }
+    var search: NSSearchField!
+    var searchSubmits = 0
     var window: Counting!
     var plate: Plate!
     var field: NSTextView!
@@ -63,6 +67,14 @@ final class Delegate: NSObject, NSApplicationDelegate {
         button.frame = NSRect(x: 250, y: 230, width: 170, height: 40)
         button.setAccessibilityIdentifier("native-button")
         view.addSubview(button)
+        search = NSSearchField(frame: NSRect(x: 250, y: 290, width: 170, height: 28))
+        search.target = self
+        search.action = #selector(searched)
+        // 打つたびではなく、Return で 1 回だけ走らせる。
+        search.sendsSearchStringImmediately = false
+        search.sendsWholeSearchString = true
+        search.setAccessibilityIdentifier("native-search")
+        view.addSubview(search)
         picture = Picture(frame: NSRect(x: 250, y: 180, width: 120, height: 40))
         picture.image = NSImage(size: NSSize(width: 120, height: 40))
         picture.setAccessibilityIdentifier("native-picture")
@@ -110,6 +122,8 @@ final class Delegate: NSObject, NSApplicationDelegate {
                                   "otherText": other.string, "otherRect": quartz(other),
                                   "plateRect": quartz(plate), "fieldRect": quartz(field),
                                   "buttonClicks": buttonClicks, "pictureClicks": picture.clicks,
+                                  "searchSubmits": searchSubmits, "searchText": search.stringValue,
+                                  "searchRect": quartz(search),
                                   "modifierFlags": NSEvent.modifierFlags.rawValue]
         if let data = try? JSONSerialization.data(withJSONObject: out, options: [.sortedKeys]) {
             try? data.write(to: URL(fileURLWithPath: resultPath), options: .atomic)

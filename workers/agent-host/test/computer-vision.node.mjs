@@ -80,7 +80,12 @@ function harness(decide, options = {}) {
     sourceFrameId: f.id,
     sourceSha256: f.sha256,
     elementId:
-      action.elementId ?? elements.find((e) => (action.action === 'scroll' ? ['AXScrollArea'] : ['AXTextField', 'AXTextArea']).includes(e.role))?.id,
+      action.elementId ??
+      elements.find((e) =>
+        (action.action === 'scroll' ? ['AXScrollArea'] : ['AXTextField', 'AXTextArea']).includes(
+          e.role,
+        ),
+      )?.id,
     target: action.target ?? [100, 50, 200, 100],
   });
   const device = {
@@ -699,6 +704,24 @@ test('a button that commits an order, purchase, payment or trade is never presse
     const f = withElement(name);
     assert.equal(decisionOf(press(f), f).elementId, 'e1');
   }
+});
+test('RETURN is a key only for running a search, declared as navigation', () => {
+  const f = frame();
+  assert.equal(
+    decisionOf(click(f, { action: 'key', key: 'RETURN', risk: 'navigation' }), f).key,
+    'RETURN',
+  );
+  // A Return declared as a draft (typing into a form) is refused before reaching the helper.
+  assert.throws(
+    () => decisionOf(click(f, { action: 'key', key: 'RETURN', risk: 'draft' }), f),
+    (error) => error.code === 'invalid_key',
+  );
+  const prompt = visionPromptFor('llm.plan_computer_action', {
+    goal: 'g',
+    observation: { deliveryMode: 'background' },
+  });
+  assert.match(prompt, /RETURN is ONLY for running a search/);
+  assert.match(prompt, /never use it to submit a form/);
 });
 test('shell / Enter / arbitrary modifiers are not action capabilities', () => {
   for (const bad of [
@@ -1547,40 +1570,74 @@ test('explicit append is background-only, never replacement, and reaches both ta
     { ...append, textMode: null },
     { ...append, action: 'click' },
     { ...append, action: 'type_keys' },
-  ]) assert.throws(() => decisionOf(bad, f), /invalid_text/);
+  ])
+    assert.throws(() => decisionOf(bad, f), /invalid_text/);
   assert.throws(() => decisionOf(append, frame(1)), /invalid_text/);
   const delivered = [];
-  const h = harness((s) => ({ ok: true, result: s.toolId === 'llm.verify_computer_action'
-    ? verdict(s.args.observation) : s.args.turn === 0
-      ? click(s.args.observation, { action: 'type', text: ' suffix', textMode: 'append' })
-      : done(s.args.observation) }), {
-    background: true,
-    apply: async (_f, action) => delivered.push(action),
-  });
-  const outcome = await h.runtime.run(step({ args: { goal: 'Append suffix to the existing memo' } }));
+  const h = harness(
+    (s) => ({
+      ok: true,
+      result:
+        s.toolId === 'llm.verify_computer_action'
+          ? verdict(s.args.observation)
+          : s.args.turn === 0
+            ? click(s.args.observation, { action: 'type', text: ' suffix', textMode: 'append' })
+            : done(s.args.observation),
+    }),
+    {
+      background: true,
+      apply: async (_f, action) => delivered.push(action),
+    },
+  );
+  const outcome = await h.runtime.run(
+    step({ args: { goal: 'Append suffix to the existing memo' } }),
+  );
   assert.equal(outcome.ok, true);
   assert.equal(delivered.length, 1);
   assert.equal(delivered[0].textMode, 'append');
   assert.equal(delivered[0].text, ' suffix');
   assert.equal(h.seen.find((s) => s.args.phase === 'target').args.proposedInput.textMode, 'append');
-  assert.match(visionPromptFor('llm.verify_computer_action', { phase: 'target' }), /existing contents are preserved/);
+  assert.match(
+    visionPromptFor('llm.verify_computer_action', { phase: 'target' }),
+    /existing contents are preserved/,
+  );
 });
 
 test('coordinate grounding reaches the 61st native field without expanding public candidate context', async () => {
-  const elements = Array.from({ length: 60 }, (_, i) => ({ id: `e${i}`, role: 'AXButton', name: `button ${i}` }));
+  const elements = Array.from({ length: 60 }, (_, i) => ({
+    id: `e${i}`,
+    role: 'AXButton',
+    name: `button ${i}`,
+  }));
   const delivered = [];
-  const h = harness((s) => ({ ok: true, result: s.toolId === 'llm.verify_computer_action'
-    ? verdict(s.args.observation) : s.args.turn === 0
-      ? click(s.args.observation, { action: 'type', text: 'draft' }) : done(s.args.observation) }), {
-    elements,
-    previewTarget: async (_f, _a, _s, _expiry, preview) => ({ ...preview,
-      elementId: 'e61', elementRole: 'AXTextField', target: [90, 40, 210, 110] }),
-    apply: async (_f, action) => delivered.push(action),
-  });
+  const h = harness(
+    (s) => ({
+      ok: true,
+      result:
+        s.toolId === 'llm.verify_computer_action'
+          ? verdict(s.args.observation)
+          : s.args.turn === 0
+            ? click(s.args.observation, { action: 'type', text: 'draft' })
+            : done(s.args.observation),
+    }),
+    {
+      elements,
+      previewTarget: async (_f, _a, _s, _expiry, preview) => ({
+        ...preview,
+        elementId: 'e61',
+        elementRole: 'AXTextField',
+        target: [90, 40, 210, 110],
+      }),
+      apply: async (_f, action) => delivered.push(action),
+    },
+  );
   const outcome = await h.runtime.run(step());
   assert.equal(outcome.ok, true);
   assert.equal(h.seen[0].args.observation.elements.length, 60);
-  assert.equal(h.seen.find((s) => s.args.phase === 'target').args.targetPreview.elementRole, 'AXTextField');
+  assert.equal(
+    h.seen.find((s) => s.args.phase === 'target').args.targetPreview.elementRole,
+    'AXTextField',
+  );
   assert.equal(delivered.length, 1);
   assert.equal(delivered[0].elementId, 'e61');
   assert.equal(delivered[0].target, undefined);
@@ -1589,78 +1646,156 @@ test('coordinate grounding reaches the 61st native field without expanding publi
 test('unlisted preview requires native text-role attestation and the exact requested point', () => {
   const f = frame(1, { elements: [{ id: 'e1', role: 'AXButton', name: 'button' }] });
   const action = click(f, { action: 'type', text: 'hello' });
-  const preview = { status: 'target_preview', id: frame(100).id, width: 500, height: 500,
-    sha256: 'a'.repeat(64), sourceFrameId: f.id, sourceSha256: f.sha256,
-    elementId: 'e61', elementRole: 'AXTextArea', target: [90, 40, 210, 110] };
+  const preview = {
+    status: 'target_preview',
+    id: frame(100).id,
+    width: 500,
+    height: 500,
+    sha256: 'a'.repeat(64),
+    sourceFrameId: f.id,
+    sourceSha256: f.sha256,
+    elementId: 'e61',
+    elementRole: 'AXTextArea',
+    target: [90, 40, 210, 110],
+  };
   assert.equal(targetPreviewOf(preview, f, action).elementId, 'e61');
   for (const changed of [
-    { elementRole: undefined }, { elementRole: 'AXButton' }, { elementRole: 'AXSecureTextField' },
-    { elementId: 'e1' }, { elementId: 'unbounded-id' },
-    { target: [200, 40, 310, 110] }, { target: [90, 80, 210, 130] },
-    { sourceFrameId: frame(2).id }, { sourceSha256: 'b'.repeat(64) },
-  ]) assert.throws(() => targetPreviewOf({ ...preview, ...changed }, f, action), /invalid_target_preview/);
-  assert.throws(() => targetPreviewOf(preview, f, { ...action, elementId: 'e1' }), /invalid_target_preview/);
+    { elementRole: undefined },
+    { elementRole: 'AXButton' },
+    { elementRole: 'AXSecureTextField' },
+    { elementId: 'e1' },
+    { elementId: 'unbounded-id' },
+    { target: [200, 40, 310, 110] },
+    { target: [90, 80, 210, 130] },
+    { sourceFrameId: frame(2).id },
+    { sourceSha256: 'b'.repeat(64) },
+  ])
+    assert.throws(
+      () => targetPreviewOf({ ...preview, ...changed }, f, action),
+      /invalid_target_preview/,
+    );
+  assert.throws(
+    () => targetPreviewOf(preview, f, { ...action, elementId: 'e1' }),
+    /invalid_target_preview/,
+  );
 });
-
 
 test('scroll contract allows background vertical navigation only and never accepts model distance', () => {
-  const f=frame(1,{deliveryMode:'background',elements:[{id:'e2',role:'AXScrollArea',name:'catalog'}]});
-  const a=click(f,{action:'scroll',direction:'down',element_id:'e2',distance:1e9});
-  assert.equal(decisionOf(a,f).direction,'down');
-  assert.equal(decisionOf(a,f).distance,undefined);
-  for(const change of [{direction:'left'},{direction:undefined},{risk:'draft'},{text:'x'},{key:'DOWN'},{textMode:'append'}])
-    assert.throws(()=>decisionOf({...a,...change},f));
-  assert.throws(()=>decisionOf(a,{...f,deliveryMode:undefined}),/invalid_scroll/);
-  assert.throws(()=>decisionOf(click(f,{direction:'down'}),f),/invalid_scroll/);
-  const p={status:'target_preview',id:frame(200).id,width:500,height:500,sha256:'a'.repeat(64),
-    sourceFrameId:f.id,sourceSha256:f.sha256,elementId:'e2',elementRole:'AXScrollArea',target:[100,50,200,100]};
-  assert.equal(targetPreviewOf(p,f,decisionOf(a,f)).elementRole,'AXScrollArea');
-  assert.throws(()=>targetPreviewOf({...p,elementRole:'AXTextArea'},f,decisionOf(a,f)),/invalid_target_preview/);
+  const f = frame(1, {
+    deliveryMode: 'background',
+    elements: [{ id: 'e2', role: 'AXScrollArea', name: 'catalog' }],
+  });
+  const a = click(f, { action: 'scroll', direction: 'down', element_id: 'e2', distance: 1e9 });
+  assert.equal(decisionOf(a, f).direction, 'down');
+  assert.equal(decisionOf(a, f).distance, undefined);
+  for (const change of [
+    { direction: 'left' },
+    { direction: undefined },
+    { risk: 'draft' },
+    { text: 'x' },
+    { key: 'DOWN' },
+    { textMode: 'append' },
+  ])
+    assert.throws(() => decisionOf({ ...a, ...change }, f));
+  assert.throws(() => decisionOf(a, { ...f, deliveryMode: undefined }), /invalid_scroll/);
+  assert.throws(() => decisionOf(click(f, { direction: 'down' }), f), /invalid_scroll/);
+  const p = {
+    status: 'target_preview',
+    id: frame(200).id,
+    width: 500,
+    height: 500,
+    sha256: 'a'.repeat(64),
+    sourceFrameId: f.id,
+    sourceSha256: f.sha256,
+    elementId: 'e2',
+    elementRole: 'AXScrollArea',
+    target: [100, 50, 200, 100],
+  };
+  assert.equal(targetPreviewOf(p, f, decisionOf(a, f)).elementRole, 'AXScrollArea');
+  assert.throws(
+    () => targetPreviewOf({ ...p, elementRole: 'AXTextArea' }, f, decisionOf(a, f)),
+    /invalid_target_preview/,
+  );
 });
 
-const scrollReply = s => ({ok:true,result:s.toolId === 'llm.verify_computer_action' ? verdict(s.args.observation)
-  : s.args.turn === 0 ? click(s.args.observation,{action:'scroll',direction:'down',element_id:'e2'}) : done(s.args.observation)});
-const scrollOptions = {background:true,elements:[{id:'e2',role:'AXScrollArea',name:'catalog'}]};
-const scrollReceipt = {direction:'down',before:0,after:0.1,deltaPoints:100,viewportPoints:200};
+const scrollReply = (s) => ({
+  ok: true,
+  result:
+    s.toolId === 'llm.verify_computer_action'
+      ? verdict(s.args.observation)
+      : s.args.turn === 0
+        ? click(s.args.observation, { action: 'scroll', direction: 'down', element_id: 'e2' })
+        : done(s.args.observation),
+});
+const scrollOptions = {
+  background: true,
+  elements: [{ id: 'e2', role: 'AXScrollArea', name: 'catalog' }],
+};
+const scrollReceipt = {
+  direction: 'down',
+  before: 0,
+  after: 0.1,
+  deltaPoints: 100,
+  viewportPoints: 200,
+};
 
 test('scroll verifies the exact preview then keeps native offset readback and still verifies the goal', async () => {
-  const h=harness(scrollReply,{...scrollOptions,apply:async()=>({route:'ax_scroll',effect:'confirmed',scroll:scrollReceipt})});
-  const outcome=await h.runtime.run(step({args:{goal:'Reveal the next catalog items'}}));
-  assert.equal(outcome.ok,true);
-  const target=h.seen.find(s=>s.args.phase==='target');
-  assert.equal(target.args.proposedInput.direction,'down');
-  assert.equal(target.args.targetPreview.elementRole,'AXScrollArea');
-  assert.deepEqual(outcome.result.audit[0].scroll,scrollReceipt);
-  assert.equal(outcome.result.audit[0].targetVerified,true);
-  assert.equal(outcome.result.audit[0].evidence,'target');
-  assert.ok(h.seen.some(s=>s.args.phase==='goal'));
-  assert.ok(!h.seen.some(s=>s.args.phase==='action'));
+  const h = harness(scrollReply, {
+    ...scrollOptions,
+    apply: async () => ({ route: 'ax_scroll', effect: 'confirmed', scroll: scrollReceipt }),
+  });
+  const outcome = await h.runtime.run(step({ args: { goal: 'Reveal the next catalog items' } }));
+  assert.equal(outcome.ok, true);
+  const target = h.seen.find((s) => s.args.phase === 'target');
+  assert.equal(target.args.proposedInput.direction, 'down');
+  assert.equal(target.args.targetPreview.elementRole, 'AXScrollArea');
+  assert.deepEqual(outcome.result.audit[0].scroll, scrollReceipt);
+  assert.equal(outcome.result.audit[0].targetVerified, true);
+  assert.equal(outcome.result.audit[0].evidence, 'target');
+  assert.ok(h.seen.some((s) => s.args.phase === 'goal'));
+  assert.ok(!h.seen.some((s) => s.args.phase === 'action'));
 });
 
 test('missing, stationary, reversed or excessive scroll readback is unknown and never resent', async () => {
-  const a=click(frame(),{action:'scroll',direction:'down'});
-  for(const bad of [undefined,{...scrollReceipt,after:0},{...scrollReceipt,deltaPoints:0},
-    {...scrollReceipt,deltaPoints:-100},{...scrollReceipt,deltaPoints:102},{...scrollReceipt,after:NaN},
-    {...scrollReceipt,direction:'up'}]) {
-    assert.throws(()=>scrollReadbackOf(bad,a),/input_effect_unconfirmed/);
-    const h=harness(scrollReply,{...scrollOptions,apply:async()=>({route:'ax_scroll',effect:'confirmed',scroll:bad})});
-    const outcome=await h.runtime.run(step());
-    assert.equal(outcome.ok,false);
-    assert.equal(h.stats().applied,1);
-    assert.equal(outcome.result.audit[0].delivery,'unknown');
-    assert.ok(!h.seen.some(s=>s.args.phase==='action'||s.args.phase==='goal'));
+  const a = click(frame(), { action: 'scroll', direction: 'down' });
+  for (const bad of [
+    undefined,
+    { ...scrollReceipt, after: 0 },
+    { ...scrollReceipt, deltaPoints: 0 },
+    { ...scrollReceipt, deltaPoints: -100 },
+    { ...scrollReceipt, deltaPoints: 102 },
+    { ...scrollReceipt, after: NaN },
+    { ...scrollReceipt, direction: 'up' },
+  ]) {
+    assert.throws(() => scrollReadbackOf(bad, a), /input_effect_unconfirmed/);
+    const h = harness(scrollReply, {
+      ...scrollOptions,
+      apply: async () => ({ route: 'ax_scroll', effect: 'confirmed', scroll: bad }),
+    });
+    const outcome = await h.runtime.run(step());
+    assert.equal(outcome.ok, false);
+    assert.equal(h.stats().applied, 1);
+    assert.equal(outcome.result.audit[0].delivery, 'unknown');
+    assert.ok(!h.seen.some((s) => s.args.phase === 'action' || s.args.phase === 'goal'));
   }
 });
 
 test('scroll edge or unsupported geometry is an unsent refusal with no alternate delivery retry', async () => {
-  for(const code of ['background_scroll_boundary','background_scroll_unsupported']) {
-    const h=harness(scrollReply,{...scrollOptions,apply:async()=>{throw new VisionFailure(code)}});
-    const outcome=await h.runtime.run(step());
-    assert.equal(outcome.ok,false);
-    assert.equal(h.stats().applied,1);
-    assert.deepEqual(outcome.result.audit,[]);
+  for (const code of ['background_scroll_boundary', 'background_scroll_unsupported']) {
+    const h = harness(scrollReply, {
+      ...scrollOptions,
+      apply: async () => {
+        throw new VisionFailure(code);
+      },
+    });
+    const outcome = await h.runtime.run(step());
+    assert.equal(outcome.ok, false);
+    assert.equal(h.stats().applied, 1);
+    assert.deepEqual(outcome.result.audit, []);
   }
-  const prompt=visionPromptFor('llm.plan_computer_action',{observation:{deliveryMode:'background'}});
-  assert.match(prompt,/at most half its viewport/);
-  assert.match(prompt,/Horizontal scrolling, drag and clipboard are unsupported/);
+  const prompt = visionPromptFor('llm.plan_computer_action', {
+    observation: { deliveryMode: 'background' },
+  });
+  assert.match(prompt, /at most half its viewport/);
+  assert.match(prompt, /Horizontal scrolling, drag and clipboard are unsupported/);
 });

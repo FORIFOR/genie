@@ -35,6 +35,18 @@ enum NativeInput {
     ]
 
     static func keyCode(forName name: String) -> CGKeyCode? { namedKeys[name] }
+
+    /*
+     * Return は**検索を走らせるときだけ**押す。フォームの送信・注文の確定・投稿に使わせない。
+     * 押してよいのは、焦点が検索欄（AXSearchField）か Safari のアドレス欄にあるときだけ。
+     * 判定は鍵を送る直前に、実際に焦点のある要素で行う（モデルの申告は見ない）。
+     */
+    static let returnKeyCode: CGKeyCode = 36
+    static let browserAddressFields: Set<String> = ["WEB_BROWSER_ADDRESS_AND_SEARCH_FIELD"]
+    static func returnAllowed(role: String, subrole: String, identifier: String) -> Bool {
+        guard role == "AXTextField" || role == "AXComboBox" else { return false }
+        return subrole == "AXSearchField" || browserAddressFields.contains(identifier)
+    }
     /// その文字列を、この経路の物理キーだけで打てるか。打てない文字が 1 つでもあれば打たない。
     static func typable(_ text: String) -> Bool {
         !text.isEmpty && text.lowercased().allSatisfy { keyCodes[$0] != nil }

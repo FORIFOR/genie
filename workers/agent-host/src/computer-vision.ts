@@ -341,6 +341,8 @@ export class ComputerVisionRuntime {
          */
         'policy_action_not_allowed',
         'policy_text_rejected',
+        // Return を検索欄の外で押そうとした。検索ボタンを押すなど、別の手を選ばせる。
+        'policy_return_not_search',
         // 鍵を受け取る窓が違う。押せばその窓に移るので、押してから打ち直させる。
         'background_key_window_not_focused',
       ]);
@@ -801,6 +803,8 @@ function failure(code: string): VisionOutcome {
       '操作の配送結果が未確認のため停止しました。二重入力を防ぐため、自動では再実行しません。',
     verification_blocked:
       '確認の途中で先へ進めない画面を検出し、停止しました。画面の状態を確認してください。',
+    policy_return_not_search:
+      'Return キーは検索欄とアドレス欄でだけ押します。フォームの送信には使いません。',
     commit_boundary:
       '注文・購入・支払いを確定するボタンは、画面操作では押しません。金額と内容を確認してから確定する、注文の手順で依頼してください。',
     goal_not_verified: '目的が満たされたことを画面から確認できませんでした。完了していません。',

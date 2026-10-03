@@ -16,7 +16,8 @@ import ScreenCaptureKit
         var cg: CGRect { CGRect(x: x, y: y, width: width, height: height) } }
     struct Readback: Decodable { let plateClicks: Int; let keyDowns: Int; let keyUps: Int; let text: String
         let plateRect: Rect; let fieldRect: Rect; let buttonClicks: Int; let pictureClicks: Int
-        let otherText: String; let otherRect: Rect }
+        let otherText: String; let otherRect: Rect
+        let searchSubmits: Int; let searchText: String; let searchRect: Rect }
     /// capture が返す操作候補。位置は含まれない。
     struct Candidate: Decodable { let id: String; let role: String; let name: String }
     struct CaptureReply: Decodable { let elements: [Candidate]? }
@@ -90,13 +91,15 @@ import ScreenCaptureKit
             return String(data: out, encoding: .utf8) ?? ""
         }
         /// 画面座標の矩形を、そのフレームの画像ピクセルの矩形に直して送る。
-        func apply(_ f: Frame, _ path: String, _ action: String, rect: CGRect, text: String? = nil, op: String = "apply") async throws -> String {
+        func apply(_ f: Frame, _ path: String, _ action: String, rect: CGRect, text: String? = nil, op: String = "apply",
+                   key: String? = nil) async throws -> String {
             let sx = Double(f.width) / f.bounds.width, sy = Double(f.height) / f.bounds.height
             var a: [String: Any] = ["action": action, "frameId": f.id, "confidence": 1,
                 "risk": action == "click" ? "navigation" : "draft", "expectation": "native input regression",
                 "target": [(rect.minX - f.bounds.x) * sx, (rect.minY - f.bounds.y) * sy,
                            (rect.maxX - f.bounds.x) * sx, (rect.maxY - f.bounds.y) * sy]]
             if let text { a["text"] = text }
+            if let key { a["key"] = key; a["risk"] = "navigation" }
             let request: [String: Any] = ["op": op, "action": a, "referencePath": path,
                 "scope": try JSONSerialization.jsonObject(with: JSONEncoder().encode(f)),
                 "authorizationExpiresAt": Date().timeIntervalSince1970 * 1000 + 60000]
@@ -113,6 +116,7 @@ import ScreenCaptureKit
             switch which {
             case "native-plate": return r.plateRect.cg
             case "native-other": return r.otherRect.cg
+            case "native-search": return r.searchRect.cg
             default: return r.fieldRect.cg
             }
         }
@@ -142,6 +146,34 @@ import ScreenCaptureKit
          */
         guard afterKeys.otherText.isEmpty else { throw Failure("keys_went_to_focused_not_named") }
         evidence["keysFollowedTheNamedField"] = true
+
+        /*
+         * ⑤ Return は検索を走らせるときだけ。**ふつうの文字欄では押さない。**
+         * いま焦点は ① で打った欄（ふつうの NSTextView）にある。ここで Return を頼んでも送らない。
+         */
+        let (fr1, pr1) = try await frame()
+        let downsBefore = try readback().keyDowns
+        var returnCode = ""
+        do { returnCode = try await apply(fr1, pr1, "key", rect: try element("native-field"), key: "RETURN") }
+        catch let error as Failure { returnCode = error.code }
+        guard returnCode == "policy_return_not_search" else { throw Failure("return_outside_search_\(returnCode)") }
+        try await Task.sleep(nanoseconds: 300_000_000)
+        guard try readback().keyDowns == downsBefore, try readback().searchSubmits == 0
+        else { throw Failure("return_sent_outside_search") }
+        evidence["returnRefusedOutsideSearch"] = true
+        // 検索欄に打ってから Return。検索が 1 回だけ走る。
+        let (fr2, pr2) = try await frame()
+        let typedSearch = try await apply(fr2, pr2, "type_keys", rect: try element("native-search"), text: "genie")
+        guard typedSearch.contains("\"route\":\"native_key\"") else { throw Failure("search_not_typed_\(typedSearch)") }
+        try await Task.sleep(nanoseconds: 400_000_000)
+        let (fr3, pr3) = try await frame()
+        let ranSearch = try await apply(fr3, pr3, "key", rect: try element("native-search"), key: "RETURN")
+        guard ranSearch.contains("\"route\":\"native_key\"") else { throw Failure("return_in_search_\(ranSearch)") }
+        try await Task.sleep(nanoseconds: 500_000_000)
+        let searched = try readback()
+        guard searched.searchSubmits == 1, searched.searchText == "genie"
+        else { throw Failure("search_submits_\(searched.searchSubmits)_\(searched.searchText)") }
+        evidence["returnRanSearchOnce"] = true
 
         // ② AXPress を持たない面は、座標を指定した背景マウスで押す。
         let (f2, p2) = try await frame()

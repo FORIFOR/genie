@@ -46,7 +46,7 @@ export interface GroundedAction {
   textMode?: 'append';
   /** One bounded vertical native scroll. No model-supplied distance or wheel event. */
   direction?: 'up' | 'down';
-  key?: 'TAB' | 'ESC' | 'LEFT' | 'RIGHT' | 'UP' | 'DOWN' | 'SPACE';
+  key?: 'TAB' | 'ESC' | 'LEFT' | 'RIGHT' | 'UP' | 'DOWN' | 'SPACE' | 'RETURN';
 }
 
 /** A native-rendered context/crop proof for one exact writable element. */
@@ -157,7 +157,11 @@ export type VisionDecision =
  * 背景経路がキーの押下／解放を届けられるようになったので SPACE を足した。
  * Enter と修飾キーは引き続き持たない——送信・確定の境界を越えるため。
  */
-const KEYS = ['TAB', 'ESC', 'LEFT', 'RIGHT', 'UP', 'DOWN', 'SPACE'];
+const KEYS = ['TAB', 'ESC', 'LEFT', 'RIGHT', 'UP', 'DOWN', 'SPACE', 'RETURN'];
+/*
+ * RETURN は検索を走らせるためだけ。押してよい欄か（検索欄・アドレス欄）は helper が、
+ * 実際に焦点のある要素で確かめる。ここでは「移動」として申告されたものだけ通す。
+ */
 /** `type_keys` で打てる文字。物理キーで判定する画面のために、値の設定と別経路にする。 */
 const TYPABLE = /^[\x20-\x7e]{1,400}$/;
 
@@ -347,6 +351,8 @@ export function decisionOf(raw: unknown, frame: VisionFrame): VisionDecision {
   )
     throw new VisionFailure('invalid_text');
   if (d['action'] === 'key' && !KEYS.includes(String(d['key'])))
+    throw new VisionFailure('invalid_key');
+  if (d['action'] === 'key' && d['key'] === 'RETURN' && d['risk'] !== 'navigation')
     throw new VisionFailure('invalid_key');
   if (
     (d['action'] === 'scroll' &&
