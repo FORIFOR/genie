@@ -332,6 +332,24 @@ struct BackgroundAX {
      * 対象の窓の中だけを見る。系全体の hit-test は、背面の対象に対して別アプリの
      * 要素を返しうるので使わない。
      */
+    /// 押す点に、確定のボタン・リンクがあるか。名前・説明・値のどれかで見る。
+    static func commitControlContains(_ p: CGPoint, in t: Target) -> Bool {
+        guard let root = try? window(t) else { return false }
+        var found = false, visited = 0
+        func visit(_ e: AXUIElement, _ depth: Int) {
+            if found || depth > 30 || visited > 3000 { return }
+            visited += 1
+            if isCommitControl(e), let rect = Helper.elementRect(e), rect.contains(p) { found = true; return }
+            for child in children(e) { visit(child, depth + 1) }
+        }
+        visit(root, 0)
+        return found
+    }
+    static func isCommitControl(_ e: AXUIElement) -> Bool {
+        guard [kAXButtonRole, "AXLink", kAXMenuItemRole].contains(string(e, kAXRoleAttribute)) else { return false }
+        return [kAXTitleAttribute, kAXDescriptionAttribute, kAXValueAttribute]
+            .contains { NativeInput.isCommitLabel(string(e, $0)) }
+    }
     static func secureFieldContains(_ p: CGPoint, in t: Target) -> Bool {
         guard let root = try? window(t) else { return false }
         var found = false, visited = 0
@@ -1355,6 +1373,11 @@ final class ConsentAccessoryView: NSView {
         case "key":
             guard let name=a.key, let code=NativeInput.keyCode(forName:name)
             else { throw Failure("policy_action_not_allowed") }
+            // SPACE は焦点のあるボタンを押す。確定のボタンに焦点があれば押さない。
+            if name == "SPACE",
+               let focusedRef = attribute(AXUIElementCreateApplication(t.pid), kAXFocusedUIElementAttribute),
+               CFGetTypeID(focusedRef) == AXUIElementGetTypeID(),
+               isCommitControl(focusedRef as! AXUIElement) { throw Failure("policy_commit_control") }
             guard PrivateSPI.available else { throw Failure("background_key_route_unavailable") }
             guard keyWindowIsTarget(t) else { throw Failure("background_key_window_not_focused") }
             route = .nativeKey; codes = [code]
@@ -1401,6 +1424,13 @@ final class ConsentAccessoryView: NSView {
             // 文字を入れる先は、文字を入れられる役割であること。絵やリンクには書かない。
             if a.action == "type", let only=candidates.first,
                ![kAXTextFieldRole,kAXTextAreaRole].contains(only.role) { throw Failure("policy_action_not_allowed") }
+            // 確定のボタンは押さない。指した要素でも、座標の下にあるボタンでも同じ。
+            if a.action == "click" {
+                if let only=candidates.first, let resolved=try? resolve(only.path,in:t), isCommitControl(resolved) {
+                    throw Failure("policy_commit_control")
+                }
+                if commitControlContains(p, in:t) { throw Failure("policy_commit_control") }
+            }
             guard candidates.count <= 1 else { throw Failure("background_element_ambiguous") }
             if let old=candidates.first {
                 let resolved=try resolve(old.path,in:t)

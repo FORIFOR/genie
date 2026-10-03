@@ -17,7 +17,8 @@ import ScreenCaptureKit
     struct Readback: Decodable { let plateClicks: Int; let keyDowns: Int; let keyUps: Int; let text: String
         let plateRect: Rect; let fieldRect: Rect; let buttonClicks: Int; let pictureClicks: Int
         let otherText: String; let otherRect: Rect
-        let searchSubmits: Int; let searchText: String; let searchRect: Rect }
+        let searchSubmits: Int; let searchText: String; let searchRect: Rect
+        let commitClicks: Int; let commitRect: Rect }
     /// capture が返す操作候補。位置は含まれない。
     struct Candidate: Decodable { let id: String; let role: String; let name: String }
     struct CaptureReply: Decodable { let elements: [Candidate]? }
@@ -117,6 +118,7 @@ import ScreenCaptureKit
             case "native-plate": return r.plateRect.cg
             case "native-other": return r.otherRect.cg
             case "native-search": return r.searchRect.cg
+            case "native-commit": return r.commitRect.cg
             default: return r.fieldRect.cg
             }
         }
@@ -174,6 +176,31 @@ import ScreenCaptureKit
         guard searched.searchSubmits == 1, searched.searchText == "genie"
         else { throw Failure("search_submits_\(searched.searchSubmits)_\(searched.searchText)") }
         evidence["returnRanSearchOnce"] = true
+
+        /*
+         * ⑥ 注文を確定するボタンは押さない。要素で指しても、座標で指しても。
+         * host の名前の検査を通らない経路（座標、または候補の名前が識別子になっている要素）でも、
+         * helper が実際のボタンの表示名で止める。
+         */
+        for label in ["注文を確定する", "ご注文を確定", "今すぐ買う", "買い注文を発注", "Place your order", " Ｐａｙ　ｎｏｗ "] {
+            guard NativeInput.isCommitLabel(label) else { throw Failure("commit_label_missed_\(label)") }
+        }
+        for label in ["カートに入れる", "レジに進む", "注文内容を確認する", "Add to cart", "Checkout", "Press target"] {
+            guard !NativeInput.isCommitLabel(label) else { throw Failure("commit_label_overreach_\(label)") }
+        }
+        let (fc1, pc1) = try await frame()
+        var byElement = ""
+        do { byElement = try await applyElement(fc1, pc1, "click", id: try candidate("native-commit")) }
+        catch let error as Failure { byElement = error.code }
+        let (fc2, pc2) = try await frame()
+        var byPoint = ""
+        do { byPoint = try await apply(fc2, pc2, "click", rect: try element("native-commit")) }
+        catch let error as Failure { byPoint = error.code }
+        try await Task.sleep(nanoseconds: 300_000_000)
+        guard byElement == "policy_commit_control", byPoint == "policy_commit_control",
+              try readback().commitClicks == 0
+        else { throw Failure("commit_pressed_\(byElement)_\(byPoint)_\(try readback().commitClicks)") }
+        evidence["commitControlRefusedByElementAndPoint"] = true
 
         // ② AXPress を持たない面は、座標を指定した背景マウスで押す。
         let (f2, p2) = try await frame()

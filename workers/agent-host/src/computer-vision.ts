@@ -355,6 +355,8 @@ export class ComputerVisionRuntime {
         'stale_generation',
         'stale_frame',
         'policy_secure_field',
+        // 確定のボタン。狙いの誤りではなく、してはいけないこと。選び直させず人に返す。
+        'policy_commit_control',
         'user_cancelled',
         'session_stopped',
         'consent_expired',
@@ -805,6 +807,8 @@ function failure(code: string): VisionOutcome {
       '確認の途中で先へ進めない画面を検出し、停止しました。画面の状態を確認してください。',
     policy_return_not_search:
       'Return キーは検索欄とアドレス欄でだけ押します。フォームの送信には使いません。',
+    policy_commit_control:
+      '注文・購入・支払いを確定するボタンは、画面操作では押しません。金額と内容を確認してから確定する、注文の手順で依頼してください。',
     commit_boundary:
       '注文・購入・支払いを確定するボタンは、画面操作では押しません。金額と内容を確認してから確定する、注文の手順で依頼してください。',
     goal_not_verified: '目的が満たされたことを画面から確認できませんでした。完了していません。',

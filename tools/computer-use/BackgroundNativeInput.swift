@@ -42,6 +42,29 @@ enum NativeInput {
      * 判定は鍵を送る直前に、実際に焦点のある要素で行う（モデルの申告は見ない）。
      */
     static let returnKeyCode: CGKeyCode = 36
+
+    /*
+     * 注文・購入・支払い・発注・送金を**確定する**ボタン。画面操作では押さない。
+     * 同じ規則を host（computer-vision-policy.ts の isCommitControl）にも置いている。
+     * host は要素の名前で、ここは**押す点にある実際のボタン**で見る（座標で指されても効く）。
+     */
+    static let commitPatterns: [NSRegularExpression] = [
+        #"(?:注文|購入|支払い?|決済|発注|申し?込み?|予約).{0,6}(?:確定|を?完了する|を?実行)"#,
+        #"(?:確定|完了)して(?:注文|購入|支払)"#,
+        #"今すぐ(?:買う|購入|支払)"#,
+        #"^(?:購入する|支払う|お支払い|決済する|発注する|注文を送信(?:する)?|注文を確定|買う)$"#,
+        #"(?:買い?|売り?|新規|返済)注文.{0,6}(?:発注|送信|確定|実行)|^(?:注文発注|発注)$"#,
+        #"送金(?:する|を?(?:実行|確定))|振り?込み?を?(?:実行|確定)|振り込む"#,
+        #"^(?:place (?:your )?order|buy now|pay now|pay|purchase|submit order|complete (?:order|purchase)|confirm (?:order|purchase|payment)|order now)$"#,
+    ].map { try! NSRegularExpression(pattern: $0, options: [.caseInsensitive]) }
+    static func isCommitLabel(_ raw: String) -> Bool {
+        let label = raw.precomposedStringWithCompatibilityMapping
+            .replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !label.isEmpty else { return false }
+        let range = NSRange(label.startIndex..., in: label)
+        return commitPatterns.contains { $0.firstMatch(in: label, range: range) != nil }
+    }
     static let browserAddressFields: Set<String> = ["WEB_BROWSER_ADDRESS_AND_SEARCH_FIELD"]
     static func returnAllowed(role: String, subrole: String, identifier: String) -> Bool {
         guard role == "AXTextField" || role == "AXComboBox" else { return false }

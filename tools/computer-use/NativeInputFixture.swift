@@ -41,6 +41,10 @@ final class Delegate: NSObject, NSApplicationDelegate {
     @objc func searched() { searchSubmits += 1; save() }
     var search: NSSearchField!
     var searchSubmits = 0
+    /// 確定のボタン。画面操作では押されないこと（数が 0 のまま）を確かめる。
+    @objc func committed() { commitClicks += 1; save() }
+    var commit: NSButton!
+    var commitClicks = 0
     var window: Counting!
     var plate: Plate!
     var field: NSTextView!
@@ -67,6 +71,10 @@ final class Delegate: NSObject, NSApplicationDelegate {
         button.frame = NSRect(x: 250, y: 230, width: 170, height: 40)
         button.setAccessibilityIdentifier("native-button")
         view.addSubview(button)
+        commit = NSButton(title: "注文を確定する", target: self, action: #selector(committed))
+        commit.frame = NSRect(x: 40, y: 300, width: 180, height: 32)
+        commit.setAccessibilityIdentifier("native-commit")
+        view.addSubview(commit)
         search = NSSearchField(frame: NSRect(x: 250, y: 290, width: 170, height: 28))
         search.target = self
         search.action = #selector(searched)
@@ -124,6 +132,7 @@ final class Delegate: NSObject, NSApplicationDelegate {
                                   "buttonClicks": buttonClicks, "pictureClicks": picture.clicks,
                                   "searchSubmits": searchSubmits, "searchText": search.stringValue,
                                   "searchRect": quartz(search),
+                                  "commitClicks": commitClicks, "commitRect": quartz(commit),
                                   "modifierFlags": NSEvent.modifierFlags.rawValue]
         if let data = try? JSONSerialization.data(withJSONObject: out, options: [.sortedKeys]) {
             try? data.write(to: URL(fileURLWithPath: resultPath), options: .atomic)
