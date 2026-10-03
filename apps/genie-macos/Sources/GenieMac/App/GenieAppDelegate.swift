@@ -103,6 +103,8 @@ final class GenieAppDelegate: NSObject, NSApplicationDelegate {
         // マイクが許可済みなら engine だけ先に用意する（IO は始めない・求めない）。
         // ⌥Space から音が届くまでを短くする（INVOCATION gate の実測）。
         RecordingRuntime.shared.prewarmMic()
+        // 「ジーニー」の待ち受け。マイクと音声認識が許可済みのときだけ（ここでは求めない）。
+        WakeWordListener.shared.start()
         // 前回落ちたまま残っている録音があれば知らせる（§3 meeting recovery）。
         let recoverable = RecordingRuntime.shared.recoverableMeetings()
         if !recoverable.isEmpty {

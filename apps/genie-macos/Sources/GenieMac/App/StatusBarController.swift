@@ -55,6 +55,10 @@ final class StatusBarController {
         )
         rec.target = self
         menu.addItem(rec)
+        let wake = NSMenuItem(title: Facts.menuWakeWord, action: #selector(toggleWakeWord), keyEquivalent: "")
+        wake.target = self
+        wake.state = WakeWordListener.shared.enabled ? .on : .off
+        menu.addItem(wake)
 
         menu.addItem(.separator())
 
@@ -108,6 +112,10 @@ final class StatusBarController {
     func menuWiring() -> [(title: String, wired: Bool)] {
         buildMenu().items.filter { !$0.isSeparatorItem && $0.isEnabled }
             .map { ($0.title, $0.action != nil && $0.target != nil) }
+    }
+
+    @objc func toggleWakeWord() {
+        WakeWordListener.shared.enabled.toggle()
     }
 
     @objc private func openMain() { MainWindowController.shared.showSection(.home) }

@@ -326,6 +326,8 @@ final class VoiceHUDState: ObservableObject {
     /// 戻り値は「取り込みを始められたか」（会議の録音中は録音側の STT を使うので true 扱い）。
     @discardableResult
     private func openMicrophone(echoCancellation: Bool = false, onFirstFrame: (() -> Void)? = nil, onFinal: ((String) -> Void)? = nil) -> Bool {
+        // 「ジーニー」の待ち受けがマイクを持っていれば返してもらう（二重に開かない）。
+        WakeWordListener.shared.suspend()
         let generation = voice.open()
         let started = voiceCapture.begin(
             echoCancellation,
@@ -729,6 +731,7 @@ final class VoiceHUDState: ObservableObject {
             return
         }
         // 音声入力で聞いている途中なら、そのマイクを閉じてから始める（開いたままだと会話のマイクが開けない）。
+        WakeWordListener.shared.suspend()
         closeMicrophone()
         conversationProvider = provider
         isListeningMuted = false

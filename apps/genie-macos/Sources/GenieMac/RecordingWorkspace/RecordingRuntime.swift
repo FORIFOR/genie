@@ -269,6 +269,8 @@ final class RecordingRuntime {
     @discardableResult
     func begin(meetingId localId: String, captureMic: Bool = true,
                captureSystemAudio: Bool = false, transcribe: Bool = true) -> Bool {
+        // 「ジーニー」の待ち受けは録音の間は止める（マイクは録音が使う）。
+        WakeWordListener.shared.suspend()
         try? FileManager.default.createDirectory(
             atPath: root, withIntermediateDirectories: true)
         // サインイン済みなら実 gateway に会議を作り、その id で録音する（Tauri を介さない）
