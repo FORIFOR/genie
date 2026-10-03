@@ -1,0 +1,22 @@
+{
+  "at": "2026-10-01T18:53:49.141324+00:00",
+  "candidate": "/private/tmp/genie-transactions-20261002/GenieCompletion.app/Contents/MacOS/GenieMac",
+  "sha256": "a8822b2cfd05b271680e8532547e6eeb47782ca3f1e9544558507cd52b604c4f",
+  "appPid": 22298,
+  "entry": "managed preview ready, actual main Home window",
+  "observedModelDisclosure": "OpenAI gpt-6-sol, Codex connection; external text/images disclosure",
+  "action": "Cua selected Genie > Genie を終了 (terminate:)",
+  "observed": [
+    "Cua readback reported procNotFound after quit",
+    "ps -p 22298 returned exit 1 with no process",
+    "managed status stopped; dedicated containers list empty"
+  ],
+  "appQuit": "PASS, limited idle-main-app quit",
+  "supervisorResult": "FAIL: exit 0 from app-launcher reported as an error and supervisor exited 1; follow-up fix requested",
+  "managedLogSha256": "ee874ec4ac34ee20f66556c31f7e74f6072be64c98cc5eee66d355b4302c12ab",
+  "limits": [
+    "No active translation child in this live UI quit test",
+    "SIGTERM managed stop not yet rerun",
+    "App package predates unrelated purpose-sheet testability changes"
+  ]
+}

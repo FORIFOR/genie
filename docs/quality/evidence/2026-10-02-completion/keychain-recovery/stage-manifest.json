@@ -1,0 +1,103 @@
+{
+  "recordedAt": "2026-10-01T22:21:42.778332+00:00",
+  "scope": "Private stage only. Canonical release rebuilt; installed app, Keychain, runtime configuration and permissions untouched. No candidate launch.",
+  "apps": {
+    "installed": {
+      "path": "/Applications/Genie.app",
+      "info": {
+        "CFBundleIdentifier": "com.astra.mac",
+        "CFBundleExecutable": "Genie",
+        "CFBundleShortVersionString": "0.1.4",
+        "CFBundleVersion": "0.1.4",
+        "LSUIElement": true
+      },
+      "executableSha256": "5a27e3f39e06c0bb43c2a343dee478c7b6922e5df36d9b8a5f28aa4d90a6ad1a",
+      "signatureMetadata": [
+        "Identifier=com.astra.mac",
+        "Authority=Apple Development: Shuhei Horio (N5DXXRWC3M)",
+        "Authority=Apple Worldwide Developer Relations Certification Authority",
+        "Authority=Apple Root CA",
+        "TeamIdentifier=6RR7572ZLU",
+        "designated => identifier \"com.astra.mac\" and anchor apple generic and certificate leaf[subject.CN] = \"Apple Development: Shuhei Horio (N5DXXRWC3M)\" and certificate 1[field.1.2.840.113635.100.6.2.1] /* exists */"
+      ]
+    },
+    "canonical": {
+      "path": "/Users/shuhei/Projects/genie/apps/genie-macos/.build/Genie.app",
+      "info": {
+        "CFBundleIdentifier": "com.astra.desktop",
+        "CFBundleExecutable": "GenieMac",
+        "CFBundleShortVersionString": "0.1.4",
+        "CFBundleVersion": "0.1.4",
+        "LSUIElement": null
+      },
+      "executableSha256": "490a32fc9cc3e9c89f7695bfd26cfea240ff4e88a4d375506e4c5cac0e82e660",
+      "signatureMetadata": [
+        "Identifier=com.astra.desktop",
+        "Authority=Apple Development: Shuhei Horio (N5DXXRWC3M)",
+        "Authority=Apple Worldwide Developer Relations Certification Authority",
+        "Authority=Apple Root CA",
+        "TeamIdentifier=6RR7572ZLU",
+        "designated => identifier \"com.astra.desktop\" and anchor apple generic and certificate leaf[subject.CN] = \"Apple Development: Shuhei Horio (N5DXXRWC3M)\" and certificate 1[field.1.2.840.113635.100.6.2.1] /* exists */"
+      ]
+    },
+    "candidate": {
+      "path": "/private/tmp/genie-transactions-20261002/user-app-recovery-stage/Genie.app",
+      "info": {
+        "CFBundleIdentifier": "com.astra.mac",
+        "CFBundleExecutable": "Genie",
+        "CFBundleShortVersionString": "0.1.4",
+        "CFBundleVersion": "0.1.4",
+        "LSUIElement": true
+      },
+      "executableSha256": "a01378c92ef466086c4e6e0c1f8263e66a9da61ec24d026c86ef6cda0f678801",
+      "signatureMetadata": [
+        "Identifier=com.astra.mac",
+        "Authority=Apple Development: Shuhei Horio (N5DXXRWC3M)",
+        "Authority=Apple Worldwide Developer Relations Certification Authority",
+        "Authority=Apple Root CA",
+        "TeamIdentifier=6RR7572ZLU",
+        "designated => identifier \"com.astra.mac\" and anchor apple generic and certificate leaf[subject.CN] = \"Apple Development: Shuhei Horio (N5DXXRWC3M)\" and certificate 1[field.1.2.840.113635.100.6.2.1] /* exists */"
+      ]
+    }
+  },
+  "infoDifferencesFromCanonical": {
+    "CFBundleExecutable": {
+      "canonical": "GenieMac",
+      "candidate": "Genie"
+    },
+    "LSUIElement": {
+      "canonical": null,
+      "candidate": true
+    },
+    "CFBundleIdentifier": {
+      "canonical": "com.astra.desktop",
+      "candidate": "com.astra.mac"
+    }
+  },
+  "resourceComparisons": {
+    "Contents/Resources": {
+      "identical": true,
+      "canonicalEntries": 54,
+      "candidateEntries": 54
+    },
+    "Contents/Frameworks": {
+      "identical": true,
+      "canonicalEntries": 97,
+      "candidateEntries": 97
+    }
+  },
+  "wholeBundleChangedPaths": [
+    "Contents/Info.plist",
+    "Contents/MacOS/Genie",
+    "Contents/MacOS/GenieMac"
+  ],
+  "unsignedExecutableSha256": {
+    "canonical": "093f9a7b8c3434991b389a10280d8241975ac4783b9c8e42a96eb8b143039cc4",
+    "candidate": "093f9a7b8c3434991b389a10280d8241975ac4783b9c8e42a96eb8b143039cc4"
+  },
+  "designatedRequirementMatchesInstalled": true,
+  "strictSignatureVerified": true,
+  "installedAppUnmodified": true,
+  "sourceManifestSha256": "b13132d0a5f6b575f394d1cfd54a3fa8fcb6b0ebb56dd45b1a7ddeedf9cc2545",
+  "packageLogSha256": "8831d726c99ca478997a22e25e217998292231b6b7131ce83dc03997d2a729df"
+}

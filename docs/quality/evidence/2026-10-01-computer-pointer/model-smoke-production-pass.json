@@ -1,0 +1,319 @@
+{
+  "scope": "real local model -> ComputerVisionRuntime -> NativeVisionDevice -> production native consent -> disposable AppKit fixture",
+  "excludes": [
+    "gateway/task-worker path",
+    "main app UI",
+    "human concurrent-input acceptance",
+    "external applications"
+  ],
+  "startedAt": "2026-10-01T13:42:43.286Z",
+  "root": "/private/tmp/genie-local-smoke-20261001/run-PmyA4D",
+  "model": {
+    "kind": "local",
+    "name": "qwen3.5:9b",
+    "endpoint": "http://127.0.0.1:11434/v1"
+  },
+  "helper": "/private/tmp/GenieComputerPointerTest.app/Contents/MacOS/GenieComputer",
+  "fixtureStart": "accessory-then-regular",
+  "modelCalls": [
+    {
+      "tool": "llm.plan_computer_action",
+      "phase": "plan",
+      "ms": 9921,
+      "ok": true,
+      "action": "click"
+    },
+    {
+      "tool": "llm.verify_computer_action",
+      "phase": "action",
+      "ms": 5383,
+      "ok": true,
+      "outcome": "not_satisfied"
+    },
+    {
+      "tool": "llm.plan_computer_action",
+      "phase": "plan",
+      "ms": 5585,
+      "ok": true,
+      "action": "type"
+    },
+    {
+      "tool": "llm.verify_computer_action",
+      "phase": "target",
+      "ms": 11228,
+      "ok": true,
+      "outcome": "satisfied"
+    },
+    {
+      "tool": "llm.plan_computer_action",
+      "phase": "plan",
+      "ms": 5141,
+      "ok": true,
+      "action": "done"
+    },
+    {
+      "tool": "llm.verify_computer_action",
+      "phase": "goal",
+      "ms": 4897,
+      "ok": true,
+      "outcome": "satisfied"
+    }
+  ],
+  "status": "PASS",
+  "revision": "ee857a5b13482cbd2d986a1f9b466c8e49a149c3",
+  "executedFileHashes": {
+    "/private/tmp/GenieComputerPointerTest.app/Contents/MacOS/GenieComputer": "ddfc6b9dd3b47f8d6e3df16782c95a0bd039331314ac73763007c9411efbc36d",
+    "/Users/shuhei/Projects/genie/workers/agent-host/dist/computer-vision.js": "1fdba71ebe2c764bdd45bac23938863e14e33f50a78e32b2da0445131c87d8c8",
+    "/Users/shuhei/Projects/genie/workers/agent-host/dist/computer-vision-policy.js": "69b839473bec50b97540c98a77b2b0d07cdf8f3812c2956b3960e6856c86630c",
+    "/Users/shuhei/Projects/genie/workers/agent-host/dist/computer-vision-prompts.js": "c48d691f3199141a73abb1c7c6e9f881bb7ff636f93153b8e8ef0ade4cad2aec",
+    "/Users/shuhei/Projects/genie/workers/agent-host/dist/computer-vision-device.js": "70e6024d0881677b2679b7e46d9870a402921757e991377fc89d1cbb4dd86b74",
+    "/Users/shuhei/Projects/genie/workers/agent-host/dist/llm-steps.js": "033b593de4d41def45a4290f8de3addcabe80d6225d0c9c8018f4d9df2f818bb",
+    "/Users/shuhei/Projects/genie/workers/agent-host/dist/http-llm.js": "dc18c9190b30f0bd096336e2c0f623170166459b2d265ed600af18d81459a0e7",
+    "/Users/shuhei/Projects/genie/workers/agent-host/dist/visual-context.js": "535f69be66cdb55505612186f859065c8368c4bb45fbf72de8d1ceb85604e886"
+  },
+  "helperStatus": {
+    "accessibility": true,
+    "capabilities": [
+      "ax_press",
+      "empty_text_field",
+      "target_preview",
+      "native_click",
+      "native_keys",
+      "space_key"
+    ],
+    "deliveryMode": "background",
+    "ready": true,
+    "screenRecording": true,
+    "supported": true,
+    "unattendedTest": false
+  },
+  "fixture": {
+    "pid": 859,
+    "bundleId": "org.genie.smoke.d114210beee5480090e98ab0894115ee",
+    "source": "tools/computer-use/BackgroundFixture.swift"
+  },
+  "fixtureStartup": {
+    "isActive": false,
+    "geometry": {
+      "window": {
+        "y": 210,
+        "x": 180,
+        "width": 580,
+        "height": 442
+      },
+      "coordinateSystem": "AppKit points, bottom-left origin",
+      "screens": [
+        {
+          "width": 1728,
+          "height": 1007,
+          "x": 0,
+          "y": 77
+        }
+      ]
+    },
+    "isOnActiveSpace": true,
+    "occlusionVisible": true,
+    "startupReady": true,
+    "activations": 0,
+    "activationPolicy": "regular",
+    "isVisible": true,
+    "clicks": 0,
+    "text": ""
+  },
+  "sentinel": {
+    "pid": 863,
+    "bundleId": "org.genie.smoke.d114210beee5480090e98ab0894115ee.sentinel"
+  },
+  "sentinelStartup": {
+    "startupReady": true,
+    "text": "",
+    "clicks": 0,
+    "geometry": {
+      "window": {
+        "x": 500,
+        "y": 210,
+        "width": 580,
+        "height": 442
+      },
+      "screens": [
+        {
+          "x": 0,
+          "height": 1007,
+          "y": 77,
+          "width": 1728
+        }
+      ],
+      "coordinateSystem": "AppKit points, bottom-left origin"
+    },
+    "activationPolicy": "regular",
+    "isOnActiveSpace": true,
+    "occlusionVisible": true,
+    "activations": 0,
+    "isVisible": true,
+    "isActive": false
+  },
+  "before": {
+    "isActive": false,
+    "geometry": {
+      "coordinateSystem": "AppKit points, bottom-left origin",
+      "window": {
+        "width": 580,
+        "height": 442,
+        "x": 180,
+        "y": 210
+      },
+      "screens": [
+        {
+          "y": 77,
+          "x": 0,
+          "width": 1728,
+          "height": 1007
+        }
+      ]
+    },
+    "isOnActiveSpace": true,
+    "occlusionVisible": true,
+    "startupReady": true,
+    "activations": 0,
+    "activationPolicy": "regular",
+    "isVisible": true,
+    "clicks": 0,
+    "text": ""
+  },
+  "sentinelBefore": {
+    "startupReady": true,
+    "text": "",
+    "clicks": 0,
+    "geometry": {
+      "screens": [
+        {
+          "width": 1728,
+          "y": 77,
+          "height": 1007,
+          "x": 0
+        }
+      ],
+      "coordinateSystem": "AppKit points, bottom-left origin",
+      "window": {
+        "x": 500,
+        "y": 210,
+        "width": 580,
+        "height": 442
+      }
+    },
+    "activationPolicy": "regular",
+    "isOnActiveSpace": true,
+    "occlusionVisible": true,
+    "activations": 0,
+    "isVisible": true,
+    "isActive": false
+  },
+  "preflight": {
+    "targetVisible": true,
+    "targetOnActiveSpace": true,
+    "targetRegular": true,
+    "sentinelRegular": true
+  },
+  "outcome": {
+    "ok": true,
+    "result": {
+      "completed": true,
+      "verification": "visual",
+      "actions": 2,
+      "modelCalls": 6,
+      "audit": [
+        {
+          "sequence": 1,
+          "event": "click",
+          "before": "7b4b86265595e6e77d145f7ee2efcc18e5f9942602636ebeccd6f4e844c6492f",
+          "verified": false,
+          "evidence": "model",
+          "route": "ax_press",
+          "elementId": "e1",
+          "after": "90ce91f21d4151fca14b788bb441fb699301b9f5c5318e2be0e65849f8a92471"
+        },
+        {
+          "sequence": 2,
+          "event": "type",
+          "before": "90ce91f21d4151fca14b788bb441fb699301b9f5c5318e2be0e65849f8a92471",
+          "verified": true,
+          "evidence": "target",
+          "targetVerified": true,
+          "route": "ax_value",
+          "elementId": "e3",
+          "after": "3c2bb71ca4c218554c66dece8a06d19d128c192e13f6d59cb1bcd47ecc24abf6"
+        },
+        {
+          "sequence": 2,
+          "event": "goal_verification",
+          "before": "3c2bb71ca4c218554c66dece8a06d19d128c192e13f6d59cb1bcd47ecc24abf6",
+          "verified": true
+        }
+      ]
+    }
+  },
+  "after": {
+    "isActive": false,
+    "geometry": {
+      "window": {
+        "width": 580,
+        "height": 442,
+        "y": 210,
+        "x": 180
+      },
+      "coordinateSystem": "AppKit points, bottom-left origin",
+      "screens": [
+        {
+          "x": 0,
+          "height": 1007,
+          "y": 77,
+          "width": 1728
+        }
+      ]
+    },
+    "isOnActiveSpace": true,
+    "occlusionVisible": true,
+    "startupReady": true,
+    "activations": 0,
+    "activationPolicy": "regular",
+    "isVisible": true,
+    "clicks": 1,
+    "text": "Genie local smoke"
+  },
+  "sentinelAfter": {
+    "startupReady": true,
+    "text": "",
+    "clicks": 0,
+    "geometry": {
+      "window": {
+        "width": 580,
+        "y": 210,
+        "height": 442,
+        "x": 500
+      },
+      "screens": [
+        {
+          "x": 0,
+          "y": 77,
+          "width": 1728,
+          "height": 1007
+        }
+      ],
+      "coordinateSystem": "AppKit points, bottom-left origin"
+    },
+    "activationPolicy": "regular",
+    "isOnActiveSpace": true,
+    "occlusionVisible": true,
+    "activations": 0,
+    "isVisible": true,
+    "isActive": false
+  },
+  "readbackChecks": {
+    "textMatches": true,
+    "clickedExactlyOnce": true,
+    "targetDidNotActivate": true,
+    "sentinelTextPreserved": true,
+    "sentinelClicksPreserved": true
+  },
+  "finishedAt": "2026-10-01T13:44:38.555Z"
+}

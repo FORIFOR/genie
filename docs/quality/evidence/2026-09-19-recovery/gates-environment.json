@@ -1,0 +1,24 @@
+{
+  "revision": "28f89f2636a3b780e813ea902e07d2e4900a6e3f",
+  "os": "ProductName:\t\tmacOS\nProductVersion:\t\t26.6.2\nBuildVersion:\t\t25G83\n",
+  "architecture": "arm64",
+  "dotnet_sdks": "8.0.130 [/opt/homebrew/Cellar/dotnet@8/8.0.130/libexec/sdk]\n",
+  "tools": {
+    "prlctl": null,
+    "VBoxManage": null,
+    "qemu-system-aarch64": null,
+    "tart": null,
+    "dotnet": "/opt/homebrew/bin/dotnet",
+    "dbmate": "/opt/homebrew/bin/dbmate"
+  },
+  "source_sha256": {
+    "scripts/verify-all.sh": "2dd35731a977ebbb00cf1eb67d1697cd1c596c8f918379832376686434de61a8",
+    "scripts/check-generated.sh": "4c705f7a0a43ccdea91b8004b54df0b21a5f22952feac8a963143e29401356cc",
+    "scripts/verify-macos-recording.sh": "eeda76f87288dda44f8e60f2d4c6b34204188e14bc8c6d150437077994414768",
+    "scripts/verify-c-abi.sh": "5c6caba3375244d4b5ee32ac67aea1c293450f4680016a2322224650248c0a38",
+    "scripts/verify-csharp-bridge.sh": "7d426a20ce4b2aabbdcb420c385e9c075a6527d8557ba6b995fbf67f852ae2f7",
+    "core/genie-core/src/api.rs": "c721c532aebf298767e4aff94a68099e632a6691a7c33c8f0ec9b02c8bba78e0",
+    "infra/db/schema.sql": "f75fd78ab852c4a21fea69dcd1b42f27a901abc651faab3f05e8bfe595f57834",
+    "packages/db/src/generated/schema.ts": "ebef93f4e6f99ae01f08077009003170f9da4bd2faaadf238553994cedbb9006"
+  }
+}

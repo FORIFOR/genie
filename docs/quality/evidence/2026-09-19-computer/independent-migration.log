@@ -1,0 +1,12 @@
+✔ existing VisualContext -> HTTP vision request carries two PNGs, structured response, and pinned provider (17.989833ms)
+✔ durable local claim prevents replay across device instances / restarts (19.015208ms)
+✔ HTTP model cancellation passes an aborted signal, not a successful model result (0.727958ms)
+✔ moving preview storage does not forget a claim in the legacy cache (16.284833ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 191.560208

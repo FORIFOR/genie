@@ -2,6 +2,7 @@
   "name": "@genie/service-conversation",
   "version": "0.0.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "description": "Conversations, turns, streaming responses and context references.",
   "main": "./dist/index.js",

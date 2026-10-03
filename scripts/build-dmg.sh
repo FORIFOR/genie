@@ -33,6 +33,7 @@ cat > "$ENT" <<'PLIST'
 <plist version="1.0"><dict>
   <key>com.apple.security.device.audio-input</key><true/>
   <key>com.apple.security.automation.apple-events</key><true/>
+  <key>com.apple.security.personal-information.location</key><true/>
 </dict></plist>
 PLIST
 

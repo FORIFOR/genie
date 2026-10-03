@@ -1,0 +1,60 @@
+{
+  "recordedAt": "2026-10-01T19:29:25.286213+00:00",
+  "reviewer": "/root/verification_audit",
+  "scope": "Read-only review of experimental own-process geometry source and saved three intermediate reports; reviewer did not execute harness or GUI. Source and binary evolved between experiments; current source hash is not asserted to be every earlier report executable.",
+  "sourceHashes": {
+    "apps/genie-macos/Sources/GenieMac/App/OwnAccessibilityGeometry.swift": "f31ff086ac71985a7d6444b5c53b45e2cdfe08e725bb43cc628dd6f22002e9f8",
+    "scripts/tests/OwnAccessibilityGeometryHarness.swift": "78ac5cd988972f9a3d37dde514b49fb17e1161b9e480df6e8603836801486270"
+  },
+  "reports": [
+    {
+      "file": "own-geometry-probe.json",
+      "sha256": "dba0ee23c890d79bbff4ed61390c06d89c33a649c34a37046d3f8928f47a37d8",
+      "failures": [
+        "Native accessibility and actual view frames differ",
+        "swiftLabel missing",
+        "swiftEnabled missing",
+        "swiftDisabled missing",
+        "enabled state missing",
+        "disabled state missing"
+      ],
+      "nativeElementCount": 9,
+      "swiftElementCount": 9
+    },
+    {
+      "file": "own-geometry-active.json",
+      "sha256": "39a8343c36b06d31fceef105c96abf34b9d7addb4bd0377b4bba13319d604867",
+      "failures": [
+        "swiftLabel missing",
+        "swiftEnabled missing",
+        "swiftDisabled missing",
+        "enabled state missing",
+        "disabled state missing"
+      ],
+      "nativeElementCount": 10,
+      "swiftElementCount": 9
+    },
+    {
+      "file": "own-geometry-legacy.json",
+      "sha256": "39a8343c36b06d31fceef105c96abf34b9d7addb4bd0377b4bba13319d604867",
+      "failures": [
+        "swiftLabel missing",
+        "swiftEnabled missing",
+        "swiftDisabled missing",
+        "enabled state missing",
+        "disabled state missing"
+      ],
+      "nativeElementCount": 10,
+      "swiftElementCount": 9
+    }
+  ],
+  "methodAssessment": "Public own-process NSWindow/NSView/NSAccessibilityProtocol and rendered frame comparisons are legitimate geometry measurements. No system-wide AX application or declared-token substitution in reviewed helper. Required SwiftUI identifiers/enabled state are checked, and missing elements fail.",
+  "verdict": "FAIL for equivalent SwiftUI element measurement; native frame improvement alone is insufficient for profile adoption. Initial native discrepancy is preserved; later active/legacy reports retain five SwiftUI failures.",
+  "acceptanceRequirements": [
+    "Measure actual displayed controls and stable text, not only window rectangles.",
+    "Keep AX permission/interprocess hitability scopes separate from own-process geometry.",
+    "All six geometry states and required per-state identifiers must exist before recording a successful baseline; problems must fail record.",
+    "Retain source/binary/capture-layout provenance and unchanged tolerances.",
+    "Do not treat own window inventory as proof no OS/other-app prompt exists."
+  ]
+}

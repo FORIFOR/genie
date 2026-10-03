@@ -101,7 +101,10 @@ export async function makeTestApp(options: MakeAppOptions): Promise<TestApp> {
   // （渡さないと chat lane の General Assistant が「unknown task kind」で始まらず、試験がそれを見逃す）。
   const tasks = new TaskService(db, runtime, agentResolver(registry));
   // 会話経路も本番同様に積む。積まないと conversation の HTTP 契約を試験が見逃す。
-  const conversations = new ConversationService({ db });
+  const conversations = new ConversationService({
+    db,
+    findAcceptedTask: tasks.findByConversationTurn.bind(tasks),
+  });
   const shares = new ShareService({ db, library, shareHost: 'http://localhost:1430' });
   const meetings = new MeetingService({ db, publisher: { async publish() {} } });
   const recordings = new MemoryRecordingStore();

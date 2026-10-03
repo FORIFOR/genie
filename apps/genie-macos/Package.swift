@@ -42,9 +42,16 @@ let package = Package(
         // `scripts/fetch-sparkle.sh` に切り出してある（checksum は Sparkle 自身の
         // Package.swift と同じ値で照合する）。
         .binaryTarget(name: "Sparkle", path: "Vendor/Sparkle/Sparkle.xcframework"),
+        // 承認の境界。「人が確認カードで押した」証拠（UserApproval）と、backend の承認に答える
+        // 唯一の場所をここに閉じる。**証拠の init はこのモジュールの外から見えない**ので、
+        // GenieMac から直接・別名・extension・decode では作れず、コピーもできない（ここは型で守る）。
+        // ただし入口の `ApprovalLedger.issue` は public で、GenieMac のどこからでも呼べば作れる。
+        // それを Confirm.approve の 1 か所に限るのは型ではなくゲート（`scripts/verify-approval-boundary.sh`）。
+        // 検査の側も `@testable import` しない。
+        .target(name: "GenieApproval", dependencies: ["GenieCore"], path: "Sources/GenieApproval"),
         .executableTarget(
             name: "GenieMac",
-            dependencies: ["GenieCore", "Sparkle"],
+            dependencies: ["GenieCore", "GenieApproval", "Sparkle"],
             path: "Sources/GenieMac",
             // CLI selftestにもTCCの用途説明が必要。ないと権限拒否ではなくOSがSIGABRTで終了する。
             // releaseは署名バンドルのInfo.plistを使う。
@@ -58,7 +65,7 @@ let package = Package(
         ),
         .testTarget(
             name: "GenieMacTests",
-            dependencies: ["GenieCore", "GenieMac"],
+            dependencies: ["GenieCore", "GenieApproval", "GenieMac"],
             path: "Tests/GenieMacTests"
         ),
     ]

@@ -1,6 +1,6 @@
 # Macで最初の仕事を試す（v0.1.4）
 
-新しいソースでは、[準備と起動をひとつにまとめる方法](MANAGED_PREVIEW.ja.md)も使えます。以下はv0.1.4の手動起動手順です。
+**このページは、Ollamaのローカルモデルを使うv0.1.4の手動起動手順です。** 既存のCodex接続で`gpt-6-sol`を使う場合や、DBとサービスの起動をまとめる場合は、現在のソース向けの[まとめて起動する手順](MANAGED_PREVIEW.ja.md)へ進んでください。その外部モデル経路にOllama・dbmate・psqlの導入は不要です。アプリを自分でビルドする場合の道具は別途必要です。
 
 [テスター案内に戻る](TESTING.ja.md) · [English setup](LOCAL_PREVIEW.md)
 

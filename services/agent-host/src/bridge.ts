@@ -17,12 +17,13 @@
  */
 import {
   GenieError,
+  canonicalSha256,
   looksLikeSecretName,
   looksLikeSecretValue,
   stateFromHeartbeat,
   uuidv7,
 } from '@genie/contracts';
-import { withTenant, type DbHandle } from '@genie/db';
+import { isTransactionAuthorizationApprovalActive, withTenant, type DbHandle } from '@genie/db';
 
 /**
  * 承認された事実。cloud が発行し、**端末が使う前にもう一度確かめる。**
@@ -37,6 +38,7 @@ export interface ApprovalProof {
   readonly decidedBy: string;
   readonly decidedAt: string;
   readonly expiresAt: string;
+  readonly inputsHash?: string;
 }
 
 export interface HostStepRequest {
@@ -70,6 +72,13 @@ export interface BridgeDeps {
  * 端末が戻ったときに**もう誰も待っていない仕事**が走り出す。
  */
 export const DEFAULT_REQUEST_TTL_MS = 15 * 60_000;
+
+const EXECUTABLE_TASK_STATUSES = [
+  'PENDING',
+  'RUNNING',
+  'WAITING_APPROVAL',
+  'PAUSED_HOST_OFFLINE',
+] as const;
 
 interface Row {
   id: string;
@@ -161,6 +170,17 @@ export class HostBridge {
     const at = this.#now();
 
     const row = await withTenant(this.#db, input.tenantId, async (tx) => {
+      // Task cancellation takes the same row lock. A retried activity cannot enqueue
+      // another input after the cancellation has committed.
+      const task = await tx
+        .selectFrom('tasks')
+        .select('status')
+        .where('id', '=', input.taskId)
+        .forUpdate()
+        .executeTakeFirst();
+      if (!task || !(EXECUTABLE_TASK_STATUSES as readonly string[]).includes(task.status)) {
+        throw new GenieError('common.conflict', 'this task no longer accepts host work');
+      }
       const existing = await tx
         .selectFrom('host_step_requests')
         .selectAll()
@@ -205,6 +225,11 @@ export class HostBridge {
         .selectAll()
         .where('status', '=', 'PENDING')
         .where('expires_at', '>', at)
+        .where(
+          'task_id',
+          'in',
+          tx.selectFrom('tasks').select('id').where('status', 'in', EXECUTABLE_TASK_STATUSES),
+        )
         .orderBy('created_at', 'asc')
         .limit(1)
         .forUpdate()
@@ -220,6 +245,50 @@ export class HostBridge {
         .executeTakeFirstOrThrow();
     });
     return row ? toRequest(row as Row) : null;
+  }
+
+  /** Read-only revocation check, including a claimed step waiting on native consent. */
+  async executionAllowed(input: {
+    tenantId: string;
+    userId: string;
+    requestId: string;
+    hostId: string;
+  }): Promise<boolean> {
+    return withTenant(this.#db, input.tenantId, async (tx) => {
+      const row = await tx
+        .selectFrom('host_step_requests')
+        .innerJoin('tasks', 'tasks.id', 'host_step_requests.task_id')
+        .innerJoin('agent_hosts', 'agent_hosts.id', 'host_step_requests.host_id')
+        .select([
+          'host_step_requests.id',
+          'host_step_requests.tool_id',
+          'host_step_requests.args',
+          'host_step_requests.approval',
+          'host_step_requests.task_id',
+          'host_step_requests.step_index',
+        ])
+        .where('host_step_requests.id', '=', input.requestId)
+        .where('host_step_requests.host_id', '=', input.hostId)
+        .where('agent_hosts.user_id', '=', input.userId)
+        .where('host_step_requests.status', '=', 'CLAIMED')
+        .where('host_step_requests.expires_at', '>', this.#now())
+        .where('tasks.status', 'in', EXECUTABLE_TASK_STATUSES)
+        .executeTakeFirst();
+      if (!row) return false;
+      if (row.tool_id !== 'transaction.submit') return true;
+      const proof =
+        row.approval && typeof row.approval === 'object' && !Array.isArray(row.approval)
+          ? (row.approval as Record<string, unknown>)
+          : {};
+      if (typeof proof['approvalId'] !== 'string') return false;
+      return isTransactionAuthorizationApprovalActive(tx, {
+        approvalId: proof['approvalId'],
+        now: this.#now(),
+        inputsHash: await canonicalSha256(row.args),
+        taskId: row.task_id,
+        stepIndex: row.step_index,
+      });
+    });
   }
 
   /**
@@ -247,10 +316,12 @@ export class HostBridge {
     requestId: string;
     hostId: string;
     error: { code: string; message: string };
+    result?: unknown;
   }): Promise<void> {
     await this.#settle(input.tenantId, input.requestId, input.hostId, {
       status: 'FAILED',
       error: JSON.stringify(input.error),
+      result: JSON.stringify(input.result ?? null),
     });
   }
 
@@ -289,6 +360,33 @@ export class HostBridge {
         .executeTakeFirst(),
     );
     return row ? toRequest(row as Row) : null;
+  }
+
+  /**
+   * 止められた仕事の、**まだ誰も取っていない**依頼を取り下げる。
+   *
+   * 取り下げたら true。待っている側はそこで待ちを終えられる。
+   * 止めた後の依頼は `claimNext` がもう渡さないので、待っても決着しない。
+   *
+   * **取られた依頼には触らない。**端末は既に走らせているかもしれず、
+   * その結果（送信済み・結果不明）は端末だけが言える。
+   * 条件は 1 文の中で確かめる。同時に取りに来た端末と、取り下げが両方通ることはない。
+   */
+  async withdrawUnclaimed(tenantId: string, requestId: string): Promise<boolean> {
+    const withdrawn = await withTenant(this.#db, tenantId, (tx) =>
+      tx
+        .deleteFrom('host_step_requests')
+        .where('id', '=', requestId)
+        .where('status', '=', 'PENDING')
+        .where(
+          'task_id',
+          'not in',
+          tx.selectFrom('tasks').select('id').where('status', 'in', EXECUTABLE_TASK_STATUSES),
+        )
+        .returning('id')
+        .executeTakeFirst(),
+    );
+    return withdrawn !== undefined;
   }
 
   /**

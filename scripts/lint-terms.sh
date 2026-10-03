@@ -12,7 +12,17 @@ SRC="$ROOT/apps/genie-macos/Sources/GenieMac"
 fail=0
 check() {   # $1 = 使わない語, $2 = 使う語
   hits="$(grep -rn "\"[^\"]*$1[^\"]*\"" "$SRC" \
-    | grep -v 'SelfTest.swift\|command:\|case "\|^[^:]*:[0-9]*:[[:space:]]*//' || true)"
+    | grep -v 'SelfTest.swift\|command:\|case "\|^[^:]*:[0-9]*:[[:space:]]*//' \
+    | python3 -c '
+import re, sys
+word = sys.argv[1]
+for line in sys.stdin:
+    # Release notes name a release artifact, not the meeting Memo surface (DS-06).
+    # Remove only this compound before checking; a separate ノート on the same line still fails.
+    checked = line.replace("リリースノート", "") if word == "ノート" else line
+    if re.search(r"\"[^\"]*" + re.escape(word) + r"[^\"]*\"", checked):
+        print(line, end="")
+' "$1" || true)"
   if [ -n "$hits" ]; then
     echo "FAIL: 「$1」ではなく「$2」と言う:"; echo "$hits" | sed 's/^/  /'; fail=1
   fi

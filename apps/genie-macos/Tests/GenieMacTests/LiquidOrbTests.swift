@@ -54,6 +54,31 @@ final class LiquidOrbTests: XCTestCase {
         voice.markVoiceCaptureLive();voice.receiveInputLevel(0.8);XCTAssertEqual(voice.inputLevel,0.8)
         voice.cancelListening();voice.receiveInputLevel(1);XCTAssertEqual(voice.inputLevel,0)
     }
+    /// 会話の波形は届いた音量だけを、新しい順に最大 inputLevelHistory 個持ち、聞くのをやめたら空にする。
+    @MainActor func testWaveformKeepsOnlyRecentLevelsAndClearsOnCancel() {
+        let voice = VoiceHUDState.shared
+        let previous = voice.mode, headless = WindowCoordinator.headless
+        WindowCoordinator.headless = true
+        defer { voice.mode = previous;WindowCoordinator.headless = headless }
+        voice.mode = .listening(partial: "");voice.beginPreparingForShot()
+        voice.receiveInputLevel(0.9);XCTAssertTrue(voice.inputLevels.isEmpty)
+        voice.markVoiceCaptureLive()
+        for i in 0..<(VoiceHUDState.inputLevelHistory + 5) { voice.receiveInputLevel(Float(i % 10) / 10) }
+        XCTAssertEqual(voice.inputLevels.count, VoiceHUDState.inputLevelHistory)
+        XCTAssertEqual(voice.inputLevels.last ?? -1, CGFloat(voice.inputLevel), accuracy: 0.0001)
+        voice.cancelListening();XCTAssertTrue(voice.inputLevels.isEmpty)
+    }
+    /// 作業中の進み具合は終わった段の数だけ（途中の段を半分と数えない）。
+    func testAgentProgressCountsOnlyFinishedSteps() {
+        let task = AgentTask(id: UUID(), title: "t", status: .running, steps: [
+            AgentStep(title: "a", tool: "x", state: .success),
+            AgentStep(title: "b", tool: "x", state: .running),
+            AgentStep(title: "c", tool: "x"),
+            AgentStep(title: "d", tool: "x"),
+        ], startedAt: Date(), context: ContextBundle())
+        XCTAssertEqual(task.doneSteps, 1)
+        XCTAssertEqual(task.progress, 0.25, accuracy: 0.0001)
+    }
     @MainActor func testSpeechStripsFormattingAndCode() {
         XCTAssertEqual(GenieSpeechOutput.spokenText("## Hello\n**Genie**\n```swift\nsecret()\n```\n[Guide](https://example.com)"),"Hello\nGenie\n\nGuide")
         XCTAssertEqual(GenieSpeechOutput.spokenText(String(repeating:"あ",count:20_000)).count,20_000)

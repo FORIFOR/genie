@@ -34,12 +34,18 @@ enum DockPresentation: Equatable {
     case meeting(expanded: MeetingPanel?)
     /// すぐ返せる短い回答。Task Dock の中で確認でき、作業画面へ遷移しない。
     case answer(String)
+    /// 例外のカード（天気・ニュース・近くの店…）。回答面と同じ幅で、種類ごとの段に描く（`DockCardView`、DESIGN.md §8）。
+    case card(DockCard)
     /// 仕事が終わった直後。消して終わらせず、後始末だけ出して残す（CleanShot の Quick Access）。
     case result(AgentResult)
     /// 文脈の棚を開いた状態（Dropover: 棚そのものが詳細へ展開する）。
     case contextDetail
     /// 旧 Quick Actions（Dock を押したとき）。
     case quickActions
+    /// 受付の応答（「かしこまりました」/ 受け付けられません）。受け付けた後にだけ出す。
+    case ack(DockAck)
+    /// 音声入力で言い淀みを消して入れた。数秒だけ「元の文に戻す」を出す。
+    case dictated(DictatedText)
     /// 録音へ移る途中。
     case enteringRecording
 
@@ -89,6 +95,9 @@ enum DockPresentation: Equatable {
                                 + CGFloat(summary.suggestions.count) * Metrics.dockAgentRowHeight)
         case .listening:
             return measured(Metrics.dockListeningWidth, fallback: Metrics.dockListeningHeight)
+        case .thinking where VoiceHUDState.shared.conversation.isActive:
+            // 会話の間は幅を一つにそろえる（「会話を終了」がターンのたびに動かないように）。
+            return measured(Metrics.dockListeningWidth, fallback: Metrics.dockThinkingHeight)
         case .thinking, .enteringRecording, .quickActions:
             return measured(Metrics.dockThinkingWidth, fallback: Metrics.dockThinkingHeight)
         case .agent:
@@ -112,10 +121,22 @@ enum DockPresentation: Equatable {
             let s = measured(Metrics.dockMeetingWidth, fallback: Metrics.dockMeetingExpandedHeight)
             return CGSize(width: s.width, height: min(Metrics.dockMeetingExpandedHeight, s.height))
         case .answer:
-            // 短い回答は結果面と同じ幅で測る。長い回答も Dock 内でスクロールできる。
-            return measured(Metrics.dockResultWidth, fallback: Metrics.dockResultHeight)
+            // 短い回答は結果面と同じ幅で測る。長い回答も Dock 内でスクロールできる。会話の間は聞く面と同じ幅。
+            return measured(VoiceHUDState.shared.conversation.isActive ? Metrics.dockListeningWidth : Metrics.dockResultWidth,
+                            fallback: Metrics.dockResultHeight)
+        case .card:
+            // 回答面と同じ幅。高さは中身で、確認面と同じ理由で上限を置く（作業面ほど大きくしない）。
+            let s = measured(VoiceHUDState.shared.conversation.isActive ? Metrics.dockListeningWidth : Metrics.dockResultWidth,
+                             fallback: Metrics.dockResultHeight)
+            return CGSize(width: s.width, height: min(Metrics.dockCardMaxHeight, s.height))
         case .result:
             return measured(Metrics.dockResultWidth, fallback: Metrics.dockResultHeight)
+        case .dictated:
+            return measured(Metrics.dockThinkingWidth, fallback: Metrics.dockThinkingHeight)
+        case .ack:
+            // 会話の間は聞く面と同じ幅（「会話を終了」を動かさない）。
+            return measured(VoiceHUDState.shared.conversation.isActive ? Metrics.dockListeningWidth : Metrics.dockConfirmWidth,
+                            fallback: Metrics.dockThinkingHeight)
         case .contextDetail:
             return measured(Metrics.dockContextExpandedWidth, fallback: Metrics.dockContextExpandedBase + 180)
         }
@@ -123,6 +144,14 @@ enum DockPresentation: Equatable {
 }
 
 /// 終わった仕事。「✓ できました」で消さず、次にやることを出したまま少し残す。
+/// 音声入力で入れた文と、整える前の文。
+struct DictatedText: Equatable {
+    let id = UUID()
+    let inserted: String
+    let original: String
+    let appPID: pid_t?
+}
+
 struct AgentResult: Equatable {
     let title: String
     /// 後始末。**実際にできることだけ**を挙げる。
@@ -138,6 +167,14 @@ struct AgentResult: Equatable {
     var detail: String? = nil
     /// できなかった結果。印を ✓ にしない。
     var failed: Bool = false
+    /// 何ができたか（「下書き」「回答」）。見出しは「<種類>ができました」。
+    var kind: String? = nil
+    /// 本人が止めた（失敗とは別。再試行は出さない）。
+    var cancelled: Bool = false
+    /// The external result is unknown, so neither success nor cancellation is asserted.
+    var unconfirmed: Bool = false
+    /// 仕事の結果なら、その仕事（`DockTaskBoard`）。会議の結果・始められなかった知らせは nil。
+    var taskID: UUID? = nil
 
     enum Action: String, Equatable {
         case openWorkspace, openNotes, ask, copy, openSettings, retry
@@ -232,7 +269,11 @@ struct ContextBundle: Equatable {
 // MARK: - §15 Agent
 
 /// 進行状態。`GenieCore.TaskStatus` とは別物なので名前を分ける。
-enum AgentRunState: String, Equatable { case pending, running, success, failed }
+enum AgentRunState: String, Equatable {
+    case pending, running, success, failed
+    /// もう動かない（結果が決まった）。
+    var isTerminal: Bool { self == .success || self == .failed }
+}
 
 struct AgentStep: Identifiable, Equatable {
     let id = UUID()
@@ -245,12 +286,12 @@ struct AgentStep: Identifiable, Equatable {
 
 struct AgentTask: Identifiable, Equatable {
     var requestRecord: TaskRequestRecord? = nil
-    /// 進み具合（0–1）。段の状態から出す。持たせると必ずずれるので、計算にする。
+    /// 終わった段の数。進み具合は段の数でだけ言う（作った割合は出さない。途中の段を半分と数えていた）。
+    var doneSteps: Int { steps.filter { $0.state == .success }.count }
+    /// 進み具合（0–1）。終わった段 ÷ 段の数。持たせると必ずずれるので、計算にする。
     var progress: Double {
         guard !steps.isEmpty else { return 0 }
-        let done = steps.filter { $0.state == .success }.count
-        let running = steps.contains { $0.state == .running } ? 0.5 : 0
-        return min(1, (Double(done) + running) / Double(steps.count))
+        return min(1, Double(doneSteps) / Double(steps.count))
     }
 
     let id: UUID
@@ -290,6 +331,17 @@ enum ActionRiskLevel: Int, Comparable {
         case .r3: return "元に戻せない"
         }
     }
+
+    /// backend の ActionRisk（`@genie/contracts` approval.ts）をこの 4 段に写す。
+    /// 知らない値は一番重い R3 として扱う（分からないものを軽く見積もらない）。
+    init(backend risk: String) {
+        switch risk {
+        case "READ": self = .r0
+        case "REVERSIBLE_WRITE": self = .r1
+        case "EXTERNAL_COMMIT": self = .r2
+        default: self = .r3   // DESTRUCTIVE / REGULATED / FINANCIAL / 未知
+        }
+    }
 }
 
 /// §17 確認は AI の文章で聞かない。カードに出す。
@@ -327,6 +379,8 @@ struct ActionConfirmation: Identifiable, Equatable {
     var params: [Param] = []
     /// ④ 中身の下見。長ければここだけ流す。
     var preview: String?
+    /// Fixed, server-validated simulation scope; no credentials are stored in presentation state.
+    var transactionAuthorization: TransactionAuthorizationContext?
     /// ⑤ 出所。
     var source: Source?
     let details: [String]
@@ -461,7 +515,18 @@ struct MeetingCanvas: Equatable {
 
 struct GenieState: Equatable {
     var mode: GenieMode = .idle
+    /// 面に出ている一枚（`DockComposer` が下の状態から決める）。
     var dock: DockPresentation = .idle
+    /// 本人・声が頼んだ面（聞く・考える・答え・Quick Actions・会議など）。仕事の面は含めない。
+    var requested: DockPresentation = .idle
+    /// 動いている / 終わった仕事（複数）。
+    var board = DockTaskBoard()
+    /// 面に出している結果（1 件）。縮めたら nil（履歴は Work に残る）。
+    var focusedResultID: UUID?
+    /// 受付の応答（短い間だけ）。
+    var ack: DockAck?
+    /// ポインタが Dock の上にある（結果を縮めない）。
+    var hoveringDock = false
     var context = ContextBundle()
     var activeTask: AgentTask?
     var meeting = MeetingState()

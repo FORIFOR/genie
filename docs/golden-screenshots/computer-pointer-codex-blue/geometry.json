@@ -1,0 +1,145 @@
+{
+  "arrowWhiteOutlineContrast" : 5.4817201371394342,
+  "badgeStatusPt" : 13,
+  "badgeTextContrast" : 15.815325754053516,
+  "badgeTitlePt" : 14,
+  "coordinateCases" : [
+    {
+      "actionPoint" : [
+        600,
+        400
+      ],
+      "badgeOnTargetDisplay" : true,
+      "glowContainedByPanel" : true,
+      "glowDiameterPt" : 52,
+      "mirrorX" : 1,
+      "mirrorY" : 1,
+      "pointerHeightPt" : 22,
+      "pointerWidthPt" : 22,
+      "tipErrorPt" : 0
+    },
+    {
+      "actionPoint" : [
+        -1100,
+        300
+      ],
+      "badgeOnTargetDisplay" : true,
+      "glowContainedByPanel" : true,
+      "glowDiameterPt" : 52,
+      "mirrorX" : 1,
+      "mirrorY" : 1,
+      "pointerHeightPt" : 22,
+      "pointerWidthPt" : 22,
+      "tipErrorPt" : 0
+    },
+    {
+      "actionPoint" : [
+        200,
+        -500
+      ],
+      "badgeOnTargetDisplay" : true,
+      "glowContainedByPanel" : true,
+      "glowDiameterPt" : 52,
+      "mirrorX" : 1,
+      "mirrorY" : 1,
+      "pointerHeightPt" : 22,
+      "pointerWidthPt" : 22,
+      "tipErrorPt" : 0
+    },
+    {
+      "actionPoint" : [
+        2000,
+        800
+      ],
+      "badgeOnTargetDisplay" : true,
+      "glowContainedByPanel" : true,
+      "glowDiameterPt" : 52,
+      "mirrorX" : 1,
+      "mirrorY" : 1,
+      "pointerHeightPt" : 22,
+      "pointerWidthPt" : 22,
+      "tipErrorPt" : 0
+    },
+    {
+      "actionPoint" : [
+        1435,
+        895
+      ],
+      "badgeOnTargetDisplay" : true,
+      "glowContainedByPanel" : true,
+      "glowDiameterPt" : 52,
+      "mirrorX" : -1,
+      "mirrorY" : -1,
+      "pointerHeightPt" : 22,
+      "pointerWidthPt" : 22,
+      "tipErrorPt" : 0
+    },
+    {
+      "actionPoint" : [
+        -1275,
+        105
+      ],
+      "badgeOnTargetDisplay" : true,
+      "glowContainedByPanel" : true,
+      "glowDiameterPt" : 52,
+      "mirrorX" : 1,
+      "mirrorY" : 1,
+      "pointerHeightPt" : 22,
+      "pointerWidthPt" : 22,
+      "tipErrorPt" : 0
+    },
+    {
+      "actionPoint" : [
+        3035,
+        1095
+      ],
+      "badgeOnTargetDisplay" : true,
+      "glowContainedByPanel" : true,
+      "glowDiameterPt" : 52,
+      "mirrorX" : -1,
+      "mirrorY" : -1,
+      "pointerHeightPt" : 22,
+      "pointerWidthPt" : 22,
+      "tipErrorPt" : 0
+    },
+    {
+      "actionPoint" : [
+        1195,
+        -795
+      ],
+      "badgeOnTargetDisplay" : true,
+      "glowContainedByPanel" : true,
+      "glowDiameterPt" : 52,
+      "mirrorX" : -1,
+      "mirrorY" : 1,
+      "pointerHeightPt" : 22,
+      "pointerWidthPt" : 22,
+      "tipErrorPt" : 0
+    }
+  ],
+  "fixture" : true,
+  "glowCenterAlpha" : 0.29999999999999999,
+  "glowRadiusPt" : 26,
+  "moveSeconds" : 0.17999999999999999,
+  "native" : {
+    "animatedShowSeconds" : 0.00097908332827500999,
+    "animationArrivedAtExactTip" : true,
+    "clickThrough" : true,
+    "foregroundUnchanged" : true,
+    "intermediateAnimationObserved" : true,
+    "intermediateAnimationTipX" : 883,
+    "nonactivating" : true,
+    "ownPanelListedOnScreenByWindowServer" : true,
+    "panelAbsentFromWindowServerAfterHide" : true,
+    "reduceMotionAtTest" : false,
+    "samePanelReused" : true,
+    "samePointStateChangeDoesNotRestartTravel" : true,
+    "showSeconds" : 0.034618333345861174,
+    "systemPointerUnchanged" : true
+  },
+  "physicalMultipleDisplaysTested" : false,
+  "pointerHeightPt" : 22,
+  "pointerWidthPt" : 22,
+  "shape" : "stemless-dart",
+  "source" : "Marker.layout \/ Marker.Ring.pointerPath"
+}

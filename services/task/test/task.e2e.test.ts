@@ -74,7 +74,17 @@ describe.skipIf(!url)('task runtime end to end', () => {
     storeRoot = await mkdtemp(path.join(tmpdir(), 'astra-objects-'));
     library = new LibraryService(db, new FsObjectStore(storeRoot));
 
-    env = await TestWorkflowEnvironment.createLocal();
+    env = await TestWorkflowEnvironment.createLocal(
+      process.env['ASTRA_TEST_TEMPORAL_PATH']
+        ? {
+            server: {
+              executable: { type: 'existing-path', path: process.env['ASTRA_TEST_TEMPORAL_PATH'] },
+              ip: '127.0.0.1',
+              ui: false,
+            },
+          }
+        : undefined,
+    );
     worker = await createTaskWorker(
       {
         db,
@@ -397,6 +407,68 @@ describe.skipIf(!url)('task runtime end to end', () => {
       await expect(
         service.decideApproval(tenantId, task.id, userId, approval, 'APPROVED'),
       ).rejects.toMatchObject({ code: 'approval.already_decided' });
+    }, 60_000);
+  });
+
+  describe('follow-up instructions', () => {
+    it('applies an instruction received while waiting to the next step, and says which step', async () => {
+      const { task } = await service.create({
+        tenantId,
+        userId,
+        request: { kind: 'echo', input: { message: 'draft', require_approval: true, approval_first: true } },
+        idempotencyKey: `k-${uuidv7()}`,
+      });
+      const approval = await waitForApproval(db, tenantId, task.id);
+      const requestId = uuidv7();
+      const received = await service.addInstruction(tenantId, task.id, userId, {
+        request_id: requestId,
+        text: 'テストも追加して',
+      });
+      expect(received.status).toBe('RECEIVED');
+      // 送り直しは同じ 1 件。本文が違えば断る。
+      const again = await service.addInstruction(tenantId, task.id, userId, {
+        request_id: requestId,
+        text: 'テストも追加して',
+      });
+      expect(again.request_id).toBe(requestId);
+      await expect(
+        service.addInstruction(tenantId, task.id, userId, { request_id: requestId, text: '別の指示' }),
+      ).rejects.toMatchObject({ code: 'task.idempotency_conflict' });
+
+      await service.decideApproval(tenantId, task.id, userId, approval, 'APPROVED');
+      await waitForWorkflow(task.id);
+      const [instruction] = await service.listInstructions(tenantId, task.id);
+      expect(instruction).toMatchObject({ status: 'APPLIED', applied_step_index: 1 });
+      const done = await service.get(tenantId, task.id);
+      expect(done.status).toBe('COMPLETED');
+    }, 60_000);
+
+    it('reports an instruction that arrived after the last step as not applied', async () => {
+      const { task } = await service.create({
+        tenantId,
+        userId,
+        request: { kind: 'echo', input: { message: 'last', require_approval: true } },
+        idempotencyKey: `k-${uuidv7()}`,
+      });
+      const approval = await waitForApproval(db, tenantId, task.id);
+      await service.addInstruction(tenantId, task.id, userId, { request_id: uuidv7(), text: '間に合わない指示' });
+      await service.decideApproval(tenantId, task.id, userId, approval, 'APPROVED');
+      await waitForWorkflow(task.id);
+      const [instruction] = await service.listInstructions(tenantId, task.id);
+      expect(instruction!.status).toBe('NOT_APPLIED');
+    }, 60_000);
+
+    it('refuses to add to a finished task', async () => {
+      const { task } = await service.create({
+        tenantId,
+        userId,
+        request: { kind: 'echo', input: { message: 'done' } },
+        idempotencyKey: `k-${uuidv7()}`,
+      });
+      await waitForWorkflow(task.id);
+      await expect(
+        service.addInstruction(tenantId, task.id, userId, { request_id: uuidv7(), text: 'あと、これも' }),
+      ).rejects.toMatchObject({ code: 'task.invalid_state' });
     }, 60_000);
   });
 

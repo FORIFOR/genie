@@ -96,6 +96,8 @@ export const TurnAttachment = z
 export type TurnAttachment = z.infer<typeof TurnAttachment>;
 
 export const SendTurnRequest = z.object({
+  /** Persist before submitting. Receipt lookup never resubmits the request. */
+  request_id: z.uuid().optional(),
   text: z.string().min(1).max(8_000),
   modality: Modality.default('text'),
   /** 直前の応答を打ち切るか。voice の barge-in はこれ（§7.2）。 */

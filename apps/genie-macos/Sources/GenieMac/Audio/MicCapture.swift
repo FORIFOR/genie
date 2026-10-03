@@ -8,10 +8,30 @@ import Foundation
 final class MicCapture {
     private let engine = AVAudioEngine()
     private let targetRate: Double = 16_000
+    /// 直近の start でエコー除去（voice processing）が実際に効いたか。頼んだかではなく、効いたか。
+    private(set) var voiceProcessingActive = false
 
     /// 16 kHz mono の f32 フレームを繰り返し渡す。
-    func start(onFrame: @escaping ([Float]) -> Void) throws {
+    ///
+    /// `echoCancellation`: 会話で Genie の声を自分のマイクに入れないためのエコー除去。
+    /// 有効にできなければ**従来の取り込みに戻す**（失敗で音声を止めない）。会議の録音では使わない
+    /// （相手の声を消す処理を録音に挟まない）。
+    func start(echoCancellation: Bool = false, onFrame: @escaping ([Float]) -> Void) throws {
         let input = engine.inputNode
+        voiceProcessingActive = false
+        if input.isVoiceProcessingEnabled != echoCancellation {
+            // 切り替えは止めて初期化を解いた engine でしか効かない（prepare 済みだと -10849 で断られる）。
+            engine.stop()
+            engine.reset()
+            do {
+                try input.setVoiceProcessingEnabled(echoCancellation)
+            } catch {
+                NSLog("mic: voice processing \(echoCancellation ? "on" : "off") failed: \(error)")
+                if input.isVoiceProcessingEnabled { try? input.setVoiceProcessingEnabled(false) }
+            }
+        }
+        voiceProcessingActive = input.isVoiceProcessingEnabled
+        // 有効にすると入力の形式が変わる。形式は切り替えの後に読む。
         let inFormat = input.outputFormat(forBus: 0)
         guard
             let outFormat = AVAudioFormat(
@@ -22,6 +42,8 @@ final class MicCapture {
             throw NSError(domain: "MicCapture", code: 2)
         }
 
+        // 前の取り込みの tap が残っていたら外す（同じ bus に二重に付けると例外で落ちる）。
+        input.removeTap(onBus: 0)
         input.installTap(onBus: 0, bufferSize: 1024, format: inFormat) { [weak self] buffer, _ in
             guard let self else { return }
             let capacity = AVAudioFrameCount(

@@ -301,9 +301,19 @@ void uniffi_genie_core_fn_method_recordingsession_set_paused(void*_Nonnull ptr, 
 RustBuffer uniffi_genie_core_fn_method_recordingsession_snapshot(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_FN_FUNC_API_ADD_TASK_INSTRUCTION
+#define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_FN_FUNC_API_ADD_TASK_INSTRUCTION
+RustBuffer uniffi_genie_core_fn_func_api_add_task_instruction(RustBuffer base_url, RustBuffer access_token, RustBuffer task_id, RustBuffer request_id, RustBuffer text, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_FN_FUNC_API_ARTIFACT_CONTENT
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_FN_FUNC_API_ARTIFACT_CONTENT
 RustBuffer uniffi_genie_core_fn_func_api_artifact_content(RustBuffer base_url, RustBuffer access_token, RustBuffer artifact_id, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_FN_FUNC_API_CANCEL_TASK
+#define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_FN_FUNC_API_CANCEL_TASK
+RustBuffer uniffi_genie_core_fn_func_api_cancel_task(RustBuffer base_url, RustBuffer access_token, RustBuffer task_id, RustBuffer reason, RustCallStatus *_Nonnull out_status
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_FN_FUNC_API_CREATE_MEETING
@@ -379,6 +389,16 @@ void uniffi_genie_core_fn_func_api_plugin_disconnect(RustBuffer base_url, RustBu
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_FN_FUNC_API_REACHABLE
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_FN_FUNC_API_REACHABLE
 int8_t uniffi_genie_core_fn_func_api_reachable(RustBuffer base_url, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_FN_FUNC_API_RECOVER_TURN
+#define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_FN_FUNC_API_RECOVER_TURN
+RustBuffer uniffi_genie_core_fn_func_api_recover_turn(RustBuffer base_url, RustBuffer access_token, RustBuffer conversation_id, RustBuffer request_id, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_FN_FUNC_API_SEND_RECOVERABLE_TURN
+#define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_FN_FUNC_API_SEND_RECOVERABLE_TURN
+RustBuffer uniffi_genie_core_fn_func_api_send_recoverable_turn(RustBuffer base_url, RustBuffer access_token, RustBuffer conversation_id, RustBuffer request_id, RustBuffer text, RustBuffer attachments, RustBuffer reply_candidates_json, RustCallStatus *_Nonnull out_status
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_FN_FUNC_API_SEND_TURN
@@ -499,7 +519,7 @@ RustBuffer uniffi_genie_core_fn_func_format_elapsed(uint64_t ms, RustCallStatus 
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_FN_FUNC_GENIE_CORE_VERSION
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_FN_FUNC_GENIE_CORE_VERSION
 RustBuffer uniffi_genie_core_fn_func_genie_core_version(RustCallStatus *_Nonnull out_status
-    
+
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_FN_FUNC_MARK_MEETING_UPLOADED
@@ -807,328 +827,352 @@ void ffi_genie_core_rust_future_free_void(uint64_t handle
 void ffi_genie_core_rust_future_complete_void(uint64_t handle, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_ADD_TASK_INSTRUCTION
+#define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_ADD_TASK_INSTRUCTION
+uint16_t uniffi_genie_core_checksum_func_api_add_task_instruction(void
+
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_ARTIFACT_CONTENT
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_ARTIFACT_CONTENT
 uint16_t uniffi_genie_core_checksum_func_api_artifact_content(void
-    
+
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_CANCEL_TASK
+#define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_CANCEL_TASK
+uint16_t uniffi_genie_core_checksum_func_api_cancel_task(void
+
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_CREATE_MEETING
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_CREATE_MEETING
 uint16_t uniffi_genie_core_checksum_func_api_create_meeting(void
-    
+
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_CREATE_TASK
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_CREATE_TASK
 uint16_t uniffi_genie_core_checksum_func_api_create_task(void
-    
+
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_DEV_SIGN_IN
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_DEV_SIGN_IN
 uint16_t uniffi_genie_core_checksum_func_api_dev_sign_in(void
-    
+
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_FINISH_MEETING
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_FINISH_MEETING
 uint16_t uniffi_genie_core_checksum_func_api_finish_meeting(void
-    
+
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_INITIAL_PROFILE
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_INITIAL_PROFILE
 uint16_t uniffi_genie_core_checksum_func_api_initial_profile(void
-    
+
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_LIBRARY
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_LIBRARY
 uint16_t uniffi_genie_core_checksum_func_api_library(void
-    
+
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_ME
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_ME
 uint16_t uniffi_genie_core_checksum_func_api_me(void
-    
+
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_MEETING_SEGMENT_COUNT
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_MEETING_SEGMENT_COUNT
 uint16_t uniffi_genie_core_checksum_func_api_meeting_segment_count(void
-    
+
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_PERSONALIZATION
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_PERSONALIZATION
 uint16_t uniffi_genie_core_checksum_func_api_personalization(void
-    
+
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_PERSONALIZATION_UPDATE
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_PERSONALIZATION_UPDATE
 uint16_t uniffi_genie_core_checksum_func_api_personalization_update(void
-    
+
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_PLUGIN_CATALOG
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_PLUGIN_CATALOG
 uint16_t uniffi_genie_core_checksum_func_api_plugin_catalog(void
-    
+
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_PLUGIN_CONNECT
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_PLUGIN_CONNECT
 uint16_t uniffi_genie_core_checksum_func_api_plugin_connect(void
-    
+
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_PLUGIN_CONNECTIONS
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_PLUGIN_CONNECTIONS
 uint16_t uniffi_genie_core_checksum_func_api_plugin_connections(void
-    
+
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_PLUGIN_DISCONNECT
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_PLUGIN_DISCONNECT
 uint16_t uniffi_genie_core_checksum_func_api_plugin_disconnect(void
-    
+
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_REACHABLE
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_REACHABLE
 uint16_t uniffi_genie_core_checksum_func_api_reachable(void
-    
+
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_RECOVER_TURN
+#define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_RECOVER_TURN
+uint16_t uniffi_genie_core_checksum_func_api_recover_turn(void
+
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_SEND_RECOVERABLE_TURN
+#define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_SEND_RECOVERABLE_TURN
+uint16_t uniffi_genie_core_checksum_func_api_send_recoverable_turn(void
+
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_SEND_TURN
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_SEND_TURN
 uint16_t uniffi_genie_core_checksum_func_api_send_turn(void
-    
+
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_SEND_TURN_WITH_ATTACHMENTS
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_SEND_TURN_WITH_ATTACHMENTS
 uint16_t uniffi_genie_core_checksum_func_api_send_turn_with_attachments(void
-    
+
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_SEND_TURN_WITH_REPLY_CANDIDATES
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_SEND_TURN_WITH_REPLY_CANDIDATES
 uint16_t uniffi_genie_core_checksum_func_api_send_turn_with_reply_candidates(void
-    
+
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_START_CONVERSATION
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_START_CONVERSATION
 uint16_t uniffi_genie_core_checksum_func_api_start_conversation(void
-    
+
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_TASK_APPROVALS
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_TASK_APPROVALS
 uint16_t uniffi_genie_core_checksum_func_api_task_approvals(void
-    
+
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_TASK_APPROVE
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_TASK_APPROVE
 uint16_t uniffi_genie_core_checksum_func_api_task_approve(void
-    
+
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_TASK_JSON
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_TASK_JSON
 uint16_t uniffi_genie_core_checksum_func_api_task_json(void
-    
+
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_TASK_STATUS
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_TASK_STATUS
 uint16_t uniffi_genie_core_checksum_func_api_task_status(void
-    
+
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_UPLOAD_MEETING_AUDIO
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_UPLOAD_MEETING_AUDIO
 uint16_t uniffi_genie_core_checksum_func_api_upload_meeting_audio(void
-    
+
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_WAIT_TASK
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_WAIT_TASK
 uint16_t uniffi_genie_core_checksum_func_api_wait_task(void
-    
+
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_WORK_BRIEF_NEXT
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_WORK_BRIEF_NEXT
 uint16_t uniffi_genie_core_checksum_func_api_work_brief_next(void
-    
+
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_WORK_CONTEXT
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_WORK_CONTEXT
 uint16_t uniffi_genie_core_checksum_func_api_work_context(void
-    
+
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_WORK_CORRECT
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_WORK_CORRECT
 uint16_t uniffi_genie_core_checksum_func_api_work_correct(void
-    
+
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_WORK_EVIDENCE
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_WORK_EVIDENCE
 uint16_t uniffi_genie_core_checksum_func_api_work_evidence(void
-    
+
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_WORK_REPLY_SEND
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_API_WORK_REPLY_SEND
 uint16_t uniffi_genie_core_checksum_func_api_work_reply_send(void
-    
+
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_CONNECTOR_AUTHORIZE_URL
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_CONNECTOR_AUTHORIZE_URL
 uint16_t uniffi_genie_core_checksum_func_connector_authorize_url(void
-    
+
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_CONNECTOR_CONFIGURED_PROVIDER_IDS
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_CONNECTOR_CONFIGURED_PROVIDER_IDS
 uint16_t uniffi_genie_core_checksum_func_connector_configured_provider_ids(void
-    
+
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_CONNECTOR_EXCHANGE_CODE
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_CONNECTOR_EXCHANGE_CODE
 uint16_t uniffi_genie_core_checksum_func_connector_exchange_code(void
-    
+
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_CONNECTOR_EXCHANGE_CONFIGURED
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_CONNECTOR_EXCHANGE_CONFIGURED
 uint16_t uniffi_genie_core_checksum_func_connector_exchange_configured(void
-    
+
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_CONNECTOR_PARSE_CALLBACK
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_CONNECTOR_PARSE_CALLBACK
 uint16_t uniffi_genie_core_checksum_func_connector_parse_callback(void
-    
+
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_CONNECTOR_PKCE_CHALLENGE
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_CONNECTOR_PKCE_CHALLENGE
 uint16_t uniffi_genie_core_checksum_func_connector_pkce_challenge(void
-    
+
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_CONNECTOR_TOKEN_URL
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_CONNECTOR_TOKEN_URL
 uint16_t uniffi_genie_core_checksum_func_connector_token_url(void
-    
+
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_FORMAT_ELAPSED
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_FORMAT_ELAPSED
 uint16_t uniffi_genie_core_checksum_func_format_elapsed(void
-    
+
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_GENIE_CORE_VERSION
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_GENIE_CORE_VERSION
 uint16_t uniffi_genie_core_checksum_func_genie_core_version(void
-    
+
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_MARK_MEETING_UPLOADED
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_MARK_MEETING_UPLOADED
 uint16_t uniffi_genie_core_checksum_func_mark_meeting_uploaded(void
-    
+
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_RANK_CONTEXT
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_RANK_CONTEXT
 uint16_t uniffi_genie_core_checksum_func_rank_context(void
-    
+
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_RECORDING_SNAPSHOT
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_RECORDING_SNAPSHOT
 uint16_t uniffi_genie_core_checksum_func_recording_snapshot(void
-    
+
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_SCAN_RECOVERABLE
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_SCAN_RECOVERABLE
 uint16_t uniffi_genie_core_checksum_func_scan_recoverable(void
-    
+
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_TO_WIRE
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_FUNC_TO_WIRE
 uint16_t uniffi_genie_core_checksum_func_to_wire(void
-    
+
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_METHOD_RECORDINGSESSION_FINISH
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_METHOD_RECORDINGSESSION_FINISH
 uint16_t uniffi_genie_core_checksum_method_recordingsession_finish(void
-    
+
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_METHOD_RECORDINGSESSION_MEETING_ID
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_METHOD_RECORDINGSESSION_MEETING_ID
 uint16_t uniffi_genie_core_checksum_method_recordingsession_meeting_id(void
-    
+
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_METHOD_RECORDINGSESSION_PUSH_SAMPLES
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_METHOD_RECORDINGSESSION_PUSH_SAMPLES
 uint16_t uniffi_genie_core_checksum_method_recordingsession_push_samples(void
-    
+
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_METHOD_RECORDINGSESSION_RECORDED_MS
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_METHOD_RECORDINGSESSION_RECORDED_MS
 uint16_t uniffi_genie_core_checksum_method_recordingsession_recorded_ms(void
-    
+
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_METHOD_RECORDINGSESSION_SET_LINK
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_METHOD_RECORDINGSESSION_SET_LINK
 uint16_t uniffi_genie_core_checksum_method_recordingsession_set_link(void
-    
+
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_METHOD_RECORDINGSESSION_SET_PAUSED
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_METHOD_RECORDINGSESSION_SET_PAUSED
 uint16_t uniffi_genie_core_checksum_method_recordingsession_set_paused(void
-    
+
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_METHOD_RECORDINGSESSION_SNAPSHOT
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_METHOD_RECORDINGSESSION_SNAPSHOT
 uint16_t uniffi_genie_core_checksum_method_recordingsession_snapshot(void
-    
+
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_CONSTRUCTOR_RECORDINGSESSION_START
 #define UNIFFI_FFIDEF_UNIFFI_GENIE_CORE_CHECKSUM_CONSTRUCTOR_RECORDINGSESSION_START
 uint16_t uniffi_genie_core_checksum_constructor_recordingsession_start(void
-    
+
 );
 #endif
 #ifndef UNIFFI_FFIDEF_FFI_GENIE_CORE_UNIFFI_CONTRACT_VERSION
 #define UNIFFI_FFIDEF_FFI_GENIE_CORE_UNIFFI_CONTRACT_VERSION
 uint32_t ffi_genie_core_uniffi_contract_version(void
-    
+
 );
 #endif
 

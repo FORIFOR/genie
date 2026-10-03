@@ -1,0 +1,349 @@
+{
+  "recordedAt": "2026-10-01T19:19:42.725253+00:00",
+  "reviewer": "/root/verification_audit",
+  "method": "Opened all twenty final saved images with view_image; read capture-layout and exit JSON; independently verified hashes. No GUI or capture by reviewer. Unchanged image copies retained.",
+  "source": "Implementation owner current signed release capture",
+  "releaseManifestSHA256": "f468a53336630085cc641a391c792df965d6a42e1883a9001413f8a8454b8098",
+  "releaseManifestChecks": {
+    "/Users/shuhei/Projects/genie/apps/genie-macos/.build/Genie.app/Contents/MacOS/GenieMac": {
+      "matches": true,
+      "sha256": "b430164736313ba8a7abdc65e5f599a72c64820750797cde4f97ebacb12dcb33"
+    },
+    "/private/tmp/genie-transactions-20261002/GenieCompletionFinal.app/Contents/MacOS/GenieMac": {
+      "matches": true,
+      "sha256": "403baacbd6c5ab2053e3fd6376670764404a29a3d0dfce67781c78198672a74e"
+    },
+    "apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDView.swift": {
+      "matches": true,
+      "sha256": "c0f4bb75e1e943f99bbbd87bc4a9d6c4264e574aabcd9a61d0efd897d77c156e"
+    },
+    "apps/genie-macos/Sources/GenieMac/App/GenieAppDelegate.swift": {
+      "matches": true,
+      "sha256": "bf1c0eacaa29c57a2c1fdfb073f05c14bc4848c8957ed306fda3fc195765ac03"
+    },
+    "apps/genie-macos/Sources/GenieMac/App/TerminationDispatch.swift": {
+      "matches": true,
+      "sha256": "04dd23a83bfe172f726f34380c6d58d813bbda71455fc95c2b55485357050497"
+    },
+    "apps/genie-macos/Sources/GenieMac/Main/ConnectionsPane.swift": {
+      "matches": true,
+      "sha256": "0bada7063d65df81d74e5196c7da2cda6d444aaef99572150ff5336946f35b76"
+    }
+  },
+  "images": [
+    {
+      "theme": "light",
+      "name": "01-voice-hud-idle",
+      "path": "docs/quality/evidence/2026-10-02-completion/macos27-visual-review/light/01-voice-hud-idle.png",
+      "sha256": "2c778cb1e01b9b9950627e3d8484fc3bfc7e764a0819060ca667fc3352cdea77",
+      "bytes": 7223,
+      "width": 220,
+      "height": 76,
+      "layout": {
+        "height": 76,
+        "topInsetPx": 32,
+        "width": 220
+      },
+      "dimensionsMatchLayout": true
+    },
+    {
+      "theme": "light",
+      "name": "02-voice-hud-listening",
+      "path": "docs/quality/evidence/2026-10-02-completion/macos27-visual-review/light/02-voice-hud-listening.png",
+      "sha256": "5a313cbaf3a824d6db75a0156989fb0660fda4fd6ec7f7c35a3d97c37599c3d7",
+      "bytes": 12522,
+      "width": 600,
+      "height": 100,
+      "layout": {
+        "height": 100,
+        "topInsetPx": 32,
+        "width": 600
+      },
+      "dimensionsMatchLayout": true
+    },
+    {
+      "theme": "light",
+      "name": "02b-voice-hud-preparing",
+      "path": "docs/quality/evidence/2026-10-02-completion/macos27-visual-review/light/02b-voice-hud-preparing.png",
+      "sha256": "4a6ecc05188c465a61176886ca557c1acb8224ab541736dca574fcef9ba6acee",
+      "bytes": 11303,
+      "width": 600,
+      "height": 100,
+      "layout": {
+        "height": 100,
+        "topInsetPx": 32,
+        "width": 600
+      },
+      "dimensionsMatchLayout": true
+    },
+    {
+      "theme": "light",
+      "name": "03-recording-workspace",
+      "path": "docs/quality/evidence/2026-10-02-completion/macos27-visual-review/light/03-recording-workspace.png",
+      "sha256": "0a45cf8143f972dd348bf223e6204ef2ba5f1568a4647647ca05ab55ecf707b7",
+      "bytes": 71836,
+      "width": 1080,
+      "height": 680,
+      "layout": {
+        "height": 680,
+        "topInsetPx": 0,
+        "width": 1080
+      },
+      "dimensionsMatchLayout": true
+    },
+    {
+      "theme": "light",
+      "name": "04-recording-transcript",
+      "path": "docs/quality/evidence/2026-10-02-completion/macos27-visual-review/light/04-recording-transcript.png",
+      "sha256": "fd088de487bb72861ab0e33cbcffe49981670a870a51599dfdafe26ec6b70543",
+      "bytes": 96404,
+      "width": 1080,
+      "height": 680,
+      "layout": {
+        "height": 680,
+        "topInsetPx": 0,
+        "width": 1080
+      },
+      "dimensionsMatchLayout": true
+    },
+    {
+      "theme": "light",
+      "name": "05-recording-rag",
+      "path": "docs/quality/evidence/2026-10-02-completion/macos27-visual-review/light/05-recording-rag.png",
+      "sha256": "03c614da16f5432ec5e7cdd4a92b3b124af81f33f2cdc045d05c14ae34cfafd3",
+      "bytes": 93372,
+      "width": 1080,
+      "height": 680,
+      "layout": {
+        "height": 680,
+        "topInsetPx": 0,
+        "width": 1080
+      },
+      "dimensionsMatchLayout": true
+    },
+    {
+      "theme": "light",
+      "name": "08-meeting-detail",
+      "path": "docs/quality/evidence/2026-10-02-completion/macos27-visual-review/light/08-meeting-detail.png",
+      "sha256": "7a0869b44875bf6c5405620cdaa7ff164c241b010017696e4c8c96e84db7ea89",
+      "bytes": 155395,
+      "width": 1240,
+      "height": 820,
+      "layout": {
+        "height": 820,
+        "topInsetPx": 0,
+        "width": 1240
+      },
+      "dimensionsMatchLayout": true
+    },
+    {
+      "theme": "light",
+      "name": "09-permission-denied",
+      "path": "docs/quality/evidence/2026-10-02-completion/macos27-visual-review/light/09-permission-denied.png",
+      "sha256": "d573c33bbb8351bbc04275b09ecfd2c12222454bb69772100624a4185988e6ac",
+      "bytes": 65190,
+      "width": 1080,
+      "height": 680,
+      "layout": {
+        "height": 680,
+        "topInsetPx": 0,
+        "width": 1080
+      },
+      "dimensionsMatchLayout": true
+    },
+    {
+      "theme": "light",
+      "name": "10-agent-timeline",
+      "path": "docs/quality/evidence/2026-10-02-completion/macos27-visual-review/light/10-agent-timeline.png",
+      "sha256": "2325c6b2b63f1e7c9648df2f6c6030efd121f686a63b5973ac74067961c1a837",
+      "bytes": 81775,
+      "width": 1080,
+      "height": 680,
+      "layout": {
+        "height": 680,
+        "topInsetPx": 0,
+        "width": 1080
+      },
+      "dimensionsMatchLayout": true
+    },
+    {
+      "theme": "light",
+      "name": "11-meeting-canvas",
+      "path": "docs/quality/evidence/2026-10-02-completion/macos27-visual-review/light/11-meeting-canvas.png",
+      "sha256": "b1919150ed27990ab59554e88df05984f4778e8718ee8933d63949c5790236ad",
+      "bytes": 110498,
+      "width": 1080,
+      "height": 680,
+      "layout": {
+        "height": 680,
+        "topInsetPx": 0,
+        "width": 1080
+      },
+      "dimensionsMatchLayout": true
+    },
+    {
+      "theme": "dark",
+      "name": "01-voice-hud-idle",
+      "path": "docs/quality/evidence/2026-10-02-completion/macos27-visual-review/dark/01-voice-hud-idle.png",
+      "sha256": "2c778cb1e01b9b9950627e3d8484fc3bfc7e764a0819060ca667fc3352cdea77",
+      "bytes": 7223,
+      "width": 220,
+      "height": 76,
+      "layout": {
+        "height": 76,
+        "topInsetPx": 32,
+        "width": 220
+      },
+      "dimensionsMatchLayout": true
+    },
+    {
+      "theme": "dark",
+      "name": "02-voice-hud-listening",
+      "path": "docs/quality/evidence/2026-10-02-completion/macos27-visual-review/dark/02-voice-hud-listening.png",
+      "sha256": "5a313cbaf3a824d6db75a0156989fb0660fda4fd6ec7f7c35a3d97c37599c3d7",
+      "bytes": 12522,
+      "width": 600,
+      "height": 100,
+      "layout": {
+        "height": 100,
+        "topInsetPx": 32,
+        "width": 600
+      },
+      "dimensionsMatchLayout": true
+    },
+    {
+      "theme": "dark",
+      "name": "02b-voice-hud-preparing",
+      "path": "docs/quality/evidence/2026-10-02-completion/macos27-visual-review/dark/02b-voice-hud-preparing.png",
+      "sha256": "4a6ecc05188c465a61176886ca557c1acb8224ab541736dca574fcef9ba6acee",
+      "bytes": 11303,
+      "width": 600,
+      "height": 100,
+      "layout": {
+        "height": 100,
+        "topInsetPx": 32,
+        "width": 600
+      },
+      "dimensionsMatchLayout": true
+    },
+    {
+      "theme": "dark",
+      "name": "03-recording-workspace",
+      "path": "docs/quality/evidence/2026-10-02-completion/macos27-visual-review/dark/03-recording-workspace.png",
+      "sha256": "b6ebbdf12c7be2e52ea0bcbe5302a58b8bc4943b26ab78f53c1f941b535fa7e1",
+      "bytes": 75922,
+      "width": 1080,
+      "height": 680,
+      "layout": {
+        "height": 680,
+        "topInsetPx": 0,
+        "width": 1080
+      },
+      "dimensionsMatchLayout": true
+    },
+    {
+      "theme": "dark",
+      "name": "04-recording-transcript",
+      "path": "docs/quality/evidence/2026-10-02-completion/macos27-visual-review/dark/04-recording-transcript.png",
+      "sha256": "fa664749cb25807716bc4d9a076e4c7251d5b792cd2d27f304c07358469967fb",
+      "bytes": 106291,
+      "width": 1080,
+      "height": 680,
+      "layout": {
+        "height": 680,
+        "topInsetPx": 0,
+        "width": 1080
+      },
+      "dimensionsMatchLayout": true
+    },
+    {
+      "theme": "dark",
+      "name": "05-recording-rag",
+      "path": "docs/quality/evidence/2026-10-02-completion/macos27-visual-review/dark/05-recording-rag.png",
+      "sha256": "57edd79abd09f0708c9ca7423909dea4156ca922f0932f606bb7633585475bf5",
+      "bytes": 104198,
+      "width": 1080,
+      "height": 680,
+      "layout": {
+        "height": 680,
+        "topInsetPx": 0,
+        "width": 1080
+      },
+      "dimensionsMatchLayout": true
+    },
+    {
+      "theme": "dark",
+      "name": "08-meeting-detail",
+      "path": "docs/quality/evidence/2026-10-02-completion/macos27-visual-review/dark/08-meeting-detail.png",
+      "sha256": "909f09e09d20c7d6c9c79960ca0dbc825e9dd6de40589a717190dbedc849914a",
+      "bytes": 153159,
+      "width": 1240,
+      "height": 820,
+      "layout": {
+        "height": 820,
+        "topInsetPx": 0,
+        "width": 1240
+      },
+      "dimensionsMatchLayout": true
+    },
+    {
+      "theme": "dark",
+      "name": "09-permission-denied",
+      "path": "docs/quality/evidence/2026-10-02-completion/macos27-visual-review/dark/09-permission-denied.png",
+      "sha256": "8632ce794f6e0d06bb4da26e566989302a109ef4c70a85d7bfb4ac3b2c736653",
+      "bytes": 68348,
+      "width": 1080,
+      "height": 680,
+      "layout": {
+        "height": 680,
+        "topInsetPx": 0,
+        "width": 1080
+      },
+      "dimensionsMatchLayout": true
+    },
+    {
+      "theme": "dark",
+      "name": "10-agent-timeline",
+      "path": "docs/quality/evidence/2026-10-02-completion/macos27-visual-review/dark/10-agent-timeline.png",
+      "sha256": "e1c0959c99db8d67aaffe65df9ec2a16c462f28737d41cd26629138aff886d23",
+      "bytes": 86457,
+      "width": 1080,
+      "height": 680,
+      "layout": {
+        "height": 680,
+        "topInsetPx": 0,
+        "width": 1080
+      },
+      "dimensionsMatchLayout": true
+    },
+    {
+      "theme": "dark",
+      "name": "11-meeting-canvas",
+      "path": "docs/quality/evidence/2026-10-02-completion/macos27-visual-review/dark/11-meeting-canvas.png",
+      "sha256": "d7d6b559334240383904e584618d6c10bf4b5fa71dc8b2f938fd6b5786a0f11c",
+      "bytes": 115973,
+      "width": 1080,
+      "height": 680,
+      "layout": {
+        "height": 680,
+        "topInsetPx": 0,
+        "width": 1080
+      },
+      "dimensionsMatchLayout": true
+    }
+  ],
+  "verdict": "PASS limited: no observed primary text/control clipping or overlap in these twenty rendered states. This is not baseline adoption, AX geometry/interaction verification, contrast certification, or full-gate success.",
+  "observations": {
+    "hud": "220x76 / 600x100 with 32px top inset; title, recording, microphone and Escape controls intact. Listening has blue icon outline; preparing uses plain white icon. Same dark HUD surface in both themes.",
+    "workspace": "1080x680: upper recording toolbar, two transcript modes, lower prompt/actions, sources, permission denial recovery control and four canvas sections visible without clipping.",
+    "detail": "1240x820: three columns, summary/actions, eight transcript rows and right provenance readable. Native sidebar/top chrome looks inactive/faint; screenshot alone does not prove disabled controls or OS-only provenance.",
+    "dark": "Theme renders dark surfaces consistently. Secondary timestamps, labels and blue sources are faint, but primary content is readable. No numerical contrast/accessibility verdict.",
+    "reference": "Earlier root/approved-notch comparison remains preserved in HISTORICAL_GOLDEN_REVIEW.md. Notch dimensions agree with approved profile. Documented blue/brand/two-mode/source changes cannot be described as OS pixels alone."
+  },
+  "pending": [
+    "Own-process geometry method review and measurement",
+    "AX/public accessibility or actual control interaction where required",
+    "Profile provenance/adoption followed by unchanged tolerance pixel/geometry/density verification",
+    "Current final whole-product gate"
+  ]
+}

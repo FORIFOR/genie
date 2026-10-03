@@ -1,0 +1,13 @@
+AXIsProcessTrusted=true
+ChatGPT pid=648 windowsErr=0 count=1 role=AXWindow posErr=0
+ターミナル pid=660 windowsErr=0 count=3 role=AXWindow posErr=0 | role=AXWindow posErr=0 | role=AXWindow posErr=0
+Google Chrome pid=662 windowsErr=0 count=1 role=AXWindow posErr=0
+メモ pid=665 windowsErr=0 count=1 role=AXWindow posErr=0
+Safari pid=666 windowsErr=0 count=0 
+Finder pid=671 windowsErr=0 count=1 role=AXScrollArea posErr=0
+テキストエディット pid=30425 windowsErr=0 count=1 role=AXWindow posErr=0
+
+# 再ログイン後。全アプリが role=AXWindow / posErr=0 に戻った。
+# PID は変わっていない（Chrome 662, ターミナル 660, Finder 671）。
+# つまり対象アプリの再起動は要らなかった——壊れていたのは AX 層の状態で、
+# アプリ側ではない。デーモン（universalaccessd）の再起動だけでは戻らなかった。

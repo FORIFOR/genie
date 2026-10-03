@@ -1,0 +1,7 @@
+{
+  "scripts/lint-terms.sh": "4f3468d7942b5bf2793c1d467fe61ea20f52f8d7114d0f7e9969a7aadb7e0102",
+  "scripts/gen-swift-bindings.sh": "d94a9ef1bd8d2de436966f5d8b021f58ddb02f7c558890740381aefc6a7d74ac",
+  "apps/genie-macos/Sources/GenieMac/Main/TaskHistoryView.swift": "cc17a0f16a9fc514400b9b6ff12be521988d1539dc26452cc9e3e9ea0dab8cf7",
+  "services/conversation/src/service.ts": "d115ef07c321a70e43280830899b88f563a3aa86c55c547b4c8e4d754983e1b1",
+  "services/task/src/service.ts": "4283c52e58a51975f85552e8002e8b6261f7a6a76e706de3c6e7177310da129c"
+}

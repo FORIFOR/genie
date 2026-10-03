@@ -1,0 +1,18 @@
+{
+  "at": "2026-10-01T16:16:03.251843+00:00",
+  "pid": 32796,
+  "command": "/Users/shuhei/Projects/genie/.build/computer/genie-computer-background --watch /private/tmp/genie-transactions-20261002/preview/app/VisualContext/background-f1edcdf0-9819-4dca-87c7-12f0da3dce19.json",
+  "grant": {
+    "pid": 32696,
+    "window": 1802,
+    "generation": 1790870694.403985,
+    "expires": 1790871907.464963,
+    "bundle": "org.genie.checkout.simulation",
+    "recipient": "local"
+  },
+  "activityPresent": false,
+  "method": "Remove only the completed dedicated session grant; watcher self-exits and cleans its own sidecars.",
+  "exited": true,
+  "grantRemoved": true,
+  "watchingSidecarRemoved": true
+}

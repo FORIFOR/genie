@@ -1,0 +1,3 @@
+Evidence: /tmp/genie-background-native.SbgMEC
+TEST identity org.genie.background.target nil
+FAIL Failure(code: "target_changed")

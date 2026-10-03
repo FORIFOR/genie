@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<!--
+  比較用の的。ネットワークも保存も使わない、ただの 1 枚。
+  「3 つの単語を打ち込む」という**終わりの見える**仕事にしてある。
+  欄は入力のたびに採点し、3 つ揃うと CLEAR を出す。
+  Chrome で開いてから、その窓を対象に選ぶこと（このページ自体は何も起動しない）。
+-->
+<title>Genie Typing Test</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: -apple-system, system-ui, sans-serif; margin: 0;
+         display: grid; place-items: center; min-height: 100vh; background: #0f1115; color: #e8eaf0; }
+  main { width: min(680px, 90vw); text-align: center; }
+  h1 { font-size: 20px; font-weight: 600; letter-spacing: .02em; color: #9aa3b2; margin: 0 0 32px; }
+  .word { font-size: 72px; font-weight: 700; letter-spacing: .06em; margin: 0 0 40px; font-variant-ligatures: none; }
+  input { width: 100%; box-sizing: border-box; font-size: 32px; padding: 20px 24px;
+          border-radius: 14px; border: 3px solid #39415a; background: #171a22; color: #e8eaf0;
+          text-align: center; outline: none; }
+  input:focus { border-color: #5b8cff; }
+  .ok input { border-color: #35c07a; }
+  .score { margin-top: 32px; font-size: 18px; color: #9aa3b2; }
+  .score b { color: #e8eaf0; font-size: 28px; }
+  .done { margin-top: 24px; font-size: 26px; font-weight: 700; color: #35c07a; min-height: 34px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>この単語を入力してください（Enter は不要）</h1>
+  <p class="word" id="word">genie</p>
+  <div id="wrap"><input id="box" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="ここに入力"></div>
+  <p class="score">スコア <b id="score">0</b> / 3</p>
+  <p class="done" id="done"></p>
+</main>
+<script>
+  const words = ['genie', 'window', 'verified'];
+  let i = 0, score = 0;
+  const box = document.getElementById('box'), word = document.getElementById('word');
+  const wrap = document.getElementById('wrap'), out = document.getElementById('score');
+  const done = document.getElementById('done');
+  box.addEventListener('input', () => {
+    const match = box.value.trim().toLowerCase() === words[i];
+    wrap.className = match ? 'ok' : '';
+    if (!match) return;
+    score++; out.textContent = score; i++;
+    if (i >= words.length) { done.textContent = 'CLEAR! 3 / 3 完了'; word.textContent = '——'; box.disabled = true; return; }
+    setTimeout(() => { word.textContent = words[i]; box.value = ''; wrap.className = ''; }, 350);
+  });
+  box.focus();
+</script>
+</body>
+</html>

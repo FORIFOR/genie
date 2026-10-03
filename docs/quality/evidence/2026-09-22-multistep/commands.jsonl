@@ -1,0 +1,19 @@
+{"command": "npx tsc --noEmit -p workers/agent-host/tsconfig.json", "exit": 0, "note": "型検査"}
+{"command": "npx tsc -p workers/agent-host/tsconfig.json", "exit": 0, "note": "dist 生成（node 試験が dist を読む）"}
+{"command": "node --test workers/agent-host/test/*.node.mjs", "exit": 0, "pass": 73, "fail": 0, "note": "ホスト側全体。うち今回追加 13（実行時 9・静的 4）"}
+{"command": "bash scripts/build-computer-helper.sh", "exit": 0, "note": "genie-computer と genie-computer-background の両方"}
+{"command": "node scripts/computer-speed-bench.mjs --model qwen3.5:9b --repeat 3", "exit": 0, "calls": 24, "note": "think/nothink 両方。evidence/2026-09-22-speed/qwen35-9b.json"}
+{"command": "node scripts/computer-speed-bench.mjs --model qwen3.5:9b --repeat 3 --modes nothink", "exit": 0, "calls": 18, "note": "出題を直したあと。evidence/2026-09-22-speed/qwen35-9b-nothink.json"}
+{"command": "reasoning_effort A/B on /v1/chat/completions", "exit": 0, "calls": 4, "note": "製品経路と同じ口。evidence/2026-09-22-speed/reasoning-ab.json"}
+{"command": "bash scripts/test-native-input.sh", "exit": 1, "error": "background_window_ambiguous", "note": "BLOCKED。機械の AX 劣化。evidence/2026-09-22-ax/"}
+{"command": "kill 590 (universalaccessd)", "exit": 0, "note": "AX 復旧を試みたが変化なし。launchd が pid 30271 で再起動"}
+{"command": "bash scripts/test-native-input.sh", "exit": 0, "pass": 34, "fail": 0, "note": "AX 回復後。真偽の主張 34 件すべて true。うち今回追加 12（実行世代・再開）。native-input-suite.log"}
+{"command": "colima start", "exit": 0, "note": "Docker ランタイム。プレビューの前提"}
+{"command": "node scripts/start-local-preview.mjs --state-dir /tmp/genie-multistep-20260922 --port 43161 --model qwen3.5:9b --computer-use --no-open", "exit": 0, "note": "隔離プレビュー。computerDelivery=background"}
+{"command": "node scripts/computer-use.mjs check", "exit": 0, "note": "読み取り専用。ready=true, 権限 2 つとも true"}
+{"command": "bash scripts/build-computer-helper-unattended-test.sh", "exit": 0, "note": "試験専用の無人ビルド。出荷ビルドとは別名・別の出力先。--status が unattendedTest:true を返すことを自分で確かめてから終わる"}
+{"command": "node scripts/start-local-preview.mjs ... --computer-helper .build/computer-unattended-test/genie-computer-unattended-test", "exit": 0, "note": "起動記録に computerHelperUnattendedTest:true が出る"}
+{"command": "node run-scenarios.mjs（5種類 × 14 周）", "exit": 0, "note": "round 1-4 は不具合の発見記録。round 5-14 を反復として数える"}
+{"command": "python3 tally.py（集計）", "exit": 0, "note": "完遂 40/40・誤完了 0・伏せ字の欄への入力 0・誤配送 1。tally.txt"}
+{"command": "bash scripts/test-native-input.sh（許可引き継ぎの変更後、3 回）", "exit": "0/1/0", "note": "1 回は 34/34 すべて true。1 回は cursorUnchanged false（Jiggler.app がカーソルを動かす）。1 回は clipboard 変化で background_interference。後の 2 つはこの機械の外部要因"}
+{"command": "node --test workers/agent-host/test/*.node.mjs（最終）", "exit": 0, "pass": 76, "fail": 0}

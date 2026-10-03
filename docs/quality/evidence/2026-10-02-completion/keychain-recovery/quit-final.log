@@ -1,0 +1,18 @@
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Settings/KeychainStore.swift:18:22: warning: 'SecKeychainGetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 16 |     init(readAllowed: @escaping () throws -> Bool = {
+ 17 |         var allowed: DarwinBoolean = false
+ 18 |         let status = SecKeychainGetUserInteractionAllowed(&allowed)
+    |                      `- warning: 'SecKeychainGetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 19 |         guard status == errSecSuccess else { throw KeychainStore.KeychainError.interactionPolicy(status) }
+ 20 |         return allowed.boolValue
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Settings/KeychainStore.swift:22:22: warning: 'SecKeychainSetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 20 |         return allowed.boolValue
+ 21 |     }, setAllowed: @escaping (Bool) throws -> Void = { allowed in
+ 22 |         let status = SecKeychainSetUserInteractionAllowed(allowed)
+    |                      `- warning: 'SecKeychainSetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 23 |         guard status == errSecSuccess else { throw KeychainStore.KeychainError.interactionPolicy(status) }
+ 24 |     }) {
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+PASS quit while a synthetic existing-item confirmation waits: owned process exited without waiting for the read

@@ -2,6 +2,7 @@
   "name": "@genie/worker-task",
   "version": "0.0.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "description": "TaskWorkflow \u3068\u5168 activity \u3092\u8f09\u305b\u308b Temporal worker\u3002\u30b5\u30fc\u30d3\u30b9\u3092\u7d44\u307f\u7acb\u3066\u308b\u5408\u6d41\u70b9\u3002",
   "main": "./dist/worker-main.js",

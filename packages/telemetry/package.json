@@ -2,6 +2,7 @@
   "name": "@genie/telemetry",
   "version": "0.0.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "description": "Structured logging, tracing, metrics and audit-event emission helpers.",
   "main": "./dist/index.js",

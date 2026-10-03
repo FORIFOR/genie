@@ -1,0 +1,141 @@
+Building for debugging...
+[0/5] Write swift-version--58304C5D6DBC2206.txt
+[1/5] Write sources
+[3/4] Emitting module GenieMacTests
+[4/5] Compiling GenieMacTests GatewayCredentialRecoveryTests.swift
+[4/6] Write Objects.LinkFileList
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[358](25ac62e5b3c53843-curve25519.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[359](0bbbd18bda93c05b-aes_nohw.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[360](00c879ee3285a50d-montgomery.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[361](00c879ee3285a50d-montgomery_inv.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[362](a0330e891e733f4e-ecp_nistz.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[364](a0330e891e733f4e-gfp_p384.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[366](aaa1ba3e455ee2e1-limbs.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[367](a4019cc0736b0423-mem.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[368](d5a9841f3dc6e253-poly1305.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[369](a0330e891e733f4e-p256-nistz.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[370](c322a0bcc369f531-chacha-armv8-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[371](c322a0bcc369f531-chacha20_poly1305_armv8-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[372](c322a0bcc369f531-aesv8-armx-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[373](c322a0bcc369f531-aesv8-gcm-armv8-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[374](c322a0bcc369f531-ghash-neon-armv8-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[375](c322a0bcc369f531-ghashv8-armx-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[376](c322a0bcc369f531-vpaes-armv8-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[377](c322a0bcc369f531-armv8-mont-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[378](c322a0bcc369f531-p256-armv8-asm-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[379](c322a0bcc369f531-sha512-armv8-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[380](c322a0bcc369f531-sha256-armv8-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[560](std-ddc72da0927e9db9.std.61a5f0013896dfb1-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[561](panic_unwind-63ea78ca2e1c0db3.panic_unwind.b9418b0471e31d36-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[562](object-c0adbf29d899f046.object.cf48ae80852c1dc4-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[564](addr2line-b92825ace6709456.addr2line.f3cce53e8c22052d-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[565](gimli-49cd0cae66d7f640.gimli.a9de2a852aa7a696-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[567](rustc_demangle-a5e20ae1249591d9.rustc_demangle.c8ddca633150ec1-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[569](hashbrown-7ef914ecbc5b3828.hashbrown.f3d328c4a0fd8a24-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[571](miniz_oxide-d817fa4718a8ef96.miniz_oxide.cf735aedbe58ef77-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[572](adler2-b603e41842b612c3.adler2.c400f6a6402c7116-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[576](alloc-7d19d4a84a64ec6c.alloc.650f235c7e2e357a-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[577](core-f186bd403406965f.core.aedb9fd4ead64aec-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[594](compiler_builtins-28935136ed986f39.compiler_builtins.bb8f0d37d096e781-cgu.016.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[722](compiler_builtins-28935136ed986f39.compiler_builtins.bb8f0d37d096e781-cgu.144.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[771](compiler_builtins-28935136ed986f39.compiler_builtins.bb8f0d37d096e781-cgu.193.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+[5/6] Linking genie-macosPackageTests
+Build complete! (4.05s)
+Test Suite 'Selected tests' started at 2026-10-02 07:18:53.723.
+Test Suite 'genie-macosPackageTests.xctest' started at 2026-10-02 07:18:53.724.
+Test Suite 'DesktopConnectionBootstrapTests' started at 2026-10-02 07:18:53.724.
+Test Case '-[GenieMacTests.DesktopConnectionBootstrapTests testAbsentAndExplicitEnvironmentsDoNotReadSavedChoice]' started.
+Test Case '-[GenieMacTests.DesktopConnectionBootstrapTests testAbsentAndExplicitEnvironmentsDoNotReadSavedChoice]' passed (0.003 seconds).
+Test Case '-[GenieMacTests.DesktopConnectionBootstrapTests testInvalidConfigurationStopsTranslationBeforeAnyRunnerOrHTTPWork]' started.
+Test Case '-[GenieMacTests.DesktopConnectionBootstrapTests testInvalidConfigurationStopsTranslationBeforeAnyRunnerOrHTTPWork]' passed (0.004 seconds).
+Test Case '-[GenieMacTests.DesktopConnectionBootstrapTests testMalformedOversizedTrailingAndDuplicateJSONAreNotAbsent]' started.
+Test Case '-[GenieMacTests.DesktopConnectionBootstrapTests testMalformedOversizedTrailingAndDuplicateJSONAreNotAbsent]' passed (0.003 seconds).
+Test Case '-[GenieMacTests.DesktopConnectionBootstrapTests testSavedExternalChoiceReachesActualProcessEnvironmentWithoutCredentials]' started.
+Test Case '-[GenieMacTests.DesktopConnectionBootstrapTests testSavedExternalChoiceReachesActualProcessEnvironmentWithoutCredentials]' passed (0.002 seconds).
+Test Case '-[GenieMacTests.DesktopConnectionBootstrapTests testSavedLocalChoiceRemainsLocalAndInvalidExternalScopesFailClosed]' started.
+Test Case '-[GenieMacTests.DesktopConnectionBootstrapTests testSavedLocalChoiceRemainsLocalAndInvalidExternalScopesFailClosed]' passed (0.003 seconds).
+Test Case '-[GenieMacTests.DesktopConnectionBootstrapTests testUnknownKeysURLsTypesAndWrongWorkspaceAreRejected]' started.
+Test Case '-[GenieMacTests.DesktopConnectionBootstrapTests testUnknownKeysURLsTypesAndWrongWorkspaceAreRejected]' passed (0.003 seconds).
+Test Case '-[GenieMacTests.DesktopConnectionBootstrapTests testUnsafeModesAndSymlinksAreNotAbsent]' started.
+Test Case '-[GenieMacTests.DesktopConnectionBootstrapTests testUnsafeModesAndSymlinksAreNotAbsent]' passed (0.001 seconds).
+Test Suite 'DesktopConnectionBootstrapTests' passed at 2026-10-02 07:18:53.742.
+	 Executed 7 tests, with 0 failures (0 unexpected) in 0.017 (0.018) seconds
+Test Suite 'GatewayCredentialRecoveryTests' started at 2026-10-02 07:18:53.742.
+Test Case '-[GenieMacTests.GatewayCredentialRecoveryTests testMissingDeniedCancelledInvalidAndBusyNeverReportReadable]' started.
+Test Case '-[GenieMacTests.GatewayCredentialRecoveryTests testMissingDeniedCancelledInvalidAndBusyNeverReportReadable]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.GatewayCredentialRecoveryTests testReadConfirmationDoesNotResumeConnectionUntilNextUserSubmission]' started.
+Test Case '-[GenieMacTests.GatewayCredentialRecoveryTests testReadConfirmationDoesNotResumeConnectionUntilNextUserSubmission]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.GatewayCredentialRecoveryTests testRecoveryStatesRenderWithoutShowingWindowOrAccessingOSCredentials]' started.
+Test Case '-[GenieMacTests.GatewayCredentialRecoveryTests testRecoveryStatesRenderWithoutShowingWindowOrAccessingOSCredentials]' passed (0.627 seconds).
+Test Suite 'GatewayCredentialRecoveryTests' passed at 2026-10-02 07:18:54.370.
+	 Executed 3 tests, with 0 failures (0 unexpected) in 0.627 (0.627) seconds
+Test Suite 'GatewaySessionTests' started at 2026-10-02 07:18:54.370.
+Test Case '-[GenieMacTests.GatewaySessionTests testAccessTokenIsNotReturnedIfRotatedCredentialsCannotBeSaved]' started.
+Test Case '-[GenieMacTests.GatewaySessionTests testAccessTokenIsNotReturnedIfRotatedCredentialsCannotBeSaved]' passed (0.001 seconds).
+Test Case '-[GenieMacTests.GatewaySessionTests testConcurrentRenewalAndRelaunchPreserveDeviceAndUseRotatedToken]' started.
+Test Case '-[GenieMacTests.GatewaySessionTests testConcurrentRenewalAndRelaunchPreserveDeviceAndUseRotatedToken]' passed (0.049 seconds).
+Test Case '-[GenieMacTests.GatewaySessionTests testDeniedFirstSaveNeverCreatesAnotherSessionOnAutomaticRetry]' started.
+Test Case '-[GenieMacTests.GatewaySessionTests testDeniedFirstSaveNeverCreatesAnotherSessionOnAutomaticRetry]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.GatewaySessionTests testDeniedSaveAfterRotationRetainsUncertainChainWithoutResending]' started.
+Test Case '-[GenieMacTests.GatewaySessionTests testDeniedSaveAfterRotationRetainsUncertainChainWithoutResending]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.GatewaySessionTests testDeniedStoredCredentialsNeverBecomeMissingOrNewSession]' started.
+Test Case '-[GenieMacTests.GatewaySessionTests testDeniedStoredCredentialsNeverBecomeMissingOrNewSession]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.GatewaySessionTests testExplicitCredentialReadCannotTreatMissingOrMalformedItemsAsSuccess]' started.
+Test Case '-[GenieMacTests.GatewaySessionTests testExplicitCredentialReadCannotTreatMissingOrMalformedItemsAsSuccess]' passed (0.001 seconds).
+Test Case '-[GenieMacTests.GatewaySessionTests testExplicitCredentialReadIsOneBackgroundReadWithoutAuthenticationOrWrites]' started.
+Test Case '-[GenieMacTests.GatewaySessionTests testExplicitCredentialReadIsOneBackgroundReadWithoutAuthenticationOrWrites]' passed (0.105 seconds).
+Test Case '-[GenieMacTests.GatewaySessionTests testExplicitReconnectRepairsAnUncertainSessionWithoutErasingItOnFailure]' started.
+Test Case '-[GenieMacTests.GatewaySessionTests testExplicitReconnectRepairsAnUncertainSessionWithoutErasingItOnFailure]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.GatewaySessionTests testInterruptedRenewalIsNotReplayedAfterRestart]' started.
+Test Case '-[GenieMacTests.GatewaySessionTests testInterruptedRenewalIsNotReplayedAfterRestart]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.GatewaySessionTests testLostRefreshResponseNeverReplaysRefreshOrCreatesAnotherDevice]' started.
+Test Case '-[GenieMacTests.GatewaySessionTests testLostRefreshResponseNeverReplaysRefreshOrCreatesAnotherDevice]' passed (0.000 seconds).
+Test Suite 'GatewaySessionTests' passed at 2026-10-02 07:18:54.528.
+	 Executed 10 tests, with 0 failures (0 unexpected) in 0.157 (0.158) seconds
+Test Suite 'HomeIntentSubmissionTests' started at 2026-10-02 07:18:54.528.
+Test Case '-[GenieMacTests.HomeIntentSubmissionTests testCancelledWaitNeverDispatchesAfterLateConnection]' started.
+Test Case '-[GenieMacTests.HomeIntentSubmissionTests testCancelledWaitNeverDispatchesAfterLateConnection]' passed (0.001 seconds).
+Test Case '-[GenieMacTests.HomeIntentSubmissionTests testConnectionErrorsExposeOnlyActionableClassification]' started.
+Test Case '-[GenieMacTests.HomeIntentSubmissionTests testConnectionErrorsExposeOnlyActionableClassification]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.HomeIntentSubmissionTests testEditedDraftIsNotSentAfterConnectionCompletes]' started.
+Test Case '-[GenieMacTests.HomeIntentSubmissionTests testEditedDraftIsNotSentAfterConnectionCompletes]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.HomeIntentSubmissionTests testLocalPreparationDoesNotRequireGateway]' started.
+Test Case '-[GenieMacTests.HomeIntentSubmissionTests testLocalPreparationDoesNotRequireGateway]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.HomeIntentSubmissionTests testUnavailableConnectionNeverDispatchesOrClearsDraft]' started.
+Test Case '-[GenieMacTests.HomeIntentSubmissionTests testUnavailableConnectionNeverDispatchesOrClearsDraft]' passed (0.000 seconds).
+Test Suite 'HomeIntentSubmissionTests' passed at 2026-10-02 07:18:54.530.
+	 Executed 5 tests, with 0 failures (0 unexpected) in 0.001 (0.002) seconds
+Test Suite 'KeychainInteractionTests' started at 2026-10-02 07:18:54.530.
+Test Case '-[GenieMacTests.KeychainInteractionTests testConcurrentOwnedOperationsRemainSerialized]' started.
+Test Case '-[GenieMacTests.KeychainInteractionTests testConcurrentOwnedOperationsRemainSerialized]' passed (0.030 seconds).
+Test Case '-[GenieMacTests.KeychainInteractionTests testExplicitReadRestoresPriorPolicyAfterSuccessAndUserCancellation]' started.
+Test Case '-[GenieMacTests.KeychainInteractionTests testExplicitReadRestoresPriorPolicyAfterSuccessAndUserCancellation]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.KeychainInteractionTests testOutstandingOSConfirmationMakesOtherOwnedOperationsBusyWithoutBlockingMainActor]' started.
+Test Case '-[GenieMacTests.KeychainInteractionTests testOutstandingOSConfirmationMakesOtherOwnedOperationsBusyWithoutBlockingMainActor]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.KeychainInteractionTests testPolicySetupFailureNeverRunsOperation]' started.
+Test Case '-[GenieMacTests.KeychainInteractionTests testPolicySetupFailureNeverRunsOperation]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.KeychainInteractionTests testQueryDisablesInteractionWithoutChangingServiceOrRequestingData]' started.
+Test Case '-[GenieMacTests.KeychainInteractionTests testQueryDisablesInteractionWithoutChangingServiceOrRequestingData]' passed (0.009 seconds).
+Test Case '-[GenieMacTests.KeychainInteractionTests testRestoreFailureDoesNotReturnSecretOrAllowLaterOperations]' started.
+Test Case '-[GenieMacTests.KeychainInteractionTests testRestoreFailureDoesNotReturnSecretOrAllowLaterOperations]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.KeychainInteractionTests testSuccessfulAndThrowingOperationsRestorePriorState]' started.
+Test Case '-[GenieMacTests.KeychainInteractionTests testSuccessfulAndThrowingOperationsRestorePriorState]' passed (0.000 seconds).
+Test Suite 'KeychainInteractionTests' passed at 2026-10-02 07:18:54.571.
+	 Executed 7 tests, with 0 failures (0 unexpected) in 0.040 (0.041) seconds
+Test Suite 'SettingsKeyPresenceTests' started at 2026-10-02 07:18:54.571.
+Test Case '-[GenieMacTests.SettingsKeyPresenceTests testGeminiConstructionDoesNotReadSecretOrBlockMainAndCoalescesPresence]' started.
+Test Case '-[GenieMacTests.SettingsKeyPresenceTests testGeminiConstructionDoesNotReadSecretOrBlockMainAndCoalescesPresence]' passed (0.072 seconds).
+Test Case '-[GenieMacTests.SettingsKeyPresenceTests testInjectedAbsentFixturesRemainReadFree]' started.
+Test Case '-[GenieMacTests.SettingsKeyPresenceTests testInjectedAbsentFixturesRemainReadFree]' passed (0.001 seconds).
+Test Case '-[GenieMacTests.SettingsKeyPresenceTests testPlacesDeniedPresenceIsDistinctFromMissingAndCanBeRetried]' started.
+Test Case '-[GenieMacTests.SettingsKeyPresenceTests testPlacesDeniedPresenceIsDistinctFromMissingAndCanBeRetried]' passed (0.068 seconds).
+Test Suite 'SettingsKeyPresenceTests' passed at 2026-10-02 07:18:54.713.
+	 Executed 3 tests, with 0 failures (0 unexpected) in 0.141 (0.142) seconds
+Test Suite 'genie-macosPackageTests.xctest' passed at 2026-10-02 07:18:54.713.
+	 Executed 35 tests, with 0 failures (0 unexpected) in 0.985 (0.989) seconds
+Test Suite 'Selected tests' passed at 2026-10-02 07:18:54.713.
+	 Executed 35 tests, with 0 failures (0 unexpected) in 0.985 (0.990) seconds
+◇ Test run started.
+↳ Testing Library Version: 1902
+↳ Target Platform: arm64e-apple-macos14.0
+✔ Test run with 0 tests in 0 suites passed after 0.001 seconds.

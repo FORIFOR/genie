@@ -1,0 +1,10 @@
+   Compiling genie-core v0.1.4 (/Users/shuhei/Projects/genie/core/genie-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.14s
+     Running unittests src/lib.rs (core/genie-core/target/debug/deps/genie_core-2f3162ee37251ff2)
+
+running 2 tests
+test api::receipt_tests::clarification_object_and_legacy_string_preserve_the_answer ... ok
+test api::receipt_tests::lost_response_is_recovered_by_get_without_a_second_post ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 42 filtered out; finished in 0.02s
+

@@ -1,0 +1,59 @@
+warning: '--skip-update' option is deprecated and will be removed in a future release
+Building for debugging...
+[0/4] Write sources
+[1/4] Write swift-version--58304C5D6DBC2206.txt
+[3/6] Compiling GenieMac TaskHistoryView.swift
+[4/6] Emitting module GenieMac
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/GuidedSetup/GuidedSetupSelfTest.swift:144:21: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+142 |         // アバターの姿を残す（目視用）。
+143 |         if let win = overlay.avatar.window,
+144 |            let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(win.windowNumber), [.boundsIgnoreFraming, .bestResolution]) {
+    |                     `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+145 |             let png = NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:])
+146 |             try? png?.write(to: URL(fileURLWithPath: "\(outDir)/guided-setup-avatar.png"))
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/GuidedSetup/PermissionGuideCoordinator.swift:51:74: warning: passing non-Sendable parameter 'block' to function expecting a '@Sendable' closure
+ 48 |         }
+ 49 |         /// 遅延実行。検査では即時。
+ 50 |         var after: (TimeInterval, @escaping () -> Void) -> Void = { s, block in
+    |                                                                        `- note: parameter 'block' is implicitly non-Sendable
+ 51 |             DispatchQueue.main.asyncAfter(deadline: .now() + s, execute: block)
+    |                                                                          `- warning: passing non-Sendable parameter 'block' to function expecting a '@Sendable' closure
+ 52 |         }
+ 53 |         var now: () -> Date = Date.init
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Main/ConnectionsPane.swift:8:57: warning: main actor-isolated static property 'shared' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+  6 |     let apps: [String]
+  7 |     @ObservedObject private var connections: ConnectorState
+  8 |     init(apps: [String], connections: ConnectorState = .shared) {
+    |                                                         `- warning: main actor-isolated static property 'shared' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+  9 |         self.apps = apps; self.connections = connections
+ 10 |     }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Context/ConnectorState.swift:6:16: note: static property declared here
+  4 | @MainActor
+  5 | final class ConnectorState: ObservableObject {
+  6 |     static let shared = ConnectorState()
+    |                `- note: static property declared here
+  7 |     struct Source: Identifiable, Equatable {
+  8 |         let pluginId: String
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[4/7] Write Objects.LinkFileList
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[560](std-ddc72da0927e9db9.std.61a5f0013896dfb1-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[561](panic_unwind-63ea78ca2e1c0db3.panic_unwind.b9418b0471e31d36-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[562](object-c0adbf29d899f046.object.cf48ae80852c1dc4-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[564](addr2line-b92825ace6709456.addr2line.f3cce53e8c22052d-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[565](gimli-49cd0cae66d7f640.gimli.a9de2a852aa7a696-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[567](rustc_demangle-a5e20ae1249591d9.rustc_demangle.c8ddca633150ec1-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[569](hashbrown-7ef914ecbc5b3828.hashbrown.f3d328c4a0fd8a24-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[571](miniz_oxide-d817fa4718a8ef96.miniz_oxide.cf735aedbe58ef77-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[572](adler2-b603e41842b612c3.adler2.c400f6a6402c7116-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[576](alloc-7d19d4a84a64ec6c.alloc.650f235c7e2e357a-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[577](core-f186bd403406965f.core.aedb9fd4ead64aec-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[594](compiler_builtins-28935136ed986f39.compiler_builtins.bb8f0d37d096e781-cgu.016.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[722](compiler_builtins-28935136ed986f39.compiler_builtins.bb8f0d37d096e781-cgu.144.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[771](compiler_builtins-28935136ed986f39.compiler_builtins.bb8f0d37d096e781-cgu.193.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+[5/7] Linking GenieMac
+[6/7] Applying GenieMac
+Build complete! (6.27s)

@@ -244,6 +244,101 @@ describe.skipIf(!url)('the host bridge', () => {
     expect(await bridge.claimNext({ tenantId, hostId })).toBeNull();
   });
 
+  it('does not dispatch queued or new work after task cancellation or completion', async () => {
+    for (const status of ['CANCELLING', 'CANCELLED', 'COMPLETED', 'FAILED']) {
+      const taskId = await makeTask();
+      await bridge.request({
+        tenantId,
+        taskId,
+        stepIndex: 0,
+        toolId: 'transaction.submit',
+        args: {},
+      });
+      await withTenant(db, tenantId, (tx) =>
+        tx.updateTable('tasks').set({ status }).where('id', '=', taskId).execute(),
+      );
+      expect(await bridge.claimNext({ tenantId, hostId })).toBeNull();
+      await expect(
+        bridge.request({ tenantId, taskId, stepIndex: 1, toolId: 'transaction.submit', args: {} }),
+      ).rejects.toMatchObject({ code: 'common.conflict' });
+    }
+  });
+
+  it('withdraws only an unclaimed request of a task that no longer runs', async () => {
+    const setStatus = (taskId: string, status: string): Promise<unknown> =>
+      withTenant(db, tenantId, (tx) =>
+        tx.updateTable('tasks').set({ status }).where('id', '=', taskId).execute(),
+      );
+    const place = async (taskId: string) =>
+      bridge.request({ tenantId, taskId, stepIndex: 0, toolId: 'llm.answer', args: {} });
+
+    // 動いている仕事の依頼は取り下げない。端末がこれから取りに来る。
+    const runningTask = await makeTask();
+    const running = await place(runningTask);
+    expect(await bridge.withdrawUnclaimed(tenantId, running.id)).toBe(false);
+    expect(await bridge.get(tenantId, running.id)).toMatchObject({ status: 'PENDING' });
+
+    // 端末が取った依頼は、止めた後も取り下げない。結果は端末だけが言える。
+    expect((await bridge.claimNext({ tenantId, hostId }))?.id).toBe(running.id);
+    await setStatus(runningTask, 'CANCELLING');
+    expect(await bridge.withdrawUnclaimed(tenantId, running.id)).toBe(false);
+    expect(await bridge.get(tenantId, running.id)).toMatchObject({ status: 'CLAIMED', hostId });
+
+    // 止めた仕事の、誰も取っていない依頼だけが消える。二度目は何もしない。
+    const stoppedTask = await makeTask();
+    const stopped = await place(stoppedTask);
+    await setStatus(stoppedTask, 'CANCELLING');
+    expect(await bridge.withdrawUnclaimed(tenantId, stopped.id)).toBe(true);
+    expect(await bridge.get(tenantId, stopped.id)).toBeNull();
+    expect(await bridge.withdrawUnclaimed(tenantId, stopped.id)).toBe(false);
+    expect(await bridge.claimNext({ tenantId, hostId })).toBeNull();
+  });
+
+  it('revokes claimed execution on cancellation while still accepting the actual sent receipt', async () => {
+    const taskId = await makeTask();
+    const request = await bridge.request({
+      tenantId,
+      taskId,
+      stepIndex: 0,
+      toolId: 'mail.send',
+      args: {},
+    });
+    const input = { tenantId, userId, requestId: request.id, hostId };
+    expect(await bridge.executionAllowed(input)).toBe(false);
+    await bridge.claimNext({ tenantId, hostId });
+    expect(await bridge.executionAllowed(input)).toBe(true);
+    expect(await bridge.executionAllowed({ ...input, hostId: otherHostId })).toBe(false);
+    expect(await bridge.executionAllowed({ ...input, userId: uuidv7() })).toBe(false);
+    await withTenant(db, tenantId, (tx) =>
+      tx.updateTable('tasks').set({ status: 'CANCELLING' }).where('id', '=', taskId).execute(),
+    );
+    expect(await bridge.executionAllowed(input)).toBe(false);
+    await bridge.complete({
+      ...input,
+      result: { status: 'accepted', providerOrderId: 'already-sent' },
+    });
+    expect(await bridge.get(tenantId, request.id)).toMatchObject({
+      status: 'DONE',
+      result: { status: 'accepted', providerOrderId: 'already-sent' },
+    });
+  });
+
+  it('does not grant authority to an expired claimed request', async () => {
+    const taskId = await makeTask();
+    const request = await bridge.request({
+      tenantId,
+      taskId,
+      stepIndex: 0,
+      toolId: 'mail.send',
+      args: {},
+    });
+    await bridge.claimNext({ tenantId, hostId });
+    clock += 60_000;
+    expect(await bridge.executionAllowed({ tenantId, userId, requestId: request.id, hostId })).toBe(
+      false,
+    );
+  });
+
   it('takes the result only from the device that claimed the step', async () => {
     const taskId = await makeTask();
     const request = await bridge.request({

@@ -1,0 +1,13 @@
+/private/tmp/genie-transactions-20261002/user-app-recovery-stage/Genie.app: replacing existing signature
+--prepared:/private/tmp/genie-transactions-20261002/user-app-recovery-stage/Genie.app/Contents/Frameworks/Sparkle.framework/Versions/Current/.
+--prepared:/private/tmp/genie-transactions-20261002/user-app-recovery-stage/Genie.app/Contents/Frameworks/Sparkle.framework/Versions/Current/Updater.app
+--prepared:/private/tmp/genie-transactions-20261002/user-app-recovery-stage/Genie.app/Contents/Frameworks/Sparkle.framework/Versions/Current/XPCServices/Downloader.xpc
+--validated:/private/tmp/genie-transactions-20261002/user-app-recovery-stage/Genie.app/Contents/Frameworks/Sparkle.framework/Versions/Current/XPCServices/Downloader.xpc
+--validated:/private/tmp/genie-transactions-20261002/user-app-recovery-stage/Genie.app/Contents/Frameworks/Sparkle.framework/Versions/Current/Updater.app
+--prepared:/private/tmp/genie-transactions-20261002/user-app-recovery-stage/Genie.app/Contents/Frameworks/Sparkle.framework/Versions/Current/Autoupdate
+--validated:/private/tmp/genie-transactions-20261002/user-app-recovery-stage/Genie.app/Contents/Frameworks/Sparkle.framework/Versions/Current/Autoupdate
+--prepared:/private/tmp/genie-transactions-20261002/user-app-recovery-stage/Genie.app/Contents/Frameworks/Sparkle.framework/Versions/Current/XPCServices/Installer.xpc
+--validated:/private/tmp/genie-transactions-20261002/user-app-recovery-stage/Genie.app/Contents/Frameworks/Sparkle.framework/Versions/Current/XPCServices/Installer.xpc
+--validated:/private/tmp/genie-transactions-20261002/user-app-recovery-stage/Genie.app/Contents/Frameworks/Sparkle.framework/Versions/Current/.
+/private/tmp/genie-transactions-20261002/user-app-recovery-stage/Genie.app: valid on disk
+/private/tmp/genie-transactions-20261002/user-app-recovery-stage/Genie.app: satisfies its Designated Requirement

@@ -1,0 +1,997 @@
+{
+  "baseline": "docs/golden-screenshots/environments/macos-26.6.2-2x-safe-top-32/geometry",
+  "tolerancePt": 2,
+  "method": "Raw AX box max absolute x/y/w/h delta. Explicit required control/text keys plus actual window keys; no normalization. Missing old keys are reported, never counted as matching.",
+  "states": {
+    "01-idle": {
+      "items": [
+        {
+          "key": "voiceHUD",
+          "reference": {
+            "h": 76.5,
+            "w": 220.5,
+            "x": -0.5,
+            "y": -0.5
+          },
+          "actual": {
+            "h": 76.5,
+            "w": 220.5,
+            "x": -0.5,
+            "y": -0.5
+          },
+          "maxDeltaPt": 0.0,
+          "withinExisting2pt": true
+        },
+        {
+          "key": "dockIdle",
+          "reference": null,
+          "actual": {
+            "h": 44,
+            "w": 180,
+            "x": 20,
+            "y": 32
+          },
+          "maxDeltaPt": null,
+          "withinExisting2pt": null
+        },
+        {
+          "key": "dockOpenActions",
+          "reference": {
+            "h": 19,
+            "w": 62,
+            "x": 21,
+            "y": 44.5
+          },
+          "actual": {
+            "h": 44,
+            "w": 66,
+            "x": 20,
+            "y": 32
+          },
+          "maxDeltaPt": 25,
+          "withinExisting2pt": false
+        },
+        {
+          "key": "dockStartRecording",
+          "reference": {
+            "h": 32,
+            "w": 48,
+            "x": 152,
+            "y": 38
+          },
+          "actual": {
+            "h": 32,
+            "w": 48,
+            "x": 152,
+            "y": 38
+          },
+          "maxDeltaPt": 0,
+          "withinExisting2pt": true
+        },
+        {
+          "key": "window:GeniePanel<VoiceTaskDockView>",
+          "reference": {
+            "h": 76,
+            "w": 220,
+            "x": 0,
+            "y": 0
+          },
+          "actual": {
+            "h": 76,
+            "w": 220,
+            "x": 0,
+            "y": 0
+          },
+          "maxDeltaPt": 0,
+          "withinExisting2pt": true
+        },
+        {
+          "key": "window:GeniePanel<VoiceTaskDockView>:topOffset",
+          "reference": {
+            "h": 0,
+            "w": 0,
+            "x": 0,
+            "y": 0
+          },
+          "actual": {
+            "h": 0,
+            "w": 0,
+            "x": 0,
+            "y": 0
+          },
+          "maxDeltaPt": 0,
+          "withinExisting2pt": true
+        }
+      ],
+      "referenceKeys": 47,
+      "actualKeys": 66,
+      "requiredAbsentInReference": [
+        "dockIdle"
+      ]
+    },
+    "02-listening": {
+      "items": [
+        {
+          "key": "voiceHUD",
+          "reference": {
+            "h": 100.5,
+            "w": 600.5,
+            "x": -0.5,
+            "y": -0.5
+          },
+          "actual": {
+            "h": 100.5,
+            "w": 600.5,
+            "x": -0.5,
+            "y": -0.5
+          },
+          "maxDeltaPt": 0.0,
+          "withinExisting2pt": true
+        },
+        {
+          "key": "dockListening",
+          "reference": null,
+          "actual": {
+            "h": 36,
+            "w": 560.5,
+            "x": 20,
+            "y": 48
+          },
+          "maxDeltaPt": null,
+          "withinExisting2pt": null
+        },
+        {
+          "key": "dockListeningInputField",
+          "reference": null,
+          "actual": {
+            "h": 21,
+            "w": 426.5,
+            "x": 59,
+            "y": 55.5
+          },
+          "maxDeltaPt": null,
+          "withinExisting2pt": null
+        },
+        {
+          "key": "dockSubmitInput",
+          "reference": null,
+          "actual": {
+            "h": 16,
+            "w": 16,
+            "x": 528.5,
+            "y": 58
+          },
+          "maxDeltaPt": null,
+          "withinExisting2pt": null
+        },
+        {
+          "key": "dockToggleMute",
+          "reference": null,
+          "actual": {
+            "h": 14,
+            "w": 10,
+            "x": 501.5,
+            "y": 59
+          },
+          "maxDeltaPt": null,
+          "withinExisting2pt": null
+        },
+        {
+          "key": "text:esc",
+          "reference": {
+            "h": 9,
+            "w": 13.5,
+            "x": 560.5,
+            "y": 61.5
+          },
+          "actual": {
+            "h": 9,
+            "w": 13.5,
+            "x": 560.5,
+            "y": 61.5
+          },
+          "maxDeltaPt": 0.0,
+          "withinExisting2pt": true
+        },
+        {
+          "key": "window:GeniePanel<VoiceTaskDockView>",
+          "reference": {
+            "h": 100,
+            "w": 600,
+            "x": 0,
+            "y": 0
+          },
+          "actual": {
+            "h": 100,
+            "w": 600,
+            "x": 0,
+            "y": 0
+          },
+          "maxDeltaPt": 0,
+          "withinExisting2pt": true
+        },
+        {
+          "key": "window:GeniePanel<VoiceTaskDockView>:topOffset",
+          "reference": {
+            "h": 0,
+            "w": 0,
+            "x": 0,
+            "y": 0
+          },
+          "actual": {
+            "h": 0,
+            "w": 0,
+            "x": 0,
+            "y": 0
+          },
+          "maxDeltaPt": 0,
+          "withinExisting2pt": true
+        }
+      ],
+      "referenceKeys": 64,
+      "actualKeys": 68,
+      "requiredAbsentInReference": [
+        "dockListening",
+        "dockListeningInputField",
+        "dockSubmitInput",
+        "dockToggleMute"
+      ]
+    },
+    "03-task-dock": {
+      "items": [
+        {
+          "key": "voiceHUD",
+          "reference": {
+            "h": 329.5,
+            "w": 720.5,
+            "x": -0.5,
+            "y": -0.5
+          },
+          "actual": {
+            "h": 294.5,
+            "w": 720.5,
+            "x": -0.5,
+            "y": -0.5
+          },
+          "maxDeltaPt": 35.0,
+          "withinExisting2pt": false
+        },
+        {
+          "key": "dockAgent",
+          "reference": null,
+          "actual": {
+            "h": 230,
+            "w": 680,
+            "x": 20,
+            "y": 48
+          },
+          "maxDeltaPt": null,
+          "withinExisting2pt": null
+        },
+        {
+          "key": "stopAgent",
+          "reference": {
+            "h": 28,
+            "w": 85.5,
+            "x": 20,
+            "y": 285
+          },
+          "actual": {
+            "h": 28,
+            "w": 85.5,
+            "x": 20,
+            "y": 250
+          },
+          "maxDeltaPt": 35,
+          "withinExisting2pt": false
+        },
+        {
+          "key": "openWorkspace",
+          "reference": {
+            "h": 28,
+            "w": 131.5,
+            "x": 568.5,
+            "y": 285
+          },
+          "actual": {
+            "h": 28,
+            "w": 131.5,
+            "x": 568.5,
+            "y": 250
+          },
+          "maxDeltaPt": 35,
+          "withinExisting2pt": false
+        },
+        {
+          "key": "step-calendar",
+          "reference": {
+            "h": 9.5,
+            "w": 10,
+            "x": 21.5,
+            "y": 166.5
+          },
+          "actual": {
+            "h": 9.5,
+            "w": 10,
+            "x": 21.5,
+            "y": 131.5
+          },
+          "maxDeltaPt": 35.0,
+          "withinExisting2pt": false
+        },
+        {
+          "key": "step-gmail",
+          "reference": {
+            "h": 11.5,
+            "w": 11.5,
+            "x": 21,
+            "y": 201.5
+          },
+          "actual": {
+            "h": 11.5,
+            "w": 11.5,
+            "x": 21,
+            "y": 166.5
+          },
+          "maxDeltaPt": 35.0,
+          "withinExisting2pt": false
+        },
+        {
+          "key": "step-notion",
+          "reference": {
+            "h": 11.5,
+            "w": 11.5,
+            "x": 21,
+            "y": 237.5
+          },
+          "actual": {
+            "h": 11.5,
+            "w": 11.5,
+            "x": 21,
+            "y": 202.5
+          },
+          "maxDeltaPt": 35.0,
+          "withinExisting2pt": false
+        },
+        {
+          "key": "text:週次ブリーフィングを作る",
+          "reference": {
+            "h": 24,
+            "w": 222,
+            "x": 20,
+            "y": 82
+          },
+          "actual": {
+            "h": 24,
+            "w": 222,
+            "x": 20,
+            "y": 82
+          },
+          "maxDeltaPt": 0,
+          "withinExisting2pt": true
+        },
+        {
+          "key": "window:GeniePanel<VoiceTaskDockView>",
+          "reference": {
+            "h": 329,
+            "w": 720,
+            "x": 0,
+            "y": 0
+          },
+          "actual": {
+            "h": 294,
+            "w": 720,
+            "x": 0,
+            "y": 0
+          },
+          "maxDeltaPt": 35,
+          "withinExisting2pt": false
+        },
+        {
+          "key": "window:GeniePanel<VoiceTaskDockView>:topOffset",
+          "reference": {
+            "h": 0,
+            "w": 0,
+            "x": 0,
+            "y": 0
+          },
+          "actual": {
+            "h": 0,
+            "w": 0,
+            "x": 0,
+            "y": 0
+          },
+          "maxDeltaPt": 0,
+          "withinExisting2pt": true
+        }
+      ],
+      "referenceKeys": 75,
+      "actualKeys": 75,
+      "requiredAbsentInReference": [
+        "dockAgent"
+      ]
+    },
+    "04-meeting": {
+      "items": [
+        {
+          "key": "voiceHUD",
+          "reference": {
+            "h": 108.5,
+            "w": 820.5,
+            "x": -0.5,
+            "y": -0.5
+          },
+          "actual": {
+            "h": 108.5,
+            "w": 820.5,
+            "x": -0.5,
+            "y": -0.5
+          },
+          "maxDeltaPt": 0.0,
+          "withinExisting2pt": true
+        },
+        {
+          "key": "meetingPanel-notes",
+          "reference": {
+            "h": 30,
+            "w": 67,
+            "x": 388,
+            "y": 55
+          },
+          "actual": {
+            "h": 30,
+            "w": 67,
+            "x": 388,
+            "y": 55
+          },
+          "maxDeltaPt": 0,
+          "withinExisting2pt": true
+        },
+        {
+          "key": "meetingPanel-captions",
+          "reference": {
+            "h": 30,
+            "w": 68.5,
+            "x": 467,
+            "y": 55
+          },
+          "actual": {
+            "h": 30,
+            "w": 68.5,
+            "x": 467,
+            "y": 55
+          },
+          "maxDeltaPt": 0,
+          "withinExisting2pt": true
+        },
+        {
+          "key": "meetingPanel-ask",
+          "reference": {
+            "h": 30,
+            "w": 110.5,
+            "x": 547.5,
+            "y": 55
+          },
+          "actual": {
+            "h": 30,
+            "w": 110.5,
+            "x": 547.5,
+            "y": 55
+          },
+          "maxDeltaPt": 0.0,
+          "withinExisting2pt": true
+        },
+        {
+          "key": "stopRecording",
+          "reference": {
+            "h": 25,
+            "w": 25,
+            "x": 775,
+            "y": 57.5
+          },
+          "actual": {
+            "h": 25,
+            "w": 25,
+            "x": 775,
+            "y": 57.5
+          },
+          "maxDeltaPt": 0,
+          "withinExisting2pt": true
+        },
+        {
+          "key": "pauseRecording",
+          "reference": {
+            "h": 30,
+            "w": 32,
+            "x": 731,
+            "y": 55
+          },
+          "actual": {
+            "h": 30,
+            "w": 32,
+            "x": 731,
+            "y": 55
+          },
+          "maxDeltaPt": 0,
+          "withinExisting2pt": true
+        },
+        {
+          "key": "secretToggle",
+          "reference": {
+            "h": 30,
+            "w": 32,
+            "x": 687,
+            "y": 55
+          },
+          "actual": {
+            "h": 30,
+            "w": 32,
+            "x": 687,
+            "y": 55
+          },
+          "maxDeltaPt": 0,
+          "withinExisting2pt": true
+        },
+        {
+          "key": "text:Google Meet",
+          "reference": {
+            "h": 19,
+            "w": 96,
+            "x": 41,
+            "y": 52
+          },
+          "actual": {
+            "h": 19,
+            "w": 96,
+            "x": 41,
+            "y": 52
+          },
+          "maxDeltaPt": 0,
+          "withinExisting2pt": true
+        },
+        {
+          "key": "window:GeniePanel<VoiceTaskDockView>",
+          "reference": {
+            "h": 108,
+            "w": 820,
+            "x": 0,
+            "y": 0
+          },
+          "actual": {
+            "h": 108,
+            "w": 820,
+            "x": 0,
+            "y": 0
+          },
+          "maxDeltaPt": 0,
+          "withinExisting2pt": true
+        },
+        {
+          "key": "window:GeniePanel<VoiceTaskDockView>:topOffset",
+          "reference": {
+            "h": 0,
+            "w": 0,
+            "x": 0,
+            "y": 0
+          },
+          "actual": {
+            "h": 0,
+            "w": 0,
+            "x": 0,
+            "y": 0
+          },
+          "maxDeltaPt": 0,
+          "withinExisting2pt": true
+        }
+      ],
+      "referenceKeys": 69,
+      "actualKeys": 70,
+      "requiredAbsentInReference": []
+    },
+    "05-meeting-notes": {
+      "items": [
+        {
+          "key": "voiceHUD",
+          "reference": {
+            "h": 389.5,
+            "w": 820.5,
+            "x": -0.5,
+            "y": -0.5
+          },
+          "actual": {
+            "h": 389.5,
+            "w": 820.5,
+            "x": -0.5,
+            "y": -0.5
+          },
+          "maxDeltaPt": 0.0,
+          "withinExisting2pt": true
+        },
+        {
+          "key": "meetingPanelBody",
+          "reference": {
+            "h": 238,
+            "w": 780,
+            "x": 20,
+            "y": 125
+          },
+          "actual": {
+            "h": 238,
+            "w": 780,
+            "x": 20,
+            "y": 125
+          },
+          "maxDeltaPt": 0,
+          "withinExisting2pt": true
+        },
+        {
+          "key": "detachMeeting",
+          "reference": {
+            "h": 26,
+            "w": 100.5,
+            "x": 699.5,
+            "y": 125
+          },
+          "actual": {
+            "h": 26,
+            "w": 100.5,
+            "x": 699.5,
+            "y": 125
+          },
+          "maxDeltaPt": 0.0,
+          "withinExisting2pt": true
+        },
+        {
+          "key": "text:ライブメモ",
+          "reference": {
+            "h": 14,
+            "w": 53,
+            "x": 20,
+            "y": 131
+          },
+          "actual": {
+            "h": 14,
+            "w": 53,
+            "x": 20,
+            "y": 131
+          },
+          "maxDeltaPt": 0,
+          "withinExisting2pt": true
+        },
+        {
+          "key": "text:決まったこと",
+          "reference": {
+            "h": 16,
+            "w": 72.5,
+            "x": 20,
+            "y": 161
+          },
+          "actual": {
+            "h": 16,
+            "w": 72.5,
+            "x": 20,
+            "y": 161
+          },
+          "maxDeltaPt": 0,
+          "withinExisting2pt": true
+        },
+        {
+          "key": "text:やること",
+          "reference": {
+            "h": 16,
+            "w": 48.5,
+            "x": 20,
+            "y": 269
+          },
+          "actual": {
+            "h": 16,
+            "w": 48.5,
+            "x": 20,
+            "y": 269
+          },
+          "maxDeltaPt": 0,
+          "withinExisting2pt": true
+        },
+        {
+          "key": "text:質問",
+          "reference": {
+            "h": 16,
+            "w": 24.5,
+            "x": 20,
+            "y": 323
+          },
+          "actual": {
+            "h": 16,
+            "w": 24.5,
+            "x": 20,
+            "y": 323
+          },
+          "maxDeltaPt": 0,
+          "withinExisting2pt": true
+        },
+        {
+          "key": "text:懸念",
+          "reference": {
+            "h": 16,
+            "w": 24.5,
+            "x": 20,
+            "y": 215
+          },
+          "actual": {
+            "h": 16,
+            "w": 24.5,
+            "x": 20,
+            "y": 215
+          },
+          "maxDeltaPt": 0,
+          "withinExisting2pt": true
+        },
+        {
+          "key": "window:GeniePanel<VoiceTaskDockView>",
+          "reference": {
+            "h": 389,
+            "w": 820,
+            "x": 0,
+            "y": 0
+          },
+          "actual": {
+            "h": 389,
+            "w": 820,
+            "x": 0,
+            "y": 0
+          },
+          "maxDeltaPt": 0,
+          "withinExisting2pt": true
+        },
+        {
+          "key": "window:GeniePanel<VoiceTaskDockView>:topOffset",
+          "reference": {
+            "h": 0,
+            "w": 0,
+            "x": 0,
+            "y": 0
+          },
+          "actual": {
+            "h": 0,
+            "w": 0,
+            "x": 0,
+            "y": 0
+          },
+          "maxDeltaPt": 0,
+          "withinExisting2pt": true
+        }
+      ],
+      "referenceKeys": 81,
+      "actualKeys": 82,
+      "requiredAbsentInReference": []
+    },
+    "06-workspace": {
+      "items": [
+        {
+          "key": "recordingWorkspace",
+          "reference": {
+            "h": 14,
+            "w": 34,
+            "x": 427,
+            "y": 17
+          },
+          "actual": {
+            "h": 14,
+            "w": 34,
+            "x": 427,
+            "y": 17
+          },
+          "maxDeltaPt": 0,
+          "withinExisting2pt": true
+        },
+        {
+          "key": "tool-transcript",
+          "reference": {
+            "h": 32,
+            "w": 66,
+            "x": 741,
+            "y": 123
+          },
+          "actual": {
+            "h": 32,
+            "w": 66,
+            "x": 741,
+            "y": 123
+          },
+          "maxDeltaPt": 0,
+          "withinExisting2pt": true
+        },
+        {
+          "key": "tool-translation",
+          "reference": {
+            "h": 32,
+            "w": 67,
+            "x": 809,
+            "y": 123
+          },
+          "actual": {
+            "h": 32,
+            "w": 67,
+            "x": 809,
+            "y": 123
+          },
+          "maxDeltaPt": 0,
+          "withinExisting2pt": true
+        },
+        {
+          "key": "notes-決まったこと",
+          "reference": {
+            "h": 15,
+            "w": 69,
+            "x": 46,
+            "y": 265
+          },
+          "actual": {
+            "h": 15,
+            "w": 69,
+            "x": 46,
+            "y": 265
+          },
+          "maxDeltaPt": 0,
+          "withinExisting2pt": true
+        },
+        {
+          "key": "notes-やること",
+          "reference": {
+            "h": 15,
+            "w": 46,
+            "x": 46,
+            "y": 344
+          },
+          "actual": {
+            "h": 15,
+            "w": 46,
+            "x": 46,
+            "y": 344
+          },
+          "maxDeltaPt": 0,
+          "withinExisting2pt": true
+        },
+        {
+          "key": "notes-質問",
+          "reference": {
+            "h": 15,
+            "w": 23,
+            "x": 46,
+            "y": 423
+          },
+          "actual": {
+            "h": 15,
+            "w": 23,
+            "x": 46,
+            "y": 423
+          },
+          "maxDeltaPt": 0,
+          "withinExisting2pt": true
+        },
+        {
+          "key": "notes-懸念",
+          "reference": {
+            "h": 15,
+            "w": 23,
+            "x": 46,
+            "y": 502
+          },
+          "actual": {
+            "h": 15,
+            "w": 23,
+            "x": 46,
+            "y": 502
+          },
+          "maxDeltaPt": 0,
+          "withinExisting2pt": true
+        },
+        {
+          "key": "text:録音中",
+          "reference": {
+            "h": 19,
+            "w": 44.5,
+            "x": 22,
+            "y": 76.5
+          },
+          "actual": {
+            "h": 19,
+            "w": 44.5,
+            "x": 22,
+            "y": 76.5
+          },
+          "maxDeltaPt": 0,
+          "withinExisting2pt": true
+        },
+        {
+          "key": "text:それでは 9 月 12 日に出しましょう。",
+          "reference": {
+            "h": 15,
+            "w": 184,
+            "x": 847,
+            "y": 179
+          },
+          "actual": {
+            "h": 15,
+            "w": 184,
+            "x": 847,
+            "y": 179
+          },
+          "maxDeltaPt": 0,
+          "withinExisting2pt": true
+        },
+        {
+          "key": "window:GeniePanel<RecordingWorkspaceView>",
+          "reference": {
+            "h": 680,
+            "w": 1080,
+            "x": 0,
+            "y": 0
+          },
+          "actual": {
+            "h": 680,
+            "w": 1080,
+            "x": 0,
+            "y": 0
+          },
+          "maxDeltaPt": 0,
+          "withinExisting2pt": true
+        },
+        {
+          "key": "window:GeniePanel<RecordingWorkspaceView>:centerOffset",
+          "reference": {
+            "h": 0,
+            "w": 0,
+            "x": 0,
+            "y": -0.5
+          },
+          "actual": {
+            "h": 0,
+            "w": 0,
+            "x": 0,
+            "y": -0.5
+          },
+          "maxDeltaPt": 0,
+          "withinExisting2pt": true
+        },
+        {
+          "key": "window:GeniePanel<VoiceTaskDockView>",
+          "reference": {
+            "h": 389,
+            "w": 820,
+            "x": 0,
+            "y": 0
+          },
+          "actual": {
+            "h": 389,
+            "w": 820,
+            "x": 0,
+            "y": 0
+          },
+          "maxDeltaPt": 0,
+          "withinExisting2pt": true
+        },
+        {
+          "key": "window:GeniePanel<VoiceTaskDockView>:topOffset",
+          "reference": {
+            "h": 0,
+            "w": 0,
+            "x": 0,
+            "y": 0
+          },
+          "actual": {
+            "h": 0,
+            "w": 0,
+            "x": 0,
+            "y": 0
+          },
+          "maxDeltaPt": 0,
+          "withinExisting2pt": true
+        }
+      ],
+      "referenceKeys": 99,
+      "actualKeys": 100,
+      "requiredAbsentInReference": []
+    }
+  }
+}

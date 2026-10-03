@@ -1,0 +1,17 @@
+✔ requires goal, criteria, durable run file and explicit approval ID (0.774833ms)
+✔ lost acceptance response: explicit recover reuses identical key and request, never approves (0.575166ms)
+✔ status and recover with known identity only read; missing identity never posts (0.092791ms)
+✔ approval belongs to current computer task and matching pending approval (0.158583ms)
+✔ cancel only requests cancellation on same task, no success assertion (0.075917ms)
+✔ transport blocks redirects and does not retry errors (0.234834ms)
+✔ check uses the actual running helper and explicit screen recipient (0.129834ms)
+✔ conversation cloud permission alone is not screen readiness (0.09875ms)
+✔ check refuses stale, wrong, test-only or unavailable helper status (0.140042ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 67.070917

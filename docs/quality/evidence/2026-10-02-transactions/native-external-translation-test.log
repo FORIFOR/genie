@@ -1,0 +1,15 @@
+Test Suite 'Selected tests' started at 2026-10-02 02:41:46.075.
+Test Suite 'genie-macosPackageTests.xctest' started at 2026-10-02 02:41:46.076.
+Test Suite 'CodexTranslationTests' started at 2026-10-02 02:41:46.076.
+Test Case '-[GenieMacTests.CodexTranslationTests testRealCodexTranslationOnlyWithExplicitOptIn]' started.
+Test Case '-[GenieMacTests.CodexTranslationTests testRealCodexTranslationOnlyWithExplicitOptIn]' passed (4.903 seconds).
+Test Suite 'CodexTranslationTests' passed at 2026-10-02 02:41:50.979.
+	 Executed 1 test, with 0 failures (0 unexpected) in 4.903 (4.903) seconds
+Test Suite 'genie-macosPackageTests.xctest' passed at 2026-10-02 02:41:50.979.
+	 Executed 1 test, with 0 failures (0 unexpected) in 4.903 (4.903) seconds
+Test Suite 'Selected tests' passed at 2026-10-02 02:41:50.979.
+	 Executed 1 test, with 0 failures (0 unexpected) in 4.903 (4.904) seconds
+◇ Test run started.
+↳ Testing Library Version: 1902
+↳ Target Platform: arm64e-apple-macos14.0
+✔ Test run with 0 tests in 0 suites passed after 0.001 seconds.

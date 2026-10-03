@@ -1,0 +1,13 @@
+{"name": "workflow-before", "command": ["pnpm", "--filter", "@genie/service-task", "exec", "vitest", "run", "test/terminal-workflow.test.ts"], "exit_code": 1, "seconds": 0.99}
+{"name": "workflow-after", "command": ["pnpm", "--filter", "@genie/service-task", "exec", "vitest", "run", "test/terminal-workflow.test.ts", "test/metered-workflow.test.ts", "test/host-wait.test.ts"], "exit_code": 0, "seconds": 1.24}
+{"name": "typecheck", "command": ["pnpm", "typecheck"], "exit_code": 2, "seconds": 9.17}
+{"name": "kit-validation", "command": ["python3", "/Users/shuhei/Downloads/oss-quality-kit/scripts/validate.py"], "exit_code": 0, "seconds": 0.03}
+{"name": "kit-tests", "command": ["python3", "-m", "unittest", "discover", "-s", "/Users/shuhei/Downloads/oss-quality-kit/scripts", "-p", "test_*.py", "-v"], "exit_code": 0, "seconds": 0.11}
+{"name": "build", "command": ["pnpm", "build"], "exit_code": 0, "seconds": 0.47}
+{"name": "task-tests", "command": ["env", "-u", "TEST_DATABASE_URL", "-u", "TEST_IDENTITY_DATABASE_URL", "pnpm", "--filter", "@genie/service-task", "test"], "exit_code": 0, "seconds": 1.36}
+{"name": "typecheck-final", "command": ["pnpm", "typecheck"], "exit_code": 0, "seconds": 5.66}
+{"name": "conventions", "command": ["pnpm", "check:conventions"], "exit_code": 0, "seconds": 0.43}
+{"name": "diff-check", "command": ["git", "diff", "--check"], "exit_code": 0, "seconds": 0.04}
+{"name": "protected-changes", "command": ["shasum", "-a", "256", "-c", "/tmp/genie-user-changes-20260919.sha256"], "exit_code": 0, "seconds": 0.02}
+{"name": "build-final", "command": ["pnpm", "build"], "exit_code": 0, "seconds": 0.49}
+{"name": "diff-check-final", "command": ["git", "diff", "--check"], "exit_code": 0, "seconds": 0.03}

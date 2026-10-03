@@ -1,0 +1,15 @@
+== UI の癖 ==
+  gradient               2 /   4
+  角丸 >28pt           0 /   0
+  material/blur: actual=10, reviewed additions=2 (content-bound)
+  material/blur          8 /   8
+  sparkles アイコン   5 /   6
+  Capsule: actual=26, reviewed additions=6 (content-bound)
+  Capsule               20 /  20
+  shadow                 5 /   9
+  40字超の文言: 7 箇所（上限 6）— 説明文が多すぎないか。画面は読ませる場所ではない
+      apps/genie-macos/Sources/GenieMac/Home/InitialProfileView.swift
+      apps/genie-macos/Sources/GenieMac/Home/PersonalizationInspector.swift
+      apps/genie-macos/Sources/GenieMac/Home/MeetingBriefRow.swift
+
+UI_TASTE_FAIL: 増えたぶんに理由があるなら、上限とその理由をこのスクリプトへ書く

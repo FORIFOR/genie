@@ -52,6 +52,7 @@ final class SpeechTranscriber {
     private var pendingPartial: String?
     /// 音がこの秒数来なければ、その発話は終わったとみなして閉じる。
     static let utteranceGap: TimeInterval = 0.9
+    let utteranceGap: TimeInterval
     /// 閉じた request の final を待つ上限。
     static let closeTimeout: TimeInterval = 1.5
     /// 1 本の request の上限（連続認識は 1 分前後で止まる。切れる前に取り直す）。
@@ -60,7 +61,23 @@ final class SpeechTranscriber {
     private(set) var finalsEmitted = 0
     private(set) var partialsSeen = 0
 
-    init(localeId: String = "ja-JP") {
+    /// 認識器に句読点を付けさせる（声の入力だけ。会議の文字起こしは今までどおり）。
+    /// 言葉は変えない（端末内の認識器が付ける。生成モデルで書き直さない）。
+    private let punctuate: Bool
+
+    /*
+     * 声の入力だけ: 音が途切れなくても、**文字が変わらなくなって**この秒数たてば閉じる。
+     * 周りに音（空調・音楽・配信の音）があると無音の判定に届かず、話し終えても送られなかった
+     * （2026-10-03 実機:「今日の天気教えて」が出たまま送られない）。閉じるときは endAudio で
+     * 認識器に最後まで処理させるので、未処理の音は捨てない。会議の文字起こしでは使わない（nil）。
+     */
+    let textStableGap: TimeInterval?
+
+    init(localeId: String = "ja-JP", utteranceGap: TimeInterval = SpeechTranscriber.utteranceGap, punctuate: Bool = false,
+         textStableGap: TimeInterval? = nil) {
+        self.utteranceGap = utteranceGap
+        self.textStableGap = textStableGap
+        self.punctuate = punctuate
         recognizer = SFSpeechRecognizer(locale: Locale(identifier: localeId))
         format = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: 16_000,
                                channels: 1, interleaved: false)!
@@ -120,6 +137,7 @@ final class SpeechTranscriber {
         guard let recognizer else { return }
         let req = SFSpeechAudioBufferRecognitionRequest()
         req.shouldReportPartialResults = true
+        req.addsPunctuation = punctuate
         req.requiresOnDeviceRecognition = true   // 資産が無ければ error 102。false で再試行しない
         generation += 1
         let gen = generation
@@ -177,10 +195,18 @@ final class SpeechTranscriber {
         }
         guard closing == nil, !lastText.isEmpty else { return }
         requestLock.lock(); let audioAt = lastAudioAt; requestLock.unlock()
-        if now.timeIntervalSince(audioAt) >= Self.utteranceGap
-            || now.timeIntervalSince(segmentStartedAt) >= Self.requestMaxSeconds {
+        if Self.shouldClose(now: now, lastAudio: audioAt, lastTextChange: lastChange, segmentStart: segmentStartedAt,
+                            utteranceGap: utteranceGap, textStableGap: textStableGap) {
             beginClose(reopen: true)
         }
+    }
+
+    /// 発話を閉じるか。音の無音・文字の静止（声の入力だけ）・request の上限のどれか。
+    static func shouldClose(now: Date, lastAudio: Date, lastTextChange: Date, segmentStart: Date,
+                            utteranceGap: TimeInterval, textStableGap: TimeInterval?) -> Bool {
+        if now.timeIntervalSince(lastAudio) >= utteranceGap { return true }
+        if let gap = textStableGap, now.timeIntervalSince(lastTextChange) >= gap { return true }
+        return now.timeIntervalSince(segmentStart) >= requestMaxSeconds
     }
 
     /// いまの発話を閉じ始める。認識器には endAudio で最後まで処理させる（cancel は残りの音を捨てる）。

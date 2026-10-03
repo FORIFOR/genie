@@ -1,0 +1,1483 @@
+warning: '--skip-update' option is deprecated and will be removed in a future release
+[0/1] Planning build
+Building for debugging...
+[0/6] Write sources
+[2/6] Write swift-version--58304C5D6DBC2206.txt
+[4/10] Compiling GenieMac HomeView.swift
+[5/10] Compiling GenieMac TaskHistoryView.swift
+[6/10] Compiling GenieMac TaskRequestRecord.swift
+[7/10] Emitting module GenieMac
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/GuidedSetup/GuidedSetupSelfTest.swift:144:21: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+142 |         // アバターの姿を残す（目視用）。
+143 |         if let win = overlay.avatar.window,
+144 |            let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(win.windowNumber), [.boundsIgnoreFraming, .bestResolution]) {
+    |                     `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+145 |             let png = NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:])
+146 |             try? png?.write(to: URL(fileURLWithPath: "\(outDir)/guided-setup-avatar.png"))
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/GuidedSetup/PermissionGuideCoordinator.swift:51:74: warning: passing non-Sendable parameter 'block' to function expecting a '@Sendable' closure
+ 48 |         }
+ 49 |         /// 遅延実行。検査では即時。
+ 50 |         var after: (TimeInterval, @escaping () -> Void) -> Void = { s, block in
+    |                                                                        `- note: parameter 'block' is implicitly non-Sendable
+ 51 |             DispatchQueue.main.asyncAfter(deadline: .now() + s, execute: block)
+    |                                                                          `- warning: passing non-Sendable parameter 'block' to function expecting a '@Sendable' closure
+ 52 |         }
+ 53 |         var now: () -> Date = Date.init
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Main/ConnectionsPane.swift:8:57: warning: main actor-isolated static property 'shared' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+  6 |     let apps: [String]
+  7 |     @ObservedObject private var connections: ConnectorState
+  8 |     init(apps: [String], connections: ConnectorState = .shared) {
+    |                                                         `- warning: main actor-isolated static property 'shared' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+  9 |         self.apps = apps; self.connections = connections
+ 10 |     }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Context/ConnectorState.swift:6:16: note: static property declared here
+  4 | @MainActor
+  5 | final class ConnectorState: ObservableObject {
+  6 |     static let shared = ConnectorState()
+    |                `- note: static property declared here
+  7 |     struct Source: Identifiable, Equatable {
+  8 |         let pluginId: String
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[8/34] Compiling GenieMac SessionDetailView.swift
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/RecordingWorkspace/RecordingWorkspaceState.swift:273:34: warning: main actor-isolated property 'isRecording' can not be referenced from a Sendable closure
+ 59 |     static let shared = RecordingWorkspaceState()
+ 60 | 
+ 61 |     @Published var isRecording = false
+    |                    `- note: property declared here
+ 62 |     /// 録音を成り立たなくしている許可。無ければ nil。バナーで出す。
+ 63 |     @Published var permissionIssue: PermissionIssue?
+    :
+271 |         tickTimer?.invalidate()
+272 |         tickTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+273 |             guard let self, self.isRecording, !self.isPaused, !self.freezeClockForShot else { return }
+    |                                  `- warning: main actor-isolated property 'isRecording' can not be referenced from a Sendable closure
+274 |             self.elapsedSeconds += 1
+275 |         }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/RecordingWorkspace/RecordingWorkspaceState.swift:273:53: warning: main actor-isolated property 'isPaused' can not be referenced from a Sendable closure
+ 64 |     private var tickTimer: Timer?
+ 65 |     private var microphoneRequest: UUID?
+ 66 |     @Published var isPaused = false
+    |                    `- note: property declared here
+ 67 |     @Published var elapsedSeconds = 0
+ 68 |     /// 検査用: 撮影の間だけ経過時計を止める。**本番では false。** light と dark を別プロセスで撮るので、
+    :
+271 |         tickTimer?.invalidate()
+272 |         tickTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+273 |             guard let self, self.isRecording, !self.isPaused, !self.freezeClockForShot else { return }
+    |                                                     `- warning: main actor-isolated property 'isPaused' can not be referenced from a Sendable closure
+274 |             self.elapsedSeconds += 1
+275 |         }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/RecordingWorkspace/RecordingWorkspaceState.swift:273:69: warning: main actor-isolated property 'freezeClockForShot' can not be referenced from a Sendable closure
+ 68 |     /// 検査用: 撮影の間だけ経過時計を止める。**本番では false。** light と dark を別プロセスで撮るので、
+ 69 |     /// 動いたままだと同じ面が 05:21 / 05:23 とずれ、fixed（light == dark）の gate が運で通ったり落ちたりした（実測）。
+ 70 |     var freezeClockForShot = false
+    |         `- note: property declared here
+ 71 |     @Published var selectedTool: RecordingTool = .transcript
+ 72 |     @Published var ragOpen = false
+    :
+271 |         tickTimer?.invalidate()
+272 |         tickTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+273 |             guard let self, self.isRecording, !self.isPaused, !self.freezeClockForShot else { return }
+    |                                                                     `- warning: main actor-isolated property 'freezeClockForShot' can not be referenced from a Sendable closure
+274 |             self.elapsedSeconds += 1
+275 |         }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/RecordingWorkspace/RecordingWorkspaceState.swift:274:18: warning: main actor-isolated property 'elapsedSeconds' can not be mutated from a Sendable closure
+ 65 |     private var microphoneRequest: UUID?
+ 66 |     @Published var isPaused = false
+ 67 |     @Published var elapsedSeconds = 0
+    |                    `- note: mutation of this property is only permitted within the actor
+ 68 |     /// 検査用: 撮影の間だけ経過時計を止める。**本番では false。** light と dark を別プロセスで撮るので、
+ 69 |     /// 動いたままだと同じ面が 05:21 / 05:23 とずれ、fixed（light == dark）の gate が運で通ったり落ちたりした（実測）。
+    :
+272 |         tickTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+273 |             guard let self, self.isRecording, !self.isPaused, !self.freezeClockForShot else { return }
+274 |             self.elapsedSeconds += 1
+    |                  `- warning: main actor-isolated property 'elapsedSeconds' can not be mutated from a Sendable closure
+275 |         }
+276 |         // オンデバイス STT の途中経過/確定を transcript に反映する。
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/RecordingWorkspace/RecordingWorkspaceState.swift:422:64: warning: converting non-Sendable function value to '@MainActor @Sendable @convention(block) () -> Void' may introduce data races
+420 |             let pending = self.startAfterFinishing
+421 |             self.startAfterFinishing = nil
+422 |             if let pending { DispatchQueue.main.async(execute: pending) }
+    |                                                                `- warning: converting non-Sendable function value to '@MainActor @Sendable @convention(block) () -> Void' may introduce data races
+423 |         }
+424 |     }
+[9/34] Compiling GenieMac RecordingWorkspaceState.swift
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/RecordingWorkspace/RecordingWorkspaceState.swift:273:34: warning: main actor-isolated property 'isRecording' can not be referenced from a Sendable closure
+ 59 |     static let shared = RecordingWorkspaceState()
+ 60 | 
+ 61 |     @Published var isRecording = false
+    |                    `- note: property declared here
+ 62 |     /// 録音を成り立たなくしている許可。無ければ nil。バナーで出す。
+ 63 |     @Published var permissionIssue: PermissionIssue?
+    :
+271 |         tickTimer?.invalidate()
+272 |         tickTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+273 |             guard let self, self.isRecording, !self.isPaused, !self.freezeClockForShot else { return }
+    |                                  `- warning: main actor-isolated property 'isRecording' can not be referenced from a Sendable closure
+274 |             self.elapsedSeconds += 1
+275 |         }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/RecordingWorkspace/RecordingWorkspaceState.swift:273:53: warning: main actor-isolated property 'isPaused' can not be referenced from a Sendable closure
+ 64 |     private var tickTimer: Timer?
+ 65 |     private var microphoneRequest: UUID?
+ 66 |     @Published var isPaused = false
+    |                    `- note: property declared here
+ 67 |     @Published var elapsedSeconds = 0
+ 68 |     /// 検査用: 撮影の間だけ経過時計を止める。**本番では false。** light と dark を別プロセスで撮るので、
+    :
+271 |         tickTimer?.invalidate()
+272 |         tickTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+273 |             guard let self, self.isRecording, !self.isPaused, !self.freezeClockForShot else { return }
+    |                                                     `- warning: main actor-isolated property 'isPaused' can not be referenced from a Sendable closure
+274 |             self.elapsedSeconds += 1
+275 |         }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/RecordingWorkspace/RecordingWorkspaceState.swift:273:69: warning: main actor-isolated property 'freezeClockForShot' can not be referenced from a Sendable closure
+ 68 |     /// 検査用: 撮影の間だけ経過時計を止める。**本番では false。** light と dark を別プロセスで撮るので、
+ 69 |     /// 動いたままだと同じ面が 05:21 / 05:23 とずれ、fixed（light == dark）の gate が運で通ったり落ちたりした（実測）。
+ 70 |     var freezeClockForShot = false
+    |         `- note: property declared here
+ 71 |     @Published var selectedTool: RecordingTool = .transcript
+ 72 |     @Published var ragOpen = false
+    :
+271 |         tickTimer?.invalidate()
+272 |         tickTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+273 |             guard let self, self.isRecording, !self.isPaused, !self.freezeClockForShot else { return }
+    |                                                                     `- warning: main actor-isolated property 'freezeClockForShot' can not be referenced from a Sendable closure
+274 |             self.elapsedSeconds += 1
+275 |         }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/RecordingWorkspace/RecordingWorkspaceState.swift:274:18: warning: main actor-isolated property 'elapsedSeconds' can not be mutated from a Sendable closure
+ 65 |     private var microphoneRequest: UUID?
+ 66 |     @Published var isPaused = false
+ 67 |     @Published var elapsedSeconds = 0
+    |                    `- note: mutation of this property is only permitted within the actor
+ 68 |     /// 検査用: 撮影の間だけ経過時計を止める。**本番では false。** light と dark を別プロセスで撮るので、
+ 69 |     /// 動いたままだと同じ面が 05:21 / 05:23 とずれ、fixed（light == dark）の gate が運で通ったり落ちたりした（実測）。
+    :
+272 |         tickTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+273 |             guard let self, self.isRecording, !self.isPaused, !self.freezeClockForShot else { return }
+274 |             self.elapsedSeconds += 1
+    |                  `- warning: main actor-isolated property 'elapsedSeconds' can not be mutated from a Sendable closure
+275 |         }
+276 |         // オンデバイス STT の途中経過/確定を transcript に反映する。
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/RecordingWorkspace/RecordingWorkspaceState.swift:422:64: warning: converting non-Sendable function value to '@MainActor @Sendable @convention(block) () -> Void' may introduce data races
+420 |             let pending = self.startAfterFinishing
+421 |             self.startAfterFinishing = nil
+422 |             if let pending { DispatchQueue.main.async(execute: pending) }
+    |                                                                `- warning: converting non-Sendable function value to '@MainActor @Sendable @convention(block) () -> Void' may introduce data races
+423 |         }
+424 |     }
+[10/34] Compiling GenieMac WorkspacePanes.swift
+[11/34] Compiling GenieMac MeetingCanvasView.swift
+[12/34] Compiling GenieMac TaskTimelineView.swift
+[13/34] Compiling GenieMac InvocationGate.swift
+[14/34] Compiling GenieMac SelfTestRealMeeting.swift
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTestScreenshot.swift:286:24: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+284 |         settle(0.6)
+285 |         guard let win = NSApp.windows.first(where: { $0.isVisible && $0.frame.width > 100 }),
+286 |               let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(win.windowNumber),
+    |                        `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+287 |                                                [.boundsIgnoreFraming, .bestResolution]) else {
+288 |             print("SCREENSHOT_SHOT_FAIL: HUD 窓が撮れない"); exit(2)
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTestScreenshot.swift:478:28: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+476 |             WindowCoordinator.shared.showVoiceHUD(); settle(0.45)
+477 |             guard let win = NSApp.windows.first(where: { $0.isVisible && $0.frame.width > 100 }),
+478 |                   let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(win.windowNumber), [.boundsIgnoreFraming, .bestResolution]),
+    |                            `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+479 |                   let png = NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:]) else { report.append("\(name) MISSING"); return }
+480 |             try? png.write(to: URL(fileURLWithPath: "\(outDir)/\(name).png"))
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[15/34] Compiling GenieMac SelfTestScreenshot.swift
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTestScreenshot.swift:286:24: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+284 |         settle(0.6)
+285 |         guard let win = NSApp.windows.first(where: { $0.isVisible && $0.frame.width > 100 }),
+286 |               let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(win.windowNumber),
+    |                        `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+287 |                                                [.boundsIgnoreFraming, .bestResolution]) else {
+288 |             print("SCREENSHOT_SHOT_FAIL: HUD 窓が撮れない"); exit(2)
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTestScreenshot.swift:478:28: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+476 |             WindowCoordinator.shared.showVoiceHUD(); settle(0.45)
+477 |             guard let win = NSApp.windows.first(where: { $0.isVisible && $0.frame.width > 100 }),
+478 |                   let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(win.windowNumber), [.boundsIgnoreFraming, .bestResolution]),
+    |                            `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+479 |                   let png = NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:]) else { report.append("\(name) MISSING"); return }
+480 |             try? png.write(to: URL(fileURLWithPath: "\(outDir)/\(name).png"))
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[16/34] Compiling GenieMac DockContentMeasure.swift
+[17/34] Compiling GenieMac MainWindowView.swift
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Main/ConnectionsPane.swift:8:57: warning: main actor-isolated static property 'shared' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+  6 |     let apps: [String]
+  7 |     @ObservedObject private var connections: ConnectorState
+  8 |     init(apps: [String], connections: ConnectorState = .shared) {
+    |                                                         `- warning: main actor-isolated static property 'shared' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+  9 |         self.apps = apps; self.connections = connections
+ 10 |     }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Context/ConnectorState.swift:6:16: note: static property declared here
+  4 | @MainActor
+  5 | final class ConnectorState: ObservableObject {
+  6 |     static let shared = ConnectorState()
+    |                `- note: static property declared here
+  7 |     struct Source: Identifiable, Equatable {
+  8 |         let pluginId: String
+[18/34] Compiling GenieMac SelfTestOutcomeLive.swift
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTestPermissionCapabilities.swift:24:31: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 22 |             window.displayIfNeeded()
+ 23 |             try? await Task.sleep(for: .milliseconds(600))
+ 24 |             guard let image = CGWindowListCreateImage(.null, .optionIncludingWindow,
+    |                               `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 25 |                 CGWindowID(window.windowNumber), [.boundsIgnoreFraming, .nominalResolution]),
+ 26 |                 let data = NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:]) else {
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[19/34] Compiling GenieMac SelfTestPermissionCapabilities.swift
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTestPermissionCapabilities.swift:24:31: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 22 |             window.displayIfNeeded()
+ 23 |             try? await Task.sleep(for: .milliseconds(600))
+ 24 |             guard let image = CGWindowListCreateImage(.null, .optionIncludingWindow,
+    |                               `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 25 |                 CGWindowID(window.windowNumber), [.boundsIgnoreFraming, .nominalResolution]),
+ 26 |                 let data = NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:]) else {
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[20/34] Compiling GenieMac SelfTestScreenshotInput.swift
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTestWorkspaceUX.swift:46:36: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+44 |                     // NavigationSplitView renders through AppKit/layer-backed subviews;
+45 |                     // cacheDisplay produces an empty shell on macOS 26. Capture our window.
+46 |                     guard let cg = CGWindowListCreateImage(.null, .optionIncludingWindow,
+   |                                    `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+47 |                         CGWindowID(window.windowNumber), [.boundsIgnoreFraming, .nominalResolution]),
+48 |                         let png = NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:]) else { failures.append(name); return }
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[21/34] Compiling GenieMac SelfTestWorkspaceUX.swift
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTestWorkspaceUX.swift:46:36: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+44 |                     // NavigationSplitView renders through AppKit/layer-backed subviews;
+45 |                     // cacheDisplay produces an empty shell on macOS 26. Capture our window.
+46 |                     guard let cg = CGWindowListCreateImage(.null, .optionIncludingWindow,
+   |                                    `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+47 |                         CGWindowID(window.windowNumber), [.boundsIgnoreFraming, .nominalResolution]),
+48 |                         let png = NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:]) else { failures.append(name); return }
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[22/34] Compiling GenieMac SurfaceMotionGate.swift
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SurfaceMotionGate.swift:64:13: warning: immutable property will not be decoded because it is declared with an initial value which cannot be overwritten
+ 62 | 
+ 63 |     struct Result: Codable {
+ 64 |         let product = "Genie"
+    |             |- warning: immutable property will not be decoded because it is declared with an initial value which cannot be overwritten
+    |             |- note: set the initial value via the initializer or explicitly define a CodingKeys enum including a 'product' case to silence this warning
+    |             `- note: make the property mutable instead
+ 65 |         let startedAt: String
+ 66 |         let targetFps = 60
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SurfaceMotionGate.swift:66:13: warning: immutable property will not be decoded because it is declared with an initial value which cannot be overwritten
+ 64 |         let product = "Genie"
+ 65 |         let startedAt: String
+ 66 |         let targetFps = 60
+    |             |- warning: immutable property will not be decoded because it is declared with an initial value which cannot be overwritten
+    |             |- note: set the initial value via the initializer or explicitly define a CodingKeys enum including a 'targetFps' case to silence this warning
+    |             `- note: make the property mutable instead
+ 67 |         var transitions: [Transition] = []
+ 68 |         var notMeasured: [String] = []
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SurfaceMotionGate.swift:102:13: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+100 |     private static func capture(_ wins: [Win]) -> [Shot] {
+101 |         wins.compactMap { win in
+102 |             CGWindowListCreateImage(.null, .optionIncludingWindow, win.id, [.boundsIgnoreFraming, .nominalResolution])
+    |             `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+103 |                 .map { Shot(win: win, image: $0) }
+104 |         }
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[23/34] Compiling GenieMac AppContextResolver.swift
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SurfaceMotionGate.swift:64:13: warning: immutable property will not be decoded because it is declared with an initial value which cannot be overwritten
+ 62 | 
+ 63 |     struct Result: Codable {
+ 64 |         let product = "Genie"
+    |             |- warning: immutable property will not be decoded because it is declared with an initial value which cannot be overwritten
+    |             |- note: set the initial value via the initializer or explicitly define a CodingKeys enum including a 'product' case to silence this warning
+    |             `- note: make the property mutable instead
+ 65 |         let startedAt: String
+ 66 |         let targetFps = 60
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SurfaceMotionGate.swift:66:13: warning: immutable property will not be decoded because it is declared with an initial value which cannot be overwritten
+ 64 |         let product = "Genie"
+ 65 |         let startedAt: String
+ 66 |         let targetFps = 60
+    |             |- warning: immutable property will not be decoded because it is declared with an initial value which cannot be overwritten
+    |             |- note: set the initial value via the initializer or explicitly define a CodingKeys enum including a 'targetFps' case to silence this warning
+    |             `- note: make the property mutable instead
+ 67 |         var transitions: [Transition] = []
+ 68 |         var notMeasured: [String] = []
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SurfaceMotionGate.swift:102:13: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+100 |     private static func capture(_ wins: [Win]) -> [Shot] {
+101 |         wins.compactMap { win in
+102 |             CGWindowListCreateImage(.null, .optionIncludingWindow, win.id, [.boundsIgnoreFraming, .nominalResolution])
+    |             `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+103 |                 .map { Shot(win: win, image: $0) }
+104 |         }
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[24/34] Compiling GenieMac GenieModels.swift
+[25/34] Compiling GenieMac GenieStateStore.swift
+[26/34] Compiling GenieMac RecordingWorkspaceView.swift
+[27/34] Compiling GenieMac LocalStore.swift
+[28/34] Compiling GenieMac SelfTest.swift
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:197:28: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 195 |             }
+ 196 |             guard let (winID, _, _) = best,
+ 197 |                   let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, winID, [.boundsIgnoreFraming, .bestResolution])
+     |                            `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 198 |             else { return nil }
+ 199 |             let rep = NSBitmapImageRep(cgImage: cg)
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:484:28: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 482 |                 ? [.bestResolution] : [.boundsIgnoreFraming, .nominalResolution]
+ 483 |             guard let (id, x, y, w, h) = found,
+ 484 |                   let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, id, opts),
+     |                            `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 485 |                   shadow || (cg.width == Int(w) && cg.height == Int(h))
+ 486 |             else { return nil }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:706:21: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 704 |         settle(0.8)
+ 705 |         if let big = workspaceWindow,
+ 706 |            let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, big.id, [.boundsIgnoreFraming, .nominalResolution]) {
+     |                     `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 707 |             let rep = NSBitmapImageRep(cgImage: cg)
+ 708 |             if let png = rep.representation(using: .png, properties: [:]) {
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:1158:28: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+1156 |             settle(0.6)
+1157 |             guard let win = NSApp.windows.first(where: { $0.isVisible && $0.frame.width > 900 }),
+1158 |                   let cg = CGWindowListCreateImage(
+     |                            `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+1159 |                     .null, .optionIncludingWindow, CGWindowID(win.windowNumber),
+1160 |                     [.boundsIgnoreFraming, .bestResolution]) else { return nil }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:2362:25: warning: call to main actor-isolated instance method 'shot(_:window:)' in a synchronous nonisolated context [#ActorIsolatedCall]
+2360 |                 surfaces = NSApp.windows.filter(\.isVisible).count - w0
+2361 |                 dockAnswerable = UIProbe.exists("confirmCancel")
+2362 |                 _ = rec.shot("04-confirm", window: JourneyRecorder.dockWindow())
+     |                         `- warning: call to main actor-isolated instance method 'shot(_:window:)' in a synchronous nonisolated context [#ActorIsolatedCall]
+2363 |                 _ = UIProbe.tap("confirmCancel")
+2364 |                 // 別の面が残っていたら、それも閉じる（残さないと 120 秒止まる）。
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/JourneyRecorder.swift:213:10: note: calls to instance method 'shot(_:window:)' from outside of its actor context are implicitly asynchronous
+211 |     /// 測っていた（開始直後の白紙を測ろうとして、地 91.9% と出たのがそれ）。
+212 |     @discardableResult
+213 |     func shot(_ name: String, window: NSWindow? = nil) -> Bool {
+    |          `- note: calls to instance method 'shot(_:window:)' from outside of its actor context are implicitly asynchronous
+214 |         let path = "\(outDir)/\(name).png"
+215 |         guard let win = window ?? Self.largestWindow(),
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:2362:68: warning: call to main actor-isolated static method 'dockWindow()' in a synchronous nonisolated context [#ActorIsolatedCall]
+2360 |                 surfaces = NSApp.windows.filter(\.isVisible).count - w0
+2361 |                 dockAnswerable = UIProbe.exists("confirmCancel")
+2362 |                 _ = rec.shot("04-confirm", window: JourneyRecorder.dockWindow())
+     |                                                                    `- warning: call to main actor-isolated static method 'dockWindow()' in a synchronous nonisolated context [#ActorIsolatedCall]
+2363 |                 _ = UIProbe.tap("confirmCancel")
+2364 |                 // 別の面が残っていたら、それも閉じる（残さないと 120 秒止まる）。
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/JourneyRecorder.swift:154:17: note: calls to static method 'dockWindow()' from outside of its actor context are implicitly asynchronous
+152 | 
+153 |     /// Dock（画面上端の常駐 panel）。level で見分ける。
+154 |     static func dockWindow() -> NSWindow? {
+    |                 `- note: calls to static method 'dockWindow()' from outside of its actor context are implicitly asynchronous
+155 |         NSApp.windows.first { $0.isVisible && $0.level == .statusBar }
+156 |     }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:2810:29: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+2808 |                 }
+2809 |                 // 窓 id 経由。dark へ切り替えた直後などに nil を返すことがある。
+2810 |                 var image = CGWindowListCreateImage(.null, .optionIncludingWindow, win.id,
+     |                             `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+2811 |                                                     [.boundsIgnoreFraming, .bestResolution])
+2812 |                 if image == nil {
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:2814:29: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+2812 |                 if image == nil {
+2813 |                     // 代わりに画面のその領域を撮る。窓の再描画中でもこちらは通ることが多い。
+2814 |                     image = CGWindowListCreateImage(rect, .optionOnScreenOnly, kCGNullWindowID, [.bestResolution])
+     |                             `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+2815 |                 }
+2816 |                 if let cg = image,
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:3446:24: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+3444 |                           width: f.width + pad * 2,
+3445 |                           height: f.height + pad * 2)
+3446 |         guard let cg = CGWindowListCreateImage(rect, .optionOnScreenOnly, kCGNullWindowID, [.bestResolution]),
+     |                        `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+3447 |               let png = NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:]) else {
+3448 |             print("SELFTEST_FAIL dockedge: 撮影できない"); exit(2)
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:3456:22: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+3454 |         settle(1.0)
+3455 |         let without = out.replacingOccurrences(of: ".png", with: "-without.png")
+3456 |         if let cg2 = CGWindowListCreateImage(rect, .optionOnScreenOnly, kCGNullWindowID, [.bestResolution]),
+     |                      `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+3457 |            let png2 = NSBitmapImageRep(cgImage: cg2).representation(using: .png, properties: [:]) {
+3458 |             try? png2.write(to: URL(fileURLWithPath: without))
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:4134:62: warning: conditional downcast from '(json: [String : Any], consumed: Int)?' to '(json: [String : Any], consumed: Int)' does nothing
+4132 |         // ① 1 通ぶん届いていなければ nil（エラーにしない）。
+4133 |         let full = frame(["type": "context", "payload": ["url": "https://example.com", "title": "T"]])
+4134 |         if (try? NativeMessagingHost.decode(full.prefix(3))) as? (json: [String: Any], consumed: Int) != nil {
+     |                                                              `- warning: conditional downcast from '(json: [String : Any], consumed: Int)?' to '(json: [String : Any], consumed: Int)' does nothing
+4135 |             fail.append("途中のバッファで復号した")
+4136 |         }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:4542:34: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+4540 |                 ids.removeAll(); texts.removeAll(); walk(app, 0)
+4541 |             } else { fail.append("会議と今日の状況を開けない") }
+4542 |             if let png, let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(w.windowNumber),
+     |                                  `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+4543 |                                                           [.boundsIgnoreFraming, .nominalResolution]) {
+4544 |                 try? NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:])?
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:4801:36: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+4799 |                     let until = Date().addingTimeInterval(0.4)
+4800 |                     while Date() < until { CFRunLoopRunInMode(.defaultMode, 0.05, true) }
+4801 |                     guard let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(window.windowNumber), [.boundsIgnoreFraming, .bestResolution]) else {
+     |                                    `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+4802 |                         throw CloudMeetingTranscription.Failure(message: "window capture failed")
+4803 |                     }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:4857:77: warning: backward matching of the unlabeled trailing closure is deprecated; label the argument with 'completion' to suppress this warning [#TrailingClosureMatching]
+4855 |                 }
+4856 |                 let passed = interim > 0 && final > 0 && texts.contains(where: { $0.contains("金曜日") }) && runtime.snapshot() != nil
+4857 |                 await withCheckedContinuation { continuation in runtime.end { continuation.resume() } }
+     |                                                                             `- warning: backward matching of the unlabeled trailing closure is deprecated; label the argument with 'completion' to suppress this warning [#TrailingClosureMatching]
+4858 |                 restore()
+4859 |                 guard passed else {
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/RecordingWorkspace/RecordingRuntime.swift:468:10: note: 'end(cloudCompletion:completion:)' declared here
+466 | 
+467 |     /// 停止して確定。書けた断片は残り、回復候補になる。
+468 |     func end(cloudCompletion: ((String, String?) -> Void)? = nil, completion: (() -> Void)? = nil) {
+    |          `- note: 'end(cloudCompletion:completion:)' declared here
+469 |         drainMixedAudio()
+470 |         mixTimer?.invalidate(); mixTimer = nil; mixClock = nil
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:5174:28: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+5172 |             }
+5173 |             guard winID != 0,
+5174 |                   let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, winID, [.boundsIgnoreFraming, .bestResolution])
+     |                            `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+5175 |             else { window.orderOut(nil); window.close(); return nil }
+5176 |             let rep = NSBitmapImageRep(cgImage: cg)
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:5579:28: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+5577 |         }
+5578 |         func shot(_ win: NSWindow) -> [UInt8]? {
+5579 |             guard let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(win.windowNumber),
+     |                            `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+5580 |                                                    [.boundsIgnoreFraming, .nominalResolution]),
+5581 |                   cg.width > 4, cg.height > 4 else { return nil }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:5849:21: warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+5847 |             .appendingPathComponent("meetings/screenshot-selftest").path
+5848 |         try? FileManager.default.removeItem(atPath: root)
+5849 |         guard (size ?? 0) > 1000, isPng else {
+     |                     `- warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+5850 |             print("SELFTEST_FAIL screenshot size=\(size ?? 0) isPng=\(isPng)"); exit(2)
+5851 |         }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:5850:57: warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+5848 |         try? FileManager.default.removeItem(atPath: root)
+5849 |         guard (size ?? 0) > 1000, isPng else {
+5850 |             print("SELFTEST_FAIL screenshot size=\(size ?? 0) isPng=\(isPng)"); exit(2)
+     |                                                         `- warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+5851 |         }
+5852 |         print("SELFTEST_OK screenshot: 実 PNG 保存 bytes=\(size ?? 0) isPng=\(isPng)")
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:5852:68: warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+5850 |             print("SELFTEST_FAIL screenshot size=\(size ?? 0) isPng=\(isPng)"); exit(2)
+5851 |         }
+5852 |         print("SELFTEST_OK screenshot: 実 PNG 保存 bytes=\(size ?? 0) isPng=\(isPng)")
+     |                                                              `- warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+5853 |         exit(0)
+5854 |     }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:6162:37: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+6160 |             settle(0.3)
+6161 |             let id = CGWindowID(max(0, win.windowNumber))
+6162 |             guard id != 0, let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, id, [.boundsIgnoreFraming, .bestResolution]),
+     |                                     `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+6163 |                   let png = NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:]) else {
+6164 |                 fail.append(name); return
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:6263:28: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+6261 |                   // golden は logical points で保存する。Retina の物理画素を使うと
+6262 |                   // 同じ 220x44pt の窓が 440x88px になり、別の寸法と誤判定される。
+6263 |                   let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, winID, [.boundsIgnoreFraming, .nominalResolution]),
+     |                            `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+6264 |                   cg.width == w, cg.height == h
+6265 |             else { return nil }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:6955:87: warning: mutation of captured var 'ready' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+6953 |         }
+6954 |         let readyLock = NSLock(); var ready = false
+6955 |         listener.stateUpdateHandler = { st in if case .ready = st { readyLock.lock(); ready = true; readyLock.unlock() } }
+     |                                                                                       `- warning: mutation of captured var 'ready' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+6956 |         listener.start(queue: q)
+6957 |         var waited = 0
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:7002:42: warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+7000 |         let recoverable = scanRecoverable(root: root, active: nil)
+7001 | 
+7002 |         guard closed == 1, exists, (size ?? 0) > 0, snap.elapsedLabel == "00:05",
+     |                                          `- warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+7003 |               recoverable.count == 1, recoverable[0].meetingId == "selftest"
+7004 |         else {
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:7005:80: warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+7003 |               recoverable.count == 1, recoverable[0].meetingId == "selftest"
+7004 |         else {
+7005 |             print("SELFTEST_FAIL closed=\(closed) exists=\(exists) size=\(size ?? 0) elapsed=\(snap.elapsedLabel) recoverable=\(recoverable.count)")
+     |                                                                                `- warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+7006 |             exit(3)
+7007 |         }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:7009:74: warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+7007 |         }
+7008 |         try? FileManager.default.removeItem(atPath: root)
+7009 |         print("SELFTEST_OK record: closed=\(closed) fragmentBytes=\(size ?? 0) elapsed=\(snap.elapsedLabel) recoverable=\(recoverable.count)")
+     |                                                                          `- warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+7010 |         exit(0)
+7011 |     }
+
+[#ActorIsolatedCall]: <https://docs.swift.org/compiler/documentation/diagnostics/actor-isolated-call>
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[#SendableClosureCaptures]: <https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures>
+[#TrailingClosureMatching]: <https://docs.swift.org/compiler/documentation/diagnostics/trailing-closure-matching>
+[29/34] Compiling GenieMac SelfTestConsumerJourney.swift
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:197:28: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 195 |             }
+ 196 |             guard let (winID, _, _) = best,
+ 197 |                   let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, winID, [.boundsIgnoreFraming, .bestResolution])
+     |                            `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 198 |             else { return nil }
+ 199 |             let rep = NSBitmapImageRep(cgImage: cg)
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:484:28: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 482 |                 ? [.bestResolution] : [.boundsIgnoreFraming, .nominalResolution]
+ 483 |             guard let (id, x, y, w, h) = found,
+ 484 |                   let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, id, opts),
+     |                            `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 485 |                   shadow || (cg.width == Int(w) && cg.height == Int(h))
+ 486 |             else { return nil }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:706:21: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 704 |         settle(0.8)
+ 705 |         if let big = workspaceWindow,
+ 706 |            let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, big.id, [.boundsIgnoreFraming, .nominalResolution]) {
+     |                     `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 707 |             let rep = NSBitmapImageRep(cgImage: cg)
+ 708 |             if let png = rep.representation(using: .png, properties: [:]) {
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:1158:28: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+1156 |             settle(0.6)
+1157 |             guard let win = NSApp.windows.first(where: { $0.isVisible && $0.frame.width > 900 }),
+1158 |                   let cg = CGWindowListCreateImage(
+     |                            `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+1159 |                     .null, .optionIncludingWindow, CGWindowID(win.windowNumber),
+1160 |                     [.boundsIgnoreFraming, .bestResolution]) else { return nil }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:2362:25: warning: call to main actor-isolated instance method 'shot(_:window:)' in a synchronous nonisolated context [#ActorIsolatedCall]
+2360 |                 surfaces = NSApp.windows.filter(\.isVisible).count - w0
+2361 |                 dockAnswerable = UIProbe.exists("confirmCancel")
+2362 |                 _ = rec.shot("04-confirm", window: JourneyRecorder.dockWindow())
+     |                         `- warning: call to main actor-isolated instance method 'shot(_:window:)' in a synchronous nonisolated context [#ActorIsolatedCall]
+2363 |                 _ = UIProbe.tap("confirmCancel")
+2364 |                 // 別の面が残っていたら、それも閉じる（残さないと 120 秒止まる）。
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/JourneyRecorder.swift:213:10: note: calls to instance method 'shot(_:window:)' from outside of its actor context are implicitly asynchronous
+211 |     /// 測っていた（開始直後の白紙を測ろうとして、地 91.9% と出たのがそれ）。
+212 |     @discardableResult
+213 |     func shot(_ name: String, window: NSWindow? = nil) -> Bool {
+    |          `- note: calls to instance method 'shot(_:window:)' from outside of its actor context are implicitly asynchronous
+214 |         let path = "\(outDir)/\(name).png"
+215 |         guard let win = window ?? Self.largestWindow(),
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:2362:68: warning: call to main actor-isolated static method 'dockWindow()' in a synchronous nonisolated context [#ActorIsolatedCall]
+2360 |                 surfaces = NSApp.windows.filter(\.isVisible).count - w0
+2361 |                 dockAnswerable = UIProbe.exists("confirmCancel")
+2362 |                 _ = rec.shot("04-confirm", window: JourneyRecorder.dockWindow())
+     |                                                                    `- warning: call to main actor-isolated static method 'dockWindow()' in a synchronous nonisolated context [#ActorIsolatedCall]
+2363 |                 _ = UIProbe.tap("confirmCancel")
+2364 |                 // 別の面が残っていたら、それも閉じる（残さないと 120 秒止まる）。
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/JourneyRecorder.swift:154:17: note: calls to static method 'dockWindow()' from outside of its actor context are implicitly asynchronous
+152 | 
+153 |     /// Dock（画面上端の常駐 panel）。level で見分ける。
+154 |     static func dockWindow() -> NSWindow? {
+    |                 `- note: calls to static method 'dockWindow()' from outside of its actor context are implicitly asynchronous
+155 |         NSApp.windows.first { $0.isVisible && $0.level == .statusBar }
+156 |     }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:2810:29: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+2808 |                 }
+2809 |                 // 窓 id 経由。dark へ切り替えた直後などに nil を返すことがある。
+2810 |                 var image = CGWindowListCreateImage(.null, .optionIncludingWindow, win.id,
+     |                             `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+2811 |                                                     [.boundsIgnoreFraming, .bestResolution])
+2812 |                 if image == nil {
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:2814:29: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+2812 |                 if image == nil {
+2813 |                     // 代わりに画面のその領域を撮る。窓の再描画中でもこちらは通ることが多い。
+2814 |                     image = CGWindowListCreateImage(rect, .optionOnScreenOnly, kCGNullWindowID, [.bestResolution])
+     |                             `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+2815 |                 }
+2816 |                 if let cg = image,
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:3446:24: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+3444 |                           width: f.width + pad * 2,
+3445 |                           height: f.height + pad * 2)
+3446 |         guard let cg = CGWindowListCreateImage(rect, .optionOnScreenOnly, kCGNullWindowID, [.bestResolution]),
+     |                        `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+3447 |               let png = NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:]) else {
+3448 |             print("SELFTEST_FAIL dockedge: 撮影できない"); exit(2)
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:3456:22: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+3454 |         settle(1.0)
+3455 |         let without = out.replacingOccurrences(of: ".png", with: "-without.png")
+3456 |         if let cg2 = CGWindowListCreateImage(rect, .optionOnScreenOnly, kCGNullWindowID, [.bestResolution]),
+     |                      `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+3457 |            let png2 = NSBitmapImageRep(cgImage: cg2).representation(using: .png, properties: [:]) {
+3458 |             try? png2.write(to: URL(fileURLWithPath: without))
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:4134:62: warning: conditional downcast from '(json: [String : Any], consumed: Int)?' to '(json: [String : Any], consumed: Int)' does nothing
+4132 |         // ① 1 通ぶん届いていなければ nil（エラーにしない）。
+4133 |         let full = frame(["type": "context", "payload": ["url": "https://example.com", "title": "T"]])
+4134 |         if (try? NativeMessagingHost.decode(full.prefix(3))) as? (json: [String: Any], consumed: Int) != nil {
+     |                                                              `- warning: conditional downcast from '(json: [String : Any], consumed: Int)?' to '(json: [String : Any], consumed: Int)' does nothing
+4135 |             fail.append("途中のバッファで復号した")
+4136 |         }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:4542:34: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+4540 |                 ids.removeAll(); texts.removeAll(); walk(app, 0)
+4541 |             } else { fail.append("会議と今日の状況を開けない") }
+4542 |             if let png, let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(w.windowNumber),
+     |                                  `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+4543 |                                                           [.boundsIgnoreFraming, .nominalResolution]) {
+4544 |                 try? NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:])?
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:4801:36: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+4799 |                     let until = Date().addingTimeInterval(0.4)
+4800 |                     while Date() < until { CFRunLoopRunInMode(.defaultMode, 0.05, true) }
+4801 |                     guard let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(window.windowNumber), [.boundsIgnoreFraming, .bestResolution]) else {
+     |                                    `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+4802 |                         throw CloudMeetingTranscription.Failure(message: "window capture failed")
+4803 |                     }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:4857:77: warning: backward matching of the unlabeled trailing closure is deprecated; label the argument with 'completion' to suppress this warning [#TrailingClosureMatching]
+4855 |                 }
+4856 |                 let passed = interim > 0 && final > 0 && texts.contains(where: { $0.contains("金曜日") }) && runtime.snapshot() != nil
+4857 |                 await withCheckedContinuation { continuation in runtime.end { continuation.resume() } }
+     |                                                                             `- warning: backward matching of the unlabeled trailing closure is deprecated; label the argument with 'completion' to suppress this warning [#TrailingClosureMatching]
+4858 |                 restore()
+4859 |                 guard passed else {
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/RecordingWorkspace/RecordingRuntime.swift:468:10: note: 'end(cloudCompletion:completion:)' declared here
+466 | 
+467 |     /// 停止して確定。書けた断片は残り、回復候補になる。
+468 |     func end(cloudCompletion: ((String, String?) -> Void)? = nil, completion: (() -> Void)? = nil) {
+    |          `- note: 'end(cloudCompletion:completion:)' declared here
+469 |         drainMixedAudio()
+470 |         mixTimer?.invalidate(); mixTimer = nil; mixClock = nil
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:5174:28: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+5172 |             }
+5173 |             guard winID != 0,
+5174 |                   let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, winID, [.boundsIgnoreFraming, .bestResolution])
+     |                            `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+5175 |             else { window.orderOut(nil); window.close(); return nil }
+5176 |             let rep = NSBitmapImageRep(cgImage: cg)
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:5579:28: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+5577 |         }
+5578 |         func shot(_ win: NSWindow) -> [UInt8]? {
+5579 |             guard let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(win.windowNumber),
+     |                            `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+5580 |                                                    [.boundsIgnoreFraming, .nominalResolution]),
+5581 |                   cg.width > 4, cg.height > 4 else { return nil }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:5849:21: warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+5847 |             .appendingPathComponent("meetings/screenshot-selftest").path
+5848 |         try? FileManager.default.removeItem(atPath: root)
+5849 |         guard (size ?? 0) > 1000, isPng else {
+     |                     `- warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+5850 |             print("SELFTEST_FAIL screenshot size=\(size ?? 0) isPng=\(isPng)"); exit(2)
+5851 |         }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:5850:57: warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+5848 |         try? FileManager.default.removeItem(atPath: root)
+5849 |         guard (size ?? 0) > 1000, isPng else {
+5850 |             print("SELFTEST_FAIL screenshot size=\(size ?? 0) isPng=\(isPng)"); exit(2)
+     |                                                         `- warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+5851 |         }
+5852 |         print("SELFTEST_OK screenshot: 実 PNG 保存 bytes=\(size ?? 0) isPng=\(isPng)")
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:5852:68: warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+5850 |             print("SELFTEST_FAIL screenshot size=\(size ?? 0) isPng=\(isPng)"); exit(2)
+5851 |         }
+5852 |         print("SELFTEST_OK screenshot: 実 PNG 保存 bytes=\(size ?? 0) isPng=\(isPng)")
+     |                                                              `- warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+5853 |         exit(0)
+5854 |     }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:6162:37: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+6160 |             settle(0.3)
+6161 |             let id = CGWindowID(max(0, win.windowNumber))
+6162 |             guard id != 0, let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, id, [.boundsIgnoreFraming, .bestResolution]),
+     |                                     `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+6163 |                   let png = NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:]) else {
+6164 |                 fail.append(name); return
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:6263:28: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+6261 |                   // golden は logical points で保存する。Retina の物理画素を使うと
+6262 |                   // 同じ 220x44pt の窓が 440x88px になり、別の寸法と誤判定される。
+6263 |                   let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, winID, [.boundsIgnoreFraming, .nominalResolution]),
+     |                            `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+6264 |                   cg.width == w, cg.height == h
+6265 |             else { return nil }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:6955:87: warning: mutation of captured var 'ready' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+6953 |         }
+6954 |         let readyLock = NSLock(); var ready = false
+6955 |         listener.stateUpdateHandler = { st in if case .ready = st { readyLock.lock(); ready = true; readyLock.unlock() } }
+     |                                                                                       `- warning: mutation of captured var 'ready' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+6956 |         listener.start(queue: q)
+6957 |         var waited = 0
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:7002:42: warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+7000 |         let recoverable = scanRecoverable(root: root, active: nil)
+7001 | 
+7002 |         guard closed == 1, exists, (size ?? 0) > 0, snap.elapsedLabel == "00:05",
+     |                                          `- warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+7003 |               recoverable.count == 1, recoverable[0].meetingId == "selftest"
+7004 |         else {
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:7005:80: warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+7003 |               recoverable.count == 1, recoverable[0].meetingId == "selftest"
+7004 |         else {
+7005 |             print("SELFTEST_FAIL closed=\(closed) exists=\(exists) size=\(size ?? 0) elapsed=\(snap.elapsedLabel) recoverable=\(recoverable.count)")
+     |                                                                                `- warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+7006 |             exit(3)
+7007 |         }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:7009:74: warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+7007 |         }
+7008 |         try? FileManager.default.removeItem(atPath: root)
+7009 |         print("SELFTEST_OK record: closed=\(closed) fragmentBytes=\(size ?? 0) elapsed=\(snap.elapsedLabel) recoverable=\(recoverable.count)")
+     |                                                                          `- warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+7010 |         exit(0)
+7011 |     }
+
+[#ActorIsolatedCall]: <https://docs.swift.org/compiler/documentation/diagnostics/actor-isolated-call>
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[#SendableClosureCaptures]: <https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures>
+[#TrailingClosureMatching]: <https://docs.swift.org/compiler/documentation/diagnostics/trailing-closure-matching>
+[30/34] Compiling GenieMac VoiceHUDState.swift
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:210:47: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+208 |                     else {
+209 |                         conv = try GenieCoreBridge.startConversation(base, accessToken: token)
+210 |                         await MainActor.run { self?.conversationId = conv }
+    |                                               `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+211 |                     }
+212 |                     await MainActor.run {
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:214:25: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+212 |                     await MainActor.run {
+213 |                         VisualContextStore.shared.bind(conversationID: conv, preserving: Set(attached.map(\.id)))
+214 |                         self?.updateRequest(task.id) { $0.conversationID = conv }
+    |                         `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+215 |                     }
+216 |                     outcome = replyCandidates.isEmpty
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:223:21: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+221 |                 }
+222 |                 await MainActor.run {
+223 |                     self?.updateRequest(task.id) { $0.backendTaskID = outcome.taskId; $0.phase = .working }
+    |                     `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+224 |                 }
+225 |                 let reply = try Self.followUp(outcome, base: base, token: token, waitMs: 12_000)
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:227:21: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+225 |                 let reply = try Self.followUp(outcome, base: base, token: token, waitMs: 12_000)
+226 |                 await MainActor.run {
+227 |                     self?.applyReply(reply, to: task.id)
+    |                     `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+228 |                     self?.answer = reply.text
+229 |                     // 短い確定回答や聞き返しは、その場で確認できるよう Dock に残す。
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:228:21: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+226 |                 await MainActor.run {
+227 |                     self?.applyReply(reply, to: task.id)
+228 |                     self?.answer = reply.text
+    |                     `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+229 |                     // 短い確定回答や聞き返しは、その場で確認できるよう Dock に残す。
+230 |                     // 作業中・待機中は従来どおり静かな入口へ戻し、Work で追える状態にする。
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:231:21: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+229 |                     // 短い確定回答や聞き返しは、その場で確認できるよう Dock に残す。
+230 |                     // 作業中・待機中は従来どおり静かな入口へ戻し、Work で追える状態にする。
+231 |                     self?.mode = reply.settled && !reply.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    |                     `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+232 |                         ? .answer(reply.text) : .idle
+233 |                     if reply.settled { VisualContextStore.shared.markRecent(attached) }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:243:25: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+241 |                     let later = try Self.followUp(outcome, base: base, token: token, waitMs: 120_000)
+242 |                     await MainActor.run {
+243 |                         self?.applyReply(later, to: task.id)
+    |                         `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+244 |                         if later.settled {
+245 |                             self?.answer = later.text
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:245:29: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+243 |                         self?.applyReply(later, to: task.id)
+244 |                         if later.settled {
+245 |                             self?.answer = later.text
+    |                             `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+246 |                             if !later.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+247 |                                 self?.mode = .answer(later.text)
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:247:33: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+245 |                             self?.answer = later.text
+246 |                             if !later.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+247 |                                 self?.mode = .answer(later.text)
+    |                                 `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+248 |                             }
+249 |                             VisualContextStore.shared.markRecent(attached)
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:256:39: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+254 |                     }
+255 |                 }
+256 |                 await MainActor.run { self?.requestInFlight = false }
+    |                                       `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+257 |             } catch {
+258 |                 await MainActor.run {
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:259:21: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+257 |             } catch {
+258 |                 await MainActor.run {
+259 |                     self?.updateRequest(task.id) {
+    |                     `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+260 |                         $0.phase = .unknown
+261 |                         $0.message = $0.backendTaskID.isEmpty
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:265:21: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+263 |                             : "通信が切れました。状況を確認すると、同じ仕事の続きが読み込まれます。"
+264 |                     }
+265 |                     self?.answer = "接続を確認してください。依頼と現在の状況は Work に保存されています。"; self?.mode = .idle
+    |                     `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+266 |                     self?.requestInFlight = false
+267 |                 }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:265:139: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+263 |                             : "通信が切れました。状況を確認すると、同じ仕事の続きが読み込まれます。"
+264 |                     }
+265 |                     self?.answer = "接続を確認してください。依頼と現在の状況は Work に保存されています。"; self?.mode = .idle
+    |                                                                             `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+266 |                     self?.requestInFlight = false
+267 |                 }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:266:21: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+264 |                     }
+265 |                     self?.answer = "接続を確認してください。依頼と現在の状況は Work に保存されています。"; self?.mode = .idle
+266 |                     self?.requestInFlight = false
+    |                     `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+267 |                 }
+268 |             }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:342:39: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+340 |                 let outcome = TurnOutcome(needsClarification: false, answer: "", taskId: record.backendTaskID, notice: "", replyJson: "")
+341 |                 let reply = try Self.followUp(outcome, base: base, token: token, waitMs: 12_000)
+342 |                 await MainActor.run { self?.applyReply(reply, to: id); self?.refreshingRequests.remove(id) }
+    |                                       `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+343 |             } catch {
+344 |                 await MainActor.run {
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:342:72: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+340 |                 let outcome = TurnOutcome(needsClarification: false, answer: "", taskId: record.backendTaskID, notice: "", replyJson: "")
+341 |                 let reply = try Self.followUp(outcome, base: base, token: token, waitMs: 12_000)
+342 |                 await MainActor.run { self?.applyReply(reply, to: id); self?.refreshingRequests.remove(id) }
+    |                                                                        `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+343 |             } catch {
+344 |                 await MainActor.run {
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:345:21: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+343 |             } catch {
+344 |                 await MainActor.run {
+345 |                     self?.updateRequest(id) { $0.message = "状況を取得できませんでした。接続を確認してから、もう一度状況を確認できます。" }
+    |                     `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+346 |                     self?.refreshingRequests.remove(id)
+347 |                 }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:346:21: warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+344 |                 await MainActor.run {
+345 |                     self?.updateRequest(id) { $0.message = "状況を取得できませんでした。接続を確認してから、もう一度状況を確認できます。" }
+346 |                     self?.refreshingRequests.remove(id)
+    |                     `- warning: reference to captured var 'self' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+347 |                 }
+348 |             }
+
+[#SendableClosureCaptures]: <https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures>
+[31/34] Compiling GenieMac VoiceHUDView.swift
+[32/35] Compiling GenieMac WindowCoordinator.swift
+[32/37] Write Objects.LinkFileList
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[355](25ac62e5b3c53843-curve25519.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[356](0bbbd18bda93c05b-aes_nohw.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[357](00c879ee3285a50d-montgomery.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[358](00c879ee3285a50d-montgomery_inv.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[359](a0330e891e733f4e-ecp_nistz.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[361](a0330e891e733f4e-gfp_p384.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[363](aaa1ba3e455ee2e1-limbs.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[364](a4019cc0736b0423-mem.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[365](d5a9841f3dc6e253-poly1305.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[366](a0330e891e733f4e-p256-nistz.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[367](c322a0bcc369f531-chacha-armv8-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[368](c322a0bcc369f531-chacha20_poly1305_armv8-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[369](c322a0bcc369f531-aesv8-armx-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[370](c322a0bcc369f531-aesv8-gcm-armv8-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[371](c322a0bcc369f531-ghash-neon-armv8-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[372](c322a0bcc369f531-ghashv8-armx-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[373](c322a0bcc369f531-vpaes-armv8-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[374](c322a0bcc369f531-armv8-mont-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[375](c322a0bcc369f531-p256-armv8-asm-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[376](c322a0bcc369f531-sha512-armv8-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[377](c322a0bcc369f531-sha256-armv8-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[557](std-ddc72da0927e9db9.std.61a5f0013896dfb1-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[558](panic_unwind-63ea78ca2e1c0db3.panic_unwind.b9418b0471e31d36-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[559](object-c0adbf29d899f046.object.cf48ae80852c1dc4-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[561](addr2line-b92825ace6709456.addr2line.f3cce53e8c22052d-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[562](gimli-49cd0cae66d7f640.gimli.a9de2a852aa7a696-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[564](rustc_demangle-a5e20ae1249591d9.rustc_demangle.c8ddca633150ec1-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[566](hashbrown-7ef914ecbc5b3828.hashbrown.f3d328c4a0fd8a24-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[568](miniz_oxide-d817fa4718a8ef96.miniz_oxide.cf735aedbe58ef77-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[569](adler2-b603e41842b612c3.adler2.c400f6a6402c7116-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[573](alloc-7d19d4a84a64ec6c.alloc.650f235c7e2e357a-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[574](core-f186bd403406965f.core.aedb9fd4ead64aec-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[591](compiler_builtins-28935136ed986f39.compiler_builtins.bb8f0d37d096e781-cgu.016.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[719](compiler_builtins-28935136ed986f39.compiler_builtins.bb8f0d37d096e781-cgu.144.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[768](compiler_builtins-28935136ed986f39.compiler_builtins.bb8f0d37d096e781-cgu.193.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+[33/37] Linking GenieMac
+[34/37] Applying GenieMac
+[36/64] Compiling GenieMacTests SystemAudioFormatTests.swift
+[37/64] Compiling GenieMacTests TaskOutcomeTests.swift
+[38/64] Compiling GenieMacTests RecordingUXTests.swift
+[39/64] Compiling GenieMacTests ScreenshotQuestionTests.swift
+[40/64] Compiling GenieMacTests CoreBridgeTests.swift
+[41/64] Compiling GenieMacTests DictationTests.swift
+[42/64] Compiling GenieMacTests ConnectorConfigurationTests.swift
+[43/64] Compiling GenieMacTests ConsumerJourneyTests.swift
+[44/64] Emitting module GenieMacTests
+[45/64] Compiling GenieMacTests MeetingReminderTests.swift
+[46/64] Compiling GenieMacTests MeetingTranslationTests.swift
+[47/64] Compiling GenieMacTests LiquidOrbTests.swift
+[48/64] Compiling GenieMacTests MeetingAICostTests.swift
+[49/64] Compiling GenieMacTests GuideCoordinatorTests.swift
+/Users/shuhei/Projects/genie/apps/genie-macos/Tests/GenieMacTests/GuidedSetup/GuidedSetupMocks.swift:117:13: warning: variable 'running' was never mutated; consider changing to 'let' constant
+115 |         let o = MockObserver()
+116 |         let v = MockOverlay()
+117 |         var running = settingsRunning
+    |             `- warning: variable 'running' was never mutated; consider changing to 'let' constant
+118 |         let box = Box(running)
+119 |         var deps = PermissionGuideCoordinator.Dependencies(
+[50/64] Compiling GenieMacTests GuidedSetupMocks.swift
+/Users/shuhei/Projects/genie/apps/genie-macos/Tests/GenieMacTests/GuidedSetup/GuidedSetupMocks.swift:117:13: warning: variable 'running' was never mutated; consider changing to 'let' constant
+115 |         let o = MockObserver()
+116 |         let v = MockOverlay()
+117 |         var running = settingsRunning
+    |             `- warning: variable 'running' was never mutated; consider changing to 'let' constant
+118 |         let box = Box(running)
+119 |         var deps = PermissionGuideCoordinator.Dependencies(
+[51/64] Compiling GenieMacTests PermissionExperienceTests.swift
+[52/64] Compiling GenieMacTests PermissionGuideStateTests.swift
+[53/64] Compiling GenieMacTests PermissionHelpTests.swift
+[54/64] Compiling GenieMacTests InitialProfileTests.swift
+[55/64] Compiling GenieMacTests PanelPositionerTests.swift
+[56/64] Compiling GenieMacTests RecordingAudioBufferTests.swift
+[57/64] Compiling GenieMacTests CloudTranscriptionTests.swift
+[58/64] Compiling GenieMacTests ConnectionJourneyTests.swift
+[59/64] Compiling GenieMacTests ScreenshotWatcherTests.swift
+[60/64] Compiling GenieMacTests SessionFileLockTests.swift
+[61/64] Compiling GenieMacTests GatewaySessionTests.swift
+[62/64] Compiling GenieMacTests AXElementServiceTests.swift
+[63/66] Compiling GenieMacTests VisualEgressProviderTests.swift
+[64/66] Compiling GenieMacTests WorkspaceUXTests.swift
+[64/66] Write Objects.LinkFileList
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[355](25ac62e5b3c53843-curve25519.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[356](0bbbd18bda93c05b-aes_nohw.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[357](00c879ee3285a50d-montgomery.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[358](00c879ee3285a50d-montgomery_inv.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[359](a0330e891e733f4e-ecp_nistz.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[361](a0330e891e733f4e-gfp_p384.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[363](aaa1ba3e455ee2e1-limbs.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[364](a4019cc0736b0423-mem.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[365](d5a9841f3dc6e253-poly1305.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[366](a0330e891e733f4e-p256-nistz.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[367](c322a0bcc369f531-chacha-armv8-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[368](c322a0bcc369f531-chacha20_poly1305_armv8-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[369](c322a0bcc369f531-aesv8-armx-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[370](c322a0bcc369f531-aesv8-gcm-armv8-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[371](c322a0bcc369f531-ghash-neon-armv8-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[372](c322a0bcc369f531-ghashv8-armx-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[373](c322a0bcc369f531-vpaes-armv8-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[374](c322a0bcc369f531-armv8-mont-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[375](c322a0bcc369f531-p256-armv8-asm-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[376](c322a0bcc369f531-sha512-armv8-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[377](c322a0bcc369f531-sha256-armv8-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[557](std-ddc72da0927e9db9.std.61a5f0013896dfb1-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[558](panic_unwind-63ea78ca2e1c0db3.panic_unwind.b9418b0471e31d36-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[559](object-c0adbf29d899f046.object.cf48ae80852c1dc4-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[561](addr2line-b92825ace6709456.addr2line.f3cce53e8c22052d-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[562](gimli-49cd0cae66d7f640.gimli.a9de2a852aa7a696-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[564](rustc_demangle-a5e20ae1249591d9.rustc_demangle.c8ddca633150ec1-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[566](hashbrown-7ef914ecbc5b3828.hashbrown.f3d328c4a0fd8a24-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[568](miniz_oxide-d817fa4718a8ef96.miniz_oxide.cf735aedbe58ef77-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[569](adler2-b603e41842b612c3.adler2.c400f6a6402c7116-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[573](alloc-7d19d4a84a64ec6c.alloc.650f235c7e2e357a-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[574](core-f186bd403406965f.core.aedb9fd4ead64aec-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[591](compiler_builtins-28935136ed986f39.compiler_builtins.bb8f0d37d096e781-cgu.016.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[719](compiler_builtins-28935136ed986f39.compiler_builtins.bb8f0d37d096e781-cgu.144.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[768](compiler_builtins-28935136ed986f39.compiler_builtins.bb8f0d37d096e781-cgu.193.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+[65/66] Linking genie-macosPackageTests
+Build complete! (16.22s)
+Test Suite 'All tests' started at 2026-09-19 18:19:43.285.
+Test Suite 'genie-macosPackageTests.xctest' started at 2026-09-19 18:19:43.287.
+Test Suite 'AXElementServiceTests' started at 2026-09-19 18:19:43.287.
+Test Case '-[GenieMacTests.AXElementServiceTests testAvatarSitsAtBottomRightInset24]' started.
+Test Case '-[GenieMacTests.AXElementServiceTests testAvatarSitsAtBottomRightInset24]' passed (0.001 seconds).
+Test Case '-[GenieMacTests.AXElementServiceTests testAXToAppKitOnDisplayAboveAndLeftOfPrimary]' started.
+Test Case '-[GenieMacTests.AXElementServiceTests testAXToAppKitOnDisplayAboveAndLeftOfPrimary]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.AXElementServiceTests testAXToAppKitOnPrimaryDisplay]' started.
+Test Case '-[GenieMacTests.AXElementServiceTests testAXToAppKitOnPrimaryDisplay]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.AXElementServiceTests testCalloutIsClampedInsideTheScreenWhenNothingFits]' started.
+Test Case '-[GenieMacTests.AXElementServiceTests testCalloutIsClampedInsideTheScreenWhenNothingFits]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.AXElementServiceTests testCalloutPrefersAboveThenFallsBackWhenNoRoom]' started.
+Test Case '-[GenieMacTests.AXElementServiceTests testCalloutPrefersAboveThenFallsBackWhenNoRoom]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.AXElementServiceTests testHighlightFramePadsTheTarget]' started.
+Test Case '-[GenieMacTests.AXElementServiceTests testHighlightFramePadsTheTarget]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.AXElementServiceTests testLocatorConvertsToAppKitCoordinates]' started.
+Test Case '-[GenieMacTests.AXElementServiceTests testLocatorConvertsToAppKitCoordinates]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.AXElementServiceTests testLocatorReportsWhyWhenTargetIsMissingOrHasNoFrame]' started.
+Test Case '-[GenieMacTests.AXElementServiceTests testLocatorReportsWhyWhenTargetIsMissingOrHasNoFrame]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.AXElementServiceTests testLocatorReturnsNothingWhenNotTrustedAndDoesNotWalk]' started.
+Test Case '-[GenieMacTests.AXElementServiceTests testLocatorReturnsNothingWhenNotTrustedAndDoesNotWalk]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.AXElementServiceTests testPaneSelectorsCoverJapaneseAndEnglish]' started.
+Test Case '-[GenieMacTests.AXElementServiceTests testPaneSelectorsCoverJapaneseAndEnglish]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.AXElementServiceTests testSelectorMatchesIdentifierListAndValue]' started.
+Test Case '-[GenieMacTests.AXElementServiceTests testSelectorMatchesIdentifierListAndValue]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.AXElementServiceTests testSelectorMatchesOnCombinedConditionsNotJustOneString]' started.
+Test Case '-[GenieMacTests.AXElementServiceTests testSelectorMatchesOnCombinedConditionsNotJustOneString]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.AXElementServiceTests testSelectorsAreTriedInOrderAndTheFirstThatMatchesWins]' started.
+Test Case '-[GenieMacTests.AXElementServiceTests testSelectorsAreTriedInOrderAndTheFirstThatMatchesWins]' passed (0.000 seconds).
+Test Suite 'AXElementServiceTests' passed at 2026-09-19 18:19:43.292.
+	 Executed 13 tests, with 0 failures (0 unexpected) in 0.004 (0.004) seconds
+Test Suite 'CloudTranscriptionTests' started at 2026-09-19 18:19:43.292.
+Test Case '-[GenieMacTests.CloudTranscriptionTests testLiveConsentRevocationAndInsecureEndpoint]' started.
+Test Case '-[GenieMacTests.CloudTranscriptionTests testLiveConsentRevocationAndInsecureEndpoint]' passed (0.005 seconds).
+Test Case '-[GenieMacTests.CloudTranscriptionTests testResultDecodingPreservesTimingAndUnknownSpeaker]' started.
+Test Case '-[GenieMacTests.CloudTranscriptionTests testResultDecodingPreservesTimingAndUnknownSpeaker]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.CloudTranscriptionTests testRevokedConsentStopsBeforeReadingOrSendingAudio]' started.
+Test Case '-[GenieMacTests.CloudTranscriptionTests testRevokedConsentStopsBeforeReadingOrSendingAudio]' passed (0.001 seconds).
+Test Suite 'CloudTranscriptionTests' passed at 2026-09-19 18:19:43.298.
+	 Executed 3 tests, with 0 failures (0 unexpected) in 0.006 (0.006) seconds
+Test Suite 'ConnectionJourneyTests' started at 2026-09-19 18:19:43.298.
+Test Case '-[GenieMacTests.ConnectionJourneyTests testCallbackIgnoresFaviconPostDuplicateAndWrongState]' started.
+Test Case '-[GenieMacTests.ConnectionJourneyTests testCallbackIgnoresFaviconPostDuplicateAndWrongState]' passed (0.001 seconds).
+Test Case '-[GenieMacTests.ConnectionJourneyTests testCancelledExchangeCannotSaveOrRegister]' started.
+Test Case '-[GenieMacTests.ConnectionJourneyTests testCancelledExchangeCannotSaveOrRegister]' passed (0.103 seconds).
+Test Case '-[GenieMacTests.ConnectionJourneyTests testCloudRecordWithoutLocalCredentialIsNotConnected]' started.
+Test Case '-[GenieMacTests.ConnectionJourneyTests testCloudRecordWithoutLocalCredentialIsNotConnected]' passed (0.001 seconds).
+Test Case '-[GenieMacTests.ConnectionJourneyTests testConfigurationAllowlistAndDedicatedClientPrecedence]' started.
+Test Case '-[GenieMacTests.ConnectionJourneyTests testConfigurationAllowlistAndDedicatedClientPrecedence]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.ConnectionJourneyTests testDisconnectFailureRemainsRetryable]' started.
+Test Case '-[GenieMacTests.ConnectionJourneyTests testDisconnectFailureRemainsRetryable]' passed (0.004 seconds).
+Test Case '-[GenieMacTests.ConnectionJourneyTests testFailedProfileCanLeaveHomeAndReopenWithoutStartingAnotherRead]' started.
+Test Case '-[GenieMacTests.ConnectionJourneyTests testFailedProfileCanLeaveHomeAndReopenWithoutStartingAnotherRead]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.ConnectionJourneyTests testLoopbackRejectsUnrelatedRequestThenAcceptsExpectedCallback]' started.
+Test Case '-[GenieMacTests.ConnectionJourneyTests testLoopbackRejectsUnrelatedRequestThenAcceptsExpectedCallback]' passed (0.027 seconds).
+Test Case '-[GenieMacTests.ConnectionJourneyTests testOfflineRefreshShowsFailureInsteadOfFalseConnected]' started.
+Test Case '-[GenieMacTests.ConnectionJourneyTests testOfflineRefreshShowsFailureInsteadOfFalseConnected]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.ConnectionJourneyTests testPartialConsentConnectsOnlyActuallyGrantedService]' started.
+Test Case '-[GenieMacTests.ConnectionJourneyTests testPartialConsentConnectsOnlyActuallyGrantedService]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.ConnectionJourneyTests testRegistrationFailureRestoresPreviousCredential]' started.
+Test Case '-[GenieMacTests.ConnectionJourneyTests testRegistrationFailureRestoresPreviousCredential]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.ConnectionJourneyTests testSeparateSendAuthorizationDoesNotRelabelReadAccount]' started.
+Test Case '-[GenieMacTests.ConnectionJourneyTests testSeparateSendAuthorizationDoesNotRelabelReadAccount]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.ConnectionJourneyTests testSingleAuthorizationPersistsBothServicesAndAccount]' started.
+Test Case '-[GenieMacTests.ConnectionJourneyTests testSingleAuthorizationPersistsBothServicesAndAccount]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.ConnectionJourneyTests testUnexpectedWriteGrantIsNotSaved]' started.
+Test Case '-[GenieMacTests.ConnectionJourneyTests testUnexpectedWriteGrantIsNotSaved]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.ConnectionJourneyTests testWrongStateAndDeniedConsentNeverExchangeOrRegister]' started.
+Test Case '-[GenieMacTests.ConnectionJourneyTests testWrongStateAndDeniedConsentNeverExchangeOrRegister]' passed (0.000 seconds).
+Test Suite 'ConnectionJourneyTests' passed at 2026-09-19 18:19:43.437.
+	 Executed 14 tests, with 0 failures (0 unexpected) in 0.138 (0.139) seconds
+Test Suite 'ConnectorConfigurationTests' started at 2026-09-19 18:19:43.437.
+Test Case '-[GenieMacTests.ConnectorConfigurationTests testGoogleKeepsItsConfiguredClient]' started.
+Test Case '-[GenieMacTests.ConnectorConfigurationTests testGoogleKeepsItsConfiguredClient]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.ConnectorConfigurationTests testMicrosoftRejectsBroaderOrMissingScopeAttestations]' started.
+Test Case '-[GenieMacTests.ConnectorConfigurationTests testMicrosoftRejectsBroaderOrMissingScopeAttestations]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.ConnectorConfigurationTests testMicrosoftRequiresDistinctReadAndSendClients]' started.
+Test Case '-[GenieMacTests.ConnectorConfigurationTests testMicrosoftRequiresDistinctReadAndSendClients]' passed (0.000 seconds).
+Test Suite 'ConnectorConfigurationTests' passed at 2026-09-19 18:19:43.437.
+	 Executed 3 tests, with 0 failures (0 unexpected) in 0.000 (0.001) seconds
+Test Suite 'ConsumerJourneyTests' started at 2026-09-19 18:19:43.437.
+Test Case '-[GenieMacTests.ConsumerJourneyTests testClosingAndReopeningPreservesSeparateDrafts]' started.
+Test Case '-[GenieMacTests.ConsumerJourneyTests testClosingAndReopeningPreservesSeparateDrafts]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.ConsumerJourneyTests testDeliveryDoesNotRequireOrInferAnAddressAndDoesNotUseAModel]' started.
+Test Case '-[GenieMacTests.ConsumerJourneyTests testDeliveryDoesNotRequireOrInferAnAddressAndDoesNotUseAModel]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.ConsumerJourneyTests testDirectPersonalRequestsOpenTheMatchingJourney]' started.
+Test Case '-[GenieMacTests.ConsumerJourneyTests testDirectPersonalRequestsOpenTheMatchingJourney]' passed (0.003 seconds).
+Test Case '-[GenieMacTests.ConsumerJourneyTests testMerchantURLsNeverContainRequestData]' started.
+Test Case '-[GenieMacTests.ConsumerJourneyTests testMerchantURLsNeverContainRequestData]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.ConsumerJourneyTests testProductWorkExistingBookingsAndMixedRequestsAreNotHijacked]' started.
+Test Case '-[GenieMacTests.ConsumerJourneyTests testProductWorkExistingBookingsAndMixedRequestsAreNotHijacked]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.ConsumerJourneyTests testRequiredFieldsAndInvalidBudgetsDoNotStartResearch]' started.
+Test Case '-[GenieMacTests.ConsumerJourneyTests testRequiredFieldsAndInvalidBudgetsDoNotStartResearch]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.ConsumerJourneyTests testTravelDraftAndLiveResearchAreDistinctReadOnlyTasks]' started.
+Test Case '-[GenieMacTests.ConsumerJourneyTests testTravelDraftAndLiveResearchAreDistinctReadOnlyTasks]' passed (0.000 seconds).
+Test Suite 'ConsumerJourneyTests' passed at 2026-09-19 18:19:43.443.
+	 Executed 7 tests, with 0 failures (0 unexpected) in 0.005 (0.005) seconds
+Test Suite 'CoreBridgeTests' started at 2026-09-19 18:19:43.443.
+Test Case '-[GenieMacTests.CoreBridgeTests testSessionWritesFragments]' started.
+Test Case '-[GenieMacTests.CoreBridgeTests testSessionWritesFragments]' passed (0.037 seconds).
+Test Case '-[GenieMacTests.CoreBridgeTests testSnapshotDerivedByCore]' started.
+Test Case '-[GenieMacTests.CoreBridgeTests testSnapshotDerivedByCore]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.CoreBridgeTests testVersionRoundTrip]' started.
+Test Case '-[GenieMacTests.CoreBridgeTests testVersionRoundTrip]' passed (0.000 seconds).
+Test Suite 'CoreBridgeTests' passed at 2026-09-19 18:19:43.481.
+	 Executed 3 tests, with 0 failures (0 unexpected) in 0.038 (0.038) seconds
+Test Suite 'DictationTests' started at 2026-09-19 18:19:43.481.
+Test Case '-[GenieMacTests.DictationTests testCaretUsesUTF16AfterEmoji]' started.
+Test Case '-[GenieMacTests.DictationTests testCaretUsesUTF16AfterEmoji]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.DictationTests testEmojiSelectionCanBeReplaced]' started.
+Test Case '-[GenieMacTests.DictationTests testEmojiSelectionCanBeReplaced]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.DictationTests testEmptyFieldAndEndOfField]' started.
+Test Case '-[GenieMacTests.DictationTests testEmptyFieldAndEndOfField]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.DictationTests testInvalidOrSplitSurrogateRangeDoesNotWrite]' started.
+Test Case '-[GenieMacTests.DictationTests testInvalidOrSplitSurrogateRangeDoesNotWrite]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.DictationTests testSelectionIsReplacedRatherThanAppendedAfter]' started.
+Test Case '-[GenieMacTests.DictationTests testSelectionIsReplacedRatherThanAppendedAfter]' passed (0.000 seconds).
+Test Suite 'DictationTests' passed at 2026-09-19 18:19:43.482.
+	 Executed 5 tests, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'GatewaySessionTests' started at 2026-09-19 18:19:43.482.
+Test Case '-[GenieMacTests.GatewaySessionTests testAccessTokenIsNotReturnedIfRotatedCredentialsCannotBeSaved]' started.
+Test Case '-[GenieMacTests.GatewaySessionTests testAccessTokenIsNotReturnedIfRotatedCredentialsCannotBeSaved]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.GatewaySessionTests testConcurrentRenewalAndRelaunchPreserveDeviceAndUseRotatedToken]' started.
+Test Case '-[GenieMacTests.GatewaySessionTests testConcurrentRenewalAndRelaunchPreserveDeviceAndUseRotatedToken]' passed (0.049 seconds).
+Test Case '-[GenieMacTests.GatewaySessionTests testExplicitReconnectRepairsAnUncertainSessionWithoutErasingItOnFailure]' started.
+Test Case '-[GenieMacTests.GatewaySessionTests testExplicitReconnectRepairsAnUncertainSessionWithoutErasingItOnFailure]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.GatewaySessionTests testInterruptedRenewalIsNotReplayedAfterRestart]' started.
+Test Case '-[GenieMacTests.GatewaySessionTests testInterruptedRenewalIsNotReplayedAfterRestart]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.GatewaySessionTests testLostRefreshResponseNeverReplaysRefreshOrCreatesAnotherDevice]' started.
+Test Case '-[GenieMacTests.GatewaySessionTests testLostRefreshResponseNeverReplaysRefreshOrCreatesAnotherDevice]' passed (0.000 seconds).
+Test Suite 'GatewaySessionTests' passed at 2026-09-19 18:19:43.533.
+	 Executed 5 tests, with 0 failures (0 unexpected) in 0.051 (0.051) seconds
+Test Suite 'GuideAlreadyOnTests' started at 2026-09-19 18:19:43.533.
+Test Case '-[GenieMacTests.GuideAlreadyOnTests testASwitchThatIsAlreadyOnIsNotAskedToBeTurnedOn]' started.
+Test Case '-[GenieMacTests.GuideAlreadyOnTests testASwitchThatIsAlreadyOnIsNotAskedToBeTurnedOn]' passed (0.042 seconds).
+Test Case '-[GenieMacTests.GuideAlreadyOnTests testCalloutTailAimsAtTheTargetCentre]' started.
+Test Case '-[GenieMacTests.GuideAlreadyOnTests testCalloutTailAimsAtTheTargetCentre]' passed (0.000 seconds).
+Test Suite 'GuideAlreadyOnTests' passed at 2026-09-19 18:19:43.576.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.043 (0.043) seconds
+Test Suite 'GuideCoordinatorTests' started at 2026-09-19 18:19:43.576.
+Test Case '-[GenieMacTests.GuideCoordinatorTests testAddButtonIsGuidedWhenGenieRowIsMissing]' started.
+Test Case '-[GenieMacTests.GuideCoordinatorTests testAddButtonIsGuidedWhenGenieRowIsMissing]' passed (0.010 seconds).
+Test Case '-[GenieMacTests.GuideCoordinatorTests testFallbackTickRelocatesOnlyWhenObserverIsUnavailable]' started.
+Test Case '-[GenieMacTests.GuideCoordinatorTests testFallbackTickRelocatesOnlyWhenObserverIsUnavailable]' passed (0.001 seconds).
+Test Case '-[GenieMacTests.GuideCoordinatorTests testFloatingPanelIsTransparentNonActivatingAndPassesClicks]' started.
+Test Case '-[GenieMacTests.GuideCoordinatorTests testFloatingPanelIsTransparentNonActivatingAndPassesClicks]' passed (0.036 seconds).
+Test Case '-[GenieMacTests.GuideCoordinatorTests testGuideFollowsWhenSystemSettingsMoves]' started.
+Test Case '-[GenieMacTests.GuideCoordinatorTests testGuideFollowsWhenSystemSettingsMoves]' passed (0.001 seconds).
+Test Case '-[GenieMacTests.GuideCoordinatorTests testHighlightAndCalloutNeverTakeMouseEventsAndStayOnScreen]' started.
+Test Case '-[GenieMacTests.GuideCoordinatorTests testHighlightAndCalloutNeverTakeMouseEventsAndStayOnScreen]' passed (0.025 seconds).
+Test Case '-[GenieMacTests.GuideCoordinatorTests testMissingTargetShowsOnlyTheGeneralGuideAndDoesNotCrash]' started.
+Test Case '-[GenieMacTests.GuideCoordinatorTests testMissingTargetShowsOnlyTheGeneralGuideAndDoesNotCrash]' passed (0.001 seconds).
+Test Case '-[GenieMacTests.GuideCoordinatorTests testRealOverlayStackReleasesEveryPanel]' started.
+Test Case '-[GenieMacTests.GuideCoordinatorTests testRealOverlayStackReleasesEveryPanel]' passed (0.050 seconds).
+Test Case '-[GenieMacTests.GuideCoordinatorTests testStopReleasesPanelsObserversAndReturnsToIdle]' started.
+Test Case '-[GenieMacTests.GuideCoordinatorTests testStopReleasesPanelsObserversAndReturnsToIdle]' passed (0.001 seconds).
+Test Suite 'GuideCoordinatorTests' passed at 2026-09-19 18:19:43.700.
+	 Executed 8 tests, with 0 failures (0 unexpected) in 0.124 (0.124) seconds
+Test Suite 'InitialProfileTests' started at 2026-09-19 18:19:43.700.
+Test Case '-[GenieMacTests.InitialProfileTests testAbsentProfileDoesNotShowSetupAgain]' started.
+Test Case '-[GenieMacTests.InitialProfileTests testAbsentProfileDoesNotShowSetupAgain]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.InitialProfileTests testEditsRespectFieldLimitsAndAllowNoInferredData]' started.
+Test Case '-[GenieMacTests.InitialProfileTests testEditsRespectFieldLimitsAndAllowNoInferredData]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.InitialProfileTests testEmojiUsesTheSameUTF16LimitAsTheAPI]' started.
+Test Case '-[GenieMacTests.InitialProfileTests testEmojiUsesTheSameUTF16LimitAsTheAPI]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.InitialProfileTests testRejectsReadyWithoutRealResult]' started.
+Test Case '-[GenieMacTests.InitialProfileTests testRejectsReadyWithoutRealResult]' passed (0.000 seconds).
+Test Suite 'InitialProfileTests' passed at 2026-09-19 18:19:43.701.
+	 Executed 4 tests, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'LiquidOrbTests' started at 2026-09-19 18:19:43.701.
+Test Case '-[GenieMacTests.LiquidOrbTests testMicrophoneSilenceAndInvalidMetersDoNotInventActivity]' started.
+Test Case '-[GenieMacTests.LiquidOrbTests testMicrophoneSilenceAndInvalidMetersDoNotInventActivity]' passed (0.004 seconds).
+Test Case '-[GenieMacTests.LiquidOrbTests testOnlyActiveVisibleWorkAnimates]' started.
+Test Case '-[GenieMacTests.LiquidOrbTests testOnlyActiveVisibleWorkAnimates]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.LiquidOrbTests testPreparingRejectsLevelsAndStoppedCaptureDoesNotReact]' started.
+Test Case '-[GenieMacTests.LiquidOrbTests testPreparingRejectsLevelsAndStoppedCaptureDoesNotReact]' passed (0.001 seconds).
+Test Case '-[GenieMacTests.LiquidOrbTests testReducedMotionIsStableEvenWithAudio]' started.
+Test Case '-[GenieMacTests.LiquidOrbTests testReducedMotionIsStableEvenWithAudio]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.LiquidOrbTests testReferencePresetAndRealMetalAlpha]' started.
+Test Case '-[GenieMacTests.LiquidOrbTests testReferencePresetAndRealMetalAlpha]' passed (0.022 seconds).
+Test Case '-[GenieMacTests.LiquidOrbTests testSpeechStripsFormattingAndCode]' started.
+Test Case '-[GenieMacTests.LiquidOrbTests testSpeechStripsFormattingAndCode]' passed (0.003 seconds).
+Test Suite 'LiquidOrbTests' passed at 2026-09-19 18:19:43.732.
+	 Executed 6 tests, with 0 failures (0 unexpected) in 0.031 (0.031) seconds
+Test Suite 'MeetingAICostTests' started at 2026-09-19 18:19:43.732.
+Test Case '-[GenieMacTests.MeetingAICostTests testKnownFailedJobCanBeExplicitlySubmittedAgain]' started.
+Test Case '-[GenieMacTests.MeetingAICostTests testKnownFailedJobCanBeExplicitlySubmittedAgain]' passed (0.001 seconds).
+Test Case '-[GenieMacTests.MeetingAICostTests testLostPollResponseResumesSameJobWithoutResubmitting]' started.
+Test Case '-[GenieMacTests.MeetingAICostTests testLostPollResponseResumesSameJobWithoutResubmitting]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.MeetingAICostTests testNoSpeechAndRepeatedSuccessfulActionAvoidNewRequests]' started.
+Test Case '-[GenieMacTests.MeetingAICostTests testNoSpeechAndRepeatedSuccessfulActionAvoidNewRequests]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.MeetingAICostTests testRepeatedClicksWhileGenerationRunsDoNotSubmit]' started.
+Test Case '-[GenieMacTests.MeetingAICostTests testRepeatedClicksWhileGenerationRunsDoNotSubmit]' passed (0.000 seconds).
+Test Suite 'MeetingAICostTests' passed at 2026-09-19 18:19:43.735.
+	 Executed 4 tests, with 0 failures (0 unexpected) in 0.002 (0.002) seconds
+Test Suite 'MeetingReminderTests' started at 2026-09-19 18:19:43.735.
+Test Case '-[GenieMacTests.MeetingReminderTests testConfirmedExitRearmsNextMeeting]' started.
+Test Case '-[GenieMacTests.MeetingReminderTests testConfirmedExitRearmsNextMeeting]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.MeetingReminderTests testDistinctBrowserCallsRearmAfterTheFirstTabCloses]' started.
+Test Case '-[GenieMacTests.MeetingReminderTests testDistinctBrowserCallsRearmAfterTheFirstTabCloses]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.MeetingReminderTests testMeetingIdentityRejectsUnrelatedAndLookalikeHosts]' started.
+Test Case '-[GenieMacTests.MeetingReminderTests testMeetingIdentityRejectsUnrelatedAndLookalikeHosts]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.MeetingReminderTests testNoPromptForLaunchLobbyOrUnknownPermission]' started.
+Test Case '-[GenieMacTests.MeetingReminderTests testNoPromptForLaunchLobbyOrUnknownPermission]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.MeetingReminderTests testOnePromptDespiteFocusSwitchAndRepeatedObservations]' started.
+Test Case '-[GenieMacTests.MeetingReminderTests testOnePromptDespiteFocusSwitchAndRepeatedObservations]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.MeetingReminderTests testOnlyLeaveCallControlsCount]' started.
+Test Case '-[GenieMacTests.MeetingReminderTests testOnlyLeaveCallControlsCount]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.MeetingReminderTests testProvidersIncludeNativeAndBrowserMeetings]' started.
+Test Case '-[GenieMacTests.MeetingReminderTests testProvidersIncludeNativeAndBrowserMeetings]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.MeetingReminderTests testRecordingConsumesReminderWithoutPromptingAgainAfterStop]' started.
+Test Case '-[GenieMacTests.MeetingReminderTests testRecordingConsumesReminderWithoutPromptingAgainAfterStop]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.MeetingReminderTests testTerminatedAppInvalidatesOldActionAndRearms]' started.
+Test Case '-[GenieMacTests.MeetingReminderTests testTerminatedAppInvalidatesOldActionAndRearms]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.MeetingReminderTests testTransientMissingControlsDoNotRearm]' started.
+Test Case '-[GenieMacTests.MeetingReminderTests testTransientMissingControlsDoNotRearm]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.MeetingReminderTests testUndeliveredReminderRetriesWithoutInvalidatingNewerSession]' started.
+Test Case '-[GenieMacTests.MeetingReminderTests testUndeliveredReminderRetriesWithoutInvalidatingNewerSession]' passed (0.000 seconds).
+Test Suite 'MeetingReminderTests' passed at 2026-09-19 18:19:43.737.
+	 Executed 11 tests, with 0 failures (0 unexpected) in 0.001 (0.002) seconds
+Test Suite 'MeetingTranslationHTTPTests' started at 2026-09-19 18:19:43.737.
+Test Case '-[GenieMacTests.MeetingTranslationHTTPTests testAlreadyEnglishDoesNotCallTheModelOrRewriteText]' started.
+Test Case '-[GenieMacTests.MeetingTranslationHTTPTests testAlreadyEnglishDoesNotCallTheModelOrRewriteText]' passed (0.009 seconds).
+Test Case '-[GenieMacTests.MeetingTranslationHTTPTests testLongUtterancePreservesTailAndCannotInvokeTools]' started.
+Test Case '-[GenieMacTests.MeetingTranslationHTTPTests testLongUtterancePreservesTailAndCannotInvokeTools]' passed (0.005 seconds).
+Test Case '-[GenieMacTests.MeetingTranslationHTTPTests testRetryOfLongUtteranceDoesNotResendSuccessfulChunks]' started.
+Test Case '-[GenieMacTests.MeetingTranslationHTTPTests testRetryOfLongUtteranceDoesNotResendSuccessfulChunks]' passed (0.006 seconds).
+Test Case '-[GenieMacTests.MeetingTranslationHTTPTests testServiceErrorAndRedirectAreNotSuccessfulTranslation]' started.
+Test Case '-[GenieMacTests.MeetingTranslationHTTPTests testServiceErrorAndRedirectAreNotSuccessfulTranslation]' passed (0.002 seconds).
+Test Suite 'MeetingTranslationHTTPTests' passed at 2026-09-19 18:19:43.759.
+	 Executed 4 tests, with 0 failures (0 unexpected) in 0.022 (0.023) seconds
+Test Suite 'MeetingTranslationTests' started at 2026-09-19 18:19:43.759.
+Test Case '-[GenieMacTests.MeetingTranslationTests testAutoOffRetainsSubmittedResultButDoesNotStartBacklog]' started.
+Test Case '-[GenieMacTests.MeetingTranslationTests testAutoOffRetainsSubmittedResultButDoesNotStartBacklog]' passed (0.031 seconds).
+Test Case '-[GenieMacTests.MeetingTranslationTests testEmptyTranslationIsAnErrorNotSuccess]' started.
+Test Case '-[GenieMacTests.MeetingTranslationTests testEmptyTranslationIsAnErrorNotSuccess]' passed (0.006 seconds).
+Test Case '-[GenieMacTests.MeetingTranslationTests testEndpointRulesPreventAccidentalExternalLocalTranslation]' started.
+Test Case '-[GenieMacTests.MeetingTranslationTests testEndpointRulesPreventAccidentalExternalLocalTranslation]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.MeetingTranslationTests testEngineSwitchDoesNotMixResults]' started.
+Test Case '-[GenieMacTests.MeetingTranslationTests testEngineSwitchDoesNotMixResults]' passed (0.013 seconds).
+Test Case '-[GenieMacTests.MeetingTranslationTests testLanguageSwitchFinishesOneRequestAndReusesItsPaidResult]' started.
+Test Case '-[GenieMacTests.MeetingTranslationTests testLanguageSwitchFinishesOneRequestAndReusesItsPaidResult]' passed (0.019 seconds).
+Test Case '-[GenieMacTests.MeetingTranslationTests testMalformedTruncatedAndEmptyResponsesFailClosed]' started.
+Test Case '-[GenieMacTests.MeetingTranslationTests testMalformedTruncatedAndEmptyResponsesFailClosed]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.MeetingTranslationTests testOutputLimitMatchesDirectOpenAIAndLocalProtocol]' started.
+Test Case '-[GenieMacTests.MeetingTranslationTests testOutputLimitMatchesDirectOpenAIAndLocalProtocol]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.MeetingTranslationTests testRepeatedSelectionDoesNotAutomaticallyRetryFailure]' started.
+Test Case '-[GenieMacTests.MeetingTranslationTests testRepeatedSelectionDoesNotAutomaticallyRetryFailure]' passed (0.013 seconds).
+Test Case '-[GenieMacTests.MeetingTranslationTests testRetryKeepsCompletedRowsAndProcessesOnlyBacklog]' started.
+Test Case '-[GenieMacTests.MeetingTranslationTests testRetryKeepsCompletedRowsAndProcessesOnlyBacklog]' passed (0.012 seconds).
+Test Case '-[GenieMacTests.MeetingTranslationTests testSelectBeforeSpeechThenIncrementalFinals]' started.
+Test Case '-[GenieMacTests.MeetingTranslationTests testSelectBeforeSpeechThenIncrementalFinals]' passed (0.013 seconds).
+Test Suite 'MeetingTranslationTests' passed at 2026-09-19 18:19:43.869.
+	 Executed 10 tests, with 0 failures (0 unexpected) in 0.109 (0.110) seconds
+Test Suite 'PanelPositionerTests' started at 2026-09-19 18:19:43.869.
+Test Case '-[GenieMacTests.PanelPositionerTests testContentClearsCameraWhileBackgroundRemainsAttached]' started.
+Test Case '-[GenieMacTests.PanelPositionerTests testContentClearsCameraWhileBackgroundRemainsAttached]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.PanelPositionerTests testExternalScreenUsesItsOwnCoordinatesWithoutCameraBand]' started.
+Test Case '-[GenieMacTests.PanelPositionerTests testExternalScreenUsesItsOwnCoordinatesWithoutCameraBand]' passed (0.000 seconds).
+Test Suite 'PanelPositionerTests' passed at 2026-09-19 18:19:43.870.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.000 (0.001) seconds
+Test Suite 'PermissionExperienceTests' started at 2026-09-19 18:19:43.870.
+Test Case '-[GenieMacTests.PermissionExperienceTests testCancelRestoresOnlySuspendedWindowsAndDiscardsContinuation]' started.
+Test Case '-[GenieMacTests.PermissionExperienceTests testCancelRestoresOnlySuspendedWindowsAndDiscardsContinuation]' passed (0.001 seconds).
+Test Case '-[GenieMacTests.PermissionExperienceTests testEnableOnlyRequestsSelectedPermissionAndTryContinuesOnce]' started.
+Test Case '-[GenieMacTests.PermissionExperienceTests testEnableOnlyRequestsSelectedPermissionAndTryContinuesOnce]' passed (0.001 seconds).
+Test Case '-[GenieMacTests.PermissionExperienceTests testExplanationHasNoOSRequestsAndLaterDoesNothing]' started.
+Test Case '-[GenieMacTests.PermissionExperienceTests testExplanationHasNoOSRequestsAndLaterDoesNothing]' passed (0.001 seconds).
+Test Case '-[GenieMacTests.PermissionExperienceTests testPendingMicrophoneReplyCannotCompleteNewExperience]' started.
+Test Case '-[GenieMacTests.PermissionExperienceTests testPendingMicrophoneReplyCannotCompleteNewExperience]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.PermissionExperienceTests testPracticeTargetRejectsApplicationAndOtherProcess]' started.
+Test Case '-[GenieMacTests.PermissionExperienceTests testPracticeTargetRejectsApplicationAndOtherProcess]' passed (0.001 seconds).
+Test Case '-[GenieMacTests.PermissionExperienceTests testRecordingPurposeSurvivesRevocationAndCancelRemainsAvailable]' started.
+Test Case '-[GenieMacTests.PermissionExperienceTests testRecordingPurposeSurvivesRevocationAndCancelRemainsAvailable]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.PermissionExperienceTests testRevokedGrantNeverRunsContinuation]' started.
+Test Case '-[GenieMacTests.PermissionExperienceTests testRevokedGrantNeverRunsContinuation]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.PermissionExperienceTests testVoiceDoesNotEnterListeningBeforeMicrophonePermission]' started.
+Test Case '-[GenieMacTests.PermissionExperienceTests testVoiceDoesNotEnterListeningBeforeMicrophonePermission]' passed (0.066 seconds).
+Test Suite 'PermissionExperienceTests' passed at 2026-09-19 18:19:43.940.
+	 Executed 8 tests, with 0 failures (0 unexpected) in 0.070 (0.070) seconds
+Test Suite 'PermissionGuideStateTests' started at 2026-09-19 18:19:43.940.
+Test Case '-[GenieMacTests.PermissionGuideStateTests testDeniedMicrophoneGuidesToSettingsInsteadOfFinishing]' started.
+Test Case '-[GenieMacTests.PermissionGuideStateTests testDeniedMicrophoneGuidesToSettingsInsteadOfFinishing]' passed (0.001 seconds).
+Test Case '-[GenieMacTests.PermissionGuideStateTests testEverythingGrantedCompletesImmediately]' started.
+Test Case '-[GenieMacTests.PermissionGuideStateTests testEverythingGrantedCompletesImmediately]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.PermissionGuideStateTests testFullHappyPathThroughAllThreePermissions]' started.
+Test Case '-[GenieMacTests.PermissionGuideStateTests testFullHappyPathThroughAllThreePermissions]' passed (0.001 seconds).
+Test Case '-[GenieMacTests.PermissionGuideStateTests testNotDeterminedMicrophoneRefusedFallsBackToSettings]' started.
+Test Case '-[GenieMacTests.PermissionGuideStateTests testNotDeterminedMicrophoneRefusedFallsBackToSettings]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.PermissionGuideStateTests testPlanSkipsGrantedPermissionsAndKeepsOrder]' started.
+Test Case '-[GenieMacTests.PermissionGuideStateTests testPlanSkipsGrantedPermissionsAndKeepsOrder]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.PermissionGuideStateTests testRecheckDoesNothingUnlessGranted]' started.
+Test Case '-[GenieMacTests.PermissionGuideStateTests testRecheckDoesNothingUnlessGranted]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.PermissionGuideStateTests testSettingsNeverAppearingFails]' started.
+Test Case '-[GenieMacTests.PermissionGuideStateTests testSettingsNeverAppearingFails]' passed (0.001 seconds).
+Test Case '-[GenieMacTests.PermissionGuideStateTests testStartIsIgnoredWhileRunning]' started.
+Test Case '-[GenieMacTests.PermissionGuideStateTests testStartIsIgnoredWhileRunning]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.PermissionGuideStateTests testStateKnowsItsPermissionAndWhetherItWaits]' started.
+Test Case '-[GenieMacTests.PermissionGuideStateTests testStateKnowsItsPermissionAndWhetherItWaits]' passed (0.000 seconds).
+Test Suite 'PermissionGuideStateTests' passed at 2026-09-19 18:19:43.944.
+	 Executed 9 tests, with 0 failures (0 unexpected) in 0.003 (0.004) seconds
+Test Suite 'PermissionHelpTests' started at 2026-09-19 18:19:43.944.
+Test Case '-[GenieMacTests.PermissionHelpTests testAnOnLookingSwitchCannotEstablishPermission]' started.
+Test Case '-[GenieMacTests.PermissionHelpTests testAnOnLookingSwitchCannotEstablishPermission]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.PermissionHelpTests testApplicationMenuHasAWiredPermissionGuide]' started.
+Test Case '-[GenieMacTests.PermissionHelpTests testApplicationMenuHasAWiredPermissionGuide]' passed (0.004 seconds).
+Test Case '-[GenieMacTests.PermissionHelpTests testMissingMicrophoneDoesNotSendUserToScreenRecording]' started.
+Test Case '-[GenieMacTests.PermissionHelpTests testMissingMicrophoneDoesNotSendUserToScreenRecording]' passed (0.001 seconds).
+Test Case '-[GenieMacTests.PermissionHelpTests testOnlyExistingAppDirectoriesCanBeOfferedAndPayloadKeepsExactPath]' started.
+Test Case '-[GenieMacTests.PermissionHelpTests testOnlyExistingAppDirectoriesCanBeOfferedAndPayloadKeepsExactPath]' passed (0.002 seconds).
+Test Case '-[GenieMacTests.PermissionHelpTests testPreviousSuccessCallbackCannotAdvanceANewGuide]' started.
+Test Case '-[GenieMacTests.PermissionHelpTests testPreviousSuccessCallbackCannotAdvanceANewGuide]' passed (0.001 seconds).
+Test Case '-[GenieMacTests.PermissionHelpTests testSelectedPermissionDoesNotRequestOtherAccess]' started.
+Test Case '-[GenieMacTests.PermissionHelpTests testSelectedPermissionDoesNotRequestOtherAccess]' passed (0.001 seconds).
+Test Suite 'PermissionHelpTests' passed at 2026-09-19 18:19:43.954.
+	 Executed 6 tests, with 0 failures (0 unexpected) in 0.009 (0.010) seconds
+Test Suite 'RecordingAudioBufferTests' started at 2026-09-19 18:19:43.954.
+Test Case '-[GenieMacTests.RecordingAudioBufferTests testBacklogIsBoundedAndPauseResetDropsOldAudio]' started.
+Test Case '-[GenieMacTests.RecordingAudioBufferTests testBacklogIsBoundedAndPauseResetDropsOldAudio]' passed (0.004 seconds).
+Test Case '-[GenieMacTests.RecordingAudioBufferTests testDifferentCallbackSizesRetainOrder]' started.
+Test Case '-[GenieMacTests.RecordingAudioBufferTests testDifferentCallbackSizesRetainOrder]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.RecordingAudioBufferTests testMissingMicrophoneDoesNotAttenuateVideoAndMixCannotClip]' started.
+Test Case '-[GenieMacTests.RecordingAudioBufferTests testMissingMicrophoneDoesNotAttenuateVideoAndMixCannotClip]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.RecordingAudioBufferTests testTwoInputsProduceOneRecordingTimeline]' started.
+Test Case '-[GenieMacTests.RecordingAudioBufferTests testTwoInputsProduceOneRecordingTimeline]' passed (0.000 seconds).
+Test Suite 'RecordingAudioBufferTests' passed at 2026-09-19 18:19:43.958.
+	 Executed 4 tests, with 0 failures (0 unexpected) in 0.004 (0.004) seconds
+Test Suite 'RecordingUXTests' started at 2026-09-19 18:19:43.958.
+Test Case '-[GenieMacTests.RecordingUXTests testForegroundContextDoesNotReplaceRecordingEntryOrActiveWork]' started.
+Test Case '-[GenieMacTests.RecordingUXTests testForegroundContextDoesNotReplaceRecordingEntryOrActiveWork]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.RecordingUXTests testOnlyActualSharingControlsTriggerHiding]' started.
+Test Case '-[GenieMacTests.RecordingUXTests testOnlyActualSharingControlsTriggerHiding]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.RecordingUXTests testRestoreControlsHasARealMenuAction]' started.
+Test Case '-[GenieMacTests.RecordingUXTests testRestoreControlsHasARealMenuAction]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.RecordingUXTests testShortAnswerStaysInTaskDockAndCanBeDismissed]' started.
+Test Case '-[GenieMacTests.RecordingUXTests testShortAnswerStaysInTaskDockAndCanBeDismissed]' passed (0.000 seconds).
+Test Suite 'RecordingUXTests' passed at 2026-09-19 18:19:43.959.
+	 Executed 4 tests, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'ScreenshotQuestionTests' started at 2026-09-19 18:19:43.959.
+Test Case '-[GenieMacTests.ScreenshotQuestionTests testCapturePreservesActiveDockControlsAndKeepsImageAvailable]' started.
+Test Case '-[GenieMacTests.ScreenshotQuestionTests testCapturePreservesActiveDockControlsAndKeepsImageAvailable]' passed (0.062 seconds).
+Test Case '-[GenieMacTests.ScreenshotQuestionTests testCaptureReplacesOpenQuickActionsWithExplanationOffer]' started.
+Test Case '-[GenieMacTests.ScreenshotQuestionTests testCaptureReplacesOpenQuickActionsWithExplanationOffer]' passed (0.012 seconds).
+Test Case '-[GenieMacTests.ScreenshotQuestionTests testChosenImageAndTextSurviveNewCaptureAndNavigation]' started.
+Test Case '-[GenieMacTests.ScreenshotQuestionTests testChosenImageAndTextSurviveNewCaptureAndNavigation]' passed (0.008 seconds).
+Test Case '-[GenieMacTests.ScreenshotQuestionTests testDismissDoesNotRevealAnOlderOfferOrDeleteUserScreenshot]' started.
+Test Case '-[GenieMacTests.ScreenshotQuestionTests testDismissDoesNotRevealAnOlderOfferOrDeleteUserScreenshot]' passed (0.008 seconds).
+Test Case '-[GenieMacTests.ScreenshotQuestionTests testMissingOrExpiredSelectedImageStopsBeforeAnyRequestIsAccepted]' started.
+Test Case '-[GenieMacTests.ScreenshotQuestionTests testMissingOrExpiredSelectedImageStopsBeforeAnyRequestIsAccepted]' passed (0.009 seconds).
+Test Case '-[GenieMacTests.ScreenshotQuestionTests testNewConversationPreservesOnlySubmittedImageAndItsFile]' started.
+Test Case '-[GenieMacTests.ScreenshotQuestionTests testNewConversationPreservesOnlySubmittedImageAndItsFile]' passed (0.009 seconds).
+Test Suite 'ScreenshotQuestionTests' passed at 2026-09-19 18:19:44.067.
+	 Executed 6 tests, with 0 failures (0 unexpected) in 0.107 (0.108) seconds
+Test Suite 'ScreenshotWatcherTests' started at 2026-09-19 18:19:44.067.
+Test Case '-[GenieMacTests.ScreenshotWatcherTests testBlockedDirectoryReadDoesNotBlockMainThreadOrStop]' started.
+Test Case '-[GenieMacTests.ScreenshotWatcherTests testBlockedDirectoryReadDoesNotBlockMainThreadOrStop]' passed (0.001 seconds).
+Test Suite 'ScreenshotWatcherTests' passed at 2026-09-19 18:19:44.067.
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'SessionFileLockTests' started at 2026-09-19 18:19:44.067.
+Test Case '-[GenieMacTests.SessionFileLockTests testIndependentSessionsSerializeTheirRefreshCriticalSections]' started.
+Test Case '-[GenieMacTests.SessionFileLockTests testIndependentSessionsSerializeTheirRefreshCriticalSections]' passed (0.084 seconds).
+Test Suite 'SessionFileLockTests' passed at 2026-09-19 18:19:44.151.
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.084 (0.084) seconds
+Test Suite 'SystemAudioFormatTests' started at 2026-09-19 18:19:44.152.
+Test Case '-[GenieMacTests.SystemAudioFormatTests testInvalidDescriptionIsRejectedBeforeAllocatingPCMBuffer]' started.
+Test Case '-[GenieMacTests.SystemAudioFormatTests testInvalidDescriptionIsRejectedBeforeAllocatingPCMBuffer]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.SystemAudioFormatTests testScreenAudioPCMFormatIsPreserved]' started.
+Test Case '-[GenieMacTests.SystemAudioFormatTests testScreenAudioPCMFormatIsPreserved]' passed (0.000 seconds).
+Test Suite 'SystemAudioFormatTests' passed at 2026-09-19 18:19:44.152.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'TaskOutcomeTests' started at 2026-09-19 18:19:44.152.
+Test Case '-[GenieMacTests.TaskOutcomeTests testAtomicSaveRollsBackIfResultCannotBeSaved]' started.
+Test Case '-[GenieMacTests.TaskOutcomeTests testAtomicSaveRollsBackIfResultCannotBeSaved]' passed (0.001 seconds).
+Test Case '-[GenieMacTests.TaskOutcomeTests testBackendFailureCancellationAndEmptyOutputAreNeverSuccess]' started.
+Test Case '-[GenieMacTests.TaskOutcomeTests testBackendFailureCancellationAndEmptyOutputAreNeverSuccess]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.TaskOutcomeTests testClarificationIsNotReportedAsACompletedArtifact]' started.
+Test Case '-[GenieMacTests.TaskOutcomeTests testClarificationIsNotReportedAsACompletedArtifact]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.TaskOutcomeTests testEditedDocumentPersistsWithoutChangingOriginalOrIdentity]' started.
+Test Case '-[GenieMacTests.TaskOutcomeTests testEditedDocumentPersistsWithoutChangingOriginalOrIdentity]' passed (0.012 seconds).
+Test Case '-[GenieMacTests.TaskOutcomeTests testLegacyDatabaseMigratesWithoutRemovingHistory]' started.
+Test Case '-[GenieMacTests.TaskOutcomeTests testLegacyDatabaseMigratesWithoutRemovingHistory]' passed (0.001 seconds).
+Test Case '-[GenieMacTests.TaskOutcomeTests testOlderRecordWithoutEditsStillDecodes]' started.
+Test Case '-[GenieMacTests.TaskOutcomeTests testOlderRecordWithoutEditsStillDecodes]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.TaskOutcomeTests testOnlyKnownUnfinishedJobsCanBeRefreshed]' started.
+Test Case '-[GenieMacTests.TaskOutcomeTests testOnlyKnownUnfinishedJobsCanBeRefreshed]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.TaskOutcomeTests testRequestAndResultSurviveRestartAndExportWithoutModel]' started.
+Test Case '-[GenieMacTests.TaskOutcomeTests testRequestAndResultSurviveRestartAndExportWithoutModel]' passed (0.005 seconds).
+Test Suite 'TaskOutcomeTests' passed at 2026-09-19 18:19:44.172.
+	 Executed 8 tests, with 0 failures (0 unexpected) in 0.019 (0.020) seconds
+Test Suite 'VisualEgressProviderTests' started at 2026-09-19 18:19:44.172.
+Test Case '-[GenieMacTests.VisualEgressProviderTests testSelectedCliDeterminesDisclosure]' started.
+Test Case '-[GenieMacTests.VisualEgressProviderTests testSelectedCliDeterminesDisclosure]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.VisualEgressProviderTests testUnconfiguredProviderKeepsSendConditionInCompactProvenance]' started.
+Test Case '-[GenieMacTests.VisualEgressProviderTests testUnconfiguredProviderKeepsSendConditionInCompactProvenance]' passed (0.000 seconds).
+Test Suite 'VisualEgressProviderTests' passed at 2026-09-19 18:19:44.173.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
+Test Suite 'WorkspaceUXTests' started at 2026-09-19 18:19:44.173.
+Test Case '-[GenieMacTests.WorkspaceUXTests testDraftSurvivesNavigationAndTaskDetailsClose]' started.
+Test Case '-[GenieMacTests.WorkspaceUXTests testDraftSurvivesNavigationAndTaskDetailsClose]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.WorkspaceUXTests testEmptyAndUnavailableRequestsAreNotAccepted]' started.
+Test Case '-[GenieMacTests.WorkspaceUXTests testEmptyAndUnavailableRequestsAreNotAccepted]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.WorkspaceUXTests testLegacyTaskRowsRemainReadable]' started.
+Test Case '-[GenieMacTests.WorkspaceUXTests testLegacyTaskRowsRemainReadable]' passed (0.001 seconds).
+Test Case '-[GenieMacTests.WorkspaceUXTests testSearchCombinesStateAndDetailsWithoutExecutingWork]' started.
+Test Case '-[GenieMacTests.WorkspaceUXTests testSearchCombinesStateAndDetailsWithoutExecutingWork]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.WorkspaceUXTests testStoredDetailsSurviveRestartAndSpecialCharacters]' started.
+Test Case '-[GenieMacTests.WorkspaceUXTests testStoredDetailsSurviveRestartAndSpecialCharacters]' passed (0.005 seconds).
+Test Suite 'WorkspaceUXTests' passed at 2026-09-19 18:19:44.179.
+	 Executed 5 tests, with 0 failures (0 unexpected) in 0.006 (0.006) seconds
+Test Suite 'genie-macosPackageTests.xctest' passed at 2026-09-19 18:19:44.179.
+	 Executed 160 tests, with 0 failures (0 unexpected) in 0.881 (0.892) seconds
+Test Suite 'All tests' passed at 2026-09-19 18:19:44.179.
+	 Executed 160 tests, with 0 failures (0 unexpected) in 0.881 (0.894) seconds
+◇ Test run started.
+↳ Testing Library Version: 1902
+↳ Target Platform: arm64e-apple-macos14.0
+✔ Test run with 0 tests in 0 suites passed after 0.001 seconds.

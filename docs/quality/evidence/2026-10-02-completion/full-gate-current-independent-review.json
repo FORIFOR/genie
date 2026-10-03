@@ -1,0 +1,342 @@
+{
+  "recordedAt": "2026-10-01T20:05:54.336231+00:00",
+  "reviewer": "/root/verification_audit",
+  "method": "Independent read-only source and saved execution evidence review. No reviewer tests/build/native/GUI/model/VM or OS permission actions. Evidence files only written.",
+  "baseCommit": "ee857a5b13482cbd2d986a1f9b466c8e49a149c3",
+  "branch": "feat/genie-stage0-5",
+  "status": "BLOCKED",
+  "fullGate": {
+    "command": "scripts/verify-all.sh (root-owned invocation; isolated synthetic gateway identity/data and disposable PostgreSQL)",
+    "startedAt": "2026-10-01T19:55:44.604890+00:00",
+    "finishedAt": "2026-10-01T20:00:22.909821+00:00",
+    "exitCode": 1,
+    "result": "FAIL",
+    "failures": [
+      {
+        "scope": "macOS recording + live E2E",
+        "observation": "aiaction returned 401 auth.expired_token; suite stopped before later recording checks",
+        "attribution": "Root reports expired preparation token for isolated synthetic identity; log confirms expiration, no credential read by reviewer"
+      },
+      {
+        "scope": "journeys JA/JB/JC",
+        "observation": "JA false, two errors from visible windows 2 to 3; JB and JC true. Surface motion reported undeclared FloatingPanel 312x189 and FAIL",
+        "attribution": "Source-level diagnosis: JA and motion invoke beginDictation; absent app AX permission calls PermissionGuideCoordinator.explain, creates AvatarOverlay FloatingPanel and returns before listening. Consistent with original bundle permission evidence and logs; reviewer did not observe live card. Not a startup coachmark."
+      }
+    ],
+    "omissionsReported": [
+      "Tauri Rust: 3 ignored cases (67 passed)",
+      "T2-notes-to-workspace: NOT_MEASURED pacing at 47 effective fps",
+      "runtime STT no fallback: NOT_MEASURED"
+    ],
+    "focusedPasses": {
+      "swiftUnit": 291,
+      "swiftIsolatedShutdown": 1,
+      "swiftExternalTranslation": 1,
+      "swiftFailures": 0,
+      "AppKitTermination": 4,
+      "computerHostContracts": 118,
+      "managedLauncher": 38,
+      "foundationText": 11,
+      "foundationScroll": 14,
+      "foundationWebLink": 19
+    },
+    "uiTaste": "PASS actual 10 long copy strings minus 4 content-bound reviews equals unchanged threshold 6",
+    "recordingExperience": "PASS synthetic persisted recording -> kill -> interrupted -> resume ready -> same identity after restart; not a live microphone claim",
+    "localModelOptIn": false,
+    "externalTranslationOptIn": true,
+    "doesNotEstablish": "No whole-product pass, no permission changes, no live merchant/broker success, no human parallel IME or sustained Noa stability"
+  },
+  "targetedRecordingAfterTokenRefresh": {
+    "finishedAt": "2026-10-01T20:02:35.555598+00:00",
+    "exitCode": 1,
+    "status": "FAIL",
+    "passedWithinScope": [
+      "aiaction",
+      "recovery",
+      "connectorflow",
+      "connectorstate",
+      "connectorexchange (mock token endpoint)",
+      "voiceask",
+      "aistop",
+      "recoveryoffline"
+    ],
+    "omitted": [
+      "local translation model NOT_RUN (explicit opt-in absent)",
+      "micrelease SKIP (app mic not granted)",
+      "fulllifecycle SKIP (app mic not granted)",
+      "e2e001 SKIP (app mic not granted)"
+    ],
+    "failure": "light golden: 3 HUD dimensions differ; 7 other surfaces differ 1.05 to 4.86 percent. No new macOS 27 baseline adopted. Dark/remaining stages not reached by this invocation.",
+    "interpretation": "The token failure no longer reproduces with refreshed synthetic token. This targeted rerun remains failed and never replaces the failed full gate."
+  },
+  "externalScreenAndCLI": {
+    "status": "PASS within source/log review scope",
+    "finding": "No additional P1/P2 found. Conversation opt-in never alone enables screen egress; exact provider/model scope persists, invalidates on switch and can be revoked. Authenticated loopback status probes the same fixed realpath passed to host, bounds time/output and whitelists typed fields. CLI executes no HTTP-returned path and requires matching project/model, production consent and background readiness.",
+    "loggedTests": {
+      "launcher": 38,
+      "CLI": 9,
+      "computerHostIncludingCLI": 118,
+      "Python": 52
+    },
+    "countsNotAdded": "These scopes overlap and are not a unique release total."
+  },
+  "safariProductionAttempt": {
+    "status": "BLOCKED",
+    "readyPreconditions": true,
+    "model": "gpt-6-sol",
+    "provider": "codex",
+    "unattendedTest": false,
+    "nativeInput": 0,
+    "modelCalls": 0,
+    "outcome": "Normal picker did not list Safari; cancelled with user_cancelled and empty audit; task FAILED.",
+    "doesNotEstablish": [
+      "model image navigation success",
+      "Safari input compatibility",
+      "order submission",
+      "cause of missing Safari window"
+    ]
+  },
+  "openReleaseRequirements": [
+    "golden/geometry and JA/motion requirements not satisfied",
+    "original app microphone and AX dependent paths untested or blocked; raw command permission status does not establish LaunchServices bundle access",
+    "local-model semantic fixture and other reported omissions remain unperformed",
+    "actual Safari/model navigation blocked",
+    "real merchant/broker adapters and human parallel input/IME not completed",
+    "Noa warning cause and long-duration stability unresolved",
+    "working tree not committed/pushed; no GitHub publication attested"
+  ],
+  "artifactHashes": {
+    "verify-all-current-exit.json": "0ca4f82bd61252308a5356df8fb2fd18eac6ea7ad2301946442cd8560d3ddd7b",
+    "verify-all-current.log": "3c041ac275ce0dcd1515b857bed2b9d3c85cbf9ffc3d4952fa0cb5e097c52c7f",
+    "full-gate-preparation.json": "81dabb40d2e30891674bfdc7f0fe2360376eb94bb1fcab219a68d1b1b086c63e",
+    "macos-recording-refreshed-token-exit.json": "63314c3ee59fd9ac7806416380df08d40a8319a31741f9cb78c02df65310e7f7",
+    "macos-recording-refreshed-token.log": "7f2b734448eb0ba1a83afda52f23d5f6b9a22a0eb06fd5ace0ff55f9e6c4a96f",
+    "macos-geometry-fix-release.json": "040dea5625d8c9076ea894a21e5943891334f4b7f712fafc98d7f633bcc45855",
+    "macos-original-permissions/stdout.log": "568c0e83ef5a2a2a6f7ff12ffc4d0ecca9c80ea492397ba142b79ebcaabfa11a",
+    "external-screen-launcher.json": "4cf1fd792b3af71c76b1c1bcd7bdc8c718e4213dd6f7b3dfa6f4100ed911ec24",
+    "external-screen-launcher-tests.log": "8ab2fd2f5ea5de5ffc6f742e73bfdb22f3901b6bb35c2f4a8b5cf180d3cfb242",
+    "EXTERNAL_SCREEN.md": "4772e8701dc87ac7a100c6c253cbd2f4a19a3c8fdb74d69aa077db0ea2479afc",
+    "computer-cli-readiness-current.log": "aa2b10d7567b0b94eb0c13094a53a1e46f46161b168a941be7c92b0423caee52",
+    "computer-host-gate-final.log": "5451981e7da4b22bcdd475d9f169ccd18624206bee3d690eff28b0fede0dfae8",
+    "python-regression-final.log": "e17d3c587d94e9aea44db5f0450ecf70611d3f303c4c643372e67cff1eaa3526",
+    "safari-public-verification.json": "15186f0e44171d78fa450bd27740b2cabcd417eb3d4b3827a409fbf2434f0821",
+    "safari-runtime-readiness.json": "4b8cec8b130f92b6fde3904df915e37154708bf7d5c5bd1814cff705bca301cf",
+    "safari-task-status.json": "4c7c7ff3c7041f4c0d15ad7996e6fb37dc0b2aba51980fe753fe16c21d28f9fb",
+    "safari-run-stop.json": "847a9c144b6f3a016a269663b7a6ed191dd294e86dd1873571a4b5140a167fcd",
+    "COMPLETION_STATUS.json": "f5881a2643e5624cc83b99a7ac03919ce3342a801a21d99a96f7a36a58833cbc",
+    "safari-service-start-snapshot.log": "f47deb7114f0e72aeb9ef0697ed3b98e56d7a4f93c5dce3b9453f12e1d9a5dd4",
+    "safari-service-start.log": "23db95fbef547939488d94ca288176300c4553f14225c03a0a121b4c94db79d8"
+  },
+  "sourceHashes": {
+    "scripts/verify-all.sh": "9e3dd37da4ee9769cdce154bfc5aeda084e4db31bb5aad1d1040c4a89ae3104f",
+    "scripts/verify-swift-tests.sh": "c1126e09bccf50e00a6b7b08e72d5bd627fdc24116c00825fa95a96617606625",
+    "scripts/verify-macos-recording.sh": "ef8342828d9221fe524383eaab58972bdbdd64cbf61e0adc1fb4078084955be6",
+    "scripts/start-local-preview.mjs": "5a12e7f903d48cf377a9804e7d21aae9ade3076f9b12e24f1319176871869924",
+    "scripts/local-preview/config.mjs": "15b9d16e914403cce9bead40e78c363af0f3c12c3798921ce878fd9130aa6255",
+    "scripts/computer-use.mjs": "a3cbf1419b9d19286df3970e902817d3bc2e8ed45e6d81f508824bdf585e6395",
+    "apps/genie-macos/Sources/GenieMac/App/GenieAppDelegate.swift": "bf1c0eacaa29c57a2c1fdfb073f05c14bc4848c8957ed306fda3fc195765ac03",
+    "apps/genie-macos/Sources/GenieMac/App/SelfTest.swift": "578a56beb54e54cc6fdbd65856683c5ef62f0691dce0ae34248cc4f76e9ecc3a",
+    "apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift": "479045ed1fb8926588f98f8934bcdd1b6e6cba39f2c470c36e7f21f01c366bfd",
+    "apps/genie-macos/Sources/GenieMac/GuidedSetup/PermissionGuideCoordinator.swift": "aa35f2ac89af8dde348c1484723fd55ac9ac951dbe74669b66662d4ae98ad7da",
+    "apps/genie-macos/Sources/GenieMac/GuidedSetup/Overlay/GuideOverlayStack.swift": "0cbf5c6b3e9a6707bd2b8795fa1f0298d6eb13891b0e8b4edefd1815b4f0c879",
+    "apps/genie-macos/Sources/GenieMac/GuidedSetup/Overlay/AvatarOverlayController.swift": "5a4cf1f100f0860e06ef8bb8920f0b564742362668e064f25ae4ab7fd071e82a"
+  },
+  "manifestComparisons": [
+    {
+      "manifest": "external-screen-launcher.json",
+      "path": "scripts/local-preview/config.mjs",
+      "matches": true,
+      "actualSha256": "15b9d16e914403cce9bead40e78c363af0f3c12c3798921ce878fd9130aa6255"
+    },
+    {
+      "manifest": "external-screen-launcher.json",
+      "path": "scripts/start-local-preview.mjs",
+      "matches": true,
+      "actualSha256": "5a12e7f903d48cf377a9804e7d21aae9ade3076f9b12e24f1319176871869924"
+    },
+    {
+      "manifest": "external-screen-launcher.json",
+      "path": "scripts/tests/managed-local-preview.test.mjs",
+      "matches": true,
+      "actualSha256": "d7fed2b15a305710e5bfc422da4ea48304b54d70822a8bbecff51f46aaa9a4c8"
+    },
+    {
+      "manifest": "external-screen-launcher.json",
+      "path": "docs/COMPUTER_VISION.md",
+      "matches": true,
+      "actualSha256": "0d98f4a2b80d2468d6f78835b53f574b1eb444d50e429aa649a8b87a1c62e8e2"
+    },
+    {
+      "manifest": "safari-public-verification.json",
+      "path": "scripts/computer-use.mjs",
+      "matches": true,
+      "actualSha256": "a3cbf1419b9d19286df3970e902817d3bc2e8ed45e6d81f508824bdf585e6395"
+    },
+    {
+      "manifest": "safari-public-verification.json",
+      "path": "scripts/start-local-preview.mjs",
+      "matches": true,
+      "actualSha256": "5a12e7f903d48cf377a9804e7d21aae9ade3076f9b12e24f1319176871869924"
+    },
+    {
+      "manifest": "safari-public-verification.json",
+      "path": "scripts/local-preview/config.mjs",
+      "matches": true,
+      "actualSha256": "15b9d16e914403cce9bead40e78c363af0f3c12c3798921ce878fd9130aa6255"
+    },
+    {
+      "manifest": "safari-public-verification.json",
+      "path": "safari-runtime-readiness.json",
+      "matches": true,
+      "actualSha256": "4b8cec8b130f92b6fde3904df915e37154708bf7d5c5bd1814cff705bca301cf"
+    },
+    {
+      "manifest": "safari-public-verification.json",
+      "path": "safari-task-start.json",
+      "matches": true,
+      "actualSha256": "a61af4762bcf840b90da5f6b2ffc1dc63b69ad6fe7d1df2166b880f316801b07"
+    },
+    {
+      "manifest": "safari-public-verification.json",
+      "path": "safari-task-approve.json",
+      "matches": true,
+      "actualSha256": "4f3281f53d307147e7607eb7c207e6f383d1b17e322c33a6c510478d6174e937"
+    },
+    {
+      "manifest": "safari-public-verification.json",
+      "path": "safari-task-status.json",
+      "matches": true,
+      "actualSha256": "4c7c7ff3c7041f4c0d15ad7996e6fb37dc0b2aba51980fe753fe16c21d28f9fb"
+    },
+    {
+      "manifest": "safari-public-verification.json",
+      "path": "safari-run-stop.json",
+      "matches": true,
+      "actualSha256": "847a9c144b6f3a016a269663b7a6ed191dd294e86dd1873571a4b5140a167fcd"
+    },
+    {
+      "manifest": "safari-public-verification.json",
+      "path": "safari-service-start-snapshot.log",
+      "matches": true,
+      "actualSha256": "f47deb7114f0e72aeb9ef0697ed3b98e56d7a4f93c5dce3b9453f12e1d9a5dd4"
+    },
+    {
+      "manifest": "safari-public-verification.json",
+      "path": "safari-service-start.log",
+      "matches": true,
+      "actualSha256": "23db95fbef547939488d94ca288176300c4553f14225c03a0a121b4c94db79d8"
+    },
+    {
+      "manifest": "macos-geometry-fix-release.json",
+      "path": "apps/genie-macos/Sources/GenieMac/App/SelfTest.swift",
+      "matches": true,
+      "actualSha256": "578a56beb54e54cc6fdbd65856683c5ef62f0691dce0ae34248cc4f76e9ecc3a"
+    },
+    {
+      "manifest": "macos-geometry-fix-release.json",
+      "path": "apps/genie-macos/Sources/GenieMac/App/UIGeometry.swift",
+      "matches": true,
+      "actualSha256": "b3bfc20eadf3aace76f76d1cf95f01132f5b162ead06ac07466416323ffa24e2"
+    },
+    {
+      "manifest": "macos-geometry-fix-release.json",
+      "path": "apps/genie-macos/Tests/GenieMacTests/UIGeometryRecordingTests.swift",
+      "matches": true,
+      "actualSha256": "e121f84006d8dfa96b4292475c1eda3b2dd23be3855ad184960f02bdec03d2cf"
+    },
+    {
+      "manifest": "macos-geometry-fix-release.json",
+      "path": "apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDView.swift",
+      "matches": true,
+      "actualSha256": "c0f4bb75e1e943f99bbbd87bc4a9d6c4264e574aabcd9a61d0efd897d77c156e"
+    },
+    {
+      "manifest": "macos-geometry-fix-release.json",
+      "path": "apps/genie-macos/Sources/GenieMac/App/TerminationDispatch.swift",
+      "matches": true,
+      "actualSha256": "04dd23a83bfe172f726f34380c6d58d813bbda71455fc95c2b55485357050497"
+    },
+    {
+      "manifest": "macos-geometry-fix-release.json",
+      "path": "apps/genie-macos/Sources/GenieMac/App/GenieAppDelegate.swift",
+      "matches": true,
+      "actualSha256": "bf1c0eacaa29c57a2c1fdfb073f05c14bc4848c8957ed306fda3fc195765ac03"
+    },
+    {
+      "manifest": "macos-geometry-fix-release.json",
+      "path": "apps/genie-macos/.build/Genie.app/Contents/MacOS/GenieMac",
+      "matches": true,
+      "actualSha256": "bd494b0e664da5abd15938b1573d15ac64563dd32ec9de5763d6297ed071a6c7"
+    },
+    {
+      "manifest": "COMPLETION_STATUS.json",
+      "path": "verify-all-current.log",
+      "matches": true,
+      "actualSha256": "3c041ac275ce0dcd1515b857bed2b9d3c85cbf9ffc3d4952fa0cb5e097c52c7f"
+    },
+    {
+      "manifest": "COMPLETION_STATUS.json",
+      "path": "verify-all-current-exit.json",
+      "matches": true,
+      "actualSha256": "0ca4f82bd61252308a5356df8fb2fd18eac6ea7ad2301946442cd8560d3ddd7b"
+    },
+    {
+      "manifest": "COMPLETION_STATUS.json",
+      "path": "macos-recording-refreshed-token.log",
+      "matches": true,
+      "actualSha256": "7f2b734448eb0ba1a83afda52f23d5f6b9a22a0eb06fd5ace0ff55f9e6c4a96f"
+    },
+    {
+      "manifest": "COMPLETION_STATUS.json",
+      "path": "macos-recording-refreshed-token-exit.json",
+      "matches": true,
+      "actualSha256": "63314c3ee59fd9ac7806416380df08d40a8319a31741f9cb78c02df65310e7f7"
+    },
+    {
+      "manifest": "COMPLETION_STATUS.json",
+      "path": "computer-host-gate-final.log",
+      "matches": true,
+      "actualSha256": "5451981e7da4b22bcdd475d9f169ccd18624206bee3d690eff28b0fede0dfae8"
+    },
+    {
+      "manifest": "COMPLETION_STATUS.json",
+      "path": "python-regression-final.log",
+      "matches": true,
+      "actualSha256": "e17d3c587d94e9aea44db5f0450ecf70611d3f303c4c643372e67cff1eaa3526"
+    },
+    {
+      "manifest": "COMPLETION_STATUS.json",
+      "path": "safari-public-verification.json",
+      "matches": true,
+      "actualSha256": "15186f0e44171d78fa450bd27740b2cabcd417eb3d4b3827a409fbf2434f0821"
+    },
+    {
+      "manifest": "full-gate-preparation.json",
+      "path": "/private/tmp/genie-transactions-20261002/run-full-gate.py",
+      "matches": true,
+      "actualSha256": "4f297076c5bf9c811f44513281761da09447258ec669c133965b7fef3e2bcf45",
+      "note": "Private Python invocation wrapper; not the shell gate script. No wrapper contents copied."
+    }
+  ],
+  "journeyResult": {
+    "path": "docs/ux-benchmark/astra/JA/result.json",
+    "sha256": "41415ef5b8956b880c3b2f9b10bda49db194badb55996c3af21ef57a2a6ffd38"
+  },
+  "provenanceClarifications": [
+    "Initial reviewer comparison incorrectly treated preparation runnerSha256 as verify-all.sh; corrected before finalizing this review. It is the exact private Python invocation wrapper hash and matches. verify-all.sh mtime precedes the recorded run; root reports no changes during or after it.",
+    "Safari log was still live: its initial nine-line prefix matches the manifest exactly, and two later normal cleanup lines account for the full-file hash change. No outcome or source mismatch was found.",
+    "Final manifest now names runnerPath and separately binds the immutable Safari startup snapshot plus complete cleanup log; all final comparisons rechecked after those documentary updates."
+  ],
+  "finalEvidenceReviewedAt": "2026-10-01T20:08:26.791115+00:00",
+  "allFinalManifestHashesMatch": true,
+  "cleanupEvidence": {
+    "source": "COMPLETION_STATUS.json",
+    "method": "root execution record reviewed; reviewer did not operate or re-probe processes",
+    "managedSupervisor": "stopped exit 0",
+    "ownedTestProcessesRemaining": 0,
+    "disposableDatabase": "removed after exact container ID verification",
+    "ownedVM": "stopped exit 0",
+    "memoryPressureLevelAfterCleanup": 1,
+    "limit": "Point-in-time observation; not sustained Noa coexistence or causal attribution."
+  }
+}

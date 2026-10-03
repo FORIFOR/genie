@@ -1,0 +1,32 @@
+{
+  "startedAt": "2026-10-01T20:45:32.775846+00:00",
+  "finishedAt": "2026-10-01T20:45:53.092439+00:00",
+  "command": [
+    "/usr/bin/open",
+    "-n",
+    "-W",
+    "--env",
+    "ASTRA_DATA_ROOT=/private/tmp/genie-transactions-20261002/installed-macos27/light/data",
+    "--env",
+    "ASTRA_SELFTEST_EXIT_RECEIPT=/private/tmp/genie-transactions-20261002/installed-macos27/light/exit.json",
+    "--stdout",
+    "/private/tmp/genie-transactions-20261002/installed-macos27/light/stdout.log",
+    "--stderr",
+    "/private/tmp/genie-transactions-20261002/installed-macos27/light/stderr.log",
+    "/Applications/Genie.app",
+    "--args",
+    "-astra.transcription.cloudGoogleSTT",
+    "NO",
+    "--selftest",
+    "shots",
+    "/private/tmp/genie-transactions-20261002/installed-macos27/light/images"
+  ],
+  "openExitCode": 0,
+  "receipt": {
+    "normalExit": true,
+    "schema": 1,
+    "exitCode": 0
+  },
+  "binarySHA256": "2880bc06f89e4a468d8c9c2981fc2916b87265ee0868cedce86fe1348fa3d74e",
+  "remainingNamedAppPids": []
+}

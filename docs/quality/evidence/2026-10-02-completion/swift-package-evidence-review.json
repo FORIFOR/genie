@@ -1,0 +1,33 @@
+{
+  "reviewedAt": "2026-10-01T18:43:10.349362+00:00",
+  "reviewer": "verification_audit",
+  "method": "Read saved execution summaries/log/manifest and current source; no process/test/app launched",
+  "result": "PASS within Swift 284+1+1 and release/sign/headless-launch scopes only",
+  "scopeLimits": [
+    "Not an independent rerun",
+    "Successful XCTest wrapper logs retain summaries, not all per-test event output",
+    "Actual signed app Quit/SIGTERM E2E not performed",
+    "Whole-product gate incomplete",
+    "Notarization and older macOS compatibility not established"
+  ],
+  "reportedExitCodes": {
+    "swiftSuite": 0,
+    "releasePackage": 0
+  },
+  "exitCodeSources": {
+    "swiftSuite": "COMPLETION_WORK.md, root execution report; SWIFT_TESTS_OK in saved output",
+    "releasePackage": "macos-release.json plus successful packaging/signature/launch log"
+  },
+  "sha256": {
+    "swift-suite.log": "74e488cc5000ba5c8bdc1bff9c3d467e76e06661918d4da35aadc7a31599d9ff",
+    "swift-suite-initial-filter-fail.log": "f8382a205c9aea46ea4ee2e0f6d894d54167c7d3e6850068444c01194656b1c1",
+    "macos-release-package.log": "20774727865d6aa3e1dde9d8c56918d81ad507e862446dd8cd5a481a8f230375",
+    "macos-release.json": "bb1f9c4abc1eba29ef005efec2559204e800fc80a92415d09fd3c44644d94f37"
+  },
+  "currentManifestHashMatch": {
+    "apps/genie-macos/.build/Genie.app/Contents/MacOS/GenieMac": true,
+    "apps/genie-macos/Sources/GenieMac/App/GenieAppDelegate.swift": true,
+    "apps/genie-macos/Sources/GenieMac/App/TerminationDispatch.swift": true,
+    "docs/quality/evidence/2026-10-02-completion/macos-release-package.log": true
+  }
+}

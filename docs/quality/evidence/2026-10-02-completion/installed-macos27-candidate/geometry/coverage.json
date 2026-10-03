@@ -1,0 +1,513 @@
+{
+  "status": "PASS",
+  "scope": "Six synthetic real-view states measured by existing system AX snapshot; explicit named control/text boxes required. System/menu identifiers do not count toward these required checks. Raw snapshots retained unchanged. No baseline acceptance.",
+  "states": {
+    "01-idle": {
+      "totalKeys": 66,
+      "requiredKeys": [
+        "voiceHUD",
+        "dockIdle",
+        "dockOpenActions",
+        "dockStartRecording"
+      ],
+      "requiredPresent": 4,
+      "missing": [],
+      "zeroOrNegativeArea": [],
+      "windows": {
+        "window:GeniePanel<VoiceTaskDockView>": {
+          "h": 76,
+          "w": 220,
+          "x": 0,
+          "y": 0
+        },
+        "window:GeniePanel<VoiceTaskDockView>:topOffset": {
+          "h": 0,
+          "w": 0,
+          "x": 0,
+          "y": 0
+        }
+      },
+      "textKeys": [],
+      "requiredBoxes": {
+        "voiceHUD": {
+          "h": 76.5,
+          "w": 220.5,
+          "x": -0.5,
+          "y": -0.5
+        },
+        "dockIdle": {
+          "h": 44,
+          "w": 180,
+          "x": 20,
+          "y": 32
+        },
+        "dockOpenActions": {
+          "h": 44,
+          "w": 66,
+          "x": 20,
+          "y": 32
+        },
+        "dockStartRecording": {
+          "h": 32,
+          "w": 48,
+          "x": 152,
+          "y": 38
+        }
+      }
+    },
+    "02-listening": {
+      "totalKeys": 68,
+      "requiredKeys": [
+        "voiceHUD",
+        "dockListening",
+        "dockListeningInputField",
+        "dockSubmitInput",
+        "dockToggleMute",
+        "text:esc"
+      ],
+      "requiredPresent": 6,
+      "missing": [],
+      "zeroOrNegativeArea": [],
+      "windows": {
+        "window:GeniePanel<VoiceTaskDockView>": {
+          "h": 100,
+          "w": 600,
+          "x": 0,
+          "y": 0
+        },
+        "window:GeniePanel<VoiceTaskDockView>:topOffset": {
+          "h": 0,
+          "w": 0,
+          "x": 0,
+          "y": 0
+        }
+      },
+      "textKeys": [
+        "text:esc"
+      ],
+      "requiredBoxes": {
+        "voiceHUD": {
+          "h": 100.5,
+          "w": 600.5,
+          "x": -0.5,
+          "y": -0.5
+        },
+        "dockListening": {
+          "h": 36,
+          "w": 560.5,
+          "x": 20,
+          "y": 48
+        },
+        "dockListeningInputField": {
+          "h": 21,
+          "w": 426.5,
+          "x": 59,
+          "y": 55.5
+        },
+        "dockSubmitInput": {
+          "h": 16,
+          "w": 16,
+          "x": 528.5,
+          "y": 58
+        },
+        "dockToggleMute": {
+          "h": 14,
+          "w": 10,
+          "x": 501.5,
+          "y": 59
+        },
+        "text:esc": {
+          "h": 9,
+          "w": 13.5,
+          "x": 560.5,
+          "y": 61.5
+        }
+      }
+    },
+    "03-task-dock": {
+      "totalKeys": 75,
+      "requiredKeys": [
+        "voiceHUD",
+        "dockAgent",
+        "stopAgent",
+        "openWorkspace",
+        "step-calendar",
+        "step-gmail",
+        "step-notion",
+        "text:週次ブリーフィングを作る"
+      ],
+      "requiredPresent": 8,
+      "missing": [],
+      "zeroOrNegativeArea": [],
+      "windows": {
+        "window:GeniePanel<VoiceTaskDockView>": {
+          "h": 294,
+          "w": 720,
+          "x": 0,
+          "y": 0
+        },
+        "window:GeniePanel<VoiceTaskDockView>:topOffset": {
+          "h": 0,
+          "w": 0,
+          "x": 0,
+          "y": 0
+        }
+      },
+      "textKeys": [
+        "text:Calendar",
+        "text:Genie",
+        "text:Gmail",
+        "text:Notion",
+        "text:作業中",
+        "text:週次ブリーフィングを作る"
+      ],
+      "requiredBoxes": {
+        "voiceHUD": {
+          "h": 294.5,
+          "w": 720.5,
+          "x": -0.5,
+          "y": -0.5
+        },
+        "dockAgent": {
+          "h": 230,
+          "w": 680,
+          "x": 20,
+          "y": 48
+        },
+        "stopAgent": {
+          "h": 28,
+          "w": 85.5,
+          "x": 20,
+          "y": 250
+        },
+        "openWorkspace": {
+          "h": 28,
+          "w": 131.5,
+          "x": 568.5,
+          "y": 250
+        },
+        "step-calendar": {
+          "h": 9.5,
+          "w": 10,
+          "x": 21.5,
+          "y": 131.5
+        },
+        "step-gmail": {
+          "h": 11.5,
+          "w": 11.5,
+          "x": 21,
+          "y": 166.5
+        },
+        "step-notion": {
+          "h": 11.5,
+          "w": 11.5,
+          "x": 21,
+          "y": 202.5
+        },
+        "text:週次ブリーフィングを作る": {
+          "h": 24,
+          "w": 222,
+          "x": 20,
+          "y": 82
+        }
+      }
+    },
+    "04-meeting": {
+      "totalKeys": 70,
+      "requiredKeys": [
+        "voiceHUD",
+        "meetingPanel-notes",
+        "meetingPanel-captions",
+        "meetingPanel-ask",
+        "stopRecording",
+        "pauseRecording",
+        "secretToggle",
+        "text:Google Meet"
+      ],
+      "requiredPresent": 8,
+      "missing": [],
+      "zeroOrNegativeArea": [],
+      "windows": {
+        "window:GeniePanel<VoiceTaskDockView>": {
+          "h": 108,
+          "w": 820,
+          "x": 0,
+          "y": 0
+        },
+        "window:GeniePanel<VoiceTaskDockView>:topOffset": {
+          "h": 0,
+          "w": 0,
+          "x": 0,
+          "y": 0
+        }
+      },
+      "textKeys": [
+        "text:Google Meet"
+      ],
+      "requiredBoxes": {
+        "voiceHUD": {
+          "h": 108.5,
+          "w": 820.5,
+          "x": -0.5,
+          "y": -0.5
+        },
+        "meetingPanel-notes": {
+          "h": 30,
+          "w": 67,
+          "x": 388,
+          "y": 55
+        },
+        "meetingPanel-captions": {
+          "h": 30,
+          "w": 68.5,
+          "x": 467,
+          "y": 55
+        },
+        "meetingPanel-ask": {
+          "h": 30,
+          "w": 110.5,
+          "x": 547.5,
+          "y": 55
+        },
+        "stopRecording": {
+          "h": 25,
+          "w": 25,
+          "x": 775,
+          "y": 57.5
+        },
+        "pauseRecording": {
+          "h": 30,
+          "w": 32,
+          "x": 731,
+          "y": 55
+        },
+        "secretToggle": {
+          "h": 30,
+          "w": 32,
+          "x": 687,
+          "y": 55
+        },
+        "text:Google Meet": {
+          "h": 19,
+          "w": 96,
+          "x": 41,
+          "y": 52
+        }
+      }
+    },
+    "05-meeting-notes": {
+      "totalKeys": 82,
+      "requiredKeys": [
+        "voiceHUD",
+        "meetingPanelBody",
+        "detachMeeting",
+        "text:ライブメモ",
+        "text:決まったこと",
+        "text:やること",
+        "text:質問",
+        "text:懸念"
+      ],
+      "requiredPresent": 8,
+      "missing": [],
+      "zeroOrNegativeArea": [],
+      "windows": {
+        "window:GeniePanel<VoiceTaskDockView>": {
+          "h": 389,
+          "w": 820,
+          "x": 0,
+          "y": 0
+        },
+        "window:GeniePanel<VoiceTaskDockView>:topOffset": {
+          "h": 0,
+          "w": 0,
+          "x": 0,
+          "y": 0
+        }
+      },
+      "textKeys": [
+        "text:Google Meet",
+        "text:•",
+        "text:やること",
+        "text:ライブメモ",
+        "text:初期費用が心配です",
+        "text:導入時期は 10 月で行きます",
+        "text:懸念",
+        "text:決まったこと",
+        "text:見積は明日までにお願いします",
+        "text:誰が対応しますか？",
+        "text:質問"
+      ],
+      "requiredBoxes": {
+        "voiceHUD": {
+          "h": 389.5,
+          "w": 820.5,
+          "x": -0.5,
+          "y": -0.5
+        },
+        "meetingPanelBody": {
+          "h": 238,
+          "w": 780,
+          "x": 20,
+          "y": 125
+        },
+        "detachMeeting": {
+          "h": 26,
+          "w": 100.5,
+          "x": 699.5,
+          "y": 125
+        },
+        "text:ライブメモ": {
+          "h": 14,
+          "w": 53,
+          "x": 20,
+          "y": 131
+        },
+        "text:決まったこと": {
+          "h": 16,
+          "w": 72.5,
+          "x": 20,
+          "y": 161
+        },
+        "text:やること": {
+          "h": 16,
+          "w": 48.5,
+          "x": 20,
+          "y": 269
+        },
+        "text:質問": {
+          "h": 16,
+          "w": 24.5,
+          "x": 20,
+          "y": 323
+        },
+        "text:懸念": {
+          "h": 16,
+          "w": 24.5,
+          "x": 20,
+          "y": 215
+        }
+      }
+    },
+    "06-workspace": {
+      "totalKeys": 100,
+      "requiredKeys": [
+        "recordingWorkspace",
+        "tool-transcript",
+        "tool-translation",
+        "notes-決まったこと",
+        "notes-やること",
+        "notes-質問",
+        "notes-懸念",
+        "text:録音中",
+        "text:それでは 9 月 12 日に出しましょう。"
+      ],
+      "requiredPresent": 9,
+      "missing": [],
+      "zeroOrNegativeArea": [],
+      "windows": {
+        "window:GeniePanel<RecordingWorkspaceView>": {
+          "h": 680,
+          "w": 1080,
+          "x": 0,
+          "y": 0
+        },
+        "window:GeniePanel<RecordingWorkspaceView>:centerOffset": {
+          "h": 0,
+          "w": 0,
+          "x": 0,
+          "y": -0.5
+        },
+        "window:GeniePanel<VoiceTaskDockView>": {
+          "h": 389,
+          "w": 820,
+          "x": 0,
+          "y": 0
+        },
+        "window:GeniePanel<VoiceTaskDockView>:topOffset": {
+          "h": 0,
+          "w": 0,
+          "x": 0,
+          "y": 0
+        }
+      },
+      "textKeys": [
+        "text:Google Meet",
+        "text:OAuth だけ確認お願いします。",
+        "text:· 出所 ›",
+        "text:· 直す",
+        "text:•",
+        "text:あなた",
+        "text:それでは 9 月 12 日に出しましょう。",
+        "text:やること",
+        "text:ライブメモ",
+        "text:了解しました。",
+        "text:初期費用が心配です",
+        "text:導入時期は 10 月で行きます",
+        "text:懸念",
+        "text:決まったこと",
+        "text:田中",
+        "text:見積は明日までにお願いします",
+        "text:誰が対応しますか？",
+        "text:質問",
+        "text:鈴木",
+        "text:録音中"
+      ],
+      "requiredBoxes": {
+        "recordingWorkspace": {
+          "h": 14,
+          "w": 34,
+          "x": 427,
+          "y": 17
+        },
+        "tool-transcript": {
+          "h": 32,
+          "w": 66,
+          "x": 741,
+          "y": 123
+        },
+        "tool-translation": {
+          "h": 32,
+          "w": 67,
+          "x": 809,
+          "y": 123
+        },
+        "notes-決まったこと": {
+          "h": 15,
+          "w": 69,
+          "x": 46,
+          "y": 265
+        },
+        "notes-やること": {
+          "h": 15,
+          "w": 46,
+          "x": 46,
+          "y": 344
+        },
+        "notes-質問": {
+          "h": 15,
+          "w": 23,
+          "x": 46,
+          "y": 423
+        },
+        "notes-懸念": {
+          "h": 15,
+          "w": 23,
+          "x": 46,
+          "y": 502
+        },
+        "text:録音中": {
+          "h": 19,
+          "w": 44.5,
+          "x": 22,
+          "y": 76.5
+        },
+        "text:それでは 9 月 12 日に出しましょう。": {
+          "h": 15,
+          "w": 184,
+          "x": 847,
+          "y": 179
+        }
+      }
+    }
+  }
+}

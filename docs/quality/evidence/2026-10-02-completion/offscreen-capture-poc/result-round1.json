@@ -1,0 +1,10 @@
+{
+  "memoryPressureBefore": 1,
+  "exitCode": 1,
+  "result": {
+    "errorCode": 1,
+    "reason": "cg_window_not_offscreen",
+    "status": "FAIL"
+  },
+  "memoryPressureAfter": 1
+}

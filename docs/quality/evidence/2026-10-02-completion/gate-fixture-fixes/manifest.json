@@ -1,0 +1,58 @@
+{
+  "recordedAt": "2026-10-01T22:52:04.199218+00:00",
+  "scope": "Combined gate fixture fixes: isolated real-microphone local pipeline; health-only readiness; truthful motion summary. No installed app replacement or native rerun in this record.",
+  "sourceHashes": {
+    "apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift": "e71fc95da88a408ffccb27c7985b40c7e5be6818a8974cb225a045e54159c345",
+    "apps/genie-macos/Sources/GenieMac/App/SelfTestMicRelease.swift": "61ecb7ddb1abd35cb83190ba75caf0450830282ba2d1e1347b81df7e9b0b19ff",
+    "apps/genie-macos/Tests/GenieMacTests/ConversationWiringTests.swift": "7ac4faa4d309147e9336391223084f2a94a816cd165ead389602b28a19fda7bd",
+    "core/genie-core/src/api.rs": "914c671cd14837d89a5d60cc467b13339d331c0154389790c977bad91779df79",
+    "scripts/verify-journeys.sh": "42245fce220c9f1d022f5a5b4d3e3b7201579345ecb71b6006c702fcd7a70af2",
+    "scripts/tests/test_journey_launcher.py": "956be6065ce586e971d7134968ec50e96d14d76921d1d35773da9ce251a05d2f",
+    "apps/genie-macos/Sources/GenieCore/genie_core.swift": "eead7f6a8e939d25167a9d38926a127c05f06bb126dff4de97b533ca908dca15",
+    "apps/genie-macos/Sources/GenieCoreFFI/include/genie_coreFFI.h": "26d0865dc5454805c37a98135100c8e1bf9e878560108d50076bea946423afad",
+    "apps/genie-macos/Sources/GenieCoreFFI/include/module.modulemap": "c23a9725a56d6e5ca25b6ddd6de5e0849d1d77f4f93d3e00ecf9f1088a1bdbc1"
+  },
+  "coreArchive": {
+    "path": "/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a",
+    "sha256": "55fa96e8cc6c0604a5934fee0d250cac3e7f5d105b32550f06cc10d7345ca6c5"
+  },
+  "focusedSwift": {
+    "tests": 21,
+    "failures": 0,
+    "skips": 0,
+    "exitCode": 0,
+    "bothExecutablesLinked": true,
+    "logSha256": "63d9e9ec5275083d10980e15ad68e7065c6af31482b97a430976aa711511b48a"
+  },
+  "focusedRust": {
+    "tests": 2,
+    "failures": 0
+  },
+  "focusedJourneyLauncher": {
+    "tests": 5,
+    "failures": 0
+  },
+  "records": {
+    "docs/quality/evidence/2026-10-02-completion/micrelease-isolation/manifest.json": "9637d5b89f164b69aa93801ea396c5d721d09cee0af111e1a751d74605bb24d1",
+    "docs/quality/evidence/2026-10-02-completion/reachability-motion-focused.json": "7083a3e37407618bfc8a68a3dbaed29a8b7568c9a1cf46487a90a69ee8c66659",
+    "docs/quality/evidence/2026-10-02-completion/reachability-uniffi-binding-fix.json": "14771771cf3557d0637328e94d4934bb4909360390665fd6cf90865c2839d72c"
+  },
+  "relinkRecordSha256": "26bb8b37b18e56a24b34eff1084670e07f67813459ee82e17a173362cd74988b",
+  "limits": [
+    "Prior full gate FAIL retained",
+    "Real microphone lifecycle on revised signed app not yet rerun",
+    "No FPS improvement claimed",
+    "Normal Gemini provider selection unchanged"
+  ],
+  "focusedSwiftAfterBindingRegeneration": {
+    "tests": 24,
+    "failures": 0,
+    "skips": 0,
+    "exitCode": 0,
+    "command": "GENIE_SWIFT_BUILD_JOBS=1 CARGO_BUILD_JOBS=1 swift test --package-path apps/genie-macos --jobs 1 --filter 'ConversationWiringTests|GeminiLiveTests|SettingsKeyPresenceTests|CoreBridgeTests'",
+    "logSha256": "0dcde055719a03a2ccba2db113bd90c07ef405375ed7b62816efd17b358fc297",
+    "includes": "CoreBridgeTests initializes all UniFFI checks, derives recording snapshot and writes isolated recording fragments."
+  },
+  "priorPackageFailure": "release-round1-failure.json",
+  "updatedAt": "2026-10-01T23:01:27.067309+00:00"
+}

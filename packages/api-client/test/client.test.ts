@@ -3,6 +3,7 @@
  */
 import { describe, expect, it, vi } from 'vitest';
 import { ApprovalId, GenieError, uuidv7, type EventEnvelope } from '@genie/contracts';
+import { readDocument } from '../examples/read-document.js';
 import { GenieClient } from '../src/client.js';
 import { HttpClient } from '../src/http.js';
 import { parseSseFrames, streamTaskEvents } from '../src/sse.js';
@@ -413,5 +414,150 @@ describe('streamTaskEvents (§7.3)', () => {
       backoffMs: () => 0,
     });
     expect(last).toBe(0);
+  });
+});
+
+describe('SSE interoperability and delivery recovery', () => {
+  it('accepts CRLF, comments within an event, multiline data and optional spaces', () => {
+    expect(
+      parseSseFrames(':comment\r\nid:1\r\nevent:task.progress\r\ndata:{\r\ndata: "a": 1}\r\n\r\n'),
+    ).toEqual([{ id: 1, event: 'task.progress', data: '{\n"a": 1}' }]);
+  });
+
+  it.each(['\r\n', '\r', '\n'])(
+    'decodes Japanese byte-by-byte with %j line endings',
+    async (ending) => {
+      const event = progress(1);
+      (event.payload as { message: string }).message = '確認中👩‍💻';
+      const text = [event, completed(2)]
+        .map(
+          (e) =>
+            ': comment' +
+            ending +
+            'data:' +
+            JSON.stringify(e, null, 2)
+              .split('\n')
+              .join(ending + 'data:') +
+            ending +
+            ending,
+        )
+        .join('');
+      const bytes = new TextEncoder().encode(text);
+      const received: EventEnvelope[] = [];
+      const http = httpWith(
+        async () =>
+          new Response(
+            new ReadableStream({
+              start(controller) {
+                for (const byte of bytes) controller.enqueue(new Uint8Array([byte]));
+                controller.close();
+              },
+            }),
+          ),
+      );
+      expect(
+        await streamTaskEvents(http, 't1', { onEvent: (e) => received.push(e), maxAttempts: 0 }),
+      ).toBe(2);
+      expect(received).toEqual([event, expect.objectContaining({ type: 'task.completed' })]);
+    },
+  );
+
+  it('does not acknowledge an event whose consumer failed', async () => {
+    const cursors: (string | null)[] = [];
+    let first = true;
+    const http = httpWith(async (input, init) => {
+      cursors.push(new Request(input as string, init).headers.get('last-event-id'));
+      return sseBody([progress(1), completed(2)]);
+    });
+    const received: number[] = [];
+    await streamTaskEvents(http, 't1', {
+      backoffMs: () => 0,
+      maxAttempts: 2,
+      onEvent(e) {
+        if (first) {
+          first = false;
+          throw new Error('consumer unavailable');
+        }
+        received.push(e.sequence);
+      },
+    });
+    expect(cursors).toEqual([null, null]);
+    expect(received).toEqual([1, 2]);
+  });
+});
+
+describe('integration example', () => {
+  it('reads only a completed nonempty artifact, and never resubmits', async () => {
+    const id = uuidv7();
+    const requests: Request[] = [];
+    const client = makeClient(async (input, init) => {
+      const request = new Request(input as string, init);
+      requests.push(request);
+      return request.url.endsWith('/content')
+        ? new Response('# チェックリスト')
+        : jsonResponse(task({ status: 'COMPLETED', result_artifact_id: id }));
+    });
+    expect(await readDocument(client, 't1')).toBe('# チェックリスト');
+    expect(requests.map((r) => r.method)).toEqual(['GET', 'GET']);
+  });
+  it('does not mistake acceptance or missing content for success', async () => {
+    expect(
+      await readDocument(
+        makeClient(async () => jsonResponse(task())),
+        't1',
+      ),
+    ).toBeNull();
+    await expect(
+      readDocument(
+        makeClient(async () => jsonResponse(task({ status: 'COMPLETED' }))),
+        't1',
+      ),
+    ).rejects.toThrow('no document');
+    await expect(
+      readDocument(
+        makeClient(async () => jsonResponse(task({ status: 'CANCELLED' }))),
+        't1',
+      ),
+    ).rejects.toThrow('CANCELLED');
+  });
+});
+
+describe('conversation response-loss recovery', () => {
+  it('preserves the saved request identity and only reads after response loss', async () => {
+    const seen: Request[] = [];
+    const requestId = uuidv7();
+    const client = makeClient(async (input, init) => {
+      const req = new Request(input as string, init);
+      seen.push(req);
+      if (req.method === 'POST') throw new TypeError('accepted, response lost');
+      return jsonResponse({
+        status: 'resolved',
+        response: { needs_clarification: false, task_id: 'original-task' },
+      });
+    });
+    await expect(
+      client.sendTurn('conversation', { text: 'メモを整理', request_id: requestId }),
+    ).rejects.toThrow();
+    const receipt = await client.getTurnReceipt('conversation', requestId);
+    expect(receipt).toEqual({
+      status: 'resolved',
+      response: { needs_clarification: false, task_id: 'original-task' },
+    });
+    expect(seen.map((r) => r.method)).toEqual(['POST', 'GET']);
+    expect(await seen[0]!.json()).toMatchObject({ request_id: requestId });
+    expect(new URL(seen[1]!.url).pathname).toBe(
+      `/v1/conversations/conversation/requests/${requestId}`,
+    );
+  });
+  it('keeps pending and missing receipts distinct from a completed task', async () => {
+    const pending = makeClient(async () => jsonResponse({ status: 'pending' }));
+    expect(await pending.getTurnReceipt('conversation', uuidv7())).toEqual({ status: 'pending' });
+    const missing = makeClient(async () =>
+      jsonResponse(
+        { error: { code: 'common.not_found', message: 'missing', retryable: false } },
+        404,
+      ),
+    );
+    await expect(missing.getTurnReceipt('conversation', uuidv7())).rejects.toThrow();
   });
 });

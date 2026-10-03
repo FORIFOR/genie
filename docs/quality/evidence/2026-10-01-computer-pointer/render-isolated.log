@@ -1,0 +1,6 @@
+COMMAND: /Users/shuhei/Projects/astra/apps/genie-macos/.build/debug/GenieMac --selftest render
+ASTRA_DATA_ROOT: /var/folders/xn/mdmvpkwd0yx4tcr7rvn_3xv80000gn/T/genie-render-fixture-data-cib0gqua
+TIMEOUT: 45s
+SELFTEST_OK render: VoiceHUD:c496/o1.00 IntentBar:c93/o1.00 RecordingIndicator:c166/o1.00 ConfirmationCard:c91/o0.94 MeetingArtifact:c99/o1.00 ResearchResult:c125/o0.81 MeetingSurface:c58/o1.00 LineagePanel:c130/o0.82 ApprovalCard:c107/o0.77 EvidenceSummary:c131/o0.70 WorkSurface:c122/o0.80 ContextLens:c102/o0.88 HomeView:c102/o1.00 RecordingWorkspace:c51/o0.99 MainWindow:c104/o1.00 Settings:c2/o0.16
+
+EXIT: 0; ELAPSED: 2.10s

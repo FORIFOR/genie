@@ -1,0 +1,602 @@
+{
+  "_NSMenuItemAutoFillIdentifier" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_NSMenuItemLegacyWritingToolsSeparatorIdentifier" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "__NSTextViewContextSubmenuIdentifierWritingTools" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_aboutThisMacRequested:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_appStoreRequested:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_clearRecentItemsRequested:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_forceQuitPanelRequested:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_forceQuitRequested:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_handleInsertFromContactsCommand:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_handleInsertFromCreditCardsCommand:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_handleInsertFromPasswordsCommand:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_lockScreenRequested:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_logOutNowRequested:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_logOutRequested:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_recentItemRequested:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_recentsRequested:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_removeWindowFromStageManagerSet:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_restartNowRequested:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_restartRequested:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_shutDownNowRequested:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_shutDownRequested:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_sleepRequested:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_systemInformationRequested:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_systemSettingsRequested:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomBottom:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomBottomAndTop:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomBottomLeft:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomBottomRight:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomBottomThreeUp:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomCenter:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomFill:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomLeft:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomLeftAndRight:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomLeftThreeUp:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomQuarters:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomRight:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomRightAndLeft:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomRightThreeUp:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomTop:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomTopAndBottom:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomTopLeft:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomTopRight:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomTopThreeUp:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomUntile:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "closeAll:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "copy:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "cut:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "detachMeeting" : {
+    "h" : 26,
+    "w" : 100.5,
+    "x" : 699.5,
+    "y" : 125
+  },
+  "meetingPanel-ask" : {
+    "h" : 30,
+    "w" : 110.5,
+    "x" : 547.5,
+    "y" : 55
+  },
+  "meetingPanel-captions" : {
+    "h" : 30,
+    "w" : 68.5,
+    "x" : 467,
+    "y" : 55
+  },
+  "meetingPanel-notes" : {
+    "h" : 30,
+    "w" : 67,
+    "x" : 388,
+    "y" : 55
+  },
+  "meetingPanelBody" : {
+    "h" : 238,
+    "w" : 780,
+    "x" : 20,
+    "y" : 125
+  },
+  "miniaturizeAll:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "notes-やること" : {
+    "h" : 15,
+    "w" : 46,
+    "x" : 46,
+    "y" : 344
+  },
+  "notes-懸念" : {
+    "h" : 15,
+    "w" : 23,
+    "x" : 46,
+    "y" : 502
+  },
+  "notes-決まったこと" : {
+    "h" : 15,
+    "w" : 69,
+    "x" : 46,
+    "y" : 265
+  },
+  "notes-質問" : {
+    "h" : 15,
+    "w" : 23,
+    "x" : 46,
+    "y" : 423
+  },
+  "orderFrontCharacterPalette:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "paste:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "pauseRecording" : {
+    "h" : 30,
+    "w" : 32,
+    "x" : 731,
+    "y" : 55
+  },
+  "performClose:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "performMiniaturize:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "recordingWorkspace" : {
+    "h" : 14,
+    "w" : 34,
+    "x" : 427,
+    "y" : 17
+  },
+  "redo:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "secretToggle" : {
+    "h" : 30,
+    "w" : 32,
+    "x" : 687,
+    "y" : 55
+  },
+  "selectAll:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "showPermissionGuide" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "showSettings" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "showWritingTools:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "startDictation:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "stopRecording" : {
+    "h" : 25,
+    "w" : 25,
+    "x" : 775,
+    "y" : 57.5
+  },
+  "terminate:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "text:Google Meet" : {
+    "h" : 19,
+    "w" : 96,
+    "x" : 41,
+    "y" : 52
+  },
+  "text:OAuth だけ確認お願いします。" : {
+    "h" : 19,
+    "w" : 204.5,
+    "x" : 76.5,
+    "y" : 209
+  },
+  "text:· 出所 ›" : {
+    "h" : 14,
+    "w" : 34.5,
+    "x" : 93,
+    "y" : 312
+  },
+  "text:· 直す" : {
+    "h" : 14,
+    "w" : 26.5,
+    "x" : 132.5,
+    "y" : 312
+  },
+  "text:•" : {
+    "h" : 16,
+    "w" : 6.5,
+    "x" : 20,
+    "y" : 184
+  },
+  "text:あなた" : {
+    "h" : 14,
+    "w" : 30.5,
+    "x" : 793,
+    "y" : 201
+  },
+  "text:それでは 9 月 12 日に出しましょう。" : {
+    "h" : 15,
+    "w" : 184,
+    "x" : 847,
+    "y" : 179
+  },
+  "text:やること" : {
+    "h" : 16,
+    "w" : 48.5,
+    "x" : 20,
+    "y" : 269
+  },
+  "text:ライブメモ" : {
+    "h" : 14,
+    "w" : 53,
+    "x" : 20,
+    "y" : 131
+  },
+  "text:了解しました。" : {
+    "h" : 15,
+    "w" : 72.5,
+    "x" : 847,
+    "y" : 200
+  },
+  "text:初期費用が心配です" : {
+    "h" : 19,
+    "w" : 125,
+    "x" : 34.5,
+    "y" : 236
+  },
+  "text:導入時期は 10 月で行きます" : {
+    "h" : 19,
+    "w" : 176.5,
+    "x" : 34.5,
+    "y" : 182
+  },
+  "text:懸念" : {
+    "h" : 16,
+    "w" : 24.5,
+    "x" : 20,
+    "y" : 215
+  },
+  "text:決まったこと" : {
+    "h" : 16,
+    "w" : 72.5,
+    "x" : 20,
+    "y" : 161
+  },
+  "text:田中" : {
+    "h" : 14,
+    "w" : 20.5,
+    "x" : 793,
+    "y" : 180
+  },
+  "text:見積は明日までにお願いします" : {
+    "h" : 19,
+    "w" : 194,
+    "x" : 34.5,
+    "y" : 290
+  },
+  "text:誰が対応しますか？" : {
+    "h" : 19,
+    "w" : 125,
+    "x" : 34.5,
+    "y" : 344
+  },
+  "text:質問" : {
+    "h" : 16,
+    "w" : 24.5,
+    "x" : 20,
+    "y" : 323
+  },
+  "text:鈴木" : {
+    "h" : 15,
+    "w" : 22.5,
+    "x" : 46,
+    "y" : 212
+  },
+  "text:録音中" : {
+    "h" : 19,
+    "w" : 44.5,
+    "x" : 22,
+    "y" : 76.5
+  },
+  "tool-transcript" : {
+    "h" : 32,
+    "w" : 66,
+    "x" : 741,
+    "y" : 123
+  },
+  "tool-translation" : {
+    "h" : 32,
+    "w" : 67,
+    "x" : 809,
+    "y" : 123
+  },
+  "undo:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "voiceHUD" : {
+    "h" : 389.5,
+    "w" : 820.5,
+    "x" : -0.5,
+    "y" : -0.5
+  },
+  "window:GeniePanel<RecordingWorkspaceView>" : {
+    "h" : 680,
+    "w" : 1080,
+    "x" : 0,
+    "y" : 0
+  },
+  "window:GeniePanel<RecordingWorkspaceView>:centerOffset" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : -0.5
+  },
+  "window:GeniePanel<VoiceTaskDockView>" : {
+    "h" : 389,
+    "w" : 820,
+    "x" : 0,
+    "y" : 0
+  },
+  "window:GeniePanel<VoiceTaskDockView>:topOffset" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 0
+  }
+}

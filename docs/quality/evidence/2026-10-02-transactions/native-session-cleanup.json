@@ -1,0 +1,13 @@
+{
+  "at": "2026-10-01T16:36:14.648086+00:00",
+  "records": [
+    {
+      "watcherPid": 44898,
+      "targetPid": 44704,
+      "ownedGrant": "/private/tmp/genie-transactions-20261002/session-reuse-native-3/VisualContext/background-ce62dd02-6448-4845-983b-b091792373bf.json",
+      "activityAbsent": true,
+      "watcherExited": true
+    }
+  ],
+  "classification": "Owned fixture lifetime implementation verification; no independent product claim"
+}

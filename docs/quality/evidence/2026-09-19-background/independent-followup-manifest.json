@@ -1,0 +1,8 @@
+{
+  "time": "2026-09-19T12:07:21.156592+00:00",
+  "method": "static re-review plus reading implementation-session native log",
+  "sha256": {
+    "tools/computer-use/BackgroundAX.swift": "85ea5568ae1852cb154dd6e9171996c3fba2a96a58d200b03788203efa9122b5",
+    "docs/quality/evidence/2026-09-19-background/native-background-unfocused.log": "890adc93eddf687ee0d941a17f94677e6fa800c219905926ba7dcdd6d8113efc"
+  }
+}

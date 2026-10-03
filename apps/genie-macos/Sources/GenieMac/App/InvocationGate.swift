@@ -208,7 +208,7 @@ enum InvocationGate {
         var listenClaimedLiveWhileDeaf = false
         var listenFirstFrameMs: Double?
         let lt0 = Date()
-        hud.beginListening()
+        hud.beginDictation()
         let lcap = lt0.addingTimeInterval(4)
         while Date() < lcap, listenFirstFrameMs == nil {
             CFRunLoopRunInMode(.defaultMode, 0.002, true)
@@ -473,7 +473,7 @@ enum InvocationGate {
         // Esc を届けるには Dock を key にする必要があり、その瞬間は focus を取る。
         // そのため focus theft の判定は上で閉じ、ここは latency だけ測る。
         let hud = VoiceHUDState.shared
-        hud.beginListening(); settle(0.7)
+        hud.beginDictation(); settle(0.7)
         var cancelMs: Double?
         if case .listening = hud.mode, let dw = dockWindow() {
             let t = observe(fire: { JourneyRecorder.press(JourneyRecorder.keyEsc, "\u{1B}", in: dw) },

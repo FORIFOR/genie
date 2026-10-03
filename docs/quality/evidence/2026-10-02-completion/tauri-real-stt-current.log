@@ -1,0 +1,20 @@
+test result: ok. 71 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.31s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.18s
+     Running unittests src/lib.rs (target/debug/deps/genie_desktop_lib-89769e206d2d0aea)
+
+running 3 tests
+test stt::recognizer::real::measures_the_first_partial ... [real] window=1500ms hop=1200ms | audio_to_first_partial=1500ms decode=29ms projected_first_partial=1529ms | final=Final { text: "気象庁は雪や路面の凍結による交通への影響暴風雪や高波に警戒揺れ雪崩や屋根からの落雪にも十分注意いま", started_at_ms: 0, ended_at_ms: 12000 }
+[real] §23 localSttFirstPartial budget=350ms projected=1529ms -> OVER
+ok
+test stt::recognizer::real::shows_what_a_shorter_window_costs ... [real] window=6000ms decode_total=248ms chars=70 -> "気象庁は雪や路面の凍結による交通への影響暴風雪や高波に警戒するとともに雪崩や屋根からの落雪にも道路の落雪にも十分注意するよう呼びかけています"
+[real] window=1500ms decode_total=312ms chars=49 -> "気象庁は雪や路面の凍結による交通への影響暴風雪や高波に警戒揺れ雪崩や屋根からの落雪にも十分注意いま"
+[real] window=700ms decode_total=358ms chars=54 -> "気象庁はい雪や交通への影響その影響暴風台風雪高波に警戒がともに名だマダリア屋根から十分注意うん続いています何"
+ok
+test stt::recognizer::real::transcribes_a_real_recording ... [real] 1.wav (13.4s audio) -> 201ms -> "気象庁は雪や路面の凍結による交通への影響暴風雪や高波に警戒するとともに雪崩や屋根からの落雪にも十分注意するよう呼びかけています"
+ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 71 filtered out; finished in 7.56s
+
+TAURI_TESTS_OK: unit and isolated real STT assertions completed (quality/latency observations are separate)

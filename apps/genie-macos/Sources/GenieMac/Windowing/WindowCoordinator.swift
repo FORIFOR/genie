@@ -166,6 +166,46 @@ final class WindowCoordinator {
         panel.makeKeyAndOrderFront(nil)
     }
 
+    /// 検査専用: Dock の窓（キー入力を受けられるかを確かめる）。
+    var hudPanelForTest: NSWindow? { hudPanel }
+
+    /// Listening 面を開いたとき、直接キーボード入力できるよう Dock にキー入力を渡す。
+    func focusListeningDock() {
+        guard !Self.headless, !PresentationGuard.shared.isSharing,
+              let panel = hudPanel, panel.isVisible else { return }
+        panel.makeKeyAndOrderFront(nil)
+    }
+
+    /// Quick Actions を開いた間だけ、Dock がキー入力を受ける（Esc で閉じられるように）。
+    /// 開く前に前面だったアプリを覚えておき、閉じたらキー入力をそこへ返す。
+    private var appBeforeDockKey: NSRunningApplication?
+
+    func focusDockForQuickActions() {
+        guard !Self.headless, !PresentationGuard.shared.isSharing,
+              let panel = hudPanel, panel.isVisible else { return }
+        if !panel.isKeyWindow {
+            let front = NSWorkspace.shared.frontmostApplication
+            appBeforeDockKey = front?.processIdentifier == getpid() ? nil : front
+        }
+        panel.makeKeyAndOrderFront(nil)
+    }
+
+    /// Dock が持っていたキー入力を、開く前のアプリへ返す（Quick Actions を閉じた・選んだ）。
+    func releaseDockKey() {
+        guard !Self.headless, let panel = hudPanel, panel.isKeyWindow else { appBeforeDockKey = nil; return }
+        let back = appBeforeDockKey
+        appBeforeDockKey = nil
+        panel.resignKey()
+        back?.activate()
+    }
+
+    /// Listening 面の Dock がキー入力を受けているか（`focusListeningDock` が効いたか）。
+    /// 受けているなら、話しかけた相手は前面アプリの欄ではなく Dock の入力欄。
+    var isListeningDockKey: Bool {
+        guard !Self.headless, let panel = hudPanel else { return false }
+        return panel.isVisible && panel.isKeyWindow
+    }
+
     func restoreControls() {
         screenshotOfferTimer?.invalidate(); screenshotOfferTimer = nil
         screenshotOfferWasHidden = false
@@ -184,6 +224,9 @@ final class WindowCoordinator {
 
     /// Dock が画面に出ているか。確認を Dock 1 面で済ませられるかの判断に使う。
     var isVoiceHUDVisible: Bool { hudPanel?.isVisible == true }
+
+    /// Dock が鍵（キー入力）を受け取る窓か。鍵は key の窓にしか届かない（検査が実キーを送る前に確かめる）。
+    var isVoiceHUDKey: Bool { hudPanel?.isKeyWindow == true }
 
     /// Dock の大きさを状態に合わせる。**窓は増やさない**。
     ///

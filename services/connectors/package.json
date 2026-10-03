@@ -2,6 +2,7 @@
   "name": "@genie/service-connectors",
   "version": "0.0.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "description": "Calendar / Gmail の接続。正本 §2.4・§21・§22。読む・下書きまで。送信と削除は人の承認。",
   "main": "./dist/index.js",

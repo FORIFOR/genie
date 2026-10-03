@@ -1,0 +1,21 @@
+{
+  "clipboardUnchanged" : true,
+  "cursorUnchanged" : true,
+  "existingTextRefused" : true,
+  "foregroundUnchangedDuringActions" : true,
+  "humanTakeoverRefused" : true,
+  "inputSource" : "automated fixture; not human participant",
+  "keysRefused" : true,
+  "replayRefused" : true,
+  "sentinel" : {
+    "activations" : 1,
+    "clicks" : 0,
+    "text" : "human-input-continues"
+  },
+  "status" : "PASS",
+  "target" : {
+    "activations" : 1,
+    "clicks" : 1,
+    "text" : "背景入力 日本語 👩‍💻"
+  }
+}

@@ -29,17 +29,10 @@ struct GenieOrb: View {
 
 /// Compact, static idle entry; no continuous rendering while Genie is not working.
 struct GenieVoiceMark: View {
-    // 中央が高い左右対称の 3 本。ブランド記号であって、音の量ではない。
-    private let heights: [CGFloat] = [7, 12, 9]
+    // Genie の印（ランプ）。ブランド記号であって、音の量ではない（`GenieBrandMark`）。
     var body: some View {
-        HStack(alignment: .center, spacing: 2) {
-            ForEach(heights.indices, id: \.self) { i in
-                Capsule()
-                    .fill(Color.genieAccent.opacity(0.85))
-                    .frame(width: 2.5, height: heights[i])
-            }
-        }
-        .frame(width: 13, height: 14)
-        .accessibilityHidden(true)
+        // 1b: 待機の印は本文色で静止。青（presence）は聞く・作業するときだけ印の中に出る。
+        GenieBrandMarkView(height: 12, color: Palette.text(true).opacity(0.92))
+            .frame(height: 14)
     }
 }

@@ -49,6 +49,23 @@ BEGIN
 END $$;
 
 
+--
+-- Name: genie_bound_authorization_update(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.genie_bound_authorization_update() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF ROW(NEW.id, NEW.tenant_id, NEW.created_by, NEW.request_id, NEW.initial_approval_id, NEW.spec, NEW.spec_hash, NEW.created_at, NEW.expires_at)
+    IS DISTINCT FROM ROW(OLD.id, OLD.tenant_id, OLD.created_by, OLD.request_id, OLD.initial_approval_id, OLD.spec, OLD.spec_hash, OLD.created_at, OLD.expires_at)
+    OR (OLD.status = 'REVOKED' AND ROW(NEW.status, NEW.revoked_at) IS DISTINCT FROM ROW(OLD.status, OLD.revoked_at)) THEN
+    RAISE EXCEPTION 'bounded authorization terms are immutable';
+  END IF;
+  RETURN NEW;
+END $$;
+
+
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
@@ -264,6 +281,28 @@ CREATE TABLE public.connector_connections (
 );
 
 ALTER TABLE ONLY public.connector_connections FORCE ROW LEVEL SECURITY;
+
+
+--
+-- Name: conversation_requests; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.conversation_requests (
+    tenant_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    conversation_id uuid NOT NULL,
+    request_id uuid NOT NULL,
+    body_hash text NOT NULL,
+    turn_id uuid NOT NULL,
+    response jsonb,
+    response_status integer,
+    prepared_response jsonb,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT conversation_requests_check CHECK (((response IS NULL) = (response_status IS NULL))),
+    CONSTRAINT conversation_requests_response_status_check CHECK ((response_status = ANY (ARRAY[200, 202])))
+);
+
+ALTER TABLE ONLY public.conversation_requests FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -870,6 +909,30 @@ ALTER TABLE ONLY public.task_events FORCE ROW LEVEL SECURITY;
 
 
 --
+-- Name: task_instructions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.task_instructions (
+    tenant_id uuid NOT NULL,
+    task_id uuid NOT NULL,
+    request_id uuid NOT NULL,
+    created_by uuid NOT NULL,
+    text text NOT NULL,
+    status text DEFAULT 'RECEIVED'::text NOT NULL,
+    applied_step_index integer,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    resolved_at timestamp with time zone,
+    CONSTRAINT task_instructions_applied_step_index_check CHECK (((applied_step_index IS NULL) OR (applied_step_index >= 0))),
+    CONSTRAINT task_instructions_check CHECK (((status = 'APPLIED'::text) = (applied_step_index IS NOT NULL))),
+    CONSTRAINT task_instructions_check1 CHECK (((status = 'RECEIVED'::text) = (resolved_at IS NULL))),
+    CONSTRAINT task_instructions_status_check CHECK ((status = ANY (ARRAY['RECEIVED'::text, 'APPLIED'::text, 'NOT_APPLIED'::text]))),
+    CONSTRAINT task_instructions_text_check CHECK (((char_length(text) >= 1) AND (char_length(text) <= 2000)))
+);
+
+ALTER TABLE ONLY public.task_instructions FORCE ROW LEVEL SECURITY;
+
+
+--
 -- Name: tasks; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -914,6 +977,60 @@ CREATE TABLE public.tenants (
 );
 
 ALTER TABLE ONLY public.tenants FORCE ROW LEVEL SECURITY;
+
+
+--
+-- Name: transaction_authorization_uses; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.transaction_authorization_uses (
+    id uuid NOT NULL,
+    tenant_id uuid NOT NULL,
+    authorization_id uuid NOT NULL,
+    approval_id uuid NOT NULL,
+    task_id uuid NOT NULL,
+    step_index integer NOT NULL,
+    provider text NOT NULL,
+    mode text NOT NULL,
+    account text NOT NULL,
+    order_key text NOT NULL,
+    inputs_hash character(64) NOT NULL,
+    quote_hash character(64) NOT NULL,
+    amount_minor bigint NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT transaction_authorization_uses_amount_minor_check CHECK (((amount_minor >= 0) AND (amount_minor <= '9007199254740991'::bigint))),
+    CONSTRAINT transaction_authorization_uses_inputs_hash_check CHECK ((inputs_hash ~ '^[0-9a-f]{64}$'::text)),
+    CONSTRAINT transaction_authorization_uses_mode_check CHECK ((mode = 'simulation'::text)),
+    CONSTRAINT transaction_authorization_uses_quote_hash_check CHECK ((quote_hash ~ '^[0-9a-f]{64}$'::text)),
+    CONSTRAINT transaction_authorization_uses_step_index_check CHECK ((step_index >= 0))
+);
+
+ALTER TABLE ONLY public.transaction_authorization_uses FORCE ROW LEVEL SECURITY;
+
+
+--
+-- Name: transaction_authorizations; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.transaction_authorizations (
+    id uuid NOT NULL,
+    tenant_id uuid NOT NULL,
+    created_by uuid NOT NULL,
+    request_id uuid NOT NULL,
+    initial_approval_id uuid,
+    spec jsonb NOT NULL,
+    spec_hash character(64) NOT NULL,
+    status text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    expires_at timestamp with time zone NOT NULL,
+    revoked_at timestamp with time zone,
+    CONSTRAINT transaction_authorizations_check CHECK ((expires_at > created_at)),
+    CONSTRAINT transaction_authorizations_check1 CHECK (((status = 'REVOKED'::text) = (revoked_at IS NOT NULL))),
+    CONSTRAINT transaction_authorizations_spec_hash_check CHECK ((spec_hash ~ '^[0-9a-f]{64}$'::text)),
+    CONSTRAINT transaction_authorizations_status_check CHECK ((status = ANY (ARRAY['ACTIVE'::text, 'REVOKED'::text])))
+);
+
+ALTER TABLE ONLY public.transaction_authorizations FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -1217,6 +1334,14 @@ ALTER TABLE ONLY public.connector_connections
 
 
 --
+-- Name: conversation_requests conversation_requests_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.conversation_requests
+    ADD CONSTRAINT conversation_requests_pkey PRIMARY KEY (tenant_id, user_id, conversation_id, request_id);
+
+
+--
 -- Name: conversation_states conversation_states_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1449,6 +1574,14 @@ ALTER TABLE ONLY public.task_events
 
 
 --
+-- Name: task_instructions task_instructions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.task_instructions
+    ADD CONSTRAINT task_instructions_pkey PRIMARY KEY (tenant_id, task_id, request_id);
+
+
+--
 -- Name: tasks tasks_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1462,6 +1595,62 @@ ALTER TABLE ONLY public.tasks
 
 ALTER TABLE ONLY public.tenants
     ADD CONSTRAINT tenants_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: transaction_authorization_uses transaction_authorization_use_tenant_id_provider_mode_accou_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.transaction_authorization_uses
+    ADD CONSTRAINT transaction_authorization_use_tenant_id_provider_mode_accou_key UNIQUE (tenant_id, provider, mode, account, order_key);
+
+
+--
+-- Name: transaction_authorization_uses transaction_authorization_uses_approval_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.transaction_authorization_uses
+    ADD CONSTRAINT transaction_authorization_uses_approval_id_key UNIQUE (approval_id);
+
+
+--
+-- Name: transaction_authorization_uses transaction_authorization_uses_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.transaction_authorization_uses
+    ADD CONSTRAINT transaction_authorization_uses_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: transaction_authorization_uses transaction_authorization_uses_task_id_step_index_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.transaction_authorization_uses
+    ADD CONSTRAINT transaction_authorization_uses_task_id_step_index_key UNIQUE (task_id, step_index);
+
+
+--
+-- Name: transaction_authorizations transaction_authorizations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.transaction_authorizations
+    ADD CONSTRAINT transaction_authorizations_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: transaction_authorizations transaction_authorizations_tenant_id_created_by_request_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.transaction_authorizations
+    ADD CONSTRAINT transaction_authorizations_tenant_id_created_by_request_id_key UNIQUE (tenant_id, created_by, request_id);
+
+
+--
+-- Name: transaction_authorizations transaction_authorizations_tenant_id_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.transaction_authorizations
+    ADD CONSTRAINT transaction_authorizations_tenant_id_id_key UNIQUE (tenant_id, id);
 
 
 --
@@ -1911,6 +2100,13 @@ CREATE UNIQUE INDEX task_events_stream_seq ON public.task_events USING btree (st
 
 
 --
+-- Name: task_instructions_pending; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX task_instructions_pending ON public.task_instructions USING btree (tenant_id, task_id) WHERE (status = 'RECEIVED'::text);
+
+
+--
 -- Name: tasks_active; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1936,6 +2132,20 @@ CREATE INDEX tasks_recent ON public.tasks USING btree (tenant_id, id DESC);
 --
 
 CREATE UNIQUE INDEX tasks_workflow_id ON public.tasks USING btree (workflow_id);
+
+
+--
+-- Name: transaction_authorization_uses_grant; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX transaction_authorization_uses_grant ON public.transaction_authorization_uses USING btree (tenant_id, authorization_id);
+
+
+--
+-- Name: transaction_authorizations_active; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX transaction_authorizations_active ON public.transaction_authorizations USING btree (tenant_id, created_by, expires_at) WHERE (status = 'ACTIVE'::text);
 
 
 --
@@ -2083,6 +2293,27 @@ CREATE TRIGGER share_access_logs_append_only BEFORE DELETE OR UPDATE OR TRUNCATE
 --
 
 CREATE TRIGGER task_events_append_only BEFORE DELETE OR UPDATE OR TRUNCATE ON public.task_events FOR EACH STATEMENT EXECUTE FUNCTION public.astra_deny_mutation();
+
+
+--
+-- Name: transaction_authorization_uses transaction_authorization_uses_append_only; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER transaction_authorization_uses_append_only BEFORE DELETE OR UPDATE OR TRUNCATE ON public.transaction_authorization_uses FOR EACH STATEMENT EXECUTE FUNCTION public.astra_deny_mutation();
+
+
+--
+-- Name: transaction_authorizations transaction_authorizations_immutable_terms; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER transaction_authorizations_immutable_terms BEFORE UPDATE ON public.transaction_authorizations FOR EACH ROW EXECUTE FUNCTION public.genie_bound_authorization_update();
+
+
+--
+-- Name: transaction_authorizations transaction_authorizations_no_delete; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER transaction_authorizations_no_delete BEFORE DELETE OR TRUNCATE ON public.transaction_authorizations FOR EACH STATEMENT EXECUTE FUNCTION public.astra_deny_mutation();
 
 
 --
@@ -2274,6 +2505,30 @@ ALTER TABLE ONLY public.connector_connections
 
 ALTER TABLE ONLY public.connector_connections
     ADD CONSTRAINT connector_connections_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: conversation_requests conversation_requests_conversation_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.conversation_requests
+    ADD CONSTRAINT conversation_requests_conversation_id_fkey FOREIGN KEY (conversation_id) REFERENCES public.conversations(id) ON DELETE CASCADE;
+
+
+--
+-- Name: conversation_requests conversation_requests_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.conversation_requests
+    ADD CONSTRAINT conversation_requests_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: conversation_requests conversation_requests_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.conversation_requests
+    ADD CONSTRAINT conversation_requests_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
 
 
 --
@@ -2885,6 +3140,30 @@ ALTER TABLE ONLY public.task_events
 
 
 --
+-- Name: task_instructions task_instructions_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.task_instructions
+    ADD CONSTRAINT task_instructions_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id);
+
+
+--
+-- Name: task_instructions task_instructions_task_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.task_instructions
+    ADD CONSTRAINT task_instructions_task_id_fkey FOREIGN KEY (task_id) REFERENCES public.tasks(id) ON DELETE CASCADE;
+
+
+--
+-- Name: task_instructions task_instructions_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.task_instructions
+    ADD CONSTRAINT task_instructions_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: tasks tasks_conversation_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2914,6 +3193,62 @@ ALTER TABLE ONLY public.tasks
 
 ALTER TABLE ONLY public.tasks
     ADD CONSTRAINT tasks_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: transaction_authorization_uses transaction_authorization_uses_approval_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.transaction_authorization_uses
+    ADD CONSTRAINT transaction_authorization_uses_approval_id_fkey FOREIGN KEY (approval_id) REFERENCES public.approvals(id);
+
+
+--
+-- Name: transaction_authorization_uses transaction_authorization_uses_task_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.transaction_authorization_uses
+    ADD CONSTRAINT transaction_authorization_uses_task_id_fkey FOREIGN KEY (task_id) REFERENCES public.tasks(id);
+
+
+--
+-- Name: transaction_authorization_uses transaction_authorization_uses_tenant_id_authorization_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.transaction_authorization_uses
+    ADD CONSTRAINT transaction_authorization_uses_tenant_id_authorization_id_fkey FOREIGN KEY (tenant_id, authorization_id) REFERENCES public.transaction_authorizations(tenant_id, id);
+
+
+--
+-- Name: transaction_authorization_uses transaction_authorization_uses_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.transaction_authorization_uses
+    ADD CONSTRAINT transaction_authorization_uses_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: transaction_authorizations transaction_authorizations_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.transaction_authorizations
+    ADD CONSTRAINT transaction_authorizations_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id);
+
+
+--
+-- Name: transaction_authorizations transaction_authorizations_initial_approval_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.transaction_authorizations
+    ADD CONSTRAINT transaction_authorizations_initial_approval_id_fkey FOREIGN KEY (initial_approval_id) REFERENCES public.approvals(id);
+
+
+--
+-- Name: transaction_authorizations transaction_authorizations_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.transaction_authorizations
+    ADD CONSTRAINT transaction_authorizations_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
 
 
 --
@@ -3175,6 +3510,19 @@ ALTER TABLE public.connector_connections ENABLE ROW LEVEL SECURITY;
 --
 
 CREATE POLICY connector_connections_tenant_isolation ON public.connector_connections USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
+
+
+--
+-- Name: conversation_requests; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.conversation_requests ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: conversation_requests conversation_requests_tenant; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY conversation_requests_tenant ON public.conversation_requests USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
 
 
 --
@@ -3490,6 +3838,19 @@ CREATE POLICY task_events_tenant_isolation ON public.task_events USING ((tenant_
 
 
 --
+-- Name: task_instructions; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.task_instructions ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: task_instructions task_instructions_tenant; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY task_instructions_tenant ON public.task_instructions USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
+
+
+--
 -- Name: tasks; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -3513,6 +3874,32 @@ ALTER TABLE public.tenants ENABLE ROW LEVEL SECURITY;
 --
 
 CREATE POLICY tenants_tenant_isolation ON public.tenants USING ((id = public.astra_current_tenant())) WITH CHECK ((id = public.astra_current_tenant()));
+
+
+--
+-- Name: transaction_authorization_uses; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.transaction_authorization_uses ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: transaction_authorization_uses transaction_authorization_uses_tenant; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY transaction_authorization_uses_tenant ON public.transaction_authorization_uses USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
+
+
+--
+-- Name: transaction_authorizations; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.transaction_authorizations ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: transaction_authorizations transaction_authorizations_tenant; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY transaction_authorizations_tenant ON public.transaction_authorizations USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
 
 
 --
@@ -3699,3 +4086,6 @@ INSERT INTO schema_migrations (version) VALUES ('20260907090000');
 INSERT INTO schema_migrations (version) VALUES ('20260907170000');
 INSERT INTO schema_migrations (version) VALUES ('20260909120000');
 INSERT INTO schema_migrations (version) VALUES ('20260910003000');
+INSERT INTO schema_migrations (version) VALUES ('20260919090000');
+INSERT INTO schema_migrations (version) VALUES ('20260927100000');
+INSERT INTO schema_migrations (version) VALUES ('20261002020000');

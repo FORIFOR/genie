@@ -9,7 +9,8 @@
 set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SRC="$ROOT/apps/genie-macos/Sources/GenieMac"
-BIN="$ROOT/apps/genie-macos/.build/debug/GenieMac"
+BIN="${ASTRA_RECORD_BIN:-$ROOT/apps/genie-macos/.build/Genie.app/Contents/MacOS/GenieMac}"
+source "$ROOT/scripts/app-selftest-runner.sh"
 fail=0
 row() { printf "  %-40s %s\n" "$1" "$2"; }
 bad() { row "$1" "$2"; shift 2; printf "    %s\n" "$@" >&2; fail=1; }
@@ -98,6 +99,10 @@ for path in src.rglob('*.swift'):
     rel = str(path.relative_to(src))
     if path.name.startswith('SelfTest') or rel == 'Context/ConnectorState.swift': continue
     text = re.sub(r'//[^\n]*', '', path.read_text())
+    # 会話の Gemini Live の再生は AVAudioEngine の節点をつなぐだけ（OAuth ではない）。
+    # そのファイルでは `engine.connect(player` だけを除き、ほかの .connect( はここで数える。
+    if rel == 'Audio/GeminiLiveProvider.swift':
+        text = text.replace('engine.connect(player', 'engine_node_link(player')
     for call in re.findall(r'\.((?:connect|connectProvider|connectActions))\(', text):
         if allowed.get(rel) != call: raise SystemExit('unreviewed OAuth entry: ' + rel)
         found.add(rel)
@@ -108,7 +113,8 @@ reply = (src/'Work/ReplyFlow.swift').read_text()
 checks = [
     found == set(allowed),
     re.search(r'Button\(provider == "google" \? "Googleで続ける" : "Microsoftで続ける"\)\s*\{\s*preview = nil\s*Task \{[^\n]*connections\.connectProvider\(provider\)', pane),
-    'if Confirm.ask(ask) {\n                _ = connector(pluginId, connectorId)' in reply,
+    # 接続を求める確認は止まらずに待つ（async）。同期で待つ版に戻すと、Dock の中身が戻らない。
+    'if await Confirm.ask(ask) {\n                _ = connector(pluginId, connectorId)' in reply,
 ]
 if not all(checks): raise SystemExit('OAuth must start from the purpose button or send confirmation')
 print('provider purpose button + send confirmation')
@@ -121,12 +127,16 @@ else
 fi
 
 # 5. 外へ届く実行は確認の面を通る（CONFIRMATION_GATE は verify-confirmation.sh が画素で持つ。
-#    ここでは、送る/捨てる系の入口が Confirm.ask を経ることを静的に数える）。
-conf=$(prod "Confirm.ask(" | wc -l | tr -d ' ')
-if [ "$conf" -ge 3 ]; then
-  row "external action confirmation" "PASS (Confirm.ask ×$conf; 面は CONFIRMATION_GATE)"
+#    ここでは、送る/捨てる系の入口が Confirm.ask / Confirm.approve を経ることを静的に数える）。
+#    返信の送信と backend の承認は、証拠（UserApproval）を返す Confirm.approve に移った。
+#    ask だけを数えると、外へ届くいちばん強い入口が数から漏れる。
+ask_n=$(prod "Confirm.ask(" | wc -l | tr -d ' ')
+approve_n=$(prod "Confirm.approve(" | wc -l | tr -d ' ')
+conf=$((ask_n + approve_n))
+if [ "$conf" -ge 3 ] && [ "$approve_n" -ge 2 ]; then
+  row "external action confirmation" "PASS (Confirm.ask ×$ask_n + Confirm.approve ×$approve_n; 面は CONFIRMATION_GATE)"
 else
-  bad "external action confirmation" "FAIL" "Confirm.ask の入口が $conf 箇所しかない"
+  bad "external action confirmation" "FAIL" "確認の入口が ask ×$ask_n / approve ×$approve_n しかない（返信の送信と backend の承認は Confirm.approve を通る）"
 fi
 
 # 6. ガイドが、オンデバイスと Google STT の選択を正しく説明する。
@@ -142,15 +152,209 @@ else
   bad "transcription egress guide" "FAIL" "docs/guide/build.py: Google STT の説明が無い / 「相手の声のために」が残っている / 出ない理由の行が無い"
 fi
 
-# 実行体（ある時だけ）: 既定 OFF と、資産の無いロケールで throw。
-if [ -x "$BIN" ]; then
-  out=$(env -u ASTRA_DEV_AUTO_UPLOAD "$BIN" --selftest egress 2>/dev/null | tail -1)
-  case "$out" in
-    SELFTEST_OK*)   row "runtime (--selftest egress)" "${out#SELFTEST_OK egress: }";;
-    SELFTEST_SKIP*) row "runtime (--selftest egress)" "SKIP";;
-    *) bad "runtime (--selftest egress)" "FAIL" "$out";;
-  esac
+# 7. いまの情報（天気・ニュース）は、一覧の相手にだけ出る。
+#    - current-info/ の https URL は CURRENT_INFO_HOSTS の中だけ
+#    - 生の fetch( は hosts.ts の infoFetch だけ
+#    - 一覧はこのゲート・hosts.ts・docs/privacy-egress.md で同じ
+info_check=$(python3 - "$ROOT" <<'CHECK'
+import pathlib, re, sys
+root = pathlib.Path(sys.argv[1])
+d = root / 'workers/agent-host/src/current-info'
+expected = ['api.open-meteo.com', 'geocoding-api.open-meteo.com', 'news.web.nhk', 'news.google.com']
+hosts_ts = (d / 'hosts.ts').read_text()
+listed = re.findall(r"^\s*'([a-z0-9.-]+)',", hosts_ts.split('CURRENT_INFO_HOSTS')[1].split('] as const')[0], re.M)
+problems = []
+if listed != expected:
+    problems.append(f'CURRENT_INFO_HOSTS {listed} != {expected}')
+for f in sorted(d.glob('*.ts')):
+    text = f.read_text()
+    for host in re.findall(r'https://([a-z0-9.-]+)', text):
+        if host not in expected and host != 'open-meteo.com':
+            problems.append(f'{f.name}: {host}')
+    if f.name != 'hosts.ts' and re.search(r'(?<![A-Za-z])fetch\(', text.replace('this.#fetch(', '')):
+        problems.append(f'{f.name}: raw fetch(')
+doc = (root / 'docs/privacy-egress.md').read_text()
+for host in expected:
+    if host not in doc:
+        problems.append(f'docs/privacy-egress.md: {host} missing')
+print('; '.join(problems))
+sys.exit(1 if problems else 0)
+CHECK
+)
+if [ "$?" -eq 0 ]; then
+  row "current-info egress allowlist" "PASS (4 hosts)"
+else
+  bad "current-info egress allowlist" "FAIL" "$info_check"
+fi
+
+# 8. 会話の Gemini Live は、本人がオンにし、キーと上限を置いたときだけ外へ出る。
+#    - 接続先（generativelanguage.googleapis.com）を書いてよいのは GeminiLiveProtocol.swift だけ
+#    - Gemini へつなぐ（GeminiLive.endpoint を使う）のは GeminiLiveProvider.swift だけ、キーは URL ではなくヘッダー
+#    - GeminiLiveProvider を作るのは VoiceHUDState.beginConversation だけで、同意・キー・上限を確かめた後
+gemini_check=$(python3 - "$SRC" <<'CHECK'
+import pathlib, re, sys
+src = pathlib.Path(sys.argv[1])
+problems = []
+for f in src.rglob('*.swift'):
+    text = f.read_text()
+    rel = str(f.relative_to(src))
+    if 'generativelanguage.googleapis.com' in text and rel != 'Audio/GeminiLiveProtocol.swift':
+        problems.append(f'{rel}: Gemini endpoint outside GeminiLiveProtocol.swift')
+    # 接続の自己検査（geminismoke）だけは例外。本人の同意・キー・上限（settings.active）を確かめてからつなぐこと。
+    if rel == 'App/SelfTestGeminiSmoke.swift':
+        if 'GeminiLive.endpoint' in text and 'settings.active' not in text:
+            problems.append(f'{rel}: connects to Gemini without checking settings.active')
+    elif 'GeminiLive.endpoint' in text and rel != 'Audio/GeminiLiveProvider.swift':
+        problems.append(f'{rel}: connects to Gemini outside GeminiLiveProvider.swift')
+    if 'GeminiLiveProvider(' in text and rel not in ('VoiceHUD/VoiceHUDState.swift', 'Audio/GeminiLiveProvider.swift'):
+        problems.append(f'{rel}: GeminiLiveProvider created outside beginConversation')
+provider = (src / 'Audio/GeminiLiveProvider.swift').read_text()
+# 検査用の差し替え先は、この Mac の中（ループバック）だけ。外の宛先へ向ける口を作らない。
+if 'endpointOverride' in provider:
+    if 'private static var endpointOverride' not in provider or '"127.0.0.1"' not in provider:
+        problems.append('GeminiLiveProvider.swift: endpointOverride must be private and loopback-only')
+if 'x-goog-api-key' not in provider or re.search(r'[?&]key=', provider):
+    problems.append('GeminiLiveProvider.swift: API key must go in the x-goog-api-key header, not the URL')
+state = (src / 'VoiceHUD/VoiceHUDState.swift').read_text()
+# Ignore comments/literals when locating the function and its checks. This is a
+# bounded source guard, not a substitute for the provider's runtime tests.
+def mask_non_code(text):
+    masked = list(text)
+    offset = 0
+    while offset < len(text):
+        start = offset
+        if text.startswith('//', offset):
+            end = text.find('\n', offset)
+            offset = len(text) if end < 0 else end
+        elif text.startswith('/*', offset):
+            depth = 1
+            offset += 2
+            while offset < len(text) and depth:
+                if text.startswith('/*', offset): depth += 1; offset += 2
+                elif text.startswith('*/', offset): depth -= 1; offset += 2
+                else: offset += 1
+        else:
+            literal = re.match(r'(#+)?("""|")', text[offset:])
+            if not literal:
+                offset += 1
+                continue
+            hashes, quote = literal.group(1) or '', literal.group(2)
+            offset += len(literal.group())
+            close = quote + hashes
+            while offset < len(text):
+                if text.startswith(close, offset): offset += len(close); break
+                if text.startswith('\\' + hashes, offset):
+                    # Interpolation can contain executable expressions. This bounded
+                    # scanner rejects it in the checked function instead of treating
+                    # its contents as proof of a consent guard.
+                    offset += len(hashes) + 2
+                else: offset += 1
+        for index in range(start, min(offset, len(text))):
+            if masked[index] != '\n': masked[index] = ' '
+    return ''.join(masked)
+
+code = mask_non_code(state)
+headers = list(re.finditer(r'(?m)^\s*func\s+beginConversation\s*\([^)]*\)\s*\{', code))
+begin = ''
+start = end = -1
+if len(headers) == 1:
+    start = headers[0].end()
+    depth = 1
+    for offset in range(start, len(code)):
+        if code[offset] == '{': depth += 1
+        elif code[offset] == '}': depth -= 1
+        if depth == 0:
+            end = offset
+            begin = code[start:end]
+            break
+constructors = list(re.finditer(r'\bGeminiLiveProvider\s*\(', code))
+if not begin or len(constructors) != 1 or not (start <= constructors[0].start() < end):
+    problems.append('beginConversation: exactly one scoped GeminiLiveProvider construction is required')
+else:
+    if re.search(r'\\#*\(', state[start:end]):
+        problems.append('beginConversation: interpolated literals require explicit source-guard review')
+    before_provider = code[start:constructors[0].start()]
+    for needle in ['gemini.enabled', 'gemini.hasKey', 'canStart(at:']:
+        if needle not in before_provider:
+            problems.append(f'beginConversation: missing {needle} before creating GeminiLiveProvider')
+print('; '.join(problems))
+sys.exit(1 if problems else 0)
+CHECK
+)
+if [ "$?" -eq 0 ]; then
+  row "gemini live requires consent, key, limit" "PASS"
+else
+  bad "gemini live requires consent, key, limit" "FAIL" "$gemini_check"
+fi
+
+# 9. 近くの店（Google Maps Platform）は、本人がキーと上限を置き、近くの店を頼んだときだけ外へ出る。
+#    - 接続先（places.googleapis.com / maps.googleapis.com）を書いてよいのは Places/PlacesClient.swift だけ
+#    - Places のキーはヘッダー（X-Goog-Api-Key）。URL に載せてよいのは Static Maps の staticMapURL だけ
+#    - PlacesClient.swift は URL をログに出さない（print / NSLog / Logger / os_log を持たない）
+#    - PlacesClient を作るのは NearbyPlaces.search だけで、キー・上限（settings.canSearch）を確かめた後
+places_check=$(python3 - "$SRC" "$ROOT" <<'CHECK'
+import pathlib, re, sys
+src = pathlib.Path(sys.argv[1]); root = pathlib.Path(sys.argv[2])
+problems = []
+for f in src.rglob('*.swift'):
+    text = f.read_text(); rel = str(f.relative_to(src))
+    for host in ('places.googleapis.com', 'maps.googleapis.com'):
+        if host in text and rel != 'Places/PlacesClient.swift':
+            problems.append(f'{rel}: {host} outside PlacesClient.swift')
+    if re.search(r'\bPlacesClient\(', text) and rel not in ('Places/NearbyPlaces.swift', 'Places/PlacesClient.swift') and not f.name.startswith('SelfTest'):
+        problems.append(f'{rel}: PlacesClient created outside NearbyPlaces.search')
+client = (src / 'Places/PlacesClient.swift').read_text()
+if 'X-Goog-Api-Key' not in client:
+    problems.append('PlacesClient.swift: Places key must go in the X-Goog-Api-Key header')
+key_in_url = [m.start() for m in re.finditer(r'URLQueryItem\(name: "key"', client)]
+static = client.split('func staticMapURL(')[1].split('\n    }\n')[0] if 'func staticMapURL(' in client else ''
+if len(key_in_url) != 1 or 'URLQueryItem(name: "key"' not in static:
+    problems.append('PlacesClient.swift: key may be in the URL only inside staticMapURL')
+if re.search(r'\b(print|NSLog|os_log)\(|Logger\(', client):
+    problems.append('PlacesClient.swift: must not log (the map URL carries the key)')
+nearby = (src / 'Places/NearbyPlaces.swift').read_text()
+search = nearby.split('func search(')[1].split('\n    }\n')[0] if 'func search(' in nearby else ''
+if 'canSearch' not in search or 'PlacesClient(' not in search or search.index('canSearch') > search.index('PlacesClient('):
+    problems.append('NearbyPlaces.search: must check settings.canSearch before creating PlacesClient')
+doc = (root / 'docs/privacy-egress.md').read_text()
+for host in ('places.googleapis.com', 'maps.googleapis.com'):
+    if host not in doc:
+        problems.append(f'docs/privacy-egress.md: {host} missing')
+print('; '.join(problems))
+sys.exit(1 if problems else 0)
+CHECK
+)
+if [ "$?" -eq 0 ]; then
+  row "nearby places require key, limit, request" "PASS"
+else
+  bad "nearby places require key, limit, request" "FAIL" "$places_check"
+fi
+
+# Runtime: use the selected signed app's Speech identity. Missing permission or
+# missing on-device test conditions remain unmeasured; a crash cannot count as OK.
+runtime_status=0
+prepare_app_selftest || runtime_status=$?
+not_run=0
+if [[ "$runtime_status" -eq 0 ]]; then
+  out="$(run_app_selftest egress)" || runtime_status=$?
+  printf '%s\n' "$out"
+  if [[ "$runtime_status" -ne 0 ]] || grep -q '^SELFTEST_FAIL' <<<"$out"; then
+    bad "runtime (--selftest egress)" "FAIL" "native selftest did not complete normally"
+  elif grep -q '^SELFTEST_SKIP egress:' <<<"$out"; then
+    row "runtime (--selftest egress)" "NOT_RUN: native selftest skipped"
+    not_run=1
+  elif grep -q '^SELFTEST_OK egress:' <<<"$out"; then
+    if grep -q 'NOT_MEASURED' <<<"$out"; then not_run=1; fi
+  else
+    bad "runtime (--selftest egress)" "FAIL" "missing egress result"
+  fi
+elif [[ "$runtime_status" -eq 2 ]]; then
+  not_run=1
+else
+  fail=1
 fi
 
 echo
-if [ $fail -eq 0 ]; then echo "PRIVACY_EGRESS_GATE=PASS"; else echo "PRIVACY_EGRESS_GATE=FAIL" >&2; exit 1; fi
+if [[ "$fail" -ne 0 ]]; then echo "PRIVACY_EGRESS_GATE=FAIL" >&2; exit 1; fi
+if [[ "$not_run" -ne 0 ]]; then echo "NOT_RUN: PRIVACY_EGRESS_GATE runtime incomplete"; exit 2; fi
+echo "PRIVACY_EGRESS_GATE=PASS"

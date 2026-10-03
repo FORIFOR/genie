@@ -64,8 +64,8 @@ describe('searching from the device', () => {
     // 辿れない出典は根拠ではない。件数として数えると「4 sources」が嘘になる。
     const { host } = hostReturning({
       results: [
-        { url: 'https://example.com/real', title: 'ok' },
-        { url: 'not a url', title: 'made up' },
+        { url: 'https://example.com/real', title: 'ok', snippet: '本文' },
+        { url: 'not a url', title: 'made up', snippet: '本文' },
         { url: 'javascript:alert(1)', title: 'no' },
         { url: '', title: 'empty' },
         { title: 'missing' },
@@ -78,8 +78,8 @@ describe('searching from the device', () => {
   it('counts one page once', async () => {
     const { host } = hostReturning({
       results: [
-        { url: 'https://example.com/a', title: '1' },
-        { url: 'https://example.com/a', title: '2' },
+        { url: 'https://example.com/a', title: '1', snippet: '本文' },
+        { url: 'https://example.com/a', title: '2', snippet: '本文' },
       ],
     });
     expect(await provider(host).search('q', 10)).toHaveLength(1);
@@ -87,7 +87,10 @@ describe('searching from the device', () => {
 
   it('never returns more than was asked for', async () => {
     const { host } = hostReturning({
-      results: Array.from({ length: 20 }, (_, i) => ({ url: `https://example.com/${String(i)}` })),
+      results: Array.from({ length: 20 }, (_, i) => ({
+        url: `https://example.com/${String(i)}`,
+        snippet: '本文',
+      })),
     });
     expect(await provider(host).search('q', 3)).toHaveLength(3);
   });
@@ -113,5 +116,17 @@ describe('searching from the device', () => {
     };
     // 引けなかったことを「見つからなかった」にしない
     await expect(provider(failing).search('q', 5)).rejects.toMatchObject({ name: 'HostOffline' });
+  });
+
+  it('does not count a result with no excerpt, since nothing can be quoted from it', async () => {
+    const { host } = hostReturning({
+      results: [
+        { url: 'https://example.com/empty', title: 'empty', snippet: '' },
+        { url: 'https://example.com/blank', title: 'blank', snippet: '   ' },
+        { url: 'https://example.com/full', title: 'full', snippet: '出走予定は 12 頭。' },
+      ],
+    });
+    const hits = await provider(host).search('出走予定', 5);
+    expect(hits.map((hit) => hit.url)).toEqual(['https://example.com/full']);
   });
 });

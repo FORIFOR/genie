@@ -30,16 +30,19 @@ enum VisualKind: String, Equatable {
 enum VisualEgressPolicy: Equatable {
     case localVision
     case cloudVision(provider: String)
+    case unavailable
 
     static var current: VisualEgressPolicy {
         configured(environment: ProcessInfo.processInfo.environment)
     }
 
     static func configured(environment: [String: String]) -> VisualEgressPolicy {
+        if environment["ASTRA_RUNTIME_CONFIGURATION_ERROR"] == "1" { return .unavailable }
         if environment["ASTRA_LOCAL_VISION"] == "1" { return .localVision }
         switch environment["ASTRA_LLM_CLI"] {
         case "codex": return .cloudVision(provider: "OpenAI")
         case "claude_code": return .cloudVision(provider: "Claude")
+        case "gemini_api": return .cloudVision(provider: "Google")
         default: return .cloudVision(provider: "接続したモデルの提供元")
         }
     }
@@ -49,6 +52,7 @@ enum VisualEgressPolicy: Equatable {
 
     var disclosure: String {
         switch self {
+        case .unavailable: return DesktopConnectionBootstrap.issueMessage
         case .localVision: return Facts.screenshotEgressLocal
         case .cloudVision(let provider): return Facts.screenshotEgressCloud.replacingOccurrences(of: "{provider}", with: provider)
         }
@@ -58,6 +62,7 @@ enum VisualEgressPolicy: Equatable {
     /// 端末内モデルなら出さない（送っていないものを送ったと言わない）。
     func provenance(firstTime: Bool) -> String? {
         switch self {
+        case .unavailable: return nil
         case .localVision: return nil
         case .cloudVision(let provider):
             // Keep the send condition visible in the compact chip when the

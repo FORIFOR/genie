@@ -1,0 +1,183 @@
+{
+  "recordedAt": "2026-10-01T23:15:42.644415+00:00",
+  "status": "FAIL",
+  "releaseReady": false,
+  "githubPublished": false,
+  "baseRevision": "ee857a5b13482cbd2d986a1f9b466c8e49a149c3",
+  "completedChecks": {
+    "computerHostAndCLI": 118,
+    "runnerPython": 74,
+    "managedPreviewLifecycle": 42,
+    "swiftOrdinary": 291,
+    "swiftIsolatedShutdown": 1,
+    "swiftExternalTranslation": 1,
+    "appKitTerminationScenarios": 4,
+    "installedMacOS27Screenshots": 32,
+    "installedMacOS27AXRequiredElements": 43,
+    "tauriOrdinary": 71,
+    "tauriRealSTT": 3,
+    "checkoutFocused": 39,
+    "checkoutHostMocks": 7,
+    "checkoutHTTP": 20,
+    "keychainAndConnectionSwiftFocused": 54,
+    "keychainRecoveryFocused": 35,
+    "fullGateMemoryPressureNormalSamples": 375
+  },
+  "remaining": [
+    {
+      "scope": "whole gate",
+      "status": "FAIL (second installed attempt)",
+      "observed": "Installed8b463: realmicrelease localpipeline paths PASS and aistop PASS. Privacy staticchecker fails obsolete zeroarg function match (guards remain in current source); E2E001 step7 actualAI summary failed, diagnosis pending. T2 motion below50fps instrument markNOT_MEASURED retained. No gate thresholds relaxed."
+    },
+    {
+      "scope": "signed app permissions",
+      "status": "PASS (scoped)",
+      "observed": "Actual installed com.astra.mac launched through LaunchServices reports AX/microphone/speech already allowed; no grant changed. Earlier missing permissions were for the different .desktop test bundle. Screen recording permission of the main app is still unconfirmed; helper separately reports ready."
+    },
+    {
+      "scope": "macOS 27 visual profile",
+      "status": "PASS (scoped)",
+      "observed": "Fresh installed app recovered all4 previously missing MainWindow surfaces.32 captures; native20image comparison within0.5%,6geometry states within2pt,shape/occupation/density within unchanged limits. New environment profile adopted after review-hash checks; old profiles and failures retained."
+    },
+    {
+      "scope": "real Safari/model navigation",
+      "status": "BLOCKED",
+      "observed": "Normal target chooser did not expose the owned public Safari window; cancelled before capture/model/input. A later read-only metadata diagnostic found 0 Safari onscreen windows via both CG and ScreenCaptureKit, and the same 8 offscreen windows via both all-window APIs. The diagnostic is a different caller/time and does not prove the exact earlier-window cause. Actual navigation remains unverified."
+    },
+    {
+      "scope": "live merchant/broker",
+      "status": "BLOCKED",
+      "observed": "No live adapters or authenticated receipt tests complete. Intended pizza provider/broker and usable test environment are pending. No real order or security trade was performed."
+    },
+    {
+      "scope": "Noa long-duration coexistence",
+      "status": "BLOCKED (live stream) / PASS (75s scoped observation)",
+      "observed": "75.382-second synthetic generation/resident observation passed with unchanged model/voice settings, 155 pressure readings all1, minimum free46%, and Genie external task overlap12.190s. Generation ended15.965s; this is not75s continuous generation or actual livestream stability. Noa production remained stopped; owned cleanup confirmed."
+    },
+    {
+      "scope": "GitHub publication",
+      "status": "BLOCKED",
+      "observed": "AGENTS.md requires verify-all green before committing adopted UI changes. Remote branch remains original revision; changes are uncommitted and unpushed."
+    },
+    {
+      "scope": "normal installed-app connection",
+      "status": "BLOCKED",
+      "observed": "Actual Home submission previously stopped immediately at Keychain access refusal with draft retained. New explicit read-only recovery control is installed,35 focused tests and synthetic blocked-read quit passed. No real OS prompt/ACL access/recovery or normal-app answer verified."
+    },
+    {
+      "scope": "bare app launch preserves selected model",
+      "status": "PASS (fresh-launch scope)",
+      "observed": "Recorded descriptor present 10 minutes before fresh launch, no prior Genie process; actual Home disclosed gpt-6-sol and standard workspace history. Earlier inconsistent launch remains FAIL with cause unresolved."
+    },
+    {
+      "scope": "local speech latency",
+      "status": "NOT_MET",
+      "observed": "Latest real STT fixture tests passed3 assertions, projected first partial1533ms versus350ms target. Functional success does not meet latency goal."
+    }
+  ],
+  "evidenceSha256": {
+    "verify-all-current.log": "3c041ac275ce0dcd1515b857bed2b9d3c85cbf9ffc3d4952fa0cb5e097c52c7f",
+    "verify-all-current-exit.json": "0ca4f82bd61252308a5356df8fb2fd18eac6ea7ad2301946442cd8560d3ddd7b",
+    "macos-recording-refreshed-token.log": "7f2b734448eb0ba1a83afda52f23d5f6b9a22a0eb06fd5ace0ff55f9e6c4a96f",
+    "macos-recording-refreshed-token-exit.json": "63314c3ee59fd9ac7806416380df08d40a8319a31741f9cb78c02df65310e7f7",
+    "computer-host-gate-final.log": "5451981e7da4b22bcdd475d9f169ccd18624206bee3d690eff28b0fede0dfae8",
+    "python-regression-final.log": "e17d3c587d94e9aea44db5f0450ecf70611d3f303c4c643372e67cff1eaa3526",
+    "safari-public-verification.json": "15186f0e44171d78fa450bd27740b2cabcd417eb3d4b3827a409fbf2434f0821",
+    "noa-current-readonly-20261002-0510.json": "7db13347e63c302d2cffb30ecba8fd941a1a3799aba9ae68f0eda378c6d95f15",
+    "safari-window-metadata/manifest.json": "36aa6f2bb7580bac49d1abcc256065784db25cb06fe1d6356ce6862cba313c00",
+    "documentation-startup-check.json": "bb95625e89cbbadb2f2db76ff1ed55bcf6ac279b5070f8b125a398b38a9656c0",
+    "noa-genie-temporal-overlap-20261002.json": "0f2067d472fd4182c5981709b3e075842f285005770f253f1ad1deb34ed28036",
+    "offscreen-capture-poc/manifest.json": "cdfc5afd3130e002008f1b84660162e58460d7d2ae4fe7f1d1f4ea231aba5175",
+    "user-app-staging.json": "6bdfd2de9645750d5ae610206406f7577419c29c4fae006f84094945ed1ccc02",
+    "user-app-install.json": "2ede214b68af89972b5b7ae5932b415ed58b8bee817359513757d9bb9f6f62de",
+    "user-app-permissions.json": "22c95379fe067454b5a7d432b28ff594a94cc8349dc0748c96726be97936e760",
+    "user-model-selection.json": "183203cc513d43caaf58e93cb52837dd6816d3d060293aafd6192ee584715c8c",
+    "user-app-stage-independent-review.json": "23b0e900736059f5eac37d52036190c43345b2c6bc5e675ae3f3ac02101e1c89",
+    "build-resource-entrypoints.json": "c8f9190145806a2187f5096554310a5fa1b0661186319a74cd88ffec1e55d12e",
+    "python-regression-installed-route.log": "4ccee21634b1aea94bb3818407416f351f760e24a07448fce4aae5be9c4e6274",
+    "user-runtime-attempt.json": "5934219f5040fe51193d074c71fe84feb3914a3b4f5f7715ad45a92cc180cc3a",
+    "installed-macos27-independent-review.json": "ab4208c84093d242a52af890620a4f7dacacc5c1100898db3c4ecdcd74802386",
+    "tauri-real-stt-current.log": "1a5e2c7b810fffe5800f8b748130aa953d010ca10373c73e03f39008880e0e56",
+    "isolated-stt-assets.json": "95b89d4569983299a51119e69e6a78cb9512b09d53065620ee6ebf814efa2b81",
+    "python-regression-keychain-gate.log": "c28b51cc4b7737d821c54033369eb32d687f7d9b0bbb2fd0a566d7def6aa3e9c",
+    "checkout-handoff.json": "6f1e62749541a5067ba9c726a057eda98f18bc22e8a6ae90f7b6c3bccf9e4e59",
+    "checkout-host-actual.json": "d6bf8989ad1743f82452fad0d6e4c5b5afba5b0c1df9264c9102baa93b265438",
+    "checkout-host-artifact.md": "716c330eaf62bd76158e7c26e0f0b5313cfec30057a2f0c4069c0a23b0874ecc",
+    "full-gate-retry-preparation.json": "82dcf4028f54820e2497b22892b01f103fd84ce2815eab7180ae79c1ed95e535",
+    "keychain-home-independent-review.json": "77a5f112b0d7dbd6406776343d59a11da10d422ddfbff498fa3cb7b9888ef585",
+    "desktop-connection-independent-review.json": "accc7a1392e49857cc02d7b80af2f5acf1fddc387f36c993a56f842232cca893",
+    "preflight-final-static.json": "076972c006800a80b390f1d5fc9197ee4c6f2e554072b96835f43aa3746b8abc",
+    "user-app-connection-install.json": "70dd700611e8a9d5406d7100324bdb33dc3ef3a67836b35b7b388bf9744851e1",
+    "connection-stage-independent-review.json": "a044dccfedc53f5f0c28d51d25d03e3053033dec33b4ccde1175a478f65d1818",
+    "normal-connection-app-first-check.json": "7a8c4cd49a617b7283fd4aa9b22484872c2a4e52d42dfc90568b13b446816fe7",
+    "normal-connection-app-fresh-check.json": "254730278352f770c30d168eaa16417cb596abea6e2fcb1a3b098d138afd9760",
+    "noa-short-coexistence.json": "9a19ceb420f222fcdd7f0596278ac1af5c4fda643ea53f89d8d19dc06b274f18",
+    "noa-resident-75s-coexistence.json": "4133104d6c48b77d16741d2054b7bb8df5e7ea4a2724577c7b189693e6cc123e",
+    "NOA_COEXISTENCE.md": "024468b99e60d9b197aa19b4eab37c9f1c4ba994718dd410f64d6e04033355e0",
+    "publication-redactions.json": "88df5b491ede72dbb19166eb1ed5b4dd46dad314f630885ea306e663aae922a3",
+    "user-app-recovery-install.json": "79a74947f824900fc8674cf8741e28d6499dccc24b4516ec84279725758c71c5",
+    "keychain-recovery/manifest.json": "b13132d0a5f6b575f394d1cfd54a3fa8fcb6b0ebb56dd45b1a7ddeedf9cc2545",
+    "keychain-explicit-recovery-independent-review.json": "9278a5a1a19aa08887e378617c0be11f7ad153225fd655208059d555a8995c8a",
+    "recovery-stage-independent-review.json": "f4b260f2a25d71380a575fea0de758aae2df9fa82f4ca1b95191c90ca4f4575b",
+    "installed-profile-recovery/result.json": "527456e5af01ce849323f89158fccefa0893b60ccd46b3a7de5a3ea5f9633cd5",
+    "installed-profile-recovery-independent-review.json": "d86f594d81c3d113b0684a93d0054b3749e5741e1e1ee6a685cd9035d3787a4e",
+    "installed-profile-recovery-manifest-update-review.json": "fad49adaecc33dc2d36ab5d626cab57b1816ecbe19b0c229209d76bcdd51e7f6",
+    "user-app-gate-install.json": "7bc016671751ef24e9293d1c76ed85f6393f14f4906fbe2c967b083cb46559b5",
+    "gate-stage-independent-review.json": "4e913e69e5ff1f93c0f28363d242f1701763ac32e6bcb3cf8626dee2e6fa721c",
+    "reachability-motion-focused.json": "7083a3e37407618bfc8a68a3dbaed29a8b7568c9a1cf46487a90a69ee8c66659",
+    "reachability-uniffi-binding-fix.json": "14771771cf3557d0637328e94d4934bb4909360390665fd6cf90865c2839d72c",
+    "gate-fixture-fixes/package-stage-result.json": "82f5b2a23fa00cb440300d47cb0961d173fd9fc8efcb1b0d2a1329b1d80acc22",
+    "gate-fixture-fixes-independent-review.json": "88f01bca39ec5af525fee4bf1e0b7e5af1b9167109de51609f78a1e197adb3e7",
+    "installed-gate-attempt-1/verify-all-installed-current.log": "977b3bfea3b378c2041784e77e0cd402470e9f6ced429f207446769df9594971",
+    "installed-gate-attempt-1/verify-all-installed-current-exit.json": "807ca58226ace4a69a58d433bd936149dc03488346d078a7d10bee8babce89a2",
+    "verify-all-installed-current.log": "9ff74f651f9d5b7754cd3ce941c488e534a6a5e93d0b9f0995e2fcbd04e44833",
+    "verify-all-installed-current-exit.json": "6890d138a620bd0b17fd324950d0a04e6cae3dfe60d3f42468671ff08c4dfdd4",
+    "verify-all-installed-pressure.json": "6df539c669872ed2aaf79c055e62c464d14c0c44f96f455fb75aa6ea2a705dd6"
+  },
+  "cleanup": {
+    "managedSupervisor": "Standard user services43123 and private verification services43180 active, both no-open; native app ended via Cmd+Q after check.",
+    "ownedTestProcessesRemaining": "Private gateway/service processes and test DB are retained for remaining gates; exact count not asserted.",
+    "disposableDatabase": "genie-checkout-gate-20261002 active on 127.0.0.1:32768, dedicated to verification; final removal pending.",
+    "ownedTestVM": "genie-transactions-20261002 stopped",
+    "existingDefaultVM": "started with existing 2CPU/4GiB config to preserve normal workspace volumes; no global Docker context switch; currently retained for follow-up",
+    "memoryPressureLevelAfterCleanup": 1
+  },
+  "documentation": {
+    "externalFirstStartupExamples": 17,
+    "status": "PASS",
+    "scope": "Pure argument/configuration parsing only; no runtime default or model-quality change.",
+    "independentReview": "PASS: both explicit app paths, 10 source/doc hashes and 17 stored/current argument lists matched; read-only review only."
+  },
+  "offscreenExperiment": {
+    "status": "FAIL",
+    "captureCalls": 0,
+    "freshPixelsVerified": false,
+    "productionChanged": false,
+    "finding": "The synthetic window was geometrically outside every display, while both CG/SC classified it onscreen. Both bounded runs stopped at the existing OS-offscreen precondition before capture. This does not test other Spaces or establish capture impossibility."
+  },
+  "remoteRevisionAtLastCheck": "ee857a5b13482cbd2d986a1f9b466c8e49a149c3",
+  "installedApplication": {
+    "path": "/Applications/Genie.app",
+    "sourceBuildPath": "apps/genie-macos/build/Genie.app",
+    "bundle": "com.astra.mac",
+    "sha256": "8b46350c5bb3a4330320689898171c59a5fd0dc9cf1947dd6548a4d4f2af668d",
+    "preservedIdentityAndSigningRequirement": true,
+    "backups": "~/Library/Application Support/Genie/update-backups/20261002-080622",
+    "standardModel": "codex/gpt-6-sol",
+    "configurationSaved": true,
+    "normalRealAnswerVerified": false,
+    "importantScope": "Recovery UI plus read-free mic fixture and current healthz/UniFFI core are installed under preserved identity. Package facts passed. Whole gate second run is ongoing. Real normal Home answer remains blocked by credential access; no OS Keychain operation performed."
+  },
+  "realCheckoutHandoff": {
+    "status": "PASS (navigation-request scope only)",
+    "route": "synthetic conversation -> task worker -> actual local host -> OS public URL open request -> saved artifact readback",
+    "merchant": "McDelivery Japan",
+    "taskState": "COMPLETED",
+    "orderSubmitted": false,
+    "cartPrepared": false,
+    "browserRenderingVerified": false,
+    "authenticationChecked": false,
+    "nativeHomeVerified": false,
+    "notLiveCheckoutAdapter": true
+  }
+}

@@ -6,11 +6,12 @@ import { connectionConfiguration } from './connection-configuration.js';
  *
  * **Dock とは別プロセス。**Dock を閉じても、これは動き続ける。
  */
+import { randomUUID } from 'node:crypto';
 import { cloudClient } from './cloud.js';
 import { ApiSession } from './api-session.js';
 import { acquireHostInstance } from './instance-lock.js';
 import { homedir } from 'node:os';
-import { resolve } from 'node:path';
+import { resolve, join } from 'node:path';
 import { runInitialProfile } from './initial-profile.js';
 import { createLogger } from '@genie/telemetry';
 import { credentialRef, connectorProviderConfig, type OauthProvider } from '@genie/oauth';
@@ -25,9 +26,17 @@ import { CodexCli } from './codex.js';
 import { ClaudeCodeCli } from './claude-code.js';
 import { LlmRuntime } from './llm-steps.js';
 import { HttpLlmClient } from './http-llm.js';
+import { CurrentInfoRunner } from './current-info/runner.js';
 import { CompositeRunner } from './runner.js';
 import { ComputerVisionRuntime } from './computer-vision.js';
+import { CloudModelBudget } from './cloud-vision-budget.js';
+import { visualContextDir } from './visual-context.js';
 import { NativeVisionDevice } from './computer-vision-device.js';
+import { CheckoutAssistanceRuntime } from './checkout-assistance.js';
+import { OfficeEditRuntime } from './office/runtime.js';
+import { TransactionRuntime } from './transaction-runtime.js';
+import { SimulationOrders } from './simulation-orders.js';
+import { nativeSimulationConfirmation } from './simulation-native-checkout.js';
 import { selectLanguageModel } from '@genie/contracts';
 import type { WorkSyncState, LanguageModelKind } from '@genie/contracts';
 import { DEFAULT_SYNC_INTERVAL_MS, WorkSyncLoop } from './work-sync.js';
@@ -74,8 +83,11 @@ async function main(): Promise<void> {
    * Claude Code のログインは Claude Code のもので、Genie は読まない。
    */
   const preferredCli = process.env['ASTRA_LLM_CLI'];
-  if (preferredCli && !['codex', 'claude_code', 'api', 'local', 'none'].includes(preferredCli))
-    throw new Error('ASTRA_LLM_CLI must be codex, claude_code, api, local, or none');
+  if (
+    preferredCli &&
+    !['codex', 'claude_code', 'api', 'gemini_api', 'local', 'none'].includes(preferredCli)
+  )
+    throw new Error('ASTRA_LLM_CLI must be codex, claude_code, api, gemini_api, local, or none');
   const llmKeychain = keychainFor(process.platform, deviceLabel);
   const httpClients: Partial<
     Record<'anthropic_api' | 'gemini_api' | 'openai_api' | 'local', HttpLlmClient>
@@ -272,17 +284,104 @@ async function main(): Promise<void> {
     },
   });
 
+  /*
+   * 画面を端末の外のモデルへ出すときの歯止め。**既定は無料の分だけ。**
+   * 有料は設定で明示したときだけ有効になり、そのときは上限を決めてもらう。
+   * 課金済みプロジェクトの鍵かどうかは API からは分からないので、利用者の申告で受ける。
+   */
+  const number = (name: string): number | undefined => {
+    const raw = process.env[name];
+    if (raw === undefined || raw === '') return undefined;
+    const value = Number(raw);
+    if (!Number.isFinite(value) || value < 0)
+      throw new Error(`${name} must be a non-negative number`);
+    return value;
+  };
+  const limit = (field: string, name: string): Record<string, number> => {
+    const value = number(name);
+    return value === undefined ? {} : { [field]: value };
+  };
+  const tier = process.env['ASTRA_CLOUD_VISION_TIER'] ?? 'free';
+  if (!['free', 'paid'].includes(tier))
+    throw new Error('ASTRA_CLOUD_VISION_TIER must be free or paid');
+  const budget = new CloudModelBudget({
+    tier: tier as 'free' | 'paid',
+    billedProject: process.env['ASTRA_CLOUD_VISION_BILLED_PROJECT'] === 'yes',
+    statePath: join(visualContextDir(), 'cloud-model-ledger.json'),
+    ...limit('taskCallLimit', 'ASTRA_CLOUD_VISION_TASK_CALLS'),
+    ...limit('monthlyCallLimit', 'ASTRA_CLOUD_VISION_MONTH_CALLS'),
+    ...limit('taskCostLimitUsd', 'ASTRA_CLOUD_VISION_TASK_USD'),
+    ...limit('monthlyCostLimitUsd', 'ASTRA_CLOUD_VISION_MONTH_USD'),
+    ...limit('pricePerCallUsd', 'ASTRA_CLOUD_VISION_PRICE_USD'),
+  });
+  // 有料にするなら、上限を決めずには始めない。「上げたら青天井」を作らない。
+  if (
+    tier === 'paid' &&
+    number('ASTRA_CLOUD_VISION_MONTH_CALLS') === undefined &&
+    number('ASTRA_CLOUD_VISION_MONTH_USD') === undefined
+  )
+    throw new Error(
+      'ASTRA_CLOUD_VISION_TIER=paid requires ASTRA_CLOUD_VISION_MONTH_CALLS or ASTRA_CLOUD_VISION_MONTH_USD',
+    );
   const computerVision = new ComputerVisionRuntime({
     enabled: process.env['ASTRA_COMPUTER_USE'] === 'on',
     model: llm,
     selectModel: async () => selectLanguageModel(await llm.options())?.kind ?? null,
     allowExternalPixels: process.env['ASTRA_COMPUTER_VISION_EXTERNAL'] === 'on',
     device: () => new NativeVisionDevice(process.env['ASTRA_COMPUTER_VISION_HELPER'] ?? ''),
+    budget,
+  });
+
+  // Transaction adapters are registered locally, never selected by a model-supplied URL.
+  // The only bundled submit adapter currently available is an explicitly named simulator.
+  const simulationEnabled = process.env['ASTRA_TRANSACTION_SIMULATION'] === 'on';
+  if (simulationEnabled && process.env['ASTRA_COMPUTER_USE'] !== 'on')
+    throw new Error('Transaction simulation requires background computer use.');
+  // Claims must survive visual-cache rotation; never derive them from screenshot storage.
+  const transactionRoot =
+    process.env['ASTRA_TRANSACTION_DATA_ROOT'] ??
+    join(
+      process.env['ASTRA_DATA_ROOT'] ?? join(homedir(), 'Library', 'Application Support', 'Genie'),
+      'Transactions',
+    );
+  const transactions = new TransactionRuntime({
+    journalDir: join(transactionRoot, 'journal'),
+    timeoutMs: 300_000,
+    adapters: simulationEnabled
+      ? [
+          new SimulationOrders({
+            root: join(transactionRoot, 'simulation'),
+            confirm: nativeSimulationConfirmation({
+              helper: process.env['ASTRA_COMPUTER_VISION_HELPER'] ?? '',
+              executable: process.env['ASTRA_TRANSACTION_SIMULATION_APP'] ?? '',
+            }),
+          }),
+        ]
+      : [],
   });
 
   const steps = new HostStepLoop({
     transport: httpStepTransport({ baseUrl, token, fetch: apiSession.fetch }),
-    runner: new CompositeRunner([runtime, computerVision, llm]),
+    // いまの情報（天気・ニュース）は端末で取る。モデルは使わない。
+    runner: new CompositeRunner([
+      runtime,
+      computerVision,
+      transactions,
+      new CheckoutAssistanceRuntime(),
+      // Word / Excel は端末で読み、端末のモデルに案を出させ、別名のコピーに書く。
+      new OfficeEditRuntime({
+        ask: async (args, signal) => {
+          const outcome = await llm.run(
+            { id: `office-${randomUUID()}`, toolId: 'llm.office_edit', args, approval: null },
+            signal,
+          );
+          if (!outcome.ok) throw new Error(outcome.error?.message ?? 'model failed');
+          return outcome.result;
+        },
+      }),
+      new CurrentInfoRunner(),
+      llm,
+    ]),
     onError: (error) => logger.warn({ err: error.message }, 'a step could not be handled'),
   });
   void steps.start(id);
@@ -316,13 +415,33 @@ async function main(): Promise<void> {
       logger.warn({ source, err: error.message }, 'work context sync failed for a source'),
   });
   let initialBusy = false;
+  // 失敗が続く間は間を空ける（4 秒 → 最大 5 分）。以前は一時的な障害（DB の接続切れ）の間、
+  // 理由の無い警告を 4 秒ごとに出し続けていた（2026-09-29）。
+  let initialFailures = 0;
+  let initialNextAt = 0;
   const initialTimer = setInterval(() => {
     // Initial profiling is explicitly requested in Connections. Disabling
     // continuous background sync must not strand that user-requested job.
-    if (initialBusy) return;
+    if (initialBusy || Date.now() < initialNextAt) return;
     initialBusy = true;
     void runInitialProfile({ cloud, connectors: runtime, refreshGrants })
-      .catch(() => logger.warn('initial profile could not finish; the lease will allow recovery'))
+      .then(() => {
+        initialFailures = 0;
+        initialNextAt = 0;
+      })
+      .catch((error: unknown) => {
+        initialFailures++;
+        const waitMs = Math.min(300_000, 4_000 * 2 ** Math.min(initialFailures, 7));
+        initialNextAt = Date.now() + waitMs;
+        logger.warn(
+          {
+            err: error instanceof Error ? error.message : String(error),
+            failures: initialFailures,
+            retryInMs: waitMs,
+          },
+          'initial profile could not finish; the lease will allow recovery',
+        );
+      })
       .finally(() => {
         initialBusy = false;
       });

@@ -2,6 +2,7 @@
   "name": "@genie/service-plugin-registry",
   "version": "0.0.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "description": "Plugin catalog, signatures, versions, compatibility and install state.",
   "main": "./dist/index.js",

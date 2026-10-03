@@ -1,0 +1,13 @@
+== UI の癖 ==
+  gradient               4 /   4
+  角丸 >28pt           0 /   0
+  material/blur: actual=11, reviewed additions=3 (content-bound)
+  material/blur          8 /   8
+  sparkles アイコン   5 /   6
+  Capsule: actual=24, reviewed additions=5 (content-bound)
+  Capsule               19 /  20
+  shadow                 5 /   9
+  40字超の文言: actual=10, reviewed additions=4 (content-bound)
+  40字超の文言      6 /   6
+
+UI_TASTE_OK: 癖は上限内

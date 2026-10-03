@@ -1,0 +1,19 @@
+{
+  "revision": "28f89f2636a3b780e813ea902e07d2e4900a6e3f",
+  "timestamp": "2026-09-19T11:12:40.764027+00:00",
+  "sha256": {
+    "README.md": "d685c535da9fb03c8e3540ef2c40f7ad8684d3ec1ca2b9564a2ac50da8fbb71a",
+    "docs/COMPUTER_VISION.md": "0154519345b914daf212831981ef12c57d0d1f72d114ade78828dea8c2977733",
+    "docs/quality/COMPUTER_USE.md": "4dcf53a07a7e077ed9665b554e5a8a53cc45d000f5dd0e189aec73dba2bca0f4",
+    "scripts/computer-use.mjs": "f759139822ad0e58c2651988733a57e76332febb567b8ce55c5fdda09c7da0dc",
+    "scripts/tests/computer-use.test.mjs": "b0eac67db2d452a343a0137d5d7723f0fb8d8c180b9bcd9834b69710ec4362e3",
+    "scripts/start-local-preview.mjs": "1169f9d56d02cdf4f7a4a49cb9a268985dc040690dc8504c5a10100c97a753af",
+    "scripts/local-preview/config.mjs": "2092447a09956c2cd8297663b40a37035b1a5bd31401121e04d35ef6ce6f6e3a",
+    "scripts/tests/managed-local-preview.test.mjs": "549ecdd88652b949ebf9d4469511acba9392db92202c0288f99b084d36de61b6",
+    "services/task/src/plan.ts": "c03e405f2b0ce9011cd2d1570f4a922b5794cda61a3b41e4317de12d5805eccb",
+    "tools/computer-use/genie-computer.swift": "1c2a0fa4b91fd9fa9008c44c1e55ea16f14e91f4a4e92c80d934df8fb96a0bdd",
+    "tools/computer-use/test-app.swift": "6a92e7f6f02bec44b92447fd7a90cf22d21db70c6065421881a063cd31d0ee65",
+    "workers/agent-host/src/computer-vision-device.ts": "97fd4446f5df02b033762190da580e92e887c063b774c7bd3fecba00f10f06bc",
+    "workers/agent-host/test/computer-vision-integration.node.mjs": "a167c978f80ca843ab9a0fadd18c109d59053b49ba2d54110cfc38b6dc42de3c"
+  }
+}

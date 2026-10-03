@@ -1,0 +1,5 @@
+BEGIN session-reuse-1
+RESULT session-reuse-1 {"ok":false,"result":{"provider":"genie.simulation","mode":"simulation","account":"demo-account","orderKey":"session-reuse-1","quoteHash":"d69f7c540db3f1e3556e82d9cb8fd498f9a5fe7ea1964ff12999284bf70d0ab3","status":"unknown"},"error":{"code":"transaction.result_unknown","message":"注文結果を確認できていません。再注文せず、同じ注文の履歴を照会してください。"}}
+Error: native_baseline_failed
+    at file:///private/tmp/genie-transactions-20261002/session-reuse-native/run.mjs:29:23
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)

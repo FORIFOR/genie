@@ -160,3 +160,52 @@ cannot tell が多数なら変えない（craft ⑦ の角丸はこれで差し�
   （Craft Freeze 2026-09-03。`docs/DESIGN_SYSTEM.md` §0。効いたのは構造・寸法・意味だけだった）
 - Compact Meeting Mode を 4 段目の状態として足すこと（会議バー 76 / ライブメモ 357〜460 /
   作業画面の 3 段で足りている。`docs/DESIGN_SYSTEM.md` §7）
+
+## 7. 存在の印と色の役割（TaskDock 1b、2026-09-28）
+
+仮説として採用し、§4 の手順で確かめる。reference: Alcove（連続した変形）/ ElevenLabs UI（声と作業の描き分け）/
+Apple Liquid Glass（素材は入口だけ、読む面は安定）。候補は A＝現行 / B＝形と動きだけ / C＝B＋真鍮の素材。B を採る。
+
+**印は 1 つ。** `VoiceTaskDockView` が中身の外に `GeniePresenceMark` を 1 つだけ置く。面の変形で中身は
+消えて戻るが、印は消えずに左上に居続ける。各 Dock は `DockMarkSlot` で場所を空けるだけ。
+
+| 状態 | 印 | 伝えること |
+| --- | --- | --- |
+| idle | 本文色で静止（12pt） | 呼び出せる入口 |
+| listening | 輪郭が入力音量で伸縮、右に波形（presence） | 聞いていること・認識中の発話 |
+| thinking / agent | 内側を presence がゆっくり流れる、下辺に細い流れ | 作業名・段階・停止（進捗率は出さない） |
+| confirmation | 印を出さない、動きなし | 何を、どこに（§6 のとおり触らない） |
+| result | 静止。「できた」ときだけ一度膨らむ | 何ができたか・どこに・開く |
+| 失敗・中止 | 静止 | できなかったこと・失われていないもの・次の操作 |
+
+時間: 変形 `dockResizeMs 180` は据え置き。呼び出しの伸び `markStretchMs 220`、受付・完了の反応 `markAckMs 320`。
+Reduce Motion / `--selftest` では動かさず、静止形で描き分ける（listening は輪郭、working は内側の青を中央に止める）。
+
+**色の役割**
+- `presence`（light #1C7FA8 / dark #48BCEC）: 印の内側・波形・流れ・Dock の段の点だけ。**文字色にしない。**
+- `accent`（light #1C6FA0 / dark #3E95D0）: 選択状態・リンク・強調の文字。紫（#5B4CF0 / #8A7DFF）から青へ移し、
+  presence と同じ系統にそろえる。light は白地で 4.5:1 以上。dark の塗りに白文字を載せる所（`borderedProminent`・
+  PersonalizationInspector・AvatarHUD）は 3:1 前後なので、盲検と機械の測りで確かめる。
+- 主操作の塗りは従来どおり（確認は危険度の色、§6）。success / warning / danger は変えない。
+- 真鍮（C 案）は採らない。アイコン・紹介映像で使う場合も、アプリの面には持ち込まない。
+
+**Dock を静かにした所**
+- Agent: 経過時間・段数・進行帯・PLAN 見出し・CONTEXT を外し、作業名＋段階＋停止にした（作業画面で見られる）。
+- Result: 1 行目に「<種類>ができました / できませんでした / 止めました」、2 行目に題、3 行目に場所・理由。
+  失敗・中止で仕事の結果なら「依頼は仕事の一覧に残っています。」を足す。操作は開く系を先頭に。
+
+## 8. 例外のカード（回答面の中の、種類ごとの段）
+
+§6 の「新しい画面・新しい機能」の例外として、本人が承認したもの。天気・ニュース（2026-09-27、
+`docs/ux-benchmark/compare/info-card/ROUND.md`）、近くの店の地図と、今後の株価・TODO・予定・メールの返信・
+音楽（ジャケット・プレイリスト）（2026-09-30）。どれも **新しい窓ではなく、回答面の中身の型** として作る。
+
+- 窓を足さない。幅は回答面と同じ `voiceHud.resultWidth` 520（会話中は聞く面の幅）。
+- 高さは中身の実寸（DS-01）、上限は `voiceHud.cardMaxHeight` 360（確認面と同じ理由）。上げるなら §4 の round で。
+- 外側は `DockCardScaffold` だけ（見出しの図形＋題、コピー、会話中は隠す ✕、出所と取得時刻、会話の行、Esc）。
+  種類は `DockCard` の case と、その中身の view だけで足す。
+- 数字・画像は取得元の値だけ。出所と取得時刻を必ず出す。取れないときは文だけの回答面に戻す。
+- 外へ出る操作（送信・注文・再生先の変更など）は `Confirm.approve` を通す。カードのボタンが直接実行しない。
+- 会話（Gemini Live）へ返すのは件数・状態の文だけ。カードの中身（店名・住所・本文）は返さない（`docs/privacy-egress.md`）。
+- 状態を足したら `--selftest dock8` の撮影と golden（`task-dock/`・`task-dock/dark/`、既存は上書きしない）、
+  `--selftest occupation` の上限に加える。

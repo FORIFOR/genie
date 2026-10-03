@@ -1,0 +1,10 @@
+
+ RUN  v3.2.7 /Users/shuhei/Projects/genie/services/task
+
+ ✓ test/transaction-approval.db.test.ts (14 tests) 478ms
+
+ Test Files  1 passed (1)
+      Tests  14 passed (14)
+   Start at  02:36:09
+   Duration  1.16s (transform 214ms, setup 0ms, collect 477ms, tests 478ms, environment 0ms, prepare 43ms)
+

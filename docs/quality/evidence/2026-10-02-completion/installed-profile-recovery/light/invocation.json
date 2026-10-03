@@ -1,0 +1,32 @@
+{
+  "label": "light",
+  "command": [
+    "/usr/bin/open",
+    "-n",
+    "-W",
+    "--env",
+    "ASTRA_DATA_ROOT=/private/tmp/genie-transactions-20261002/installed-profile-recovery/light/data",
+    "--env",
+    "ASTRA_SELFTEST_EXIT_RECEIPT=/private/tmp/genie-transactions-20261002/installed-profile-recovery/light/exit.json",
+    "--stdout",
+    "/private/tmp/genie-transactions-20261002/installed-profile-recovery/light/stdout.log",
+    "--stderr",
+    "/private/tmp/genie-transactions-20261002/installed-profile-recovery/light/stderr.log",
+    "/Applications/Genie.app",
+    "--args",
+    "-astra.transcription.cloudGoogleSTT",
+    "NO",
+    "--selftest",
+    "shots",
+    "/private/tmp/genie-transactions-20261002/installed-profile-recovery/light-images"
+  ],
+  "startedAt": "2026-10-01T22:25:26.381601+00:00",
+  "finishedAt": "2026-10-01T22:25:46.655811+00:00",
+  "exitCode": 0,
+  "receipt": {
+    "schema": 1,
+    "exitCode": 0,
+    "normalExit": true
+  },
+  "binarySHA256": "a01378c92ef466086c4e6e0c1f8263e66a9da61ec24d026c86ef6cda0f678801"
+}

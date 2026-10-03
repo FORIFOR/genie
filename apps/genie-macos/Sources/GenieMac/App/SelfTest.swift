@@ -88,7 +88,21 @@ enum SelfTest {
         case "consumerjourneys": Task { @MainActor in await consumerJourneyShots(args) }; return true
         case "consumer-live": Task { @MainActor in await consumerJourneyLive() }; return true
         case "workcontext": workContextGate(); return true
-        case "replyflow": replyFlowGate(); return true
+        case "replyflow": Task { await replyFlowGate() }; return true
+        case "approval-press": Task { await approvalPress() }; return true
+        case "selfecho": Task { await selfEcho() }; return true
+        case "inputfocus": Task { await inputFocus() }; return true
+        case "micprobe": Task { await micProbe() }; return true
+        case "micrelease": Task { await micRelease() }; return true
+        case "quickesc": Task { await quickEsc() }; return true
+        case "geminiresume": Task { await geminiResume() }; return true
+        case "markmotion": Task { await markMotion() }; return true
+        case "axprobe": axProbe(); return true
+        case "dictationmic": Task { await dictationMic(args) }; return true
+        case "aistop": Task { await aiStop(args) }; return true
+        case "glassshots": Task { await glassShots(Array(args[(i + 2)...])) }; return true
+        case "voicee2e": Task { await voiceE2E(args) }; return true
+        case "geminismoke": Task { await geminiSmoke() }; return true
         case "brief": briefGate(); return true
         case "journey": journeyGate(args); return true
         case "idle-hold": idleHold(args); return true
@@ -116,7 +130,15 @@ enum SelfTest {
         case "recoveryoffline": recoveryOffline(args); return true
         case "fulllifecycle": fullLifecycle(args); return true
         case "e2e001": e2e001(args); return true
-        case "shots": shots(args); return true
+        case "shots":
+            // Finish AppKit's launch notification before showing fixture windows.
+            // shots pumps a nested run loop while waiting for on-screen windows;
+            // entering it during launch can postpone MainWindow's presentation.
+            // A main-dispatch callback would also block its queued presentation.
+            RunLoop.main.perform(inModes: [.default, .modalPanel, .eventTracking]) {
+                MainActor.assumeIsolated { shots(args) }
+            }
+            return true
         case "sections": sections(args); return true
         case "a11ynames": a11ynames(args); return true
         case "egress": egress(); return true
@@ -535,7 +557,9 @@ enum SelfTest {
             let contentSize = store.dock.size(agentRows: store.state.activeTask?.steps.count ?? 0)
             let expect = CGSize(width: contentSize.width, height: contentSize.height + WindowCoordinator.shared.dockTopInset)
             guard let r = capture(name, expect: expect) else {
-                failures.append("\(name)=撮影不可(期待 \(Int(expect.width))x\(Int(expect.height)))")
+                // 実際に出ていた窓も書く（期待だけでは、何が違ったのかを推測するしかない）。
+                let actual = windows().map { "\(Int($0.w))x\(Int($0.h))" }.joined(separator: ",")
+                failures.append("\(name)=撮影不可(期待 \(Int(expect.width))x\(Int(expect.height)) 実際 [\(actual)])")
                 return
             }
             topEdges.insert(Int(r.y.rounded()))
@@ -582,6 +606,20 @@ enum SelfTest {
 
         // 4. Thinking
         shoot("05-thinking", { hud.mode = .thinking })
+        // 3'. Genie と会話（段階 2）: 会話中の Listening と、終わる前の知らせ（延長は本人の操作）。
+        shoot("04b-conversation", { hud.presentConversationForShot(ending: false) })
+        shoot("04c-conversation-ending", { hud.presentConversationForShot(ending: true) })
+        hud.clearConversationForShot()
+        hud.mode = .idle
+
+        // 4'. 答えている途中に届いた発話を預かった姿（黙って消さない。段階 1）。
+        // 本番と同じ順で作る: 聞いている間に言い終えた発話を、答えている途中なので預かる（hold が考え中へ戻す）。
+        // 前の撮影は Dock を待機に戻しているので、聞いている姿から始める。
+        shoot("05b-thinking-held", { hud.mode = .listening(partial: ""); hud.hold("明日の天気教えて") })
+        _ = hud.takeHeldUtterance()
+        // 考え中は答えが届くと終わる（本番）。撮影では答えが来ないので、次の仕事の前に待機へ戻す。
+        // 戻さないと、考え中が動いている仕事より前に出て（One Continuous Surface の優先順）、仕事の面が撮れない。
+        hud.mode = .idle
 
         // 5. Agent（startTask が Dock を agent の姿にする＝実遷移）
         shoot("06-agent", {
@@ -615,6 +653,38 @@ enum SelfTest {
             if let last = store.state.activeTask?.steps.last { store.updateStep(last.id, to: .failed) }
             store.finishTask(.failed)
         })
+
+        // 5-4. 例外のカード（天気・ニュース…）。本番と同じく成果物の JSON を taskReply → presentation に通す。
+        for (name, body) in cardFixtures {
+            shoot(name, {
+                let reply = VoiceHUDState.taskReply(status: "COMPLETED", artifactID: "shot") { body }
+                hud.mode = VoiceHUDState.presentation(for: reply)
+                if case .card = hud.mode {} else { failures.append("\(name)=カードにならない") }
+            })
+        }
+        shoot("06k-card-places", { hud.mode = .card(placesFixture()) })
+        hud.mode = .idle
+
+        // 5-5. 仕事が複数（One Continuous Surface）: 1 件 1 行・確認待ちの行・止める。声・文字の依頼と同じ出来事で作る。
+        store.dismissResult()
+        let rowA = UUID(), rowB = UUID()
+        shoot("06h-agent-rows", {
+            store.apply(store.event(rowA, .started(title: "ページを要約して下書きにする", step: "要約を作成中")))
+            store.apply(store.event(rowB, .started(title: "定例議事メモを英訳", step: "翻訳中")))
+            store.apply(store.event(rowB, .awaitingApproval))
+            hud.mode = .idle
+        })
+        // 聞いている間も、動いている仕事は「実行中 n件」で残る。
+        shoot("06i-listening-running", { hud.mode = .listening(partial: "") })
+        hud.mode = .idle
+        // 結果を出していても、ほかに動いている仕事は消さない。
+        shoot("06j-result-others", {
+            store.apply(store.event(rowA, .succeeded(DockArtifact(kind: "下書き", title: "移行ガイドの要約",
+                                                                 detail: "312字 · Work に保存しました", actions: [.openWorkspace, .copy]))))
+        })
+        store.stopTask(rowB)
+        store.dismissResult()
+        hud.mode = .idle
 
         // 6. Confirmation（requireConfirmation が Dock を展開する＝実遷移）
         shoot("07-confirmation", {
@@ -1455,6 +1525,39 @@ enum SelfTest {
         }
     }
 
+    /// 例外のカードの fixture（成果物の JSON）。dock8 が撮り、occupation が上限を測る。
+    /// 撮るたびに変わらないよう、取得時刻は固定・ニュースの時刻は無し（相対表記が撮影時刻で変わる）。
+    static let cardFixtures: [(String, String)] = [
+        ("06e-info-weather", #"{"schema":"genie.info/v1","kind":"weather","text":"大阪の天気: 今日 雨 24℃/20℃ 降水95%、明日 くもり 25℃/19℃ 降水30%。","data":{"place":"大阪","current":null,"days":[{"date":"2026-09-27","label":"今日","code":63,"summary":"雨","high":24.0,"low":20.2,"precipitation":95},{"date":"2026-09-28","label":"明日","code":3,"summary":"くもり","high":25.1,"low":19.4,"precipitation":30},{"date":"2026-09-29","label":"明後日","code":2,"summary":"晴れ時々くもり","high":26.0,"low":18.8,"precipitation":10},{"date":"2026-09-30","label":"9/30(水)","code":0,"summary":"快晴","high":27.2,"low":18.1,"precipitation":0}]},"sources":[{"name":"Open-Meteo.com","url":"https://open-meteo.com/"}],"fetched_at":"2026-09-27T00:30:00Z"}"#),
+        ("06g-info-weather-day", #"{"schema":"genie.info/v1","kind":"weather","text":"明日の東京都は雨。最高22℃、最低20℃、降水確率78%です。","data":{"place":"東京都","current":null,"days":[{"date":"2026-09-28","label":"明日","code":63,"summary":"雨","high":21.9,"low":19.5,"precipitation":78}]},"sources":[{"name":"Open-Meteo.com","url":"https://open-meteo.com/"}],"fetched_at":"2026-09-27T00:30:00Z"}"#),
+        ("06f-info-news", #"{"schema":"genie.info/v1","kind":"news","text":"主なニュース（NHK）: 1. 台風26号 沖縄に接近へ","data":{"topic":null,"items":[{"title":"台風26号 沖縄に接近へ 来週も東～西日本は雨降りやすい見込み","url":"https://news.web.nhk/a","source":"NHK","published_at":null},{"title":"首相 米大統領と電話会談 米中首脳会談の内容説明受ける","url":"https://news.web.nhk/b","source":"NHK","published_at":null},{"title":"タイで大雨続き 首都バンコクでも浸水被害広がる","url":"https://news.web.nhk/c","source":"NHK","published_at":null}]},"sources":[{"name":"NHK","url":"https://news.web.nhk/"}],"fetched_at":"2026-09-27T00:30:00Z"}"#),
+    ]
+
+    /// 近くの店のカードの fixture。**地図は合成**（灰色の地に白い道。本物の Google 地図ではない）。
+    /// ネットワークにも鍵にも触れずに撮るため。店名・数字は撮るたびに変わらない固定値。
+    @MainActor
+    static func placesFixture() -> DockCard {
+        let map = NSImage(size: NSSize(width: 960, height: 300), flipped: false) { rect in
+            NSColor(calibratedRed: 0.93, green: 0.93, blue: 0.91, alpha: 1).setFill(); rect.fill()
+            NSColor.white.setStroke()
+            for i in 0..<8 {
+                let road = NSBezierPath(); road.lineWidth = 14
+                road.move(to: NSPoint(x: CGFloat(i) * 140, y: 0)); road.line(to: NSPoint(x: CGFloat(i) * 120 + 80, y: 300)); road.stroke()
+            }
+            return true
+        }
+        let png = map.tiffRepresentation.flatMap { NSBitmapImageRep(data: $0)?.representation(using: .png, properties: [:]) }
+        func place(_ id: String, _ name: String, _ rating: Double, _ count: Int, _ open: Bool, _ distance: Double) -> PlacesCard.Place {
+            PlacesCard.Place(id: id, name: name, address: "東京都渋谷区", latitude: 35.66, longitude: 139.70,
+                             rating: rating, ratingCount: count, openNow: open, mapsURL: nil, distance: distance)
+        }
+        return .places(PlacesCard(query: "スターバックス", places: [
+            place("1", "スターバックス コーヒー 渋谷駅前店", 3.9, 2345, true, 120),
+            place("2", "スターバックス コーヒー 渋谷マークシティ店", 4.1, 812, true, 380),
+            place("3", "スターバックス コーヒー 表参道店", 4.2, 1500, false, 1450),
+        ], map: png, fetchedAt: Date(timeIntervalSince1970: 1_790_730_000)))
+    }
+
     /// geometry / occupation が測る 6 状態。名前は正解画像（task-dock/）と揃える。
     @MainActor
     private static func geometryStates() -> [(String, () -> Void)] {
@@ -1519,7 +1622,7 @@ enum SelfTest {
         let dockKey = "window:GeniePanel<VoiceTaskDockView>"
         let workspaceKey = "window:GeniePanel<RecordingWorkspaceView>"
         // 状態ごとの上限（token）。03 の agent は行数で伸びるので、出している 3 行ぶん。
-        let ceilings: [String: [(String, CGFloat, CGFloat)]] = [
+        var ceilings: [String: [(String, CGFloat, CGFloat)]] = [
             "01-idle": [(dockKey, Metrics.dockIdleWidth, Metrics.dockIdleHeight)],
             "02-listening": [(dockKey, Metrics.dockListeningWidth, Metrics.dockListeningHeight)],
             "03-task-dock": [(dockKey, Metrics.dockAgentWidth, Metrics.dockAgentHeightBase + Metrics.dockAgentRowHeight * 3)],
@@ -1528,13 +1631,28 @@ enum SelfTest {
             "06-workspace": [(dockKey, Metrics.dockMeetingWidth, Metrics.dockMeetingExpandedHeight),
                              (workspaceKey, Metrics.workspaceWidth, Metrics.workspaceHeight)],
         ]
+        // 例外のカード（DESIGN.md §8）。回答面の幅と、カードの高さの上限。
+        let cardStates: [(String, () -> Void)] = cardFixtures.map { name, body in
+            ("card-" + name, {
+                WindowCoordinator.shared.hideRecordingWorkspace()
+                GenieStateStore.shared.reset()
+                VoiceHUDState.shared.mode = VoiceHUDState.presentation(
+                    for: VoiceHUDState.taskReply(status: "COMPLETED", artifactID: "occupation") { body })
+            })
+        }
+        let placesState: (String, () -> Void) = ("card-06k-card-places", {
+            WindowCoordinator.shared.hideRecordingWorkspace()
+            GenieStateStore.shared.reset()
+            VoiceHUDState.shared.mode = .card(placesFixture())
+        })
+        for (name, _) in cardStates + [placesState] { ceilings[name] = [(dockKey, Metrics.dockResultWidth, Metrics.dockCardMaxHeight)] }
         let refW = 1440.0, refH = 900.0
 
         GenieStateStore.shared.reset()
         WindowCoordinator.shared.showVoiceHUD()
         var fail: [String] = []
         var measured = 0
-        for (name, present) in geometryStates() {
+        for (name, present) in geometryStates() + cardStates + [placesState] {
             present()
             settle(1.2)
             guard let snap = UIGeometry.snapshot() else { fail.append("\(name): 実寸を読めない"); continue }
@@ -1606,7 +1724,7 @@ enum SelfTest {
         let states = geometryStates()
 
         var problems: [(String, [String])] = []
-        var recorded = 0
+        var recordings: [String: UIGeometry.Snapshot] = [:]
         for (name, present) in states {
             present()
             settle(1.2)
@@ -1615,7 +1733,7 @@ enum SelfTest {
             }
             let path = "\(refDir)/\(name).json"
             if record {
-                UIGeometry.write(snap, to: path); recorded += 1; continue
+                recordings[name] = snap; continue
             }
             guard let want = UIGeometry.read(path) else {
                 problems.append((name, ["基準が無い（--record で作る）"])); continue
@@ -1630,8 +1748,18 @@ enum SelfTest {
         store.reset()
 
         if record {
-            print("SELFTEST_OK geometry: \(recorded)状態の実寸を基準として記録した（\(refDir)）")
-            exit(0)
+            do {
+                let recorded = try UIGeometry.record(recordings, expectedStates: states.map(\.0),
+                    hasProblems: !problems.isEmpty, to: refDir)
+                print("SELFTEST_OK geometry: \(recorded)状態の実寸を基準として記録した（\(refDir)）")
+                exit(0)
+            } catch {
+                for (name, lines) in problems {
+                    for line in lines { print("GEOMETRY \(name): \(line)") }
+                }
+                print("SELFTEST_FAIL geometry: 基準を記録できない（\(error.localizedDescription)）")
+                exit(2)
+            }
         }
         if problems.isEmpty {
             print("SELFTEST_OK geometry: 6状態の位置・寸法が基準と 2pt 以内")
@@ -2120,7 +2248,7 @@ enum SelfTest {
             rec.step("Home（Dock は待機）", interactions: 0, surface: dockWin())
 
             // ② Listening。⌥Space と同じ入口。
-            let t1 = rec.transition { VoiceHUDState.shared.beginListening() }
+            let t1 = rec.transition { VoiceHUDState.shared.beginDictation() }
             settle(0.4)
             _ = rec.shot("02-listening", window: dockWin())
             // 逃げ道: マイクが開いている面で Esc が効くか。
@@ -2133,13 +2261,16 @@ enum SelfTest {
             rec.step("Listening", interactions: 1, transitionMs: t1, keys: keys, surface: dockWin())
 
             // ③ Running。
-            VoiceHUDState.shared.beginListening(); settle(0.3)
+            VoiceHUDState.shared.beginDictation(); settle(0.3)
             let task = AgentTask(
                 id: UUID(), title: "リリース予定を Ken に送る", status: .running,
                 steps: [AgentStep(title: "予定を読む", tool: "calendar", state: .success),
                         AgentStep(title: "文面を作る", tool: "compose", state: .running)],
                 startedAt: Date(), context: ContextBundle(items: []))
-            let t2 = rec.transition { store.startTask(task) }
+            // 言い終えた発話を Genie が受け取る（聞く面を離れ、マイクを閉じる）→ 仕事が始まる。
+            // One Continuous Surface では、本人の聞き取りは動いている仕事より前に出る（仕事は聞く面の
+            // 「実行中 n件」になる）ので、聞いている最中に仕事の面へ差し替わることはない。
+            let t2 = rec.transition { store.setDock(.idle); store.startTask(task) }
             settle(0.4)
             _ = rec.shot("03-running", window: dockWin())
             rec.step("Running", interactions: 0, transitionMs: t2,
@@ -3719,7 +3850,7 @@ enum SelfTest {
     ///   - Dock が出るまで < 120ms
     ///   - AX 取得 < 250ms
     ///   - アプリ変更の認識 < 150ms
-    ///   - idle のメモリ < 180MB
+    ///   - idle のメモリ < 180MB（Dock の外殻が Liquid Glass のときは + 90MB。下の `idleMemoryTargetMB`）
     /// CPU < 1% は測るのに時間の窓が要るので、ここでは idle 1 秒の実測を出す（判定は緩め）。
     @MainActor
     private static func perf() {
@@ -3751,17 +3882,29 @@ enum SelfTest {
         if appMs >= 150 { fail.append(String(format: "アプリ認識が %.0fms (目標 <150ms)", appMs)) }
 
         // idle のメモリ（footprint）。
-        var info = task_vm_info_data_t()
-        var count = mach_msg_type_number_t(MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<natural_t>.size)
-        let kr = withUnsafeMutablePointer(to: &info) {
-            $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
-                task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &count)
-            }
+        //
+        // **落ち着いてから測る。**起動から 0.2 秒ほどは、最初の描画のために GPU 側の
+        // バッファ（実測 218MB、「Owned physical footprint (graphics)」）が確保されていて、
+        // 1 秒後には全部回収される（実測 23〜29MB）。その瞬間を測っていた間は、待機時の
+        // 値ではないのに 244MB として落ちていた（2026-10-03）。run loop を回しながら
+        // 0.1 秒ごとに読み、0.5 秒間減らなくなった値を待機時とする（最長 3 秒）。
+        // 起動直後の最大値は、配信など他のアプリと同居するときの負荷なので、参考として残す。
+        var settled: Double? = nil
+        var launchPeak: Double? = nil
+        var lowest = Double.greatestFiniteMagnitude
+        var stableSince = Date()
+        let settleDeadline = Date().addingTimeInterval(3.0)
+        while Date() < settleDeadline {
+            guard let now = physFootprintMB() else { break }
+            launchPeak = max(launchPeak ?? 0, now.peak)
+            if now.current < lowest - 1 { lowest = now.current; stableSince = Date() }
+            if Date().timeIntervalSince(stableSince) >= 0.5 { settled = now.current; break }
+            RunLoop.main.run(until: Date().addingTimeInterval(0.1))
         }
-        if kr == KERN_SUCCESS {
-            let mb = Double(info.phys_footprint) / 1_048_576
-            report.append(String(format: "mem=%.0fMB", mb))
-            if mb >= 180 { fail.append(String(format: "idle メモリが %.0fMB (目標 <180MB)", mb)) }
+        if let mb = settled ?? physFootprintMB()?.current {
+            let target = idleMemoryTargetMB()
+            report.append(String(format: "mem=%.0fMB launchPeak=%.0fMB target=%.0fMB", mb, launchPeak ?? mb, target))
+            if mb >= target { fail.append(String(format: "idle メモリが %.0fMB (目標 <%.0fMB)", mb, target)) }
         } else {
             fail.append("メモリを測れない")
         }
@@ -3783,6 +3926,34 @@ enum SelfTest {
             print("SELFTEST_FAIL perf: \(fail.joined(separator: ", "))")
             exit(2)
         }
+    }
+
+    /// 待機メモリの目標。
+    ///
+    /// 基本は §29 の 180MB。Dock の外殻を Liquid Glass にしている間（macOS 26 以降、
+    /// 「透明度を下げる」オフ）は、ガラスの屈折・ぼかしのために GPU 側が 218MB を持ち続ける
+    /// （2026-10-03 実測: 直前のコミット 17MB → ガラス導入 `990f475` で 243MB。
+    /// `docs/ux-benchmark/compare/liquid-glass/ROUND.md`）。本人がガラスを選んだので、
+    /// その分だけ上げる。ガラス以外の増加は今までどおりこの検査で捕まえる。
+    @MainActor
+    private static func idleMemoryTargetMB() -> Double {
+        if #available(macOS 26.0, *), !NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency {
+            return 180 + 90
+        }
+        return 180
+    }
+
+    /// 自プロセスの physical footprint（MB）と、プロセス開始からの最大値。
+    private static func physFootprintMB() -> (current: Double, peak: Double)? {
+        var info = task_vm_info_data_t()
+        var count = mach_msg_type_number_t(MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<natural_t>.size)
+        let kr = withUnsafeMutablePointer(to: &info) {
+            $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
+                task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &count)
+            }
+        }
+        guard kr == KERN_SUCCESS else { return nil }
+        return (Double(info.phys_footprint) / 1_048_576, Double(info.ledger_phys_footprint_peak) / 1_048_576)
     }
 
     /// 自プロセスの CPU 使用率（%）を実測する。
@@ -4721,7 +4892,7 @@ enum SelfTest {
     /// ① 録音の自動 upload 旗は既定 OFF（env 無し）。② オンデバイス資産が無いロケールで
     /// `start` が throw し `recognizeFile` が nil（サーバへ落ちない）。資産の無いロケールがこの Mac に
     /// 無ければ NOT_MEASURED（静的検査は別に scripts/verify-privacy-egress.sh が持つ）。
-    /// ③ `.meeting` が求めるのはマイクだけ。
+    /// ③ `.meeting` が求めるのはマイクと音声認識だけ。
     @MainActor
     private static func egress() {
         if ProcessInfo.processInfo.environment["ASTRA_DEV_AUTO_UPLOAD"] != nil {
@@ -4755,11 +4926,23 @@ enum SelfTest {
                 let say = Process()
                 say.executableURL = URL(fileURLWithPath: "/usr/bin/say")
                 say.arguments = ["-v", "Samantha", "-o", aiff.path, "good morning"]
-                try? say.run(); say.waitUntilExit()
-                if say.terminationStatus == 0, let text = st.recognizeFile(aiff, timeout: 8), !text.isEmpty {
-                    fail.append("\(id) は資産が無いのに recognizeFile が文字を返した: \(text)")
+                do {
+                    try say.run()
+                    say.waitUntilExit()
+                    guard say.terminationReason == .exit, say.terminationStatus == 0 else {
+                        print("SELFTEST_FAIL egress: synthetic speech fixture generation failed"); exit(2)
+                    }
+                    let audio = try AVAudioFile(forReading: aiff)
+                    guard audio.length > 0 else {
+                        print("SELFTEST_FAIL egress: synthetic speech fixture is empty"); exit(2)
+                    }
+                    if let text = st.recognizeFile(aiff, timeout: 8), !text.isEmpty {
+                        fail.append("\(id) は資産が無いのに recognizeFile が文字を返した")
+                    }
+                    stt = "\(id) start=code\(code) file=nil"
+                } catch {
+                    fail.append("synthetic speech fixture could not be generated or read")
                 }
-                stt = "\(id) start=code\(code) file=nil"
             } else {
                 stt = "NOT_MEASURED(全ロケールに資産あり)"
             }
@@ -4767,7 +4950,7 @@ enum SelfTest {
         guard fail.isEmpty else {
             print("SELFTEST_FAIL egress: " + fail.joined(separator: " / ")); exit(2)
         }
-        print("SELFTEST_OK egress: autoUpload=off cloudSTTConsent=\(RecordingRuntime.cloudTranscriptionAllowed ? "on" : "off") meeting=[microphone] sttNoFallback=\(stt)")
+        print("SELFTEST_OK egress: autoUpload=off cloudSTTConsent=\(RecordingRuntime.cloudTranscriptionAllowed ? "on" : "off") meeting=[microphone,speechRecognition] sttNoFallback=\(stt)")
         exit(0)
     }
 
@@ -4783,7 +4966,7 @@ enum SelfTest {
             for dark in [false, true] {
                 let name = dark ? "dark" : "light"
                 let views: [(String, AnyView)] = [
-                    ("settings", AnyView(SettingsView().background(dark ? Color.black : Color.white))),
+                    ("settings", AnyView(settingsFixture().background(dark ? Color.black : Color.white))),
                     ("retry", AnyView(MeetingArtifactView(title: "文字起こしの確認", duration: "01:15", participants: 1,
                         summary: [], decisions: [], actionItems: [],
                         transcriptionFailure: "文字起こしサーバーに接続されていません。録音はこのMacに保存されています。",
@@ -5711,7 +5894,7 @@ enum SelfTest {
         MainWindowController.shared.hide(); settle(0.3)
 
         // Settings（5 つの許可の一覧）
-        SettingsWindowController.shared.show(); settle(1.0)
+        SettingsWindowController.shared.show(settingsView: settingsFixture()); settle(1.0)
         add(report("settings", titles: ["Genie 設定"]))
         if let w = NSApp.windows.first(where: { $0.title == "Genie 設定" && $0.isVisible }) {
             let t = tabWalk("settings", w); tabSummary.append("settings moved=\(t.moved) visible=\(t.visible) invisible=\(t.invisible) unmeasured=\(t.unmeasured)")
@@ -6060,7 +6243,11 @@ enum SelfTest {
             ? args[args.firstIndex(of: "--selftest")! + 2] : "http://127.0.0.1:3000"
         guard GenieCoreBridge.reachable(base) else { print("SELFTEST_SKIP voiceask: gateway unreachable"); exit(0) }
         do {
-            let accessToken = try preparedTestToken(base: base, email: "voiceask-\(getpid())@astra.local")
+            // aiaction と同じ: 新しい PID の利用者には host も General Assistant も無く、答えが返らない。
+            // 指定された試験用の利用者（host と General Assistant がある）を使える。判定は変えない。
+            let configured = ProcessInfo.processInfo.environment["ASTRA_SELFTEST_AGENT_EMAIL"]
+            let email = configured?.hasSuffix("@astra.local") == true ? configured! : "voiceask-\(getpid())@astra.local"
+            let accessToken = try preparedTestToken(base: base, email: email)
             guard LocalStore.shared.open() else { print("SELFTEST_FAIL voiceask: storage unavailable"); exit(2) }
             let hud = VoiceHUDState.shared
             hud.configureBackend(base: base, token: accessToken)
@@ -6068,18 +6255,28 @@ enum SelfTest {
                 print("SELFTEST_FAIL voiceask: request not accepted"); exit(2)
             }
             let wasThinking = hud.mode == .thinking
+            // 答え（記録の結果）が入るまで待つ。送信中（requestInFlight）は受け付けた時点で解けるので、
+            // それだけを待つと、12 秒を超える答えの前に待つのをやめてしまう。
             let deadline = Date().addingTimeInterval(60)
-            while hud.requestInFlight && Date() < deadline { RunLoop.current.run(until: Date().addingTimeInterval(0.2)) }
-            let record = LocalStore.shared.loadTasks().first { $0.id == id }?.requestRecord
+            func current() -> TaskRequestRecord? { LocalStore.shared.loadTasks().first { $0.id == id }?.requestRecord }
+            while Date() < deadline, current()?.hasResult != true {
+                RunLoop.current.run(until: Date().addingTimeInterval(0.2))
+            }
+            let record = current()
             // Settled short answers remain visible in the TaskDock so the user
             // can read them immediately; older builds returned to idle here.
+            // 12 秒で終わらない答えは、受付（かしこまりました）→ 結果の面になる（One Continuous Surface）。
             let settled = switch hud.mode {
-            case .idle, .answer: true
+            case .idle, .answer, .ack: true
+            case .result(let r): r.taskID != nil && !r.failed
             default: false
             }
             guard wasThinking, record?.hasResult == true, settled,
                   hud.answer.contains("金曜"), hud.answer.contains("15") || hud.answer.contains("3時") else {
-                print("SELFTEST_FAIL voiceask: no completed, persisted answer with fixture facts"); exit(2)
+                // 何を見て落ちたかを残す（判定は変えない）。
+                print("SELFTEST_FAIL voiceask: no completed, persisted answer with fixture facts "
+                      + "thinking=\(wasThinking) hasResult=\(record?.hasResult == true) mode=\(hud.mode) "
+                      + "answer=\"\(hud.answer.prefix(60))\""); exit(2)
             }
             let preview = String(hud.answer.prefix(36)).replacingOccurrences(of: "\n", with: " ")
             print("SELFTEST_OK voiceask: thinking=\(wasThinking)→settled Agent 応答=\"\(preview)…\"")
@@ -6881,7 +7078,7 @@ enum SelfTest {
             ("HomeView", contentScore(HomeView(attention: [HomeAttention(kind: "10:00 A社 商談", title: "前回から価格条件が変更", action: "準備する"), HomeAttention(kind: "Research complete", title: "半導体市場調査", action: "見る")], active: [HomeWork(title: "競合20社調査", meta: "12 sources · 進行中")]), NSSize(width: 820, height: 600))),
             ("RecordingWorkspace", contentScore(RecordingWorkspaceView(), NSSize(width: Metrics.workspaceWidth, height: Metrics.workspaceHeight))),
             ("MainWindow", contentScore(MainWindowView(loadBackend: false), NSSize(width: 900, height: 600))),
-            ("Settings", contentScore(SettingsView(), NSSize(width: 460, height: 420))),
+            ("Settings", contentScore(settingsFixture(), NSSize(width: 460, height: 420))),
         ]
         // 実際に描画されていれば、複数色（>=4）かつ相応の不透明面積（>=10%）を持つ。
         // カスタム描画の 2 面（HUD / Recording Workspace）は「高い再現度」の成果物なので

@@ -1,0 +1,78 @@
+{
+  "recordedAt": "2026-10-01T16:51:17.524070+00:00",
+  "classification": "independent read-only diagnosis of owned simulator and its process-specific macOS log; no UI action or implementation changes",
+  "firstTaskId": "01a0f857-29c3-7000-bd13-143f94e5499c",
+  "authorizationId": "01a0f858-c35b-7000-8508-1ec39125fbd7",
+  "secondTaskId": "01a0f85a-cce7-7000-9cab-3bff760fb025",
+  "firstWindow": {
+    "pid": 48254,
+    "sessionId": "c13c7082-ea50-4a19-8d47-45180f560e72",
+    "windowId": 2298,
+    "clicks": 1,
+    "ready": false,
+    "status": "模擬受付: SIM-5eacbf42-0328-4f58-9cee-ddda9c1cb45c\n状態: accepted\n次の模擬注文を待機しています（5分で閉じます）",
+    "mtime": "2026-10-01T16:44:06.097601+00:00",
+    "sha256": "db000da41dea339833c13a36d8a578ed5706068d65c4edfbb0550529a3871bf9"
+  },
+  "secondWindowBeforeRootCancellation": {
+    "pid": 49129,
+    "sessionId": "1f44b54b-da6b-447d-91f7-610259c673e9",
+    "windowId": 2311,
+    "clicks": 0,
+    "ready": true,
+    "status": "受付前",
+    "mtime": "2026-10-01T16:44:58.900901+00:00",
+    "sha256": "20f0e0a36a9ddf5ac82b292b91864abce262879d5cb16d7cb18fba7654bd2f74"
+  },
+  "acceptedAt": "2026-10-01T16:44:04.841Z",
+  "observedMouseUpAt": "2026-10-02T01:44:36.660+09:00",
+  "observedTerminateAt": "2026-10-02T01:44:36.663+09:00",
+  "observedNormalExitAt": "2026-10-02T01:44:36.667+09:00",
+  "rootReportedSecondCancellationAtApproximate": "2026-10-02T01:48:33+09:00",
+  "logCommand": "/usr/bin/log show --start '2026-10-02 01:43:00' --end '2026-10-02 01:45:10' --style compact --predicate 'processID == 48254' --info",
+  "logCommandExitCode": 0,
+  "originalOwnedLog": "/private/tmp/genie-transactions-20261002/fixture48254-exit.log",
+  "originalOwnedLogSha256": "ad62c08aab516716559ecf9364477ebd1405ee3c488065126863f04754f4a9db",
+  "excerpt": "fixture-session-exit-excerpt.log",
+  "excerptSha256": "92579331163b303ceb8355a708226377401a3d639fccba0658c30a3c95a9b9a2",
+  "findings": [
+    "The first owned fixture reported one click, accepted receipt and five-minute idle state at 01:44:06 JST.",
+    "At 01:44:36.660 mouseUp action was followed by AppKit terminate and normal exit at 01:44:36.667, before the second task.",
+    "The elapsed idle time was about 30 seconds, not the configured 300 seconds. Main agent-host PID 46016 had run continuously since 01:38:05 JST.",
+    "The log is consistent with a window-close termination path; the exact UI control, coordinates and actor are not established. Root reports no intentional fixture close.",
+    "A new PID requires fresh native consent. Reuse cannot apply to a closed target; no consent weakening or code change is justified by this observation."
+  ],
+  "scopeLimits": [
+    "This is not evidence of successful same-window main-app reuse. Root will retry that separately.",
+    "Second fixture cancellation at about 01:48:33 JST was an explicit root test action, distinct from the first fixture exit.",
+    "No personal-app input or new desktop capture was performed for this diagnosis."
+  ],
+  "secondStopCheck": {
+    "recordedAt": "2026-10-01T16:56:45.541059+00:00",
+    "taskId": "01a0f85a-cce7-7000-9cab-3bff760fb025",
+    "stopFutureInputStatus": "PASS",
+    "stopFutureInputEvidence": {
+      "rootReported": "Native helper consent dialog and fixture closed after explicit Stop; no native consent granted for second order.",
+      "localReadOnlyCheck": {
+        "fixturePID": 49129,
+        "fixtureProcessPresent": false,
+        "receiptFilePresent": false,
+        "lastRecordedClicks": 0
+      }
+    },
+    "finalTaskCancelledStatus": "FAIL",
+    "finalStateEvidence": {
+      "provenance": "root reported actual API read; not re-fetched by this agent",
+      "observedTaskStatus": "FAILED",
+      "observedErrorCode": "task.step_failed",
+      "observedMessage": "注文結果を確認できていません。再注文せず、同じ注文の履歴を照会してください。",
+      "immediateUiReportedByRoot": "止めました / 仕事を取り消しました"
+    },
+    "staticCause": {
+      "workflow": "Only TransactionDispatchCancelled enters finishCancelled in the step catch. An in-flight HostStepFailed instead calls failWith despite a concurrent cancel signal.",
+      "database": "failTask allows CANCELLING in its update predicate, so it can overwrite the authoritative stop request with FAILED.",
+      "proposedFixNotYetImplemented": "Transaction catch should honor pending cancellation; persistence should atomically preserve cancellation precedence when the signal is delayed. Retain the unknown host result and order identity; do not describe task cancellation as external order cancellation or release dedupe/quota."
+    },
+    "scope": "No code change or execution test in this investigation."
+  }
+}

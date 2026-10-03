@@ -1,0 +1,25 @@
+{
+  "observedAt": "2026-10-01T18:39:38.621251+00:00",
+  "method": "Independent static review only; no tests, builds, models, VM or UI executed by reviewer. Findings discussed and corrected by owners.",
+  "sources": {
+    "scripts/verify-all.sh": "cc07b5d21138f079538d4c39527c759052d04bf62dbd4f0b1d9aa76bf0828022",
+    "scripts/verify-swift-tests.sh": "c1126e09bccf50e00a6b7b08e72d5bd627fdc24116c00825fa95a96617606625",
+    "scripts/verify-macos-recording.sh": "ef8342828d9221fe524383eaab58972bdbdd64cbf61e0adc1fb4078084955be6",
+    "scripts/verify-c-abi.sh": "451c6f75a2c5b5bb60770b6f1a2f6f3b554991e23064e295697274f4017d5a12",
+    "apps/windows/bridge-check/Program.cs": "bb3521a0a15d7b366bb0009e268b3e39828d69622305b3d252213ff5aab1a4e5",
+    "scripts/tests/test_swift_test_orchestration.py": "aa351f690d7126d17b62a9fe750db827882bc810828b7f853f3ec3d8b3f5798f",
+    "scripts/tests/test_verification_resources.py": "c2662fe8364e1b1e6600df03a1d49ca426e21abab40e7d798d124ede1dbc13d7",
+    "workers/agent-host/src/computer-vision-policy.ts": "84d9da6c7b6974c6c2c9b0c3ece8fae7f72e308cb02bf323adbad5af2b885d9f",
+    "workers/agent-host/src/computer-vision-prompts.ts": "00eeeaa6ca220808c23054bd6ab94f5d09f67d4c569659ebb2604879a3fa9e2f",
+    "workers/agent-host/src/computer-vision.ts": "9839d721474d73bc29e8bc8352e35bfaec2423711fbfb12e3820cc606c97eaad",
+    "tools/computer-use/BackgroundTextEdit.swift": "be66409a0e1d699bde33da08c3a4ef49c0452033d31880f18d0a4183bc128262",
+    "tools/computer-use/BackgroundAX.swift": "4a58cafa31820047e8fd8bcc3d470c378bdc0ca3cf6530c593ec12677f1cb767",
+    "tools/computer-use/genie-computer.swift": "a073af5032ac775b14f6ff612cfa8cc702a750ce7a6bf92cf0db00c078914912"
+  },
+  "findings": {
+    "gate_markers": "namespaced SKIP and NOT_MEASURED corrected; source review has no additional P1",
+    "gateway": "recording and C ABI corrected; C# already used ASTRA_GATEWAY_URL",
+    "swift": "separate irreversible shutdown and opted-in external fixture; rejects zero/wrong counts and propagates failures/omissions",
+    "append_preview": "no additional P1 in scoped source review; real native input regressions still required; AX compare/set not atomic"
+  }
+}

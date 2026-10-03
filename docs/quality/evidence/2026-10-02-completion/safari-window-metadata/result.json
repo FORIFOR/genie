@@ -1,0 +1,224 @@
+{
+  "exitCode": 0,
+  "result": {
+    "applications": [
+      {
+        "active": false,
+        "hidden": false,
+        "pid": 662,
+        "regular": true,
+        "terminated": false
+      }
+    ],
+    "caller": "Separate read-only metadata CLI; not the signed production helper",
+    "cgAll": [
+      {
+        "frame": {
+          "height": 33,
+          "width": 1728,
+          "x": 0,
+          "y": 0
+        },
+        "layer": 0,
+        "onScreen": false,
+        "pid": 662,
+        "windowID": 87
+      },
+      {
+        "frame": {
+          "height": 33,
+          "width": 1728,
+          "x": 0,
+          "y": 0
+        },
+        "layer": 0,
+        "onScreen": false,
+        "pid": 662,
+        "windowID": 88
+      },
+      {
+        "frame": {
+          "height": 33,
+          "width": 1728,
+          "x": 0,
+          "y": 0
+        },
+        "layer": 0,
+        "onScreen": false,
+        "pid": 662,
+        "windowID": 89
+      },
+      {
+        "frame": {
+          "height": 33,
+          "width": 1728,
+          "x": 0,
+          "y": 0
+        },
+        "layer": 0,
+        "onScreen": false,
+        "pid": 662,
+        "windowID": 90
+      },
+      {
+        "frame": {
+          "height": 1084,
+          "width": 1728,
+          "x": 0,
+          "y": 33
+        },
+        "layer": 0,
+        "onScreen": false,
+        "pid": 662,
+        "windowID": 92
+      },
+      {
+        "frame": {
+          "height": 90,
+          "width": 1728,
+          "x": 0,
+          "y": 33
+        },
+        "layer": 0,
+        "onScreen": false,
+        "pid": 662,
+        "windowID": 119
+      },
+      {
+        "frame": {
+          "height": 16,
+          "width": 873,
+          "x": 0,
+          "y": 1117
+        },
+        "layer": 0,
+        "onScreen": false,
+        "pid": 662,
+        "windowID": 128
+      },
+      {
+        "frame": {
+          "height": 77,
+          "width": 84,
+          "x": 921,
+          "y": 580
+        },
+        "layer": 3,
+        "onScreen": false,
+        "pid": 662,
+        "windowID": 614
+      }
+    ],
+    "cgOnScreen": [],
+    "completedAt": "2026-10-01T20:12:32Z",
+    "recordedAt": "2026-10-01T20:12:32Z",
+    "scAll": {
+      "status": "OBSERVED",
+      "windows": [
+        {
+          "frame": {
+            "height": 33,
+            "width": 1728,
+            "x": 0,
+            "y": 0
+          },
+          "layer": 0,
+          "onScreen": false,
+          "pid": 662,
+          "windowID": 87
+        },
+        {
+          "frame": {
+            "height": 33,
+            "width": 1728,
+            "x": 0,
+            "y": 0
+          },
+          "layer": 0,
+          "onScreen": false,
+          "pid": 662,
+          "windowID": 88
+        },
+        {
+          "frame": {
+            "height": 33,
+            "width": 1728,
+            "x": 0,
+            "y": 0
+          },
+          "layer": 0,
+          "onScreen": false,
+          "pid": 662,
+          "windowID": 89
+        },
+        {
+          "frame": {
+            "height": 33,
+            "width": 1728,
+            "x": 0,
+            "y": 0
+          },
+          "layer": 0,
+          "onScreen": false,
+          "pid": 662,
+          "windowID": 90
+        },
+        {
+          "frame": {
+            "height": 1084,
+            "width": 1728,
+            "x": 0,
+            "y": 33
+          },
+          "layer": 0,
+          "onScreen": false,
+          "pid": 662,
+          "windowID": 92
+        },
+        {
+          "frame": {
+            "height": 90,
+            "width": 1728,
+            "x": 0,
+            "y": 33
+          },
+          "layer": 0,
+          "onScreen": false,
+          "pid": 662,
+          "windowID": 119
+        },
+        {
+          "frame": {
+            "height": 16,
+            "width": 873,
+            "x": 0,
+            "y": 1117
+          },
+          "layer": 0,
+          "onScreen": false,
+          "pid": 662,
+          "windowID": 128
+        },
+        {
+          "frame": {
+            "height": 77,
+            "width": 84,
+            "x": 921,
+            "y": 580
+          },
+          "layer": 3,
+          "onScreen": false,
+          "pid": 662,
+          "windowID": 614
+        }
+      ]
+    },
+    "scOnScreen": {
+      "status": "OBSERVED",
+      "windows": []
+    },
+    "scope": "Safari numeric and boolean metadata only; no title, URL, AX tree or image output",
+    "screenCapturePreflight": true,
+    "status": "OBSERVED"
+  }
+}

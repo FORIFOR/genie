@@ -1,0 +1,11 @@
+BEGIN session-reuse-1
+STAGE alert-returned-1000-popup-1
+STAGE selected-app-Genie_模擬注文
+STAGE route ax_press by element point 309,698 local 129,233
+RESULT session-reuse-1 {"ok":true,"result":{"provider":"genie.simulation","mode":"simulation","account":"demo-account","orderKey":"session-reuse-1","quoteHash":"ab0042c37c7efc078c8a8b7632537a1cce22a5ed3d9eeff79c356d23f97604e9","status":"accepted","observation":{"provider":"genie.simulation","mode":"simulation","account":"demo-account","orderKey":"session-reuse-1","quoteHash":"ab0042c37c7efc078c8a8b7632537a1cce22a5ed3d9eeff79c356d23f97604e9","providerOrderId":"SIM-99731011-5432-4376-8112-953091b064cc","observedAt":"2026-10-01T16:35:25.872Z","status":"accepted","details":{"currency":"JPY","totalMinor":1500,"destinationId":"demo-destination","paymentMethodRef":"demo-no-charge","requestedTime":"asap","items":[{"id":"demo-pizza","label":"模擬マルゲリータ","quantity":1,"options":["M","レギュラー生地"],"unitMinor":1200,"lineMinor":1200}]}}}}
+BEGIN session-reuse-2
+STAGE route ax_press by element point 309,698 local 129,233
+RESULT session-reuse-2 {"ok":true,"result":{"provider":"genie.simulation","mode":"simulation","account":"demo-account","orderKey":"session-reuse-2","quoteHash":"9b520c06b5fa196d2b3a2b55464bdf9a1b741a48dec864551d807db499af2f73","status":"accepted","observation":{"provider":"genie.simulation","mode":"simulation","account":"demo-account","orderKey":"session-reuse-2","quoteHash":"9b520c06b5fa196d2b3a2b55464bdf9a1b741a48dec864551d807db499af2f73","providerOrderId":"SIM-a372da0f-9bee-4ad9-ba7e-a623c71cd870","observedAt":"2026-10-01T16:35:28.370Z","status":"accepted","details":{"currency":"JPY","totalMinor":800,"destinationId":"demo-destination","paymentMethodRef":"demo-no-charge","requestedTime":"asap","items":[{"id":"demo-burger","label":"模擬バーガー","quantity":1,"options":["セットなし"],"unitMinor":500,"lineMinor":500}]}}}}
+BEGIN active-abort-no-consent
+RESULT active-abort {"ok":false,"result":{"provider":"genie.simulation","mode":"simulation","account":"demo-account","orderKey":"session-aborted","quoteHash":"0ec02e486300247bc52eefe3b6ab845b2940bd45d88262ba4af4d6671eb69aeb","status":"unknown"},"error":{"code":"transaction.result_unknown","message":"注文結果を確認できていません。再注文せず、同じ注文の履歴を照会してください。"}}
+NATIVE_SESSION_REUSE_PASS

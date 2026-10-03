@@ -1,0 +1,236 @@
+[0/1] Planning build
+Building for debugging...
+[0/6] Write swift-version--58304C5D6DBC2206.txt
+[1/6] Write sources
+[4/7] Emitting module GenieMac
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/GuidedSetup/GuidedSetupSelfTest.swift:144:21: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+142 |         // アバターの姿を残す（目視用）。
+143 |         if let win = overlay.avatar.window,
+144 |            let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(win.windowNumber), [.boundsIgnoreFraming, .bestResolution]) {
+    |                     `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+145 |             let png = NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:])
+146 |             try? png?.write(to: URL(fileURLWithPath: "\(outDir)/guided-setup-avatar.png"))
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/GuidedSetup/PermissionGuideCoordinator.swift:51:74: warning: passing non-Sendable parameter 'block' to function expecting a '@Sendable' closure
+ 48 |         }
+ 49 |         /// 遅延実行。検査では即時。
+ 50 |         var after: (TimeInterval, @escaping () -> Void) -> Void = { s, block in
+    |                                                                        `- note: parameter 'block' is implicitly non-Sendable
+ 51 |             DispatchQueue.main.asyncAfter(deadline: .now() + s, execute: block)
+    |                                                                          `- warning: passing non-Sendable parameter 'block' to function expecting a '@Sendable' closure
+ 52 |         }
+ 53 |         var now: () -> Date = Date.init
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Main/ConnectionsPane.swift:8:57: warning: main actor-isolated static property 'shared' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+  6 |     let apps: [String]
+  7 |     @ObservedObject private var connections: ConnectorState
+  8 |     init(apps: [String], connections: ConnectorState = .shared) {
+    |                                                         `- warning: main actor-isolated static property 'shared' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+  9 |         self.apps = apps; self.connections = connections
+ 10 |     }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Context/ConnectorState.swift:6:16: note: static property declared here
+  4 | @MainActor
+  5 | final class ConnectorState: ObservableObject {
+  6 |     static let shared = ConnectorState()
+    |                `- note: static property declared here
+  7 |     struct Source: Identifiable, Equatable {
+  8 |         let pluginId: String
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Places/NearbyPlaces.swift:31:81: warning: main actor-isolated static property 'shared' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+29 |     }
+30 | 
+31 |     static func search(_ intent: NearbyPlaceIntent, settings: PlacesSettings = .shared,
+   |                                                                                 `- warning: main actor-isolated static property 'shared' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+32 |                        location: CurrentLocation = .shared) async -> Result<PlacesCard, Failure> {
+33 |         guard settings.hasKey, settings.monthlyLimit > 0 else { return .failure(.needsKey) }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Places/PlacesSettings.swift:10:16: note: static property declared here
+ 8 | @MainActor
+ 9 | final class PlacesSettings: ObservableObject {
+10 |     static let shared = PlacesSettings()
+   |                `- note: static property declared here
+11 |     static let keychainKey = "googleMaps.apiKey"
+12 |     private static let limitKey = "genie.places.monthlySearches"
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Places/NearbyPlaces.swift:32:53: warning: main actor-isolated static property 'shared' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+30 | 
+31 |     static func search(_ intent: NearbyPlaceIntent, settings: PlacesSettings = .shared,
+32 |                        location: CurrentLocation = .shared) async -> Result<PlacesCard, Failure> {
+   |                                                     `- warning: main actor-isolated static property 'shared' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+33 |         guard settings.hasKey, settings.monthlyLimit > 0 else { return .failure(.needsKey) }
+34 |         guard settings.canSearch() else { return .failure(.limitReached) }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Places/CurrentLocation.swift:10:16: note: static property declared here
+ 8 | @MainActor
+ 9 | final class CurrentLocation: NSObject, CLLocationManagerDelegate {
+10 |     static let shared = CurrentLocation()
+   |                `- note: static property declared here
+11 | 
+12 |     enum Failure: Error, Equatable {
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/RecordingWorkspace/CodexTranslation.swift:28:61: warning: converting non-Sendable function value to '@Sendable (CodexTranslation.Invocation) async throws -> CodexTranslation.Output' may introduce data races
+ 26 |     init(environment: [String: String] = ProcessInfo.processInfo.environment,
+ 27 |          executable: @escaping ([String: String]) throws -> URL = CodexTranslation.findExecutable,
+ 28 |          runner: @escaping Runner = CodexTranslationProcess.run) {
+    |                                                             `- warning: converting non-Sendable function value to '@Sendable (CodexTranslation.Invocation) async throws -> CodexTranslation.Output' may introduce data races
+ 29 |         self.environment = environment; self.executable = executable; self.runner = runner
+ 30 |     }
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[5/8] Compiling GenieMac VoiceHUDView.swift
+[6/9] Compiling GenieMac DockContentMeasure.swift
+[6/11] Write Objects.LinkFileList
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[358](25ac62e5b3c53843-curve25519.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[359](0bbbd18bda93c05b-aes_nohw.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[360](00c879ee3285a50d-montgomery.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[361](00c879ee3285a50d-montgomery_inv.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[362](a0330e891e733f4e-ecp_nistz.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[364](a0330e891e733f4e-gfp_p384.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[366](aaa1ba3e455ee2e1-limbs.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[367](a4019cc0736b0423-mem.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[368](d5a9841f3dc6e253-poly1305.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[369](a0330e891e733f4e-p256-nistz.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[370](c322a0bcc369f531-chacha-armv8-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[371](c322a0bcc369f531-chacha20_poly1305_armv8-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[372](c322a0bcc369f531-aesv8-armx-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[373](c322a0bcc369f531-aesv8-gcm-armv8-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[374](c322a0bcc369f531-ghash-neon-armv8-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[375](c322a0bcc369f531-ghashv8-armx-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[376](c322a0bcc369f531-vpaes-armv8-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[377](c322a0bcc369f531-armv8-mont-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[378](c322a0bcc369f531-p256-armv8-asm-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[379](c322a0bcc369f531-sha512-armv8-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[380](c322a0bcc369f531-sha256-armv8-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[560](std-ddc72da0927e9db9.std.61a5f0013896dfb1-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[561](panic_unwind-63ea78ca2e1c0db3.panic_unwind.b9418b0471e31d36-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[562](object-c0adbf29d899f046.object.cf48ae80852c1dc4-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[564](addr2line-b92825ace6709456.addr2line.f3cce53e8c22052d-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[565](gimli-49cd0cae66d7f640.gimli.a9de2a852aa7a696-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[567](rustc_demangle-a5e20ae1249591d9.rustc_demangle.c8ddca633150ec1-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[569](hashbrown-7ef914ecbc5b3828.hashbrown.f3d328c4a0fd8a24-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[571](miniz_oxide-d817fa4718a8ef96.miniz_oxide.cf735aedbe58ef77-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[572](adler2-b603e41842b612c3.adler2.c400f6a6402c7116-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[576](alloc-7d19d4a84a64ec6c.alloc.650f235c7e2e357a-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[577](core-f186bd403406965f.core.aedb9fd4ead64aec-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[594](compiler_builtins-28935136ed986f39.compiler_builtins.bb8f0d37d096e781-cgu.016.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[722](compiler_builtins-28935136ed986f39.compiler_builtins.bb8f0d37d096e781-cgu.144.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[771](compiler_builtins-28935136ed986f39.compiler_builtins.bb8f0d37d096e781-cgu.193.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+[7/11] Linking GenieMac
+[9/12] Emitting module GenieMacTests
+[10/14] Compiling GenieMacTests DisclosureCopyVisualTests.swift
+/Users/shuhei/Projects/genie/apps/genie-macos/Tests/GenieMacTests/TransactionAuthorizationTests.swift:155:41: warning: class property 'current' is unavailable from asynchronous contexts; currentRunLoop cannot be used from async contexts.; this is an error in the Swift 6 language mode
+153 |                         panel.contentView = host
+154 |                         panel.center(); panel.orderFrontRegardless()
+155 |                         RunLoop.current.run(until: Date().addingTimeInterval(0.15))
+    |                                         `- warning: class property 'current' is unavailable from asynchronous contexts; currentRunLoop cannot be used from async contexts.; this is an error in the Swift 6 language mode
+156 |                         XCTAssertEqual(NSWorkspace.shared.frontmostApplication?.processIdentifier, before, "fixture が前面アプリを奪った")
+157 |                         let windows = CGWindowListCopyWindowInfo(.optionOnScreenOnly, kCGNullWindowID) as? [[String: Any]] ?? []
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk/System/Library/Frameworks/Foundation.framework/Headers/NSRunLoop.h:18:48: note: 'current' declared here
+16 | @interface NSRunLoop : NSObject
+17 | 
+18 | @property (class, readonly, strong) NSRunLoop *currentRunLoop NS_SWIFT_UNAVAILABLE_FROM_ASYNC("currentRunLoop cannot be used from async contexts.");
+   |                                                `- note: 'current' declared here
+19 | @property (class, readonly, strong) NSRunLoop *mainRunLoop API_AVAILABLE(macos(10.5), ios(2.0), watchos(2.0), tvos(9.0));
+20 | 
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Tests/GenieMacTests/TransactionAuthorizationTests.swift:155:41: warning: instance method 'run' is unavailable from asynchronous contexts; run(until:) cannot be used from async contexts.; this is an error in the Swift 6 language mode
+153 |                         panel.contentView = host
+154 |                         panel.center(); panel.orderFrontRegardless()
+155 |                         RunLoop.current.run(until: Date().addingTimeInterval(0.15))
+    |                                         `- warning: instance method 'run' is unavailable from asynchronous contexts; run(until:) cannot be used from async contexts.; this is an error in the Swift 6 language mode
+156 |                         XCTAssertEqual(NSWorkspace.shared.frontmostApplication?.processIdentifier, before, "fixture が前面アプリを奪った")
+157 |                         let windows = CGWindowListCopyWindowInfo(.optionOnScreenOnly, kCGNullWindowID) as? [[String: Any]] ?? []
+
+Foundation.RunLoop.run:2:11: note: 'run(until:)' declared here
+1 | class RunLoop {
+2 | open func run(until limitDate: Date)}
+  |           `- note: 'run(until:)' declared here
+3 | 
+[11/14] Compiling GenieMacTests TransactionAuthorizationTests.swift
+/Users/shuhei/Projects/genie/apps/genie-macos/Tests/GenieMacTests/TransactionAuthorizationTests.swift:155:41: warning: class property 'current' is unavailable from asynchronous contexts; currentRunLoop cannot be used from async contexts.; this is an error in the Swift 6 language mode
+153 |                         panel.contentView = host
+154 |                         panel.center(); panel.orderFrontRegardless()
+155 |                         RunLoop.current.run(until: Date().addingTimeInterval(0.15))
+    |                                         `- warning: class property 'current' is unavailable from asynchronous contexts; currentRunLoop cannot be used from async contexts.; this is an error in the Swift 6 language mode
+156 |                         XCTAssertEqual(NSWorkspace.shared.frontmostApplication?.processIdentifier, before, "fixture が前面アプリを奪った")
+157 |                         let windows = CGWindowListCopyWindowInfo(.optionOnScreenOnly, kCGNullWindowID) as? [[String: Any]] ?? []
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk/System/Library/Frameworks/Foundation.framework/Headers/NSRunLoop.h:18:48: note: 'current' declared here
+16 | @interface NSRunLoop : NSObject
+17 | 
+18 | @property (class, readonly, strong) NSRunLoop *currentRunLoop NS_SWIFT_UNAVAILABLE_FROM_ASYNC("currentRunLoop cannot be used from async contexts.");
+   |                                                `- note: 'current' declared here
+19 | @property (class, readonly, strong) NSRunLoop *mainRunLoop API_AVAILABLE(macos(10.5), ios(2.0), watchos(2.0), tvos(9.0));
+20 | 
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Tests/GenieMacTests/TransactionAuthorizationTests.swift:155:41: warning: instance method 'run' is unavailable from asynchronous contexts; run(until:) cannot be used from async contexts.; this is an error in the Swift 6 language mode
+153 |                         panel.contentView = host
+154 |                         panel.center(); panel.orderFrontRegardless()
+155 |                         RunLoop.current.run(until: Date().addingTimeInterval(0.15))
+    |                                         `- warning: instance method 'run' is unavailable from asynchronous contexts; run(until:) cannot be used from async contexts.; this is an error in the Swift 6 language mode
+156 |                         XCTAssertEqual(NSWorkspace.shared.frontmostApplication?.processIdentifier, before, "fixture が前面アプリを奪った")
+157 |                         let windows = CGWindowListCopyWindowInfo(.optionOnScreenOnly, kCGNullWindowID) as? [[String: Any]] ?? []
+
+Foundation.RunLoop.run:2:11: note: 'run(until:)' declared here
+1 | class RunLoop {
+2 | open func run(until limitDate: Date)}
+  |           `- note: 'run(until:)' declared here
+3 | 
+[11/14] Applying GenieMac
+[12/14] Write Objects.LinkFileList
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[358](25ac62e5b3c53843-curve25519.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[359](0bbbd18bda93c05b-aes_nohw.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[360](00c879ee3285a50d-montgomery.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[361](00c879ee3285a50d-montgomery_inv.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[362](a0330e891e733f4e-ecp_nistz.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[364](a0330e891e733f4e-gfp_p384.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[366](aaa1ba3e455ee2e1-limbs.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[367](a4019cc0736b0423-mem.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[368](d5a9841f3dc6e253-poly1305.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[369](a0330e891e733f4e-p256-nistz.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[370](c322a0bcc369f531-chacha-armv8-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[371](c322a0bcc369f531-chacha20_poly1305_armv8-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[372](c322a0bcc369f531-aesv8-armx-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[373](c322a0bcc369f531-aesv8-gcm-armv8-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[374](c322a0bcc369f531-ghash-neon-armv8-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[375](c322a0bcc369f531-ghashv8-armx-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[376](c322a0bcc369f531-vpaes-armv8-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[377](c322a0bcc369f531-armv8-mont-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[378](c322a0bcc369f531-p256-armv8-asm-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[379](c322a0bcc369f531-sha512-armv8-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[380](c322a0bcc369f531-sha256-armv8-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[560](std-ddc72da0927e9db9.std.61a5f0013896dfb1-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[561](panic_unwind-63ea78ca2e1c0db3.panic_unwind.b9418b0471e31d36-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[562](object-c0adbf29d899f046.object.cf48ae80852c1dc4-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[564](addr2line-b92825ace6709456.addr2line.f3cce53e8c22052d-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[565](gimli-49cd0cae66d7f640.gimli.a9de2a852aa7a696-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[567](rustc_demangle-a5e20ae1249591d9.rustc_demangle.c8ddca633150ec1-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[569](hashbrown-7ef914ecbc5b3828.hashbrown.f3d328c4a0fd8a24-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[571](miniz_oxide-d817fa4718a8ef96.miniz_oxide.cf735aedbe58ef77-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[572](adler2-b603e41842b612c3.adler2.c400f6a6402c7116-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[576](alloc-7d19d4a84a64ec6c.alloc.650f235c7e2e357a-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[577](core-f186bd403406965f.core.aedb9fd4ead64aec-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[594](compiler_builtins-28935136ed986f39.compiler_builtins.bb8f0d37d096e781-cgu.016.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[722](compiler_builtins-28935136ed986f39.compiler_builtins.bb8f0d37d096e781-cgu.144.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[771](compiler_builtins-28935136ed986f39.compiler_builtins.bb8f0d37d096e781-cgu.193.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+[13/14] Linking genie-macosPackageTests
+Build complete! (13.41s)
+Test Suite 'Selected tests' started at 2026-10-02 04:10:24.552.
+Test Suite 'genie-macosPackageTests.xctest' started at 2026-10-02 04:10:24.554.
+Test Suite 'TransactionAuthorizationTests' started at 2026-10-02 04:10:24.554.
+Test Case '-[GenieMacTests.TransactionAuthorizationTests testInvalidLimitsCannotSubmitAndReturnedDifferentApprovalCannotCloseCard]' started.
+Test Case '-[GenieMacTests.TransactionAuthorizationTests testInvalidLimitsCannotSubmitAndReturnedDifferentApprovalCannotCloseCard]' passed (0.005 seconds).
+Test Case '-[GenieMacTests.TransactionAuthorizationTests testSafetyCopyRendersAtScrollEndAndInManagement]' started.
+Test Case '-[GenieMacTests.TransactionAuthorizationTests testSafetyCopyRendersAtScrollEndAndInManagement]' passed (1.723 seconds).
+Test Suite 'TransactionAuthorizationTests' passed at 2026-10-02 04:10:26.283.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 1.728 (1.728) seconds
+Test Suite 'genie-macosPackageTests.xctest' passed at 2026-10-02 04:10:26.283.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 1.728 (1.729) seconds
+Test Suite 'Selected tests' passed at 2026-10-02 04:10:26.283.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 1.728 (1.731) seconds
+◇ Test run started.
+↳ Testing Library Version: 1902
+↳ Target Platform: arm64e-apple-macos14.0
+✔ Test run with 0 tests in 0 suites passed after 0.001 seconds.

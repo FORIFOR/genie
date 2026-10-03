@@ -1,0 +1,37 @@
+{
+  "at": "2026-10-01T16:00:34.411874+00:00",
+  "status": {
+    "project": "genie-preview-f68d0fef8411",
+    "phase": "ready",
+    "gateway": "http://127.0.0.1:43180",
+    "model": "qwen3.5:9b",
+    "computerUse": true,
+    "transactionSimulation": true,
+    "computerDelivery": "background",
+    "computerHelperUnattendedTest": false,
+    "appPID": 31746,
+    "appRequested": true
+  },
+  "nativePid": 31746,
+  "parentPid": 1,
+  "command": "/private/tmp/genie-transactions-20261002/GenieTransactionPreview.app/Contents/MacOS/GenieMac --demo main --preview-instance 0e5c8bf4-a6e1-433c-b79d-52bfc6e75915",
+  "selectedEnvironmentOnly": {
+    "ASTRA_DATA_ROOT": "/private/tmp/genie-transactions-20261002/preview/app",
+    "ASTRA_GATEWAY_URL": "http://127.0.0.1:43180",
+    "ASTRA_MODEL_DISCLOSURE": "送信先: このMacの qwen3.5:9b（http://127.0.0.1:11434/v1）。外部モデルへの切替はありません。",
+    "ASTRA_LOCAL_VISION": "1"
+  },
+  "classification": "actual native process scope inspection only; not checkout/UI behavior proof",
+  "sourceSha256": {
+    "scripts/start-local-preview.mjs": "a04e275b5b4c824a46072ea9b2c82fc1d62dd150f12f6d5e5e2c2d4452da70e1",
+    "scripts/local-preview/config.mjs": "8c3264ebf1323673eaa04cb2cb6b0d541542c25855736ec6cc1d8d24a8ff2d82",
+    "scripts/tests/managed-local-preview.test.mjs": "8dcfd69b105e2294ffad7f8f9bb239111c0d5b00dfbf2dd0d9d81fdca6330112"
+  },
+  "validation": {
+    "command": "node --test scripts/tests/managed-local-preview.test.mjs",
+    "exitCode": 0,
+    "tests": 19,
+    "passed": 19,
+    "skipped": 0
+  }
+}

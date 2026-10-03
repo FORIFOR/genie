@@ -1,0 +1,25 @@
+{"command": ["bash", "scripts/verify-usage-descriptions.sh"], "exit_code": 0, "seconds": 0.11, "evidence": "gates-verify-usage-descriptions.log"}
+{"command": ["bash", "scripts/verify-release-consistency.sh"], "exit_code": 0, "seconds": 0.13, "evidence": "gates-verify-release-consistency.log"}
+{"command": ["bash", "scripts/verify-ui-taste.sh"], "exit_code": 1, "seconds": 0.31, "evidence": "gates-verify-ui-taste.log"}
+{"command": ["bash", "scripts/verify-permission-jit.sh"], "exit_code": 0, "seconds": 0.15, "evidence": "gates-verify-permission-jit.log"}
+{"command": ["bash", "scripts/verify-privacy-egress.sh"], "exit_code": 0, "seconds": 1.14, "evidence": "gates-verify-privacy-egress.log"}
+{"command": ["bash", "scripts/lint-terms.sh"], "exit_code": 1, "seconds": 0.2, "evidence": "gates-lint-terms.log"}
+{"command": ["bash", "scripts/check-xaml-wellformed.sh"], "exit_code": 0, "seconds": 0.03, "evidence": "gates-check-xaml-wellformed.log"}
+{"command": ["python3", "-m", "unittest", "discover", "-s", "scripts/tests", "-p", "test_*.py"], "exit_code": 0, "seconds": 7.83, "evidence": "gates-python-regressions.log"}
+{"command": ["node", "scripts/gen-liquid-orb.mjs", "--check"], "exit_code": 0, "seconds": 0.04, "evidence": "gates-gen-liquid-orb.log"}
+{"command": ["node", "scripts/gen-design-tokens.mjs", "--check"], "exit_code": 0, "seconds": 0.04, "evidence": "gates-gen-design-tokens.log"}
+{"command": ["node", "scripts/gen-workspace-fixture.mjs", "--check"], "exit_code": 0, "seconds": 0.04, "evidence": "gates-gen-workspace-fixture.log"}
+{"command": ["node", "scripts/lint-type-literals.mjs"], "exit_code": 0, "seconds": 0.04, "evidence": "gates-lint-type-literals.log"}
+{"command": ["node", "scripts/check-conventions.mjs"], "exit_code": 1, "seconds": 0.09, "evidence": "gates-check-conventions.log"}
+{"command": ["node", "scripts/check-cabi-csharp.mjs"], "exit_code": 0, "seconds": 0.04, "evidence": "gates-check-cabi-csharp.log"}
+{"command": ["node", "scripts/check-native-tauri-free.mjs"], "exit_code": 0, "seconds": 0.05, "evidence": "gates-check-native-tauri-free.log"}
+{"command": ["pnpm", "check:generated"], "environment": {"DATABASE_URL": "isolated Docker genie-recovery-db-20260919 / recovery_generated disposable database", "PATH_prefix": "/opt/homebrew/opt/libpq/bin"}, "exit_code": 0, "seconds": 1.85, "evidence": "gates-check-generated.log"}
+{"command": ["cargo", "test", "--offline", "--manifest-path", "core/genie-core/Cargo.toml", "--lib"], "environment": {"ASTRA_GATEWAY_URL": "unset", "CARGO_NET_OFFLINE": "true"}, "exit_code": 0, "seconds": 8.48, "evidence": "gates-rust-core.log"}
+{"command": ["dotnet", "build", "apps/windows/logic-check", "-t:Compile", "--no-restore", "-v", "q"], "environment": {"ASTRA_GATEWAY_URL": "unset", "CARGO_NET_OFFLINE": "true"}, "exit_code": 0, "seconds": 2.81, "evidence": "gates-csharp-logic.log"}
+{"command": ["pnpm", "--filter", "@genie/desktop", "test"], "environment": {"ASTRA_GATEWAY_URL": "unset", "CARGO_NET_OFFLINE": "true"}, "exit_code": 0, "seconds": 3.59, "evidence": "gates-tauri-js.log"}
+{"command": ["cargo", "test", "--offline", "--manifest-path", "apps/desktop/src-tauri/Cargo.toml", "--lib"], "environment": {"ASTRA_GATEWAY_URL": "unset", "CARGO_NET_OFFLINE": "true"}, "exit_code": 0, "seconds": 9.42, "evidence": "gates-tauri-rust.log"}
+{"command": ["bash", "scripts/verify-ui-taste.sh"], "environment": {"CARGO_NET_OFFLINE": "true"}, "exit_code": 0, "seconds": 0.28, "evidence": "gates-final-ui-taste.log"}
+{"command": ["bash", "scripts/lint-terms.sh"], "environment": {"CARGO_NET_OFFLINE": "true"}, "exit_code": 0, "seconds": 0.21, "evidence": "gates-final-terms.log"}
+{"command": ["node", "scripts/check-conventions.mjs"], "environment": {"CARGO_NET_OFFLINE": "true"}, "exit_code": 0, "seconds": 0.1, "evidence": "gates-final-conventions.log"}
+{"command": ["bash", "scripts/gen-swift-bindings.sh", "--check"], "environment": {"CARGO_NET_OFFLINE": "true"}, "exit_code": 0, "seconds": 8.83, "evidence": "gates-final-bindings.log"}
+{"command": ["python3", "docs/quality/evidence/2026-09-19-recovery/gates-terms-regression.py"], "exit_code": 0, "evidence": "gates-terms-regression.log"}

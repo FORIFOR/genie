@@ -75,6 +75,18 @@ export interface LanguageModel {
    */
   synthesize(question: string, claims: readonly string[]): Promise<Finding[]>;
   /**
+   * 予想・評価・比較を求められたときの見立て。**事実の結論とは分けて出す。**
+   *
+   * 根拠の番号を持たない見立ては捨てる（結論と同じ規則）。
+   * 実装していないモデルは見立てを出さない（報告は事実だけになる）。
+   */
+  assess?(question: string, claims: readonly string[]): Promise<Finding[]>;
+  /**
+   * 1 回目の主張で対象が決まった後、問いに答えるのに足りない中身を探す検索語。
+   * 主張に出た名前を使う。足りていれば空を返す。
+   */
+  followUp?(question: string, claims: readonly string[], max: number): Promise<string[]>;
+  /**
    * 自由な問いに答える。正本 §2.2 General Assistant。
    *
    * 調査と違い、根拠を集めない。**知らないことは知らないと言う**のは

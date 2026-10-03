@@ -120,7 +120,12 @@ export const TaskCompletedPayload = z.object({
 
 export const TaskFailedPayload = z.object({ error: TaskError });
 
-export const TaskCancelledPayload = z.object({ reason: z.string().max(500) });
+export const TaskCancelledPayload = z.object({
+  reason: z.string().max(500),
+  /** Stopping Genie does not confirm cancellation of an external order. */
+  message: z.string().optional(),
+  error: TaskError.optional(),
+});
 
 /** なぜ止まっているか。**今は端末の不在だけ。**増やすときはここに足す。 */
 export const PauseReasonCode = z.enum(['host_offline']);

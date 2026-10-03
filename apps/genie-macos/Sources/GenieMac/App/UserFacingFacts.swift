@@ -27,6 +27,20 @@ enum UserFacingFacts {
     static let recordingStop = "止める"
     /// Agent の面。録音と同じ字だが意味が別なので key は分ける。
     static let taskStop = "止める"
+    /// 止めるを押した段に書く。音声を止めたのではなく、仕事を取り消した。
+    static let taskCancelled = "取り消しました"
+    /// 工程名が取れない仕事の段（割合は作らない）。
+    static let taskWorking = "作業中"
+    /// 止めた仕事の結果の 2 行目。
+    static let taskStoppedDetail = "仕事を取り消しました。途中までの内容は使いません。"
+    /// 受付の応答。**受け付けた（仕事ができた）ときだけ**言う・出す。
+    static let taskAccepted = "かしこまりました"
+    static let taskAcceptedSub = "作業中も元のアプリを使えます"
+    static let taskRejected = "この依頼は実行できません"
+    /// 結果の種類（「<種類>ができました」）。
+    static let resultKindAnswer = "回答"
+    static func resultLength(_ n: Int) -> String { "\(n)字 · Work に保存しました" }
+    static func resultSources(_ n: Int) -> String { n > 0 ? "\(n) 件のソースから作成しました" : "Work に保存しました" }
     static let recordingCannotStart = "録音を始められません"
     static let meetingNotes = "メモ"
     static let meetingNotesOpen = "ライブメモを開く"
@@ -59,6 +73,30 @@ enum UserFacingFacts {
     static let confirmationEditReturn = "修正内容を確認画面に戻します"
     static let resultOpen = "開く"
     static let resultCopy = "コピー"
+    static let resultClose = "閉じる"
+    /// 失敗・中止した仕事の結果で、失われていないもの（依頼は Work の一覧に残る）。
+    static let resultKept = "依頼は Work に残っています。"
+    /// 動いている仕事の数（聞く面・作業中の見出し）。進捗率ではない。
+    static func taskRunningCount(_ n: Int) -> String { "実行中 \(n)件" }
+    /// 結果を出している間に、ほかに動いている仕事。
+    static func taskOthersRunning(_ n: Int) -> String { "他 \(n) 件 実行中" }
+    static let taskAwaitingApproval = "確認待ち"
+    /// VoiceOver: 作業中の面の名前。
+    static func dockRunningLabel(_ n: Int) -> String { "Genie: \(n)件 実行中" }
+    static let confirmationNeeded = "確認が必要です"
+    /// 音声入力で言い淀みを消して入れたとき。
+    static let dictationCleaned = "言い淀みを消して入れました"
+    static let dictationRestore = "元の文に戻す"
+    static let dictationRestored = "元の文に戻しました"
+    /// 音声入力の送信ボタン（入れた先のアプリで Return を押す）。
+    static let dictationSend = "入れた先で送信"
+    static let dictationSendHelp = "入れた先のアプリで送信します（Return を押します）"
+    static let dictationSendFailed = "送信できませんでした。入れた先のアプリで Return を押してください。"
+    static func dictationInserted(_ app: String, cleaned: Bool) -> String {
+        cleaned ? "\(app) に入れました（言い淀みを消しました）" : "\(app) に入れました"
+    }
+    static func dictationNotInserted(_ app: String, reason: String) -> String { "\(app) に入れられませんでした: \(reason)" }
+    static let dictationRestoreFailed = "元の文に戻せませんでした。入れた先で ⌘Z を押すと戻せます。"
     static let resultOpenSettings = "設定を開く"
     static let recoveryResume = "続きから"
     // Home の Work Context（気にすること・待ち・返すもの・今週の負荷）と Personalization。
@@ -111,6 +149,29 @@ enum UserFacingFacts {
     static let sessionInterrupted = "途中で終わっています"
     static let dockRecord = "録音"
     static let dockRelated = "関連操作"
+    /// 「Genie と会話」の入口。一回の音声入力（聞く）とは別。
+    static let dockConversation = "会話"
+    static let conversationEnd = "会話を終了"
+    static let conversationExtend = "5分延長"
+    static let conversationRemaining = "残り"
+    /// 音声入力で聞いている間の欄の案内（Genie には送らない、と押した後にも分かるように）。
+    static let dictationPlaceholder = "前面のアプリに入力します…"
+    static let quickConversationHelp = "Genie と話します。答えが返ります"
+    static let quickDictationHelp = "前面のアプリに文字を入れます。Genie には送りません"
+    static let conversationEnding = "まもなく終了"
+    static let conversationStopSpeech = "読み上げを止める"
+    static let conversationListening = "聞いています"
+    static let conversationThinking = "考えています"
+    static let conversationSpeaking = "読み上げ中"
+    /// 一回の音声入力（文章を入れるだけ）。Genie に話しかけるのは「会話」。
+    static let dockDictation = "音声入力"
+    static let conversationDuringRecording = "録音中は会話を始められません。録音を止めてから、もう一度どうぞ。"
+    /// メニュー: 「ジーニー」の呼びかけで会話を始める（端末の中で聞き取る）。
+    static let menuWakeWord = "「ジーニー」で呼びかける"
+    /// Gemini のクレジット切れ・利用枠の上限で、標準の会話に切り替えたとき。
+    static let conversationSwitchedFromGemini = "Gemini が使えないため、標準の会話に切り替えました。続けてどうぞ。"
+    static let dictationNeedsAccessibility = "文字を入れるには、アクセシビリティの許可が要ります。設定から許可してください。"
+    static let dictationNoField = "文字を入れる欄が見つかりませんでした。Genie に聞くときは「会話」から話してください。"
     static let menuShowControls = "録音コントロールを表示"
     static let menuHideControls = "録音コントロールを隠す"
     static let translationTarget = "翻訳先"
@@ -211,6 +272,24 @@ enum UserFacingFacts {
             f("recording.menu.stop", recordingMenuStop),
             f("recording.stop", recordingStop, false),
             f("task.stop", taskStop, false),
+            f("task.cancelled", taskCancelled, false),
+            f("task.working", taskWorking, false),
+            f("result.close", resultClose, false),
+            f("result.kept", resultKept, false),
+            f("task.awaitingApproval", taskAwaitingApproval, false),
+            f("confirmation.needed", confirmationNeeded, false),
+            f("dictation.cleaned", dictationCleaned, false),
+            f("dictation.restore", dictationRestore, false),
+            f("dictation.restored", dictationRestored, false),
+            f("dictation.send", dictationSend, false),
+            f("dictation.sendHelp", dictationSendHelp, false),
+            f("dictation.sendFailed", dictationSendFailed, false),
+            f("dictation.restoreFailed", dictationRestoreFailed, false),
+            f("task.stoppedDetail", taskStoppedDetail, false),
+            f("task.accepted", taskAccepted, false),
+            f("task.acceptedSub", taskAcceptedSub, false),
+            f("task.rejected", taskRejected, false),
+            f("result.kindAnswer", resultKindAnswer, false),
             f("recording.cannotStart", recordingCannotStart),
             f("meeting.notes", meetingNotes, false),
             f("meeting.notes.open", meetingNotesOpen),
@@ -283,6 +362,25 @@ enum UserFacingFacts {
             f("session.interrupted", sessionInterrupted),
             f("dock.record", dockRecord),
             f("dock.related", dockRelated),
+            f("dock.conversation", dockConversation),
+            f("conversation.end", conversationEnd),
+            f("conversation.extend", conversationExtend),
+            // 「残り」は普通の言葉（ガイドの本文でも別の意味で使う）。画面の固有の語として縛らない。
+            f("conversation.remaining", conversationRemaining, false),
+            f("dictation.placeholder", dictationPlaceholder),
+            f("quick.conversationHelp", quickConversationHelp),
+            f("quick.dictationHelp", quickDictationHelp),
+            f("conversation.ending", conversationEnding),
+            f("conversation.stopSpeech", conversationStopSpeech),
+            f("conversation.listening", conversationListening),
+            f("conversation.thinking", conversationThinking),
+            f("conversation.speaking", conversationSpeaking),
+            // 「音声入力」は macOS の設定（キーボード → 音声入力）の名前でもある。ガイドがその設定を指す文を
+            // この文言で縛らない（protected にしない）。
+            f("dock.dictation", dockDictation, false),
+            f("dictation.noField", dictationNoField),
+            f("dictation.needsAccessibility", dictationNeedsAccessibility),
+            f("conversation.duringRecording", conversationDuringRecording),
             f("menu.showControls", menuShowControls),
             f("menu.hideControls", menuHideControls),
             f("translation.target", translationTarget),

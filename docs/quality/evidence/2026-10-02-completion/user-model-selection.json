@@ -1,0 +1,25 @@
+{
+  "recordedAt": "2026-10-01T20:40:58.125Z",
+  "status": "PASS",
+  "scope": "Saved model selection only; no service/model/app start, credential replacement, DB/context change or new screen permission",
+  "stateDirectory": "/Users/shuhei/Library/Application Support/Genie/local-preview",
+  "backup": "/Users/shuhei/Library/Application Support/Genie/local-preview/model-backups/2026-10-01T20-40-58-115Z/runtime.json",
+  "before": {
+    "modelProvider": "local",
+    "model": "qwen3.5:9b"
+  },
+  "after": {
+    "modelProvider": "codex",
+    "model": "gpt-6-sol",
+    "allowCloud": true,
+    "externalScreenAuthorization": null
+  },
+  "changedKeys": [
+    "model",
+    "modelProvider",
+    "allowCloud",
+    "externalScreenAuthorization"
+  ],
+  "otherFieldsUnchanged": true,
+  "endpointAndControlPortWereAvailable": true
+}

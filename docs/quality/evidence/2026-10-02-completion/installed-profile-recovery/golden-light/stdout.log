@@ -1,0 +1,11 @@
+GOLDEN 01-voice-hud-idle 0.000%
+GOLDEN 02-voice-hud-listening 0.000%
+GOLDEN 02b-voice-hud-preparing 0.000%
+GOLDEN 03-recording-workspace 0.000%
+GOLDEN 04-recording-transcript 0.000%
+GOLDEN 05-recording-rag 0.000%
+GOLDEN 08-meeting-detail 0.045%
+GOLDEN 09-permission-denied 0.000%
+GOLDEN 10-agent-timeline 0.000%
+GOLDEN 11-meeting-canvas 0.118%
+SELFTEST_OK golden: 10面が committed の golden と一致

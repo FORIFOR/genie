@@ -1,4 +1,5 @@
 import Foundation
+import GenieApproval
 import GenieCore
 
 /// SwiftUI/ViewModel と genie-core(UniFFI) の間の薄い層。
@@ -52,6 +53,14 @@ enum GenieCoreBridge {
             ? try apiSendTurn(baseUrl: baseUrl, accessToken: accessToken, conversationId: conversationId, text: text)
             : try apiSendTurnWithAttachments(baseUrl: baseUrl, accessToken: accessToken, conversationId: conversationId,
                                              text: text, attachments: attachments)
+    }
+    static func sendRecoverableTurn(_ baseUrl: String, accessToken: String, conversationId: String,
+                                    requestId: String, text: String, attachments: [TurnAttachment], replyCandidatesJson: String) throws -> TurnOutcome {
+        try apiSendRecoverableTurn(baseUrl: baseUrl, accessToken: accessToken, conversationId: conversationId,
+                                  requestId: requestId, text: text, attachments: attachments, replyCandidatesJson: replyCandidatesJson)
+    }
+    static func recoverTurn(_ baseUrl: String, accessToken: String, conversationId: String, requestId: String) throws -> TurnOutcome? {
+        try apiRecoverTurn(baseUrl: baseUrl, accessToken: accessToken, conversationId: conversationId, requestId: requestId)
     }
     static func pluginCatalog(_ baseUrl: String, accessToken: String) throws -> [String] {
         try apiPluginCatalog(baseUrl: baseUrl, accessToken: accessToken)
@@ -128,16 +137,98 @@ enum GenieCoreBridge {
     static func workBriefNext(_ baseUrl: String, accessToken: String) throws -> String {
         try apiWorkBriefNext(baseUrl: baseUrl, accessToken: accessToken)
     }
+    /// 動いている仕事へ追加指示を渡す。返すのは状態（RECEIVED）。受け取った ≠ 反映した。
+    static func addTaskInstruction(_ baseUrl: String, accessToken: String, taskId: String,
+                                   requestId: String, text: String) throws -> String {
+        try apiAddTaskInstruction(baseUrl: baseUrl, accessToken: accessToken, taskId: taskId,
+                                  requestId: requestId, text: text)
+    }
     static func taskApprovals(_ baseUrl: String, accessToken: String, taskId: String) throws -> String {
         try apiTaskApprovals(baseUrl: baseUrl, accessToken: accessToken, taskId: taskId)
     }
-    static func taskApprove(_ baseUrl: String, accessToken: String, taskId: String, approvalId: String, decision: String) throws {
-        try apiTaskApprove(baseUrl: baseUrl, accessToken: accessToken, taskId: taskId, approvalId: approvalId, decision: decision)
+    /// いま答えを待っている承認を、カードに出せる形で読む。読むだけで答えない。
+    static func pendingApprovals(_ baseUrl: String, accessToken: String, taskId: String) throws -> [BackendApproval] {
+        BackendApproval.parse(try taskApprovals(baseUrl, accessToken: accessToken, taskId: taskId))
+    }
+    /// 承認を中継する。**`UserApproval`（人がカードで押した証拠）が無いと呼べない。**
+    /// 証拠はコピーできず、ここで使い切る（1 回の「実行する」を 2 件の承認に使えない）。
+    /// 実際に答えるのは GenieApproval の `ApprovalRelay` だけで、生の FFI（`apiTaskApprove`）は
+    /// このアプリの中からは呼ばない —— `scripts/verify-approval-boundary.sh` が数える。
+    static func taskApprove(_ baseUrl: String, accessToken: String, taskId: String, approvalId: String,
+                            approval: consuming UserApproval) throws {
+        try ApprovalRelay.approve(baseUrl, accessToken: accessToken, taskId: taskId, approvalId: approvalId, approval: approval)
+    }
+    /// 承認しない（REJECTED）。止める方向なので証拠は要らない。backend はこの仕事を CANCELLED にする。
+    /// **呼ぶのは人が「やめる」を押したときだけ**（答えが無い・カードが見えないは PENDING のまま残す）。
+    static func taskReject(_ baseUrl: String, accessToken: String, taskId: String, approvalId: String) throws {
+        try ApprovalRelay.reject(baseUrl, accessToken: accessToken, taskId: taskId, approvalId: approvalId)
+    }
+    /// 仕事を取り消す（本人が「止める」を押したとき）。返すのは取り消し後の状態。終わった仕事は 409。
+    static func cancelTask(_ baseUrl: String, accessToken: String, taskId: String, reason: String = "user_requested") throws -> String {
+        try apiCancelTask(baseUrl: baseUrl, accessToken: accessToken, taskId: taskId, reason: reason)
     }
     static func taskGet(_ baseUrl: String, accessToken: String, taskId: String) throws -> String {
         try apiTaskJson(baseUrl: baseUrl, accessToken: accessToken, taskId: taskId)
     }
     static func personalizationUpdate(_ baseUrl: String, accessToken: String, updateJson: String) throws -> String {
         try apiPersonalizationUpdate(baseUrl: baseUrl, accessToken: accessToken, updateJson: updateJson)
+    }
+}
+
+/// backend が止めて待っている承認 1 件（`GET /v1/tasks/:id/approvals` の items[]）。
+///
+/// 形は契約（`@genie/contracts` approval.ts の Approval / ApprovalImpact）が正本。
+/// server は details 列に `{ items: [{label, value}], impact: {...} }` を入れて返す（古い行は配列だけ）。
+/// 読めない項目は捨てるが、id の無いものは承認として扱わない。
+struct BackendApproval: Equatable {
+    struct Detail: Equatable { let label: String; let value: String }
+    struct Impact: Equatable {
+        let primaryActionLabel: String?
+        let affectedCount: Int?
+        let external: Bool
+        let reversible: Bool
+        let recoveryNote: String?
+    }
+    let id: String
+    let summary: String
+    /// backend の ActionRisk（READ / REVERSIBLE_WRITE / EXTERNAL_COMMIT / DESTRUCTIVE / REGULATED / FINANCIAL）。
+    let risk: String
+    var details: [Detail] = []
+    var impact: Impact?
+    /// 返ってくれば使う（今の server は tool_id をカードの型に含めない）。
+    var toolID: String?
+
+    func detail(_ label: String) -> String? { details.first { $0.label == label }?.value }
+
+    static func parse(_ json: String) -> [BackendApproval] {
+        guard let data = json.data(using: .utf8),
+              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let items = obj["items"] as? [[String: Any]] else { return [] }
+        return items.compactMap { item in
+            guard let id = item["id"] as? String, !id.isEmpty else { return nil }
+            var raw: Any? = item["details"]
+            if let text = raw as? String, let d = text.data(using: .utf8) { raw = try? JSONSerialization.jsonObject(with: d) }
+            let container = raw as? [String: Any]
+            let rows = (container?["items"] as? [[String: Any]]) ?? (raw as? [[String: Any]]) ?? []
+            let impactObj = (item["impact"] as? [String: Any]) ?? (container?["impact"] as? [String: Any])
+            return BackendApproval(
+                id: id,
+                summary: (item["summary"] as? String) ?? "",
+                risk: (item["risk"] as? String) ?? "",
+                details: rows.compactMap { r in
+                    guard let label = r["label"] as? String else { return nil }
+                    if let v = r["value"] as? String { return Detail(label: label, value: v) }
+                    if let v = r["value"] as? NSNumber { return Detail(label: label, value: v.stringValue) }
+                    return nil
+                },
+                impact: impactObj.map { i in
+                    Impact(primaryActionLabel: (i["primary_action_label"] as? String).flatMap { $0.isEmpty ? nil : $0 },
+                           affectedCount: (i["affected_count"] as? NSNumber)?.intValue,
+                           external: (i["scope"] as? String) != "internal",
+                           reversible: (i["reversible"] as? Bool) ?? false,
+                           recoveryNote: i["recovery_note"] as? String)
+                },
+                toolID: (item["tool_id"] as? String) ?? (item["tool"] as? String))
+        }
     }
 }

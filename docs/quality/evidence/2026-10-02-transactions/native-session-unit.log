@@ -1,0 +1,18 @@
+✔ two orders retain one owned PID/window with distinct load handshakes and normal begin calls (7.986625ms)
+✔ queued cancellation is prompt, skips its load and does not interrupt the active order (4.388167ms)
+✔ active cancellation stops only its owned session and a subsequent order creates a new PID (3.790084ms)
+✔ a changed native window under the same PID is refused before another begin or click (3.057125ms)
+✔ wrong captured window and unattended helper are never clicked (2.756209ms)
+✔ idle expiry closes the old process and never resurrects its PID (45.721208ms)
+✔ device cleanup failure still terminates the owned window (3.065917ms)
+✔ both food demos and paper fill require independent persisted receipt; preparing never confirms (203.392875ms)
+✔ unconfirmed click stays unknown across runtime restart and never clicks again (35.160167ms)
+✔ fictional catalog cannot be used for live identities, custom items, or prices above the supplied budget (12.532417ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 390.950042

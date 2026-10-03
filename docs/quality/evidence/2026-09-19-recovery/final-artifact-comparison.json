@@ -1,0 +1,7 @@
+{
+  "status": "PASS",
+  "after_packaged_reopen": true,
+  "exact_bytes_equal": true,
+  "bytes": 30752,
+  "sha256": "19caa11f9e2eb4b4daf9946eeec1200b0a0b38aff70b84c3eeb17a51182dd72f"
+}

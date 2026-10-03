@@ -1,0 +1,69 @@
+{
+  "recordedAt": "2026-10-01T22:20:06.060541+00:00",
+  "scope": "Explicit existing-session Keychain read recovery and shots launch deferral; no actual OS prompt, credentials or network used by this regression. No installed app change.",
+  "results": {
+    "focusedTests": 35,
+    "failures": 0,
+    "skips": 0,
+    "exitCode": 0,
+    "quitWhileSyntheticReadWaits": "PASS, exit0 before fake read completed",
+    "typeLiteralGate": "PASS",
+    "uiTasteGate": "PASS with unchanged thresholds",
+    "images": 10
+  },
+  "initialFailure": "Test-only MainActor.run needed try await; compile failed before tests, retained separately.",
+  "limits": [
+    "Actual OS prompt choices and persistent permission recovery remain untested. A one-time read permission may not authorize the next noninteractive read; success text promises only a completed read.",
+    "Images render the production error component ordered out, not a full Home window. Native focus, external AX and actual OS confirmation remain unmeasured.",
+    "The photos/geometry baselines remain unchanged. Actual recovery of all16 shots awaits the staged candidate."
+  ],
+  "commands": [
+    "GENIE_DISCLOSURE_GOLDEN_DIR=<private>/keychain-recovery-visuals GENIE_SWIFT_BUILD_JOBS=1 CARGO_BUILD_JOBS=1 swift test --jobs 1 --filter GatewayCredentialRecoveryTests|KeychainInteractionTests|GatewaySessionTests|HomeIntentSubmissionTests|DesktopConnectionBootstrapTests|SettingsKeyPresenceTests",
+    "bash scripts/test-keychain-recovery-quit.sh",
+    "pnpm -s lint:type-literals",
+    "bash scripts/verify-ui-taste.sh"
+  ],
+  "sourceHashes": {
+    "apps/genie-macos/Sources/GenieMac/Settings/KeychainStore.swift": "8eb07127d8d4bd2516dfa8ac036e5ffc504dfe944ca6a67a17262fed1825a3e3",
+    "apps/genie-macos/Sources/GenieMac/Settings/GatewaySession.swift": "629a1bf4a3739d2eca140b2d3b8a1476356a30e9cba49e183ecc0006146920b3",
+    "apps/genie-macos/Sources/GenieMac/Settings/GatewayCredentialRecovery.swift": "fe2c762c97adc63a42c170b2045e889bb66d8103362e33ef1f751edf2912678d",
+    "apps/genie-macos/Sources/GenieMac/Main/MainWindowView.swift": "00548aaabc1b1239c8cb6db9d4d1b0ba7a61395f4ea553ac6bf4da85b0a131d6",
+    "apps/genie-macos/Sources/GenieMac/Home/HomeView.swift": "9742e99ef601932ff4b4d29d62eb046488aa3627986814f6e67cb9ad43c394bc",
+    "apps/genie-macos/Sources/GenieMac/Home/GatewayCredentialRecoveryView.swift": "5633638e7ff5879f666f076d8c103f5ed543b8dd58c65b1c4d677710eb8d7c10",
+    "apps/genie-macos/Sources/GenieMac/App/SelfTest.swift": "e319008e237729bfdb02ad648131216a85b4e89d15e54906d5a6b6256f21a0ce",
+    "apps/genie-macos/Sources/GenieMac/App/DesktopConnectionBootstrap.swift": "d8ef810f6b43deb7586211ff4e4e3b9dfb846d5876e7533cccfa91c3ecc657b1",
+    "apps/genie-macos/Sources/GenieMac/App/TerminationDispatch.swift": "04dd23a83bfe172f726f34380c6d58d813bbda71455fc95c2b55485357050497",
+    "apps/genie-macos/Tests/GenieMacTests/GatewayCredentialRecoveryTests.swift": "bd45def990d9175235ac139489be04ec9eec17f2b17ede86529c6858df776f30",
+    "apps/genie-macos/Tests/GenieMacTests/GatewaySessionTests.swift": "b29def6c309d9561cc7d89391ba6a6ccd9a78578a7dd3c38c265d8aa251e7ffd",
+    "apps/genie-macos/Tests/GenieMacTests/KeychainInteractionTests.swift": "378c99037c4c154c5c5ac4ebcaea2437b6d064a33e8f11152529fe0b2031c5b9",
+    "scripts/tests/KeychainRecoveryQuitHarness.swift": "696a62ec16207c1d6b19873ae3ceb3b78d6525ca2ffa703609786b31ce629695",
+    "scripts/test-keychain-recovery-quit.sh": "43c15d1294ce783180c5d61e0bdaeb59ad1de555b0e77d6b80fd649e510572bc",
+    "docs/ux-benchmark/compare/keychain-recovery/ROUND.md": "e0c21a8b738e5408bd418045611d74a442b65f5055264cc892c950325866b32e"
+  },
+  "artifactHashes": {
+    "focused-final.log": "31c81f493b3a3bfe5044b9c0a789edee7316d043a7370d739dad279e84cfe40d",
+    "focused-round2.log": "2b60aee59d6b4e8621e14dc9e706aa514cd210f32b09c92184764435382e7b01",
+    "initial-compile-failure.log": "dc43cc535239d70f1761e8f2294a54ab6b5c82047d6ff59526729b9790130bdf",
+    "quit-final.log": "d8c4bd7fdd2655e3d50fbf613c843e27bb28a053de0a0d4b1b785d11a88d4860",
+    "visuals/keychain-checking-dark.geometry.json": "85a4e5b96a64e33bb90e0d55553598a604c395fcfdf601381458eec00c6ab9c5",
+    "visuals/keychain-checking-dark.png": "fd1951cb6b2a67a652e8b40ba96c7dffb3bc4f87d87b44bc46ec7a5a5f046733",
+    "visuals/keychain-checking-light.geometry.json": "85a4e5b96a64e33bb90e0d55553598a604c395fcfdf601381458eec00c6ab9c5",
+    "visuals/keychain-checking-light.png": "e9e6cf1e9fb8ae2921311364eee46e3e9c09bcb9c01c91a6be101e43e7113c91",
+    "visuals/keychain-denied-dark.geometry.json": "85a4e5b96a64e33bb90e0d55553598a604c395fcfdf601381458eec00c6ab9c5",
+    "visuals/keychain-denied-dark.png": "39247abccced6537db0d088bec1e649f7e0217fed8963d6360f002968365c55b",
+    "visuals/keychain-denied-light.geometry.json": "85a4e5b96a64e33bb90e0d55553598a604c395fcfdf601381458eec00c6ab9c5",
+    "visuals/keychain-denied-light.png": "d11be137680839978a720f24a6e0f27c24e557f2ff160c3cabbf86a5bc58ae5a",
+    "visuals/keychain-missing-dark.geometry.json": "85a4e5b96a64e33bb90e0d55553598a604c395fcfdf601381458eec00c6ab9c5",
+    "visuals/keychain-missing-dark.png": "3ce3f18463dddbd0282a6353a6844c50ed0534c68131393367313d519487005e",
+    "visuals/keychain-missing-light.geometry.json": "85a4e5b96a64e33bb90e0d55553598a604c395fcfdf601381458eec00c6ab9c5",
+    "visuals/keychain-missing-light.png": "beb64778f9916928a67d429d55bc12f3056c98081d5b01d3f2a2571d33858973",
+    "visuals/keychain-readable-dark.geometry.json": "85a4e5b96a64e33bb90e0d55553598a604c395fcfdf601381458eec00c6ab9c5",
+    "visuals/keychain-readable-dark.png": "a16b257635185ebeceb8bc59efe0793ac95ec46dbd12ff399b27b6b19c841957",
+    "visuals/keychain-readable-light.geometry.json": "85a4e5b96a64e33bb90e0d55553598a604c395fcfdf601381458eec00c6ab9c5",
+    "visuals/keychain-readable-light.png": "fc35a3e7d3b9503797d1c0f75b5b25ffa2e74908a1c8df5ccde83ed7d3da8769",
+    "visuals/keychain-required-dark.geometry.json": "85a4e5b96a64e33bb90e0d55553598a604c395fcfdf601381458eec00c6ab9c5",
+    "visuals/keychain-required-dark.png": "a1b0db90896688d8d0d3f1b8793ff344a3f1b9724c1e87360e02f474f3f46274",
+    "visuals/keychain-required-light.geometry.json": "85a4e5b96a64e33bb90e0d55553598a604c395fcfdf601381458eec00c6ab9c5",
+    "visuals/keychain-required-light.png": "cc5d618943172c853c0f581fe7e64eb248ff27a1302e17bd09603d65aaa11305"
+  }
+}

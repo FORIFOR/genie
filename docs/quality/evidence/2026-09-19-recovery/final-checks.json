@@ -1,0 +1,24 @@
+[
+  {
+    "name": "preserved-user-files",
+    "command": [
+      "shasum",
+      "-a",
+      "256",
+      "-c",
+      "/tmp/genie-user-changes-20260919.sha256"
+    ],
+    "exit_code": 0,
+    "output": "docs/COMPUTER_VISION.md: OK\ntools/computer-use/genie-computer.swift: OK\nworkers/agent-host/src/computer-vision-device.ts: OK\nworkers/agent-host/src/computer-vision-prompts.ts: OK\nworkers/agent-host/src/computer-vision.ts: OK\nworkers/agent-host/test/computer-vision.node.mjs: OK\n"
+  },
+  {
+    "name": "diff-whitespace",
+    "command": [
+      "git",
+      "diff",
+      "--check"
+    ],
+    "exit_code": 0,
+    "output": ""
+  }
+]

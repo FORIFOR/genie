@@ -51,6 +51,7 @@ describe('paid activity timeout policy', () => {
     'search.web',
     'research.plan',
     'research.search',
+    'research.deepen',
     'research.verify',
     'research.report',
     'meeting.transcribe',

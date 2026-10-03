@@ -1,0 +1,14 @@
+✔ requires goal, criteria, durable run file and explicit approval ID (0.474ms)
+✔ lost acceptance response: explicit recover reuses identical key and request, never approves (0.5005ms)
+✔ status and recover with known identity only read; missing identity never posts (0.088709ms)
+✔ approval belongs to current computer task and matching pending approval (0.140916ms)
+✔ cancel only requests cancellation on same task, no success assertion (0.064167ms)
+✔ transport blocks redirects and does not retry errors (0.187708ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 60.161834

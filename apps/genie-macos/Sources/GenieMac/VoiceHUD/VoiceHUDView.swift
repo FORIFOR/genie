@@ -32,6 +32,9 @@ struct VoiceTaskDockView: View {
 
     /// 面が縮み終わってから中身を出す。同時に動かすと中身がはみ出して見える。
     @State private var contentVisible = true
+    /// 1b: 印の反応のきっかけ。値が変わったときだけ一度動く。
+    @State private var markStretch = 0
+    @State private var markAck = 0
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -41,12 +44,28 @@ struct VoiceTaskDockView: View {
                 .padding(.top, screenLayout.topInset)
                 .opacity(contentVisible ? 1 : 0)
                 .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: contentVisible)
+            // 1b: 印は中身と一緒に消さない。面が変わっても同じ左上に居続け、中身だけが入れ替わる。
+            if let mark = presence {
+                GeniePresenceMark(mode: mark.mode, level: mark.level, height: mark.height,
+                                  stretchKey: markStretch, ackKey: markAck)
+                    .padding(.leading, S.metric(Metrics.dockPadH))
+                    .padding(.top, screenLayout.topInset + mark.top)
+                    .frame(width: size.width, height: size.height + screenLayout.topInset, alignment: .topLeading)
+                    .animation(reduceMotion ? nil : .easeInOut(duration: Motion.dockResizeMs), value: mark.top)
+            }
         }
         // 地が暗いので、中身も暗色側の配色で描く。
         // 各 View は `@Environment(\.colorScheme)` を見ているので、ここで一括して切り替わる。
         .environment(\.colorScheme, .dark)
         .frame(width: size.width, height: size.height + screenLayout.topInset)
         .onChange(of: store.dock) { old, new in
+            // 1b: 呼び出しで一度伸び、受付と「できた」で一度膨らむ。受付前・保存前には動かさない。
+            if case .idle = old, case .listening = new { markStretch += 1 }
+            if case .listening = old {
+                if case .thinking = new { markAck += 1 }
+                if case .agent = new { markAck += 1 }
+            }
+            if case .result(let r) = new, !r.failed, !r.cancelled { markAck += 1 }
             guard !reduceMotion else { return }
             // 会議 Dock の中で板（メモ / 字幕 / Ask）が開閉するだけのときは、変わらない見出し
             // （録音中・メモ・字幕・Ask Genie・停止）を消さない。全体を消すと、盲検 3 名全員が
@@ -69,6 +88,34 @@ struct VoiceTaskDockView: View {
 
     private var size: CGSize { store.dock.size(agentRows: store.state.activeTask?.steps.count ?? 0) }
 
+    /// 1b: 印を出す面と、その面での印の状態・高さ・位置（面の上端から）。
+    /// 印を持たない面（確認・会議・回答・文脈など）では出さない。
+    private var presence: (mode: GeniePresenceMode, level: Float, height: CGFloat, top: CGFloat)? {
+        let padV = S.metric(Metrics.dockPadV)
+        switch store.dock {
+        case .idle:
+            // スクショの chip は画像の縮小が先頭に来るので、印は出さない。
+            guard visual.justCaptured == nil, visual.offeredCapture == nil else { return nil }
+            return (.idle, 0, DockMark.idleHeight, (size.height - DockMark.idleHeight) / 2)
+        case .listening:
+            // 準備中（マイクがまだ開いていない）と消音中は動かさない（聞いているふりをしない）。
+            let quiet = state.isListeningMuted || state.listeningAwaitingAudio
+            // 届く値は peak で、話し声でも 0.05〜0.3。波形と同じく平方根で広げる（そのままでは輪郭がほぼ動かない）。
+            return (quiet ? .still : .listening, quiet ? 0 : state.inputLevel.squareRoot(), DockMark.height,
+                    padV + (DockMark.rowHeight - DockMark.height) / 2)
+        case .thinking:
+            return (.working, 0, DockMark.height, padV + (DockMark.rowHeight - DockMark.height) / 2)
+        case .agent:
+            let running = store.state.activeTask?.status == .running
+            return (running ? .working : .still, 0, DockMark.height,
+                    padV + (DockMark.compactRowHeight - DockMark.height) / 2)
+        case .result:
+            return (.still, 0, DockMark.height, padV + (DockMark.resultRowHeight - DockMark.height) / 2)
+        default:
+            return nil
+        }
+    }
+
     @ViewBuilder private var content: some View {
         switch store.dock {
         case .idle: IdleDock()
@@ -77,12 +124,16 @@ struct VoiceTaskDockView: View {
         case .listening(let partial): ListeningDock(partial: partial)
         case .thinking: ThinkingDock()
         case .agent: AgentDock()
-        case .confirmation(let confirmation): ConfirmationDock(confirmation: confirmation)
+        // カードごとに別の面にする（直した値・出た時刻をカードの間で持ち越さない）。
+        case .confirmation(let confirmation): ConfirmationDock(confirmation: confirmation).id(confirmation.id)
         case .meeting(let panel): MeetingDock(open: panel)
         case .answer(let text): AnswerDock(text: text)
+        case .card(let card): DockCardView(card: card)
         case .result(let result): ResultDock(result: result)
         case .contextDetail: ContextDetailDock()
         case .quickActions: QuickActionsDock()
+        case .ack(let ack): AckDock(ack: ack)
+        case .dictated(let notice): DictatedDock(notice: notice)
         case .enteringRecording: SimpleDock(icon: "record.circle", text: "録音を始めます…", tint: .recordingRed)
         }
     }
@@ -119,6 +170,8 @@ struct AnswerDock: View {
                 }
                 .buttonStyle(GenieControlStyle(radius: 7, base: 0.06))
                 .accessibilityIdentifier("answerCopy")
+                // 会話中は ✕ を出さない（カードを閉じるのか会話を終えるのかが分からない。終えるのは下の行）。
+                if !VoiceHUDState.shared.conversation.isActive {
                 Button { GenieStateStore.shared.dismissResult() } label: {
                     Image(systemName: "xmark")
                         .font(.system(size: 11))
@@ -128,6 +181,7 @@ struct AnswerDock: View {
                 .buttonStyle(GenieControlStyle(radius: 7, base: 0.0))
                 .accessibilityIdentifier("answerDismiss")
                 .accessibilityLabel("回答を閉じる")
+                }
             }
             ScrollView {
                 Text(text)
@@ -139,6 +193,7 @@ struct AnswerDock: View {
             }
             .frame(maxHeight: 82)
             .accessibilityIdentifier("answerText")
+            ConversationBar()
         }
         .padding(.horizontal, S.metric(Metrics.dockPadH))
         .padding(.vertical, S.metric(Metrics.dockPadV))
@@ -177,12 +232,13 @@ private struct IdleDock: View {
         HStack(spacing: 7) {
             Button { VoiceHUDState.shared.toggleQuickActions() } label: {
                 HStack(spacing: 7) {
-                    GenieVoiceMark()
+                    DockMarkSlot(height: DockMark.idleHeight, rowHeight: 14)
                     Text("Genie")
                         .font(.system(size: S.type(Metrics.dockPrimarySize), weight: .medium))
                 }
                 .foregroundStyle(Palette.text(scheme == .dark))
                 .frame(maxHeight: .infinity)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("dockOpenActions")
@@ -348,6 +404,7 @@ struct AppContextDock: View {
 
 /// 声を聞いている。主役は波形ではなく**話した内容**。
 /// 波形は左端の小さな印にとどめ、下に「何を見ているか」を必ず出す。
+/// 音声入力とキーボード入力を両立し、不要な場合は消音（ミュート）できる。
 struct ListeningDock: View {
     @Environment(\.colorScheme) private var scheme
     private var dark: Bool { scheme == .dark }
@@ -355,36 +412,172 @@ struct ListeningDock: View {
     @ObservedObject private var voice = VoiceHUDState.shared
     let partial: String
 
+    @State private var textInput: String = ""
+    @FocusState private var isFieldFocused: Bool
+
+    private var isSpeechDenied: Bool {
+        Permissions.speechRecognition == .denied || Permissions.speechRecognition == .restricted
+    }
+
+    private var placeholderText: String {
+        if voice.isListeningMuted {
+            return "消音中 · 入力して ↩"
+        }
+        if isSpeechDenied {
+            return "音声認識が未許可です · 入力して ↩"
+        }
+        if voice.listenPurpose == .dictation, !voice.conversation.isActive { return Facts.dictationPlaceholder }
+        return voice.listeningAwaitingAudio ? Facts.recordingHeroPreparing : Facts.listeningPlaceholder
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 9) {
-                GenieOrb(mode: voice.listeningAwaitingAudio ? .preparing : .listening,
-                         level: voice.inputLevel)
-                // **取り込みが生きるまで「聞いています…」と名乗らない。**
-                // 切り替えるのは最初の音声フレームの到着（`listeningAwaitingAudio`）で、タイマーではない。
-                Text(partial.isEmpty
-                     ? (voice.listeningAwaitingAudio ? Facts.recordingHeroPreparing : Facts.listeningPlaceholder)
-                     : partial)
+                // 1b: 印の場所。印そのものは VoiceTaskDockView が描く（面が変わっても消えない）。
+                DockMarkSlot(height: DockMark.height, rowHeight: DockMark.rowHeight)
+
+                // 会話では、声が届いていることを波形でも見せる（文字は右の欄に出る）。
+                // 届く値は振幅の peak で、話し声でも 0.05〜0.3 に集まり、そのままでは 1〜5pt の棒にしかならない
+                // （実マイクの voicee2e で確認）。平方根で見える高さに広げる（静か 0.07→0.26、声 0.33→0.57）。
+                if voice.conversation.isActive {
+                    Waveform(levels: voice.isListeningMuted ? [] : voice.inputLevels.map { $0.squareRoot() },
+                             color: Palette.presence(dark),
+                             barWidth: 2, spacing: 2,
+                             awaitingInput: voice.listeningAwaitingAudio)
+                        .frame(width: CGFloat(VoiceHUDState.inputLevelHistory) * 4, height: 18)
+                        .accessibilityIdentifier("dockListeningWaveform")
+                }
+
+                TextField(placeholderText, text: $textInput)
+                    .textFieldStyle(.plain)
                     .font(.system(size: S.type(Metrics.dockSpeechSize)))
-                    .foregroundStyle(partial.isEmpty ? Palette.muted(dark) : Palette.text(dark))
-                    .lineLimit(1)
-                    .truncationMode(.head)
-                Spacer(minLength: 0)
-                // マイクが開いている面に逃げ道が**見えない**、と盲検の 2 名が同じ観察をした
-                // （journeys/panel1）。鍵は効いていても、書いていなければ無いのと同じ。
-                KeyBadge(UserShortcut.cancel.display)
+                    .foregroundStyle(Palette.text(dark))
+                    .focused($isFieldFocused)
+                    .onSubmit {
+                        submitCurrentText()
+                    }
+                    .accessibilityIdentifier("dockListeningInputField")
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                // 聞いている間も、動いている仕事は消さない（「実行中 n件」で残す。One Continuous Surface）。
+                if store.state.board.active.count > 0 {
+                    Text(Facts.taskRunningCount(store.state.board.active.count))
+                        .font(.system(size: S.type(Metrics.dockMetaSize), weight: .medium))
+                        .foregroundStyle(Palette.muted(dark))
+                        .padding(.horizontal, 6)
+                        .frame(height: 20)
+                        .background(RoundedRectangle(cornerRadius: 6).fill(Color.white.opacity(0.06)))
+                        .accessibilityIdentifier("listeningRunningCount")
+                }
+                HStack(spacing: 6) {
+                    // ミュートボタン / 許可案内: ユーザーの指示「邪魔な場合は聞いています というUIにミュートを追加」
+                    Button {
+                        if isSpeechDenied {
+                            Permissions.openSpeechRecognitionSettings()
+                        } else {
+                            voice.toggleListeningMute()
+                        }
+                    } label: {
+                        Image(systemName: voice.isListeningMuted ? "mic.slash.fill" : (isSpeechDenied ? "mic.slash" : "mic.fill"))
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(voice.isListeningMuted || isSpeechDenied ? Palette.warning(dark) : Palette.muted(dark))
+                            .frame(width: 24, height: 24)
+                            .background(
+                                Circle()
+                                    .fill(voice.isListeningMuted || isSpeechDenied ? Palette.warning(dark).opacity(0.18) : Color.clear)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("dockToggleMute")
+                    .help(voice.isListeningMuted ? "音声入力を再開" : (isSpeechDenied ? "音声認識の許可が必要です（クリックで設定を開く）" : "音声入力を消音（ミュート）"))
+
+                    // テキストがあるときは送信ボタン。音声入力では、入れた先のアプリで送信する（Return を押す）。
+                    // 以前は音声入力でも Genie への質問として送り、関係の無い「回答」が出ていた（2026-09-28 実機）。
+                    let dictating = voice.listenPurpose == .dictation && !voice.conversation.isActive
+                    if !textInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                        || (dictating && voice.dictatedSegments > 0) {
+                        Button {
+                            submitCurrentText()
+                        } label: {
+                            Image(systemName: "arrow.up.circle.fill")
+                                .font(.system(size: 16))
+                                .foregroundStyle(Palette.accent(dark))
+                                .frame(width: 24, height: 24)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("dockSubmitInput")
+                        .accessibilityLabel(dictating ? Facts.dictationSend : "送信")
+                        .help(dictating ? Facts.dictationSendHelp : "送信 (Enter)")
+                    }
+
+                    // 逃げ道の鍵（Esc）
+                    KeyBadge(UserShortcut.cancel.display)
+                }
             }
             ContextStrip()
+            // 音声入力: 区切りごとに、どこへ入れたか（入れられなかったら理由）。
+            if voice.listenPurpose == .dictation, let status = voice.dictationStatus {
+                HStack(spacing: 8) {
+                    Text(status)
+                        .font(.system(size: S.type(Metrics.dockMetaSize)))
+                        .foregroundStyle(status.contains("入れられません") ? Palette.warning(dark) : Palette.muted(dark))
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("dictationStatus")
+                    Spacer(minLength: 0)
+                    if let last = voice.lastDictated, last.inserted != last.original {
+                        Button { voice.restoreDictated(last) } label: {
+                            Text(Facts.dictationRestore)
+                                .font(.system(size: S.type(Metrics.dockMetaSize), weight: .medium))
+                                .foregroundStyle(Palette.text(dark))
+                                .frame(height: 24)
+                                .padding(.horizontal, 8)
+                        }
+                        .buttonStyle(GenieControlStyle(radius: 7, base: 0.06))
+                        .help(last.original)
+                        .accessibilityIdentifier("dictationRestoreLast")
+                    }
+                }
+            }
+            ConversationBar(showsPhase: false)
         }
         .padding(.horizontal, S.metric(Metrics.dockPadH))
-        // 面の高さはこの view の実寸で決まる（`DockContentMeasure`）。上下は padV。
-        // 120pt 固定だったころは 2 行 47pt の上下に 36pt ずつ空いていた。
         .padding(.vertical, S.metric(Metrics.dockPadV))
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-        // 逃げ道は確認面と同じ鍵。Esc で聞くのをやめる。
         .escapeKey { VoiceHUDState.shared.cancelListening() }
+        .onAppear {
+            if !partial.isEmpty {
+                textInput = partial
+            } else if let held = voice.listeningPrefill {
+                // 前の依頼の途中で送れなかった発話。送るのは本人（↩ か送信ボタン）。
+                // ここでは読むだけ（面の高さを測るときにも onAppear は走る）。
+                textInput = held
+            }
+            isFieldFocused = true
+        }
+        .onChange(of: partial) { old, new in
+            // 音声入力では、欄はいまの区切り（まだ入れていない文）だけを映す。入れた文を残すと、
+            // 送信で同じ文をもう一度入れてしまう。
+            if voice.listenPurpose == .dictation, !voice.conversation.isActive {
+                textInput = new
+            } else if !new.isEmpty && (textInput.isEmpty || textInput == old) {
+                textInput = new
+            }
+        }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("dockListening")
+    }
+
+    private func submitCurrentText() {
+        let target = textInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        let toSend = target.isEmpty ? partial.trimmingCharacters(in: .whitespacesAndNewlines) : target
+        if voice.listenPurpose == .dictation, !voice.conversation.isActive {
+            // 音声入力: まだ入れていない文があれば入れてから、入れた先のアプリで送信する。
+            voice.sendDictation(pending: toSend)
+            return
+        }
+        guard !toSend.isEmpty else { return }
+        voice.submitText(toSend)
     }
 }
 
@@ -429,16 +622,32 @@ struct ContextStrip: View {
 
 struct ThinkingDock: View {
     @Environment(\.colorScheme) private var scheme
+    @ObservedObject private var voice = VoiceHUDState.shared
     var body: some View {
-        HStack(spacing: 8) {
-            GenieOrb(mode: .thinking)
-            Text("考えています…")
-                .font(.system(size: S.type(Metrics.dockPrimarySize)))
-                .foregroundStyle(Palette.text(scheme == .dark))
-            Spacer(minLength: 0)
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                // 1b: 印の場所。受け付けた瞬間に印が一度だけ反応し、内側を流れが進む（波形は出さない）。
+                DockMarkSlot(height: DockMark.height, rowHeight: DockMark.rowHeight)
+                Text("考えています…")
+                    .font(.system(size: S.type(Metrics.dockPrimarySize)))
+                    .foregroundStyle(Palette.text(scheme == .dark))
+                Spacer(minLength: 0)
+            }
+            // 答えている途中に届いた発話。消さずに見せ、次に聞くとき入力欄へ戻す。
+            if let held = voice.heldUtterance {
+                Text("「\(held)」はまだ送っていません。答えのあと入力欄から送れます。")
+                    .font(.system(size: S.type(Metrics.dockMetaSize)))
+                    .foregroundStyle(Palette.muted(scheme == .dark))
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("dockHeldUtterance")
+            }
+            ConversationBar(showsPhase: false)
         }
         .padding(.horizontal, S.metric(Metrics.dockPadH))
         .padding(.vertical, S.metric(Metrics.dockPadV))
+        // 考え中にも逃げ道の鍵を置く（以前は無く、答えが来るまで面を閉じられなかった）。
+        .escapeKey { VoiceHUDState.shared.leaveThinking() }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("dockThinking")
     }
@@ -478,25 +687,40 @@ struct AgentDock: View {
     @Environment(\.colorScheme) private var scheme
     private var dark: Bool { scheme == .dark }
     @ObservedObject private var store = GenieStateStore.shared
-    @State private var tick = Date()
-    private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+
+    /// 動いている仕事（声・文字の依頼も会議の AI 操作も）。
+    private var active: [DockTask] { store.state.board.active }
+    /// 段で進む仕事（会議の AI 操作）が 1 件だけ動いているときは、その段を出す。それ以外は 1 件 1 行。
+    /// 以前は段の無い仕事（声・文字の依頼）でも段の面を出し、題が「実行中」、止めるも無かった。
+    private var detailed: Bool {
+        guard let task = store.state.activeTask, task.status == .running, !task.steps.isEmpty else { return false }
+        return active.count <= 1 && (active.first?.id ?? task.id) == task.id
+    }
 
     var body: some View {
+        // 1b: 作業中の面は「作業名・段階・停止」だけ。経過・段数・進行帯・見出し・文脈は作業画面で見る。
+        // 段の色（✓ ● ○）と各段の「いま何を見ているか」は残す。
         VStack(alignment: .leading, spacing: 12) {
             header
-            taskTitle
-            progressBar
-            steps
-            contextChips
+            if detailed {
+                taskTitle
+                steps
+            } else {
+                rows
+            }
             Spacer(minLength: 0)
             footer
         }
         .padding(.horizontal, S.metric(Metrics.dockPadH))
         .padding(.vertical, S.metric(Metrics.dockPadV))
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .onReceive(timer) { tick = $0 }
+        // 1b: 作業中だけ、面の下辺を細い流れが進む。進捗率ではない（Reduce Motion / selftest では描かない）。
+        .overlay(alignment: .bottom) {
+            if active.contains(where: { $0.status == .running }) || store.state.activeTask?.status == .running { DockFlowLine() }
+        }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("dockAgent")
+        .accessibilityLabel(Facts.dockRunningLabel(max(active.count, 1)))
     }
 
     /// 状態語。英語の rawValue をそのまま出していたので、面の中で言語が混ざっていた。
@@ -511,48 +735,53 @@ struct AgentDock: View {
 
     private var header: some View {
         HStack(spacing: 10) {
-            GenieOrb(mode: store.state.activeTask?.status == .running ? .thinking : .idle,
-                     size: Metrics.hudOrbCompactSize)
+            DockMarkSlot(height: DockMark.height, rowHeight: DockMark.compactRowHeight)
             Text("Genie")
                 .font(.system(size: S.type(Metrics.dockMetaSize), weight: .medium))
                 .foregroundStyle(Palette.muted(dark))
             Spacer(minLength: 0)
-            if let task = store.state.activeTask {
-                // 何をしているか（状態語）と、どこまで進んだか。
+            if !detailed, active.count > 1 {
+                Text(Facts.taskRunningCount(active.count))
+                    .font(.system(size: S.type(Metrics.dockMetaSize), weight: .medium))
+                    .foregroundStyle(Palette.muted(dark))
+            } else if let task = store.state.activeTask, detailed {
+                // 何をしているか（状態語）。
                 Text(statusLabel(task.status))
                     .font(.system(size: S.type(Metrics.dockMetaSize), weight: .medium))
                     .foregroundStyle(Palette.muted(dark))
-                // 待っている間、どれだけ待つのかが分かるように経過も出す。
-                Text(elapsedLabel(task))
-                    .font(.system(size: S.type(Metrics.dockMetaSize), design: .monospaced))
-                    .foregroundStyle(Palette.muted(dark))
-                Text("\(Int(task.progress * 100))%")
-                    .font(.system(size: S.type(Metrics.dockMetaSize), design: .monospaced))
-                    .foregroundStyle(Palette.muted(dark))
             }
         }
     }
 
-    /// 進み具合は数字だけだと目に入らない。細い帯で出す。
-    @ViewBuilder private var progressBar: some View {
-        if let task = store.state.activeTask {
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Color.subtleFill(dark, 0.10))
-                    Capsule().fill(Palette.accent(dark))
-                        .frame(width: max(2, geo.size.width * task.progress))
+    /// 1 件 1 行: 題・いまの工程（確認待ちは注意色）・止める。進捗率は出さない（取れない）。
+    private var rows: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(Array(active.enumerated()), id: \.element.id) { index, task in
+                if index > 0 { Divider().overlay(Color.white.opacity(0.08)) }
+                HStack(spacing: 12) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(task.title)
+                            .font(.system(size: S.type(Metrics.dockRowSize), weight: .semibold))
+                            .foregroundStyle(Palette.text(dark))
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                        Text(task.status == .awaitingApproval ? Facts.taskAwaitingApproval : task.step)
+                            .font(.system(size: S.type(Metrics.dockMetaSize)))
+                            .foregroundStyle(task.status == .awaitingApproval ? Palette.warning(dark) : Palette.muted(dark))
+                            .lineLimit(1)
+                    }
+                    Spacer(minLength: 0)
+                    StopButton(label: Facts.taskStop,
+                               font: .system(size: S.type(Metrics.dockMetaSize), weight: .medium)) {
+                        GenieStateStore.shared.stopTask(task.id)
+                    }
+                    .accessibilityIdentifier("stopTask-\(index)")
+                    .accessibilityLabel("\(task.title)を\(Facts.taskStop)")
                 }
+                .padding(.vertical, 6)
             }
-            .frame(height: 3)
-            .animation(.easeOut(duration: Motion.drawerMs), value: task.progress)
-            .accessibilityIdentifier("agentProgress")
-            .accessibilityLabel("進み具合 \(Int(task.progress * 100))%")
         }
-    }
-
-    private func elapsedLabel(_ task: AgentTask) -> String {
-        let t = Int(max(0, tick.timeIntervalSince(task.startedAt)))
-        return String(format: "%02d:%02d", t / 60, t % 60)
+        .accessibilityIdentifier("agentRows")
     }
 
     /// 仕事の名前は状態語と分けて、1 行の見出しにする。
@@ -568,7 +797,6 @@ struct AgentDock: View {
     /// 5 行の段取りが「見出しの無い表」に見えていた。
     private var steps: some View {
         VStack(alignment: .leading, spacing: 6) {
-            DockLabel(text: Facts.dockPlan)
             VStack(alignment: .leading, spacing: 0) {
             ForEach(store.state.activeTask?.steps ?? []) { step in
                 HStack(spacing: 10) {
@@ -595,34 +823,16 @@ struct AgentDock: View {
         }
     }
 
-    /// 見ているもの。3 つの capsule（塗り + 線）で出していたが、ここで押せるものは
-    /// 無いので、押せそうな形を与えない。語を「·」で並べる（⑨ 図形の重さ）。
-    /// 名前は SOURCES から CONTEXT へ。結果の根拠（sources）ではなく、
-    /// いま Genie が見ている文脈だから。
-    @ViewBuilder private var contextChips: some View {
-        let items = store.state.context.items
-        if !items.isEmpty {
-            VStack(alignment: .leading, spacing: 6) {
-                DockLabel(text: Facts.dockContext)
-                Text(items.map(\.application).joined(separator: " · "))
-                    .font(.system(size: S.type(Metrics.dockMetaSize)))
-                    .foregroundStyle(Palette.text(dark))
-                    .lineLimit(1)
-            }
-            .accessibilityIdentifier("agentContextChips")
-        }
-    }
-
     private var footer: some View {
         HStack(spacing: 0) {
             // 走っている仕事は止められること。止め方が無いまま待たせない。
-            if store.state.activeTask?.status == .running {
+            if detailed {
                 // 押せる範囲を label へ付ける。Button の外側に .frame を付けると
                 // 当たりは文字のままで、実寸は 29x16 だった（隣の openWorkspace は
                 // 178x28）。**止める操作がいちばん小さい**のは、あってはならない。
                 StopButton(label: Facts.taskStop,
                            font: .system(size: S.type(Metrics.dockMetaSize), weight: .medium)) {
-                    GenieStateStore.shared.finishTask(.failed)
+                    GenieStateStore.shared.stopTask()
                 }
                 .accessibilityIdentifier("stopAgent")
             }
@@ -656,7 +866,7 @@ struct AgentDock: View {
     private func tint(_ s: AgentRunState) -> Color {
         switch s {
         case .pending: return Palette.muted(dark)
-        case .running: return Palette.accent(dark)
+        case .running: return Palette.presence(dark)
         case .success: return Palette.success(dark)
         case .failed: return Palette.danger(dark)
         }
@@ -676,13 +886,23 @@ struct ConfirmationDock: View {
     @Environment(\.colorScheme) private var scheme
     private var dark: Bool { scheme == .dark }
     let confirmation: ActionConfirmation
+    @ObservedObject private var authorizations = TransactionAuthorizationState.shared
+    private var delegation: TransactionAuthorizationState.Draft? { authorizations.drafts[confirmation.id] }
 
     /// その場で直しているか。**別の窓は開かない。** 同じ面の中で入れ替える。
     @State private var editing = false
     @State private var edited: [String: String] = [:]
+    /// このカードが出た時刻。出た直後の「実行する」/ ⌘Return は受け付けない
+    /// （前のカードへ向けた押下が、差し替わった直後のこのカードに付かないように）。
+    @State private var shownAt = Date()
+    private var armed: Bool { Date().timeIntervalSince(shownAt) >= ActionConfirmation.proceedArmDelay }
 
     private var riskTint: Color {
         confirmation.risk == .r3 ? Palette.danger(dark) : Palette.warning(dark)
+    }
+
+    private var proceedDisabled: Bool {
+        delegation?.sending == true || (delegation?.recurring == true && delegation?.frozenBody == nil && delegation?.spec() == nil)
     }
 
 
@@ -724,7 +944,9 @@ struct ConfirmationDock: View {
                 .foregroundStyle(riskTint)
             }
 
-            if editing { editor } else { readOnly }
+            if confirmation.transactionAuthorization != nil { TransactionAuthorizationChoice(id: confirmation.id) }
+            if delegation?.recurring == true { TransactionAuthorizationEditor(id: confirmation.id) }
+            else if editing { editor } else { readOnly }
 
             Spacer(minLength: 0)
 
@@ -762,13 +984,17 @@ struct ConfirmationDock: View {
                     // 「キャンセル」は 5 字で 102pt になり、主たる操作（96）より広くなる
                     // （造形⑤、`scripts/ux-auto/primary.py`）。逃げ道は主より狭く保つ。
                     // 検査が押すのも同じ 1 本（`ProbeButton`）。
-                    ProbeButton(id: "confirmCancel", action: { GenieStateStore.shared.resolveConfirmation(approved: false) }) {
-                        Text(Facts.confirmationCancel)
+                    // 答えは**描いたカードの id 付き**で返す（store の現在値に答えない）。
+                    ProbeButton(id: "confirmCancel", action: { GenieStateStore.shared.resolveConfirmation(id: confirmation.id, approved: false) }) {
+                        // 高さと余白はラベルの中に置く（外に付けると背景と押せる範囲が文字だけになる）。
+                        Text(delegation?.frozenBody == nil ? Facts.confirmationCancel : "閉じる")
+                            .font(.system(size: S.type(Metrics.dockRowSize)))
+                            .foregroundStyle(Palette.muted(dark))
+                            .frame(height: 32).padding(.horizontal, 14)
+                            .contentShape(Rectangle())
                     }
-                        .font(.system(size: S.type(Metrics.dockRowSize)))
-                        .foregroundStyle(Palette.muted(dark))
-                        .frame(height: 32).padding(.horizontal, 14)
                         .buttonStyle(GenieControlStyle(radius: 7, base: 0.0))
+                        .disabled(delegation?.sending == true)
                     if confirmation.risk != .r3, !confirmation.params.isEmpty || confirmation.preview != nil {
                         // 検査から押せる目印付き（Atlas dock.confirmation-edit）。走るものは 1 本。
                         // 破壊（r3・捨てる等）は二択にする。「直す」は出さない。
@@ -788,15 +1014,32 @@ struct ConfirmationDock: View {
                     // 「送る」は 2 文字なので、padding だけ足しても 70pt にしかならず、
                     // 6 文字の Cancel（76pt）に負けていた（実測）。字数で重さが
                     // 決まってしまうので、最小幅で下から支える。
-                    ProbeButton(id: "confirmProceed", action: { GenieStateStore.shared.resolveConfirmation(approved: true, edits: edited) }) {
-                        Text(confirmation.confirmLabel)
+                    ProbeButton(id: "confirmProceed", action: {
+                        guard armed, !proceedDisabled else { return }
+                        if delegation?.recurring == true {
+                            Task {
+                                if await authorizations.submit(confirmation.id) {
+                                    GenieStateStore.shared.resolveConfirmation(id: confirmation.id, approved: true)
+                                }
+                            }
+                        } else {
+                            GenieStateStore.shared.resolveConfirmation(id: confirmation.id, approved: true, edits: edited)
+                        }
+                    }) {
+                        // 塗り・高さ・最小幅はラベルの中に置く。外に付けると、見た目は大きいのに
+                        // 押せるのは文字だけだった（主たる操作なのに当たりが小さい）。
+                        Text(delegation?.recurring == true
+                             ? (delegation?.sending == true ? "確認中…" : (delegation?.frozenBody == nil ? "この条件で任せて注文" : "同じ内容で再確認"))
+                             : confirmation.confirmLabel)
+                            .font(.system(size: S.type(Metrics.dockRowSize), weight: .semibold))
+                            .foregroundStyle(proceedDisabled ? Palette.muted(dark) : .white)
+                            .frame(height: 32).padding(.horizontal, 20)
+                            .frame(minWidth: S.metric(Metrics.dockConfirmPrimaryMinWidth))
+                            .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(proceedDisabled ? Palette.border(dark) : riskTint))
+                            .contentShape(Rectangle())
                     }
-                        .font(.system(size: S.type(Metrics.dockRowSize), weight: .semibold))
-                        .foregroundStyle(.white)
-                        .frame(height: 32).padding(.horizontal, 20)
-                        .frame(minWidth: S.metric(Metrics.dockConfirmPrimaryMinWidth))
-                        .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(riskTint))
                         .buttonStyle(GenieControlStyle(radius: 7, base: 0.0, filled: false))
+                        .disabled(proceedDisabled)
                 }
             }
         }
@@ -806,15 +1049,19 @@ struct ConfirmationDock: View {
         // Escape は取消。直している最中なら、直すのをやめて確認へ戻る。
         // **逃げ道は常に同じ鍵**でないと、危ないときに手が止まる。
         .escapeKey {
+            guard delegation?.sending != true else { return }
             if editing { editing = false; edited = [:] }
-            else { GenieStateStore.shared.resolveConfirmation(approved: false) }
+            else { GenieStateStore.shared.resolveConfirmation(id: confirmation.id, approved: false) }
         }
         // Return では実行しない。**押し慣れた鍵で外へ出る操作が走るのは危ない。**
         // 実行は ⌘Return だけ。**さらに破壊（r3・元に戻せない）は鍵で実行させない**（既定は安全側=やめる）。
         .background(
             Group {
                 if confirmation.risk != .r3 {
-                    Button("") { GenieStateStore.shared.resolveConfirmation(approved: true) }
+                    Button("") {
+                        guard armed else { return }
+                        GenieStateStore.shared.resolveConfirmation(id: confirmation.id, approved: true)
+                    }
                         .keyboardShortcut(UserShortcut.confirm.key, modifiers: UserShortcut.confirm.modifiers)
                         .opacity(0)
                         .accessibilityHidden(true)
@@ -1095,12 +1342,14 @@ private struct MeetingPanelBody: View {
                     if RecordingRuntime.shared.liveTranscriptionFailure != nil { RecordingRuntime.shared.retryLiveTranscription() }
                     else { Permissions.openDictationSettings() }
                 }) {
+                    // 高さと余白はラベルの中に置く（外に付けると背景と押せる範囲が文字だけになる）。
                     Text(RecordingRuntime.shared.liveTranscriptionFailure != nil
                          ? Facts.liveRetry : "\(Facts.resultOpenSettings)（音声入力）")
+                        .font(.system(size: S.type(Metrics.dockRowSize), weight: .medium))
+                        .foregroundStyle(Palette.accent(dark))
+                        .frame(height: 30).padding(.horizontal, 10)
+                        .contentShape(Rectangle())
                 }
-                .font(.system(size: S.type(Metrics.dockRowSize), weight: .medium))
-                .foregroundStyle(Palette.accent(dark))
-                .frame(height: 30).padding(.horizontal, 10)
                 .buttonStyle(GenieControlStyle(radius: 8, base: 0.0))
             } else {
                 Text(Facts.captionsEmpty)
@@ -1286,6 +1535,7 @@ struct ResultDock: View {
     @Environment(\.colorScheme) private var scheme
     private var dark: Bool { scheme == .dark }
     @ObservedObject private var sessions = MeetingSessionStore.shared
+    @ObservedObject private var store = GenieStateStore.shared
     let result: AgentResult
 
     /// 直近の会議の状態を 1 行で。processing の間は spinner だけにしない。
@@ -1306,36 +1556,82 @@ struct ResultDock: View {
         }
     }
 
+    /// 1b: 1 行目。何が起きたかを先に言う（「できました」だけにしない）。
+    private var outcomeLine: String {
+        if result.unconfirmed { return "結果は未確認です" }
+        if result.cancelled { return "止めました" }
+        if result.failed { return "できませんでした" }
+        return "\(result.kind ?? "成果物")ができました"
+    }
+
+    /// 1b: 開く操作を最初に。閉じる（×）は右端のまま。
+    private var orderedActions: [AgentResult.Action] {
+        let first: [AgentResult.Action] = [.openWorkspace, .openNotes]
+        return result.actions.filter { first.contains($0) } + result.actions.filter { !first.contains($0) }
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 9) {
-                // できなかった結果に ✓ を付けない。
-                Image(systemName: result.failed ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
-                    .font(.system(size: 13))
-                    .foregroundStyle(result.failed ? Palette.warning(dark) : Palette.success(dark))
-                VStack(alignment: .leading, spacing: 1) {
+        VStack(alignment: .leading, spacing: 10) {
+            // 1b: 左は印の場所（印は VoiceTaskDockView が 1 つだけ描く）。
+            HStack(alignment: .center, spacing: 12) {
+                DockMarkSlot(height: DockMark.height, rowHeight: DockMark.resultRowHeight)
+                VStack(alignment: .leading, spacing: 2) {
+                    // 1 行目: 何が起きたか。できなかった結果・止めた結果に ✓ を付けない。
+                    HStack(spacing: 5) {
+                        Image(systemName: result.failed ? "exclamationmark.triangle.fill"
+                              : (result.cancelled ? "stop.circle" : "checkmark.circle.fill"))
+                            .font(.system(size: S.type(Metrics.dockMetaSize)))
+                            .foregroundStyle(result.failed ? Palette.warning(dark)
+                                             : (result.cancelled ? Palette.muted(dark) : Palette.success(dark)))
+                        Text(outcomeLine)
+                            .font(.system(size: S.type(Metrics.dockMetaSize), weight: .medium))
+                            .foregroundStyle(result.failed ? Palette.warning(dark) : Palette.muted(dark))
+                    }
+                    // 2 行目: 何を。
                     Text(result.title)
                         .font(.system(size: S.type(Metrics.dockTitleSize), weight: .semibold))
                         .foregroundStyle(Palette.text(dark))
                         .lineLimit(1)
-                    // Session の状態をそのまま出す。読み取り中は「何をしているか」を言う。
-                    Text(sessionLine)
-                        .font(.system(size: S.type(Metrics.dockMetaSize)))
-                        // 失敗の理由は補足ではなく本文。灰にすると題より読めない（盲検 3/3）。
-                        .foregroundStyle(result.failed ? Palette.text(dark) : Palette.muted(dark))
                 }
                 Spacer(minLength: 0)
             }
+            // 3 行目: どこに・なぜ。失敗の理由は補足ではなく本文（灰にすると題より読めない — 盲検 3/3）。
+            if sessionLine != "できました" {
+                Text(sessionLine)
+                    .font(.system(size: S.type(Metrics.dockMetaSize)))
+                    .foregroundStyle(result.failed ? Palette.text(dark) : Palette.muted(dark))
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("resultWhere")
+            }
+            // 失敗・中止: 失われていないもの（仕事の結果のときだけ。会議・始められなかった知らせには出さない）。
+            // 仕事の結果（taskID あり）は、声・文字の依頼も会議の AI 操作も Work の一覧に保存されている。
+            if result.failed || result.cancelled, result.taskID != nil {
+                Text(Facts.resultKept)
+                    .font(.system(size: S.type(Metrics.dockMetaSize)))
+                    .foregroundStyle(Palette.muted(dark))
+                    .accessibilityIdentifier("resultKept")
+            }
+            // 結果を出していても、ほかに動いている仕事は消さない。
+            let others = store.state.board.active.filter { $0.id != result.taskID }.count
+            if others > 0 {
+                Text(Facts.taskOthersRunning(others))
+                    .font(.system(size: S.type(Metrics.dockMetaSize)))
+                    .foregroundStyle(Palette.muted(dark))
+                    .accessibilityIdentifier("resultOthersRunning")
+            }
             Spacer(minLength: 0)
             HStack(spacing: 6) {
-                ForEach(result.actions, id: \.self) { action in
+                ForEach(orderedActions, id: \.self) { action in
+                    // 高さと余白はラベルの中に置く。ボタンの外に付けると、背景と押せる範囲が文字だけになり
+                    // （「開く」「コピー」が詰まって見え、押しにくかった）、止めるボタンで直した誤りと同じになる。
                     ProbeButton(id: "result-\(action.rawValue)",
-                                action: { ResultActionRunner.run(action, title: result.title, sessionId: result.sessionId) }) {
+                                action: { ResultActionRunner.run(action, title: result.title, sessionId: result.sessionId, taskID: result.taskID) }) {
                         Text(action.title)
+                            .font(.system(size: S.type(Metrics.dockRowSize), weight: .medium))
+                            .foregroundStyle(Palette.text(dark))
+                            .frame(height: 32).padding(.horizontal, 16)
+                            .contentShape(Rectangle())
                     }
-                        .font(.system(size: S.type(Metrics.dockRowSize), weight: .medium))
-                        .foregroundStyle(Palette.text(dark))
-                        .frame(height: 32).padding(.horizontal, 16)
                         .buttonStyle(GenieControlStyle(radius: 8, base: 0.07))
                 }
                 Spacer(minLength: 0)
@@ -1437,12 +1733,16 @@ struct QuickActionsDock: View {
         let id = UUID()
         let icon: String
         let title: String
+        var help: String? = nil
         let run: () -> Void
     }
 
     private var items: [Item] {
         var actions = [
-            Item(icon: "sparkles", title: "聞く") { state.beginListening() },
+            // Genie に話しかけるのは「会話」。音声入力は前面のアプリの欄へ文章を入れるだけ（Genie へは送らない）。
+            Item(icon: "bubble.left.and.bubble.right", title: Facts.dockConversation, help: Facts.quickConversationHelp) { state.beginConversation() },
+            // 絵もマイクにしない（Dock の欄のマイクは「Genie へ」の印なので、逆の意味に見える）。
+            Item(icon: "character.cursor.ibeam", title: Facts.dockDictation, help: Facts.quickDictationHelp) { state.beginDictation() },
             Item(icon: "record.circle", title: Facts.dockRecord) { WindowCoordinator.shared.toggleRecording() },
             Item(icon: "square.grid.2x2", title: Facts.resultOpen) { MainWindowController.shared.show() },
         ]
@@ -1465,6 +1765,8 @@ struct QuickActionsDock: View {
                     .frame(height: 36)
                 }
                 .buttonStyle(GenieControlStyle(radius: 7, base: 0.0))
+                .help(item.help ?? "")
+                .accessibilityHint(item.help ?? "")
                 .accessibilityIdentifier("quick-\(item.title)")
             }
         }
@@ -1472,7 +1774,7 @@ struct QuickActionsDock: View {
         .frame(maxHeight: .infinity)
         // クイック操作が作業領域に重なるときは、Escape で一手で静かな Dock に戻す。
         // ボタンを増やして閉じる専用の面を作らず、Genie 全体の逃げ道の鍵に揃える。
-        .escapeKey { state.mode = .idle }
+        .escapeKey { state.cancelListening(); state.mode = .idle }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("dockQuickActions")
     }
