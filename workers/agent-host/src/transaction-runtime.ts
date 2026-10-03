@@ -1,5 +1,8 @@
 import {
   canonicalSha256,
+  evaluatePaperTrade,
+  tradingDayOf,
+  type TradingLimits,
   TransactionPrepareArgs,
   TransactionReconcileArgs,
   TransactionSubmitArgs,
@@ -21,6 +24,13 @@ export interface TransactionRuntimeConfig {
   readonly journalDir: string;
   readonly now?: () => Date;
   readonly timeoutMs?: number;
+  /** 模擬取引（デイトレード）の歯止め。省けば既定の上限。 */
+  readonly tradingLimits?: TradingLimits;
+}
+
+/** 取引の作法で止めた。理由は具体的に言う（どの上限か、いくらか）。 */
+class TradingLimitFailure extends Error {
+  readonly code = 'trading_limit';
 }
 
 const TOOLS = new Set(['transaction.prepare', 'transaction.submit', 'transaction.reconcile']);
@@ -63,10 +73,37 @@ export class TransactionRuntime {
   readonly #journal: TransactionJournal;
   readonly #now: () => number;
   readonly #timeout: number;
+  readonly #tradingLimits: TradingLimits | undefined;
+  /**
+   * 株の模擬注文を、その日の約定記録と取引の規則に照らす。
+   * 見積もりの時と、確定の直前の 2 回。確定までの間に別の注文が約定していることがある。
+   */
+  async #checkTrading(quote: TransactionQuote): Promise<void> {
+    const stock = quote.stock;
+    if (quote.kind !== 'stock_paper' || !stock) return;
+    const now = new Date(this.#now());
+    const decision = evaluatePaperTrade(
+      {
+        symbol: stock.symbol,
+        side: stock.side,
+        quantity: stock.quantity,
+        priceMinor: stock.limitPriceMinor ?? Math.ceil(quote.totals.subtotalMinor / stock.quantity),
+      },
+      tradingDayOf(await this.#journal.stockFills(), now),
+      now,
+      { mode: quote.mode, ...(this.#tradingLimits ? { limits: this.#tradingLimits } : {}) },
+    );
+    if (!decision.allowed)
+      throw new TradingLimitFailure(
+        `${decision.blocks.map((block) => block.message).join(' ')} 注文は送っていません。`,
+      );
+  }
+
   constructor(config: TransactionRuntimeConfig) {
     this.#journal = new TransactionJournal(config.journalDir);
     this.#now = () => (config.now?.() ?? new Date()).getTime();
     this.#timeout = config.timeoutMs ?? 60_000;
+    this.#tradingLimits = config.tradingLimits;
     if (!Number.isSafeInteger(this.#timeout) || this.#timeout < 1 || this.#timeout > 300_000)
       throw new TransactionFailure('invalid_config');
     for (const adapter of config.adapters) {
@@ -112,6 +149,7 @@ export class TransactionRuntime {
           this.#now(),
         );
         check(signal);
+        await this.#checkTrading(quote);
         const quoteHash = await canonicalSha256(quote);
         return { ok: true, result: { quote, quoteHash, submitArgs: { intent, quote, quoteHash } } };
       }
@@ -147,6 +185,7 @@ export class TransactionRuntime {
       check(signal);
       await validateApproval(step.approval, args, this.#now());
       validateTransactionQuote(args.quote, args.intent, this.#now());
+      await this.#checkTrading(args.quote);
       const attempt: TransactionAttempt = {
         version: 1,
         args,
@@ -200,6 +239,8 @@ export class TransactionRuntime {
         return unknown(attempt);
       }
     } catch (error) {
+      if (error instanceof TradingLimitFailure)
+        return { ok: false, error: { code: 'transaction.trading_limit', message: error.message } };
       const code =
         error instanceof TransactionFailure || error instanceof TransactionValidationError
           ? error.code

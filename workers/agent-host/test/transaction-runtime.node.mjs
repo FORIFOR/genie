@@ -13,7 +13,8 @@ import { HostStepLoop } from '../dist/step-loop.js';
 import { NativeVisionDevice } from '../dist/computer-vision-device.js';
 
 const exec = promisify(execFile);
-const stamp = Date.now();
+// A weekday inside Tokyo trading hours (Mon 10:00 JST), so paper stock trades are within the day-trading rules.
+const stamp = Date.parse('2026-10-05T01:00:00Z');
 function intent(extra = {}) {
   return {
     kind: 'delivery',
@@ -682,4 +683,104 @@ test('a corrupt durable claim blocks a fresh attempt rather than silently forget
     false,
   );
   assert.equal(h.calls.submit, 1);
+});
+
+test('paper day trading stops outside market hours and after the daily loss, before anything is sent', async (t) => {
+  const order = (side, quantity, limitPriceMinor, orderKey) => {
+    const stock = {
+      symbol: 'TEST',
+      market: 'PAPER',
+      side,
+      quantity,
+      orderType: 'LIMIT',
+      limitPriceMinor,
+      timeInForce: 'DAY',
+    };
+    const request = intent({
+      kind: 'stock_paper',
+      requestedTime: undefined,
+      stock,
+      orderKey,
+      items: [{ id: 'TEST', label: 'Paper Test', quantity, options: [] }],
+    });
+    return { request, q: quote(request) };
+  };
+
+  // Outside the trading session (here only the afternoon session is open, and it is 10:00 Tokyo):
+  // the order is refused before the adapter is asked to submit.
+  const lunch = await harness(t, {
+    config: {
+      tradingLimits: {
+        maxOrderValueMinor: 10_000,
+        maxDailyLossMinor: 10_000,
+        maxTradesPerDay: 10,
+        maxPositionValueMinor: 10_000,
+        sessions: [{ start: '12:30', end: '15:30' }],
+      },
+    },
+  });
+
+  const closed = order('BUY', 2, 250, 'order-lunch');
+  const out = await submit(lunch.runtime, await submitArgs(closed.request, closed.q));
+  assert.equal(out.ok, false);
+  assert.equal(out.error.code, 'transaction.trading_limit');
+  assert.match(out.error.message, /取引時間外/);
+  assert.match(out.error.message, /注文は送っていません/);
+  assert.equal(lunch.calls.submit, 0);
+
+  // A tight daily loss limit: buy 2 at 250, sell 2 at 150 (loss 200), then the next order is refused.
+  // (The fixture quote always prices two items at 250; fills follow the limit price.)
+  // Each order is attempted a little later than the previous one, as in real trading.
+  let tick = 0;
+  const h = await harness(t, {
+    config: {
+      now: () => new Date(stamp + tick++ * 10),
+      tradingLimits: {
+        maxOrderValueMinor: 10_000,
+        maxDailyLossMinor: 100,
+        maxTradesPerDay: 10,
+        maxPositionValueMinor: 10_000,
+        sessions: [{ start: '09:00', end: '11:30' }],
+      },
+    },
+    submit: async (q) =>
+      observation(q, {
+        observedAt: new Date(stamp + tick * 10).toISOString(),
+        status: 'filled',
+        fills: [
+          {
+            executionId: `x-${q.orderKey}`,
+            quantity: q.stock.quantity,
+            priceMinor: q.stock.limitPriceMinor,
+          },
+        ],
+      }),
+  });
+  const first = order('BUY', 2, 250, 'order-1');
+  assert.equal((await submit(h.runtime, await submitArgs(first.request, first.q))).ok, true);
+  const second = order('SELL', 2, 150, 'order-2');
+  assert.equal(
+    (await submit(h.runtime, await submitArgs(second.request, second.q), undefined, 'task-2')).ok,
+    true,
+  );
+  const third = order('BUY', 2, 250, 'order-3');
+  const refused = await submit(
+    h.runtime,
+    await submitArgs(third.request, third.q),
+    undefined,
+    'task-3',
+  );
+  assert.equal(refused.ok, false);
+  assert.equal(refused.error.code, 'transaction.trading_limit');
+  assert.match(refused.error.message, /今日はもう取引しません/);
+  assert.equal(h.calls.submit, 2);
+  // Selling more than is held is refused too (no short selling).
+  const short = order('SELL', 2, 250, 'order-4');
+  const shortOut = await submit(
+    h.runtime,
+    await submitArgs(short.request, short.q),
+    undefined,
+    'task-4',
+  );
+  assert.match(shortOut.error.message, /空売りはしません/);
 });

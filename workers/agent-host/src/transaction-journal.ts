@@ -1,10 +1,11 @@
 import { constants } from 'node:fs';
-import { link, lstat, mkdir, open, readdir, realpath, rm } from 'node:fs/promises';
+import { link, lstat, mkdir, open, readdir, readFile, realpath, rm } from 'node:fs/promises';
 import { isAbsolute, join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import {
   canonicalSha256,
   TransactionSubmitArgs,
+  type TradingFill,
   type TransactionReconcileArgs,
   OrderObservation,
 } from '@genie/contracts';
@@ -178,5 +179,57 @@ export class TransactionJournal {
     } finally {
       await rm(temporary, { force: true });
     }
+  }
+
+  /**
+   * 模擬取引で約定した記録（デイトレードの歯止めの材料）。
+   * 試行の記録と、その最新の照合結果だけから作る。照合が無い試行は約定に数えない。
+   */
+  async stockFills(): Promise<TradingFill[]> {
+    const root = await this.#root();
+    const names = await readdir(root);
+    const fills: TradingFill[] = [];
+    for (const name of names.filter((n) => n.endsWith('.attempt.json'))) {
+      const key = name.slice(0, -'.attempt.json'.length);
+      let attempt: TransactionAttempt | null;
+      try {
+        const raw = JSON.parse(await readFile(join(root, name), 'utf8')) as TransactionAttempt;
+        attempt = await this.find(raw.args.quote);
+      } catch {
+        throw new TransactionFailure('invalid_journal');
+      }
+      const stock = attempt?.args.quote.stock;
+      if (!attempt || attempt.args.quote.kind !== 'stock_paper' || !stock) continue;
+      const latest = names
+        .filter((n) => new RegExp(`^${key}\\.[0-9]{10}\\.observation\\.json$`).test(n))
+        .sort()
+        .at(-1);
+      if (!latest) continue;
+      const handle = await open(join(root, latest), constants.O_RDONLY | constants.O_NOFOLLOW);
+      let observation: OrderObservation;
+      try {
+        const info = await handle.stat();
+        if (
+          !info.isFile() ||
+          info.uid !== process.getuid?.() ||
+          info.mode & 0o077 ||
+          info.size > 2_000_000
+        )
+          throw new TransactionFailure('invalid_journal');
+        observation = OrderObservation.parse(JSON.parse(await handle.readFile('utf8')));
+      } finally {
+        await handle.close();
+      }
+      for (const fill of observation.fills ?? [])
+        fills.push({
+          symbol: stock.symbol,
+          side: stock.side,
+          quantity: fill.quantity,
+          priceMinor: fill.priceMinor,
+          // 注文を出した順に数える（約定の照合時刻は、照合し直すたびに変わる）
+          at: attempt.attemptedAt,
+        });
+    }
+    return fills;
   }
 }

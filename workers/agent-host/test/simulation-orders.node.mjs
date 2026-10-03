@@ -11,7 +11,19 @@ async function harness(t, confirm) {
   const root = await mkdtemp(join(tmpdir(), 'genie-simulation-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   const adapter = new SimulationOrders({ root: join(root, 'provider'), confirm });
-  const config = { journalDir: join(root, 'journal'), adapters: [adapter] };
+  const config = {
+    journalDir: join(root, 'journal'),
+    adapters: [adapter],
+    // This test runs on the real clock; open the paper market all day, every day.
+    tradingLimits: {
+      maxOrderValueMinor: 1_000_000,
+      maxDailyLossMinor: 1_000_000,
+      maxTradesPerDay: 100,
+      maxPositionValueMinor: 1_000_000,
+      sessions: [{ start: '00:00', end: '24:00' }],
+      days: [0, 1, 2, 3, 4, 5, 6],
+    },
+  };
   return { adapter, config, runtime: new TransactionRuntime(config) };
 }
 const prepare = (runtime, intent) =>
