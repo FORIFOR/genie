@@ -65,8 +65,18 @@ final class SpeechTranscriber {
     /// 言葉は変えない（端末内の認識器が付ける。生成モデルで書き直さない）。
     private let punctuate: Bool
 
-    init(localeId: String = "ja-JP", utteranceGap: TimeInterval = SpeechTranscriber.utteranceGap, punctuate: Bool = false) {
+    /*
+     * 声の入力だけ: 音が途切れなくても、**文字が変わらなくなって**この秒数たてば閉じる。
+     * 周りに音（空調・音楽・配信の音）があると無音の判定に届かず、話し終えても送られなかった
+     * （2026-10-03 実機:「今日の天気教えて」が出たまま送られない）。閉じるときは endAudio で
+     * 認識器に最後まで処理させるので、未処理の音は捨てない。会議の文字起こしでは使わない（nil）。
+     */
+    let textStableGap: TimeInterval?
+
+    init(localeId: String = "ja-JP", utteranceGap: TimeInterval = SpeechTranscriber.utteranceGap, punctuate: Bool = false,
+         textStableGap: TimeInterval? = nil) {
         self.utteranceGap = utteranceGap
+        self.textStableGap = textStableGap
         self.punctuate = punctuate
         recognizer = SFSpeechRecognizer(locale: Locale(identifier: localeId))
         format = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: 16_000,
@@ -185,10 +195,18 @@ final class SpeechTranscriber {
         }
         guard closing == nil, !lastText.isEmpty else { return }
         requestLock.lock(); let audioAt = lastAudioAt; requestLock.unlock()
-        if now.timeIntervalSince(audioAt) >= utteranceGap
-            || now.timeIntervalSince(segmentStartedAt) >= Self.requestMaxSeconds {
+        if Self.shouldClose(now: now, lastAudio: audioAt, lastTextChange: lastChange, segmentStart: segmentStartedAt,
+                            utteranceGap: utteranceGap, textStableGap: textStableGap) {
             beginClose(reopen: true)
         }
+    }
+
+    /// 発話を閉じるか。音の無音・文字の静止（声の入力だけ）・request の上限のどれか。
+    static func shouldClose(now: Date, lastAudio: Date, lastTextChange: Date, segmentStart: Date,
+                            utteranceGap: TimeInterval, textStableGap: TimeInterval?) -> Bool {
+        if now.timeIntervalSince(lastAudio) >= utteranceGap { return true }
+        if let gap = textStableGap, now.timeIntervalSince(lastTextChange) >= gap { return true }
+        return now.timeIntervalSince(segmentStart) >= requestMaxSeconds
     }
 
     /// いまの発話を閉じ始める。認識器には endAudio で最後まで処理させる（cancel は残りの音を捨てる）。

@@ -119,7 +119,8 @@ final class RecordingRuntime {
         guard SpeechTranscriber.authorization == .authorized, voiceSpeech == nil else { return }
         // 音声指示（Voice HUD）では、息継ぎや思考の間のポーズ（1〜1.5秒程度）で途中で途切れて誤送信されないよう、
         // 会議録音用の 0.9 秒より余裕を持った 2.2 秒の無音判定を適用する。
-        let st = SpeechTranscriber(utteranceGap: 2.2, punctuate: true)
+        // 周りの音で無音にならなくても、文字が 2.5 秒変わらなければ話し終えたとみなす。
+        let st = SpeechTranscriber(utteranceGap: 2.2, punctuate: true, textStableGap: 2.5)
         do {
             try st.start { [weak self] live in
                 DispatchQueue.main.async {
