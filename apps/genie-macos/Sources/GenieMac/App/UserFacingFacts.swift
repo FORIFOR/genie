@@ -171,7 +171,8 @@ enum UserFacingFacts {
     /// メニュー: 「ジーニー」の呼びかけで会話を始める（端末の中で聞き取る）。
     static let menuWakeWord = "「ジーニー」で呼びかける"
     /// Gemini のクレジット切れ・利用枠の上限で、標準の会話に切り替えたとき。
-    static let conversationSwitchedFromGemini = "Gemini が使えないため、標準の会話に切り替えました。続けてどうぞ。"
+    static let geminiLiveOff = "会話には Gemini Live を使います。設定で Gemini Live を有効にしてください。"
+    static let geminiLiveNoKey = "会話には Gemini Live を使います。設定で Gemini の API キーを登録してください。"
     static let dictationNeedsAccessibility = "文字を入れるには、アクセシビリティの許可が要ります。設定から許可してください。"
     static let dictationNoField = "文字を入れる欄が見つかりませんでした。Genie に聞くときは「会話」から話してください。"
     static let menuShowControls = "録音コントロールを表示"

@@ -689,8 +689,18 @@ final class VoiceHUDState: ObservableObject {
             }
             return
         }
-        // クレジット切れ・利用枠の上限の後は、しばらく標準の会話で話す。
-        if gemini.usableForConversation() {
+        // 会話は Gemini Live だけ（本人の指示 2026-10-04: 標準の音声認識は一切使わない）。
+        // 使えなければ始めず、理由を言う（標準の会話へは切り替えない）。
+        guard gemini.canConverse else {
+            answer = !gemini.enabled ? Facts.geminiLiveOff
+                : !gemini.hasKey ? Facts.geminiLiveNoKey
+                : (gemini.keyAccessIssue ?? Facts.geminiLiveNoKey)
+            GenieLog.write("conversation", "not started: Gemini Live unavailable (\(answer))")
+            WindowCoordinator.shared.showVoiceHUD()
+            mode = .answer(answer)
+            return
+        }
+        do {
             let check = gemini.budget.canStart(at: Date())
             guard check.ok, let key = gemini.apiKey() else {
                 answer = check.reason ?? gemini.keyAccessIssue ?? "Gemini Live のキーを読めませんでした。"
@@ -703,26 +713,11 @@ final class VoiceHUDState: ObservableObject {
                 onLost: { [weak self] reason in
                     guard let self else { return }
                     GenieLog.write("conversation", "Gemini Live lost: \(GenieLog.clip(reason, 120))")
-                    if GeminiLive.isBillingUnavailable(reason) {
-                        // 支払いで切れた。止めずに、標準の会話に切り替えて続ける。
-                        gemini.pauseForBilling()
-                        self.endConversation(.providerLost)
-                        self.startConversation(using: self.pipelineProvider)
-                        // 声で言うとマイクが拾うので、聞いている面の文字で知らせる（最初の言葉で置き換わる）。
-                        if self.conversation.isActive { self.mode = .listening(partial: Facts.conversationSwitchedFromGemini) }
-                        return
-                    }
+                    // 支払い（クレジット切れ）でも標準の会話には切り替えない。理由を面に出して終える。
                     self.answer = reason
                     self.endConversation(.providerLost)
                     self.mode = .answer(reason)
                 })
-        } else {
-            provider = pipelineProvider
-            if gemini.enabled {
-                let why = !gemini.hasKey ? "no key" : gemini.keyAccessIssue != nil ? "key unreadable (Keychain)"
-                    : gemini.billingPaused() ? "paused after a billing failure" : "unknown"
-                GenieLog.write("conversation", "Gemini Live not used: \(why)")
-            }
         }
         startConversation(using: provider)
         WindowCoordinator.shared.focusListeningDock()

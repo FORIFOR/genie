@@ -89,7 +89,7 @@ final class ConversationWiringTests: XCTestCase {
         XCTAssertFalse(hud.conversation.isActive, "開けないマイクで会話中を名乗らない")
     }
 
-    func testInjectedMicFixtureSelectsPipelineWhileEnabledProviderLimitsStillFailClosed() {
+    func testWithoutGeminiLiveTheConversationDoesNotStartAndProviderLimitsFailClosed() {
         let capture = VoiceCaptureFixture()
         let previousCapture = hud.voiceCapture
         let previousMic = Permissions.simulatedMicrophone
@@ -109,12 +109,11 @@ final class ConversationWiringTests: XCTestCase {
 
         let isolated = GeminiLiveSettings(defaults: defaults, initialHasKey: false)
         XCTAssertFalse(isolated.checkingKey, "the fixture must not schedule a Keychain presence read")
+        // 会話は Gemini Live だけ（2026-10-04 本人の指示）。使えなければ標準の会話を開かず、理由を言う。
         hud.beginConversation(geminiSettings: isolated)
-        XCTAssertEqual(hud.conversationProvider.name, "pipeline")
-        XCTAssertEqual(capture.opens, 1)
-        XCTAssertTrue(hud.conversation.isActive)
-        hud.endConversation(.user)
-        XCTAssertFalse(capture.listening)
+        XCTAssertEqual(capture.opens, 0, "the system-recognizer pipeline must never open")
+        XCTAssertFalse(hud.conversation.isActive)
+        XCTAssertEqual(hud.answer, Facts.geminiLiveOff)
 
         // An enabled provider with no budget must still explain the constraint;
         // dependency injection cannot turn a normal user's limit into fallback.
@@ -122,7 +121,7 @@ final class ConversationWiringTests: XCTestCase {
         limited.setEnabled(true)
         limited.setMonthlyMinutes(0)
         hud.beginConversation(geminiSettings: limited)
-        XCTAssertEqual(capture.opens, 1, "must not open the pipeline after a paid-provider refusal")
+        XCTAssertEqual(capture.opens, 0, "must not open the pipeline after a paid-provider refusal")
         XCTAssertFalse(hud.conversation.isActive)
         XCTAssertFalse(hud.answer.isEmpty)
     }

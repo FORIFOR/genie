@@ -12,6 +12,8 @@ import AppKit
 @MainActor
 final class WakeWordListener {
     static let shared = WakeWordListener()
+    /// 標準の音声認識で待ち受けてよいか（本人の指示で使わない）。
+    static let usesSystemRecognizerAllowed = false
     static let enabledKey = "genie.wake.enabled"
     /// 起動したあと、次に起動できるまでの間。
     static let cooldown: TimeInterval = 3
@@ -57,6 +59,12 @@ final class WakeWordListener {
     func start() {
         // 検査の実行（--selftest）ではマイクを勝手に開かない。検査の音と取り合いになる。
         guard timer == nil, !CommandLine.arguments.contains("--selftest") else { return }
+        // この待ち受けは macOS 標準の音声認識で聞いている。標準の音声認識は一切使わない（本人の指示 2026-10-04）。
+        // 端末で動く呼びかけ専用のモデルに置き換えるまで、待ち受けは止めておく。
+        guard Self.usesSystemRecognizerAllowed else {
+            GenieLog.write("wake", "off: the system speech recognizer is not used; waiting for the on-device wake model")
+            return
+        }
         GenieLog.write("wake", "listener started (enabled: \(enabled))")
         // 呼びかけへの返事の声を先に作っておく（呼んだ時に待たせない）。
         GenieSpeechOutput.shared.prepare(Facts.wakeAcknowledgement)

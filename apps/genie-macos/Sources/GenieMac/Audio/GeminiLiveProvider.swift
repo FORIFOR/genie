@@ -13,9 +13,6 @@ final class GeminiLiveSettings: ObservableObject {
     private static let minutesKey = "genie.geminiLive.monthlyMinutes"
     private static let usedKey = "genie.geminiLive.usedSeconds"
     private static let monthKey = "genie.geminiLive.month"
-    private static let pausedUntilKey = "genie.geminiLive.billingPausedUntil"
-    /// クレジット切れ・利用枠の上限で使えなかった後、試し直すまでの間。
-    static let billingPause: TimeInterval = 6 * 60 * 60
 
     @Published private(set) var enabled: Bool
     @Published private(set) var budget: GeminiLiveBudget
@@ -70,22 +67,8 @@ final class GeminiLiveSettings: ObservableObject {
     /// 会話でこの提供元を使うか。どれか 1 つでも欠けていれば使わない（いまの経路のまま）。
     var active: Bool { enabled && hasKey && !checkingKey && keyAccessIssue == nil && budget.monthlyMinutes > 0 }
 
-    /*
-     * クレジット切れ・利用枠の上限で切れたら、しばらく Gemini を使わない（本人の指示 2026-10-03:
-     * 「この場合ほかのものにして」）。毎回つなぎに行って切られるのを繰り返さない。
-     * 時間が経てば試し直す（クレジットを足したかどうかは、こちらからは分からない）。
-     */
-    func billingPaused(at date: Date = Date()) -> Bool {
-        defaults.double(forKey: Self.pausedUntilKey) > date.timeIntervalSince1970
-    }
-    func pauseForBilling(at date: Date = Date()) {
-        defaults.set(date.addingTimeInterval(Self.billingPause).timeIntervalSince1970, forKey: Self.pausedUntilKey)
-    }
-    func clearBillingPause() { defaults.removeObject(forKey: Self.pausedUntilKey) }
-    /// 会話を Gemini で始めるか。使えなければ標準の会話（キーの確認中は呼ぶ側が待つ）。
-    func usableForConversation(at date: Date = Date()) -> Bool {
-        enabled && hasKey && keyAccessIssue == nil && !billingPaused(at: date)
-    }
+    /// 会話を始められるか（会話は Gemini Live だけ。クレジット切れは、つないだ時に分かるので毎回試す）。
+    var canConverse: Bool { enabled && hasKey && keyAccessIssue == nil }
 
     func setEnabled(_ on: Bool) { enabled = on; defaults.set(on, forKey: Self.enabledKey) }
 
@@ -102,7 +85,6 @@ final class GeminiLiveSettings: ObservableObject {
         do {
             if trimmed.isEmpty { try KeychainStore.delete(Self.keychainKey) } else { try KeychainStore.set(Self.keychainKey, trimmed) }
             hasKey = !trimmed.isEmpty; keyAccessIssue = nil
-            clearBillingPause()
             return true
         } catch {
             keyAccessIssue = KeychainStore.accessMessage

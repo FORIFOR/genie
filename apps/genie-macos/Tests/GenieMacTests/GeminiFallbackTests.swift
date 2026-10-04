@@ -1,7 +1,7 @@
 import XCTest
 @testable import GenieMac
 
-/// Gemini のクレジット切れ・利用枠の上限では、止めずに標準の会話へ切り替える（2026-10-03 本人の指示）。
+/// 会話は Gemini Live だけ。標準の会話には切り替えない（2026-10-04 本人の指示: 標準の音声認識は一切使わない）。
 @MainActor
 final class GeminiFallbackTests: XCTestCase {
     private func settings() -> (GeminiLiveSettings, UserDefaults) {
@@ -23,25 +23,17 @@ final class GeminiFallbackTests: XCTestCase {
         XCTAssertFalse(GeminiLive.isBillingUnavailable("Gemini との接続が切れました。"))
     }
 
-    func testAfterRunningOutOfCreditsConversationUsesTheStandardPathForAWhile() {
-        let (gemini, _) = settings()
-        let now = Date()
-        XCTAssertTrue(gemini.usableForConversation(at: now))
-        gemini.pauseForBilling(at: now)
-        XCTAssertFalse(gemini.usableForConversation(at: now.addingTimeInterval(60)))
-        XCTAssertFalse(gemini.usableForConversation(at: now.addingTimeInterval(GeminiLiveSettings.billingPause - 60)))
-        // Time passes: try Gemini again (whether credits were added cannot be known from here).
-        XCTAssertTrue(gemini.usableForConversation(at: now.addingTimeInterval(GeminiLiveSettings.billingPause + 1)))
+    func testConversationNeedsGeminiLiveAndNeverPausesIntoAnotherPath() {
+        let (gemini, defaults) = settings()
+        XCTAssertTrue(gemini.canConverse)
+        gemini.setEnabled(false)
+        XCTAssertFalse(gemini.canConverse)
+        let noKey = GeminiLiveSettings(defaults: defaults, initialHasKey: false)
+        XCTAssertFalse(noKey.canConverse)
     }
 
-    func testSettingANewKeyTriesGeminiAgainAtOnce() {
-        let (gemini, _) = settings()
-        gemini.pauseForBilling()
-        gemini.clearBillingPause()
-        XCTAssertTrue(gemini.usableForConversation())
-    }
-
-    func testTheSwitchIsShownInWords() {
-        XCTAssertTrue(Facts.conversationSwitchedFromGemini.contains("標準の会話に切り替えました"))
+    func testTheReasonIsShownWhenGeminiLiveCannotBeUsed() {
+        XCTAssertTrue(Facts.geminiLiveOff.contains("Gemini Live"))
+        XCTAssertTrue(Facts.geminiLiveNoKey.contains("API キー"))
     }
 }
