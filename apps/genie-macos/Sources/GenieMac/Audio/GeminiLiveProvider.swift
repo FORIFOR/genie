@@ -85,6 +85,7 @@ final class GeminiLiveSettings: ObservableObject {
         do {
             if trimmed.isEmpty { try KeychainStore.delete(Self.keychainKey) } else { try KeychainStore.set(Self.keychainKey, trimmed) }
             hasKey = !trimmed.isEmpty; keyAccessIssue = nil
+            WakeController.shared.clearBillingFailure()   // キーを替えた = もう一度つないでよい
             return true
         } catch {
             keyAccessIssue = KeychainStore.accessMessage

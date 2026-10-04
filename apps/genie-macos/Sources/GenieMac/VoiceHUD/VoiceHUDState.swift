@@ -662,6 +662,9 @@ final class VoiceHUDState: ObservableObject {
 
     /// 会話を始める。一回の音声入力（`beginListening`）とは別の入口。
     /// `greet`: 呼びかけの声が無いまま始めた（「呼びかけを試す」）。Gemini に「はい、どうされましたか？」を促す。
+    /// 回答面に一言出す（会話の外の知らせ）。
+    func showAnswer(_ text: String) { answer = text; mode = .answer(text) }
+
     func beginConversation(geminiSettings: GeminiLiveSettings? = nil, greet: Bool = false) {
         guard !DesktopConnectionBootstrap.isInvalid else {
             GenieLog.write("conversation", "not started: desktop connection invalid")
@@ -714,6 +717,7 @@ final class VoiceHUDState: ObservableObject {
                 onLost: { [weak self] reason in
                     guard let self else { return }
                     GenieLog.write("conversation", "Gemini Live lost: \(GenieLog.clip(reason, 120))")
+                    if GeminiLive.isBillingUnavailable(reason) { WakeController.shared.noteBillingFailure(reason) }
                     // 支払い（クレジット切れ）でも標準の会話には切り替えない。理由を面に出して終える。
                     self.answer = reason
                     self.endConversation(.providerLost)

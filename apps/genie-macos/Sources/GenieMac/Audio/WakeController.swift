@@ -1,4 +1,4 @@
-import Foundation
+import AppKit
 
 /// 「ジーニー」から Gemini Live の会話へ。
 ///
@@ -18,6 +18,33 @@ final class WakeController {
 
     init(hub: VoiceInputHub = .shared) { self.hub = hub }
 
+    /// 画面ロック・スリープの間はマイクを開かない（待ち受けも止める）。
+    private var paused = false
+    private var observers: [NSObjectProtocol] = []
+    /// Gemini の支払い・クレジットで断られた後は、呼びかけのたびに接続し直さない。
+    /// 本人が Dock から会話を始める・「呼びかけを試す」・キーを登録し直すまで、検出しても理由を出すだけ。
+    private(set) var billingBlocked: String?
+
+    func noteBillingFailure(_ reason: String) { billingBlocked = reason }
+    func clearBillingFailure() { billingBlocked = nil }
+
+    private func observeLockAndSleep() {
+        guard observers.isEmpty else { return }
+        let workspace = NSWorkspace.shared.notificationCenter
+        let distributed = DistributedNotificationCenter.default()
+        let pause: (Notification) -> Void = { [weak self] _ in
+            Task { @MainActor in guard let self else { return }; self.paused = true; self.stop()
+                GenieLog.write("wake", "paused (screen locked or asleep)") }
+        }
+        let resume: (Notification) -> Void = { [weak self] _ in
+            Task { @MainActor in guard let self, self.paused else { return }; self.paused = false; self.start() }
+        }
+        observers.append(workspace.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main, using: pause))
+        observers.append(workspace.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main, using: resume))
+        observers.append(distributed.addObserver(forName: .init("com.apple.screenIsLocked"), object: nil, queue: .main, using: pause))
+        observers.append(distributed.addObserver(forName: .init("com.apple.screenIsUnlocked"), object: nil, queue: .main, using: resume))
+    }
+
     var enabled: Bool {
         get { UserDefaults.standard.object(forKey: Self.enabledKey) as? Bool ?? true }
         set { UserDefaults.standard.set(newValue, forKey: Self.enabledKey); newValue ? start() : stop() }
@@ -26,6 +53,8 @@ final class WakeController {
     /// 待ち受けを始める（検出器があり、有効で、マイクの許可があるときだけ）。
     func start() {
         guard !CommandLine.arguments.contains("--selftest"), enabled else { return }
+        observeLockAndSleep()
+        guard !paused else { return }
         guard let detector = detector ?? Self.loadDetector() else {
             GenieLog.write("wake", "off: no on-device wake-word model yet")
             return
@@ -46,6 +75,7 @@ final class WakeController {
 
     /// メニューの「呼びかけを試す」: 検出したことにして、会話への引き継ぎを確かめる。
     func simulateWake() {
+        clearBillingFailure()   // 本人が試す = もう一度つないでよい
         hub.simulateWake()
         woke(simulated: true)
     }
@@ -54,6 +84,14 @@ final class WakeController {
         let hud = VoiceHUDState.shared
         GenieLog.write("wake", simulated ? "simulated" : "detected (on-device model)")
         guard !hud.conversation.isActive else { return }
+        if let reason = billingBlocked, !simulated {
+            // 支払いで断られたまま。つながず（声も送らず）、理由だけ出して待機へ戻る。
+            hub.detach()
+            WindowCoordinator.shared.showVoiceHUD()
+            hud.showAnswer(reason)
+            GenieLog.write("wake", "not connecting: Gemini billing failed earlier")
+            return
+        }
         // 呼びかけの音が無い（試し）なら、Gemini に挨拶を促す。音があれば Gemini が聞いて応える。
         hud.beginConversation(greet: simulated)
         // 始められなかった（Gemini Live が使えない等）。預かった声は送らずに捨て、待機へ戻る。
