@@ -62,6 +62,14 @@ final class WakeWordListener {
         observers.append(distributed.addObserver(forName: .init("com.apple.screenIsUnlocked"), object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.screenLocked = false }
         })
+        // 会話がどう終わったかを控える（呼んだのに続かないときの調べ）。
+        _ = GenieEventBus.shared.subscribe { [weak self] event in
+            guard case .voiceSessionEnded(let reason) = event else { return }
+            Task { @MainActor in
+                self?.lastConversationEnd = "\(ISO8601DateFormatter().string(from: Date())) \(reason)"
+                self?.writeStatus()
+            }
+        }
         timer = Timer.scheduledTimer(withTimeInterval: Self.recheckInterval, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.evaluate() }
         }
@@ -77,30 +85,66 @@ final class WakeWordListener {
 
     /// 待ち受けてよいなら始める。だめなら何もしない（次の見直しでまた見る）。
     func evaluate() {
-        guard !listening, Self.mayListen(Conditions(
+        // ほかの所がマイクを閉じた（声の入力を終えた等）と、こちらは聞いているつもりのまま
+        // 二度と始め直さなかった。実際の状態に合わせる。
+        if listening, !RecordingRuntime.shared.voiceListening { listening = false }
+        defer { writeStatus() }
+        guard !listening, Self.mayListen(conditions) else { return }
+        listening = RecordingRuntime.shared.beginVoiceListening(
+            onFirstFrame: { [weak self] in self?.framesStarted = true },
+            onPartial: { [weak self] text in self?.heard(text, final: false) },
+            onFinal: { [weak self] text in self?.heard(text, final: true) })
+        if listening { framesStarted = false; NSLog("genie wake: listening") }
+    }
+
+    private var conditions: Conditions {
+        Conditions(
             enabled: enabled,
             microphoneGranted: Permissions.microphone == .granted,
             speechAuthorized: SpeechTranscriber.authorization == .authorized,
             screenLocked: screenLocked, asleep: asleep,
             conversationActive: VoiceHUDState.shared.conversation.isActive,
             micInUse: RecordingRuntime.shared.voiceListening || RecordingWorkspaceState.shared.isRecording,
-            speaking: GenieSpeechOutput.shared.owner != nil))
-        else { return }
-        listening = RecordingRuntime.shared.beginVoiceListening(
-            onFirstFrame: {},
-            onPartial: { [weak self] text in self?.heard(text, final: false) },
-            onFinal: { [weak self] text in self?.heard(text, final: true) })
-        // 聞いた中身は残さない。待ち受けを始めたかどうかだけ。
-        if listening { NSLog("genie wake: listening") }
+            speaking: GenieSpeechOutput.shared.owner != nil)
+    }
+
+    // 状態の控え（端末の中だけ・本人だけが読める）。待ち受けが動かないときの調べに使う。
+    private var framesStarted = false
+    private var heardCount = 0
+    private var recent: [String] = []
+    private var lastConversationEnd = ""
+    private var lastWake = ""
+    private func writeStatus() {
+        let c = conditions
+        let status: [String: Any] = [
+            "at": ISO8601DateFormatter().string(from: Date()),
+            "listening": listening, "framesStarted": framesStarted,
+            "voiceListening": RecordingRuntime.shared.voiceListening,
+            "enabled": c.enabled, "microphoneGranted": c.microphoneGranted, "speechAuthorized": c.speechAuthorized,
+            "screenLocked": c.screenLocked, "asleep": c.asleep, "conversationActive": c.conversationActive,
+            "micInUse": c.micInUse, "speaking": c.speaking,
+            "heardCount": heardCount, "recent": recent,
+            "lastWake": lastWake, "lastConversationEnd": lastConversationEnd,
+        ]
+        let dir = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Application Support/Genie", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let url = dir.appendingPathComponent("wake-status.json")
+        guard let data = try? JSONSerialization.data(withJSONObject: status, options: [.prettyPrinted, .sortedKeys]) else { return }
+        try? data.write(to: url, options: .atomic)
+        try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
     }
 
     private func heard(_ text: String, final: Bool) {
         onHeard?(text)
+        heardCount += 1
+        recent = Array((recent + [String(text.suffix(16)) + (final ? " [確定]" : "")]).suffix(6))
         guard listening, Self.containsWakeWord(text, final: final),
               GenieSpeechOutput.shared.owner == nil,
               Date().timeIntervalSince(lastFired) >= Self.cooldown else { return }
         lastFired = Date()
         NSLog("genie wake: detected")
+        lastWake = ISO8601DateFormatter().string(from: Date())
         suspend()
         onWake()
     }
