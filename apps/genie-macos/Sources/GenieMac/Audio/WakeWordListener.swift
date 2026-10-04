@@ -54,6 +54,8 @@ final class WakeWordListener {
         // 検査の実行（--selftest）ではマイクを勝手に開かない。検査の音と取り合いになる。
         guard timer == nil, !CommandLine.arguments.contains("--selftest") else { return }
         GenieLog.write("wake", "listener started (enabled: \(enabled))")
+        // 呼びかけへの返事の声を先に作っておく（呼んだ時に待たせない）。
+        GenieSpeechOutput.shared.prepare(Facts.wakeAcknowledgement)
         let workspace = NSWorkspace.shared.notificationCenter
         observers.append(workspace.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.asleep = true; self?.suspend() }
