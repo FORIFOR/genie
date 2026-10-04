@@ -8,7 +8,10 @@ export interface CheckoutOpener {
   request(service: keyof typeof CHECKOUT_SERVICES, signal?: AbortSignal): Promise<void>;
 }
 
-/** macOS open -g does not request foreground activation. Exit zero proves only OS acceptance. */
+/**
+ * 公式サイトを既定のブラウザで**前面に**開く（本人が見て選べるように。本人の指示 2026-10-04）。
+ * 終了コード 0 は OS が受け付けたことだけを示す。ページの表示は確かめていない。
+ */
 export function nativeCheckoutOpener(
   platform: string = process.platform,
   run: typeof exec = exec,
@@ -18,7 +21,7 @@ export function nativeCheckoutOpener(
       if (platform !== 'darwin') throw new Error('unsupported_platform');
       const args = CheckoutOpenArgs.parse({ service });
       signal?.throwIfAborted();
-      await run('/usr/bin/open', ['-g', '-u', CHECKOUT_SERVICES[args.service].url], {
+      await run('/usr/bin/open', ['-u', CHECKOUT_SERVICES[args.service].url], {
         ...(signal ? { signal } : {}),
         timeout: 10_000,
         maxBuffer: 4096,

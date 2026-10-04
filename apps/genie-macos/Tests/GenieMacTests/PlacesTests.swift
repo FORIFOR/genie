@@ -28,7 +28,6 @@ final class PlacesTests: XCTestCase {
             XCTAssertNil(NearbyPlaceIntent.detect(text), text)
         }
         // マックデリバリーの準備画面とは取り合わない。
-        XCTAssertNil(ConsumerJourneyKind.detect("近くのスタバを探して"))
     }
 
     // MARK: Places の要求と応答

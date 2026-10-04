@@ -1013,16 +1013,16 @@ final class VoiceHUDState: ObservableObject {
         }
     }
 
-    /// Local preparation and nearby places keep their existing offline entry path.
+    /// Nearby places keep their existing offline entry path.
     static func homeIntentNeedsGateway(_ text: String, visualContext: [VisualContextArtifact]?) -> Bool {
         guard visualContext?.isEmpty != false else { return true }
         let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        return ConsumerJourneyKind.detect(text) == nil && NearbyPlaceIntent.detect(text) == nil
+        return NearbyPlaceIntent.detect(text) == nil
     }
 
     /// 声/テキストの依頼を Agent に投げる。listening→thinking→answer→idle と状態を進める。
     @discardableResult
-    func ask(_ text: String, newConversation: Bool = false, visualContext: [VisualContextArtifact]? = nil, consumerPlanning: ConsumerPlanningMode? = nil) -> Bool {
+    func ask(_ text: String, newConversation: Bool = false, visualContext: [VisualContextArtifact]? = nil) -> Bool {
         guard !DesktopConnectionBootstrap.isInvalid else {
             answer = DesktopConnectionBootstrap.issueMessage; mode = .idle; return false
         }
@@ -1035,19 +1035,8 @@ final class VoiceHUDState: ObservableObject {
             return false
         }
         GenieSpeechOutput.shared.stop()
-        // Personal booking requests open an editable local preparation flow.
-        // No gateway, model, address lookup, or paid operation happens here.
-        // Explicit images keep their normal visual-question route.
-        if consumerPlanning == nil, visualContext?.isEmpty != false,
-           let kind = ConsumerJourneyKind.detect(text) {
-            latestRequestID = nil; answer = ""; mode = .idle
-            ConsumerJourneyStore.shared.present(kind, request: text)
-            MainWindowController.shared.showSection(.home)
-            conversationReply(TaskReply(text: "準備の画面を開きました。内容を確かめてください。", phase: .complete))
-            return true
-        }
         // 「近くのスタバ」: 端末で現在地と Google マップを引き、地図つきのカードにする（gateway・モデルは通さない）。
-        if consumerPlanning == nil, visualContext?.isEmpty != false,
+        if visualContext?.isEmpty != false,
            let nearby = NearbyPlaceIntent.detect(text) {
             showNearby(nearby)
             return true
@@ -1058,7 +1047,7 @@ final class VoiceHUDState: ObservableObject {
             mode = .idle; return false
         }
         // 「あと、テストも追加して」: 直前の仕事がまだ動いていれば、新しい依頼ではなくその仕事への追加指示。
-        if consumerPlanning == nil, visualContext == nil, let target = followUpTarget(for: text) {
+        if visualContext == nil, let target = followUpTarget(for: text) {
             sendInstruction(text, to: target, base: base, token: token)
             return true
         }
@@ -1072,7 +1061,7 @@ final class VoiceHUDState: ObservableObject {
         }
         let receiptID = UUID().uuidString.lowercased()
         var requestRecord = TaskRequestRecord(request: text, base: base)
-        if consumerPlanning == nil { requestRecord.turnRequestID = receiptID }
+        requestRecord.turnRequestID = receiptID
         let task = AgentTask(requestRecord: requestRecord,
             id: UUID(), title: TaskRequestRecord.title(for: text),
             status: .running, steps: [], startedAt: Date(), context: ContextBundle())
@@ -1091,27 +1080,19 @@ final class VoiceHUDState: ObservableObject {
         mode = .thinking; answer = ""
         Task.detached { [weak self] in
             do {
-                let outcome: TurnOutcome
-                if let consumerPlanning {
-                    let id = try GenieCoreBridge.createTask(base, accessToken: token,
-                        kind: consumerPlanning.taskKind, inputJson: consumerPlanning.inputJSON(text))
-                    outcome = TurnOutcome(needsClarification: false, answer: "", taskId: id, notice: "", replyJson: "")
-                } else {
-                    let conv: String
-                    if !newConversation, let existing = await self?.conversationId { conv = existing }
-                    else {
-                        conv = try GenieCoreBridge.startConversation(base, accessToken: token)
-                        await MainActor.run { self?.conversationId = conv }
-                    }
-                    let saved = await MainActor.run {
-                        VisualContextStore.shared.bind(conversationID: conv, preserving: Set(attached.map(\.id)))
-                        return self?.updateRequest(task.id) { $0.conversationID = conv } ?? false
-                    }
-                    guard saved else { throw NSError(domain: "Genie", code: 1, userInfo: [NSLocalizedDescriptionKey: "受付IDを保存できませんでした。依頼は送信していません。"] ) }
-                    outcome = try GenieCoreBridge.sendRecoverableTurn(base, accessToken: token, conversationId: conv,
-                        requestId: receiptID, text: text, attachments: attachments, replyCandidatesJson: replyCandidates)
-
+                let conv: String
+                if !newConversation, let existing = await self?.conversationId { conv = existing }
+                else {
+                    conv = try GenieCoreBridge.startConversation(base, accessToken: token)
+                    await MainActor.run { self?.conversationId = conv }
                 }
+                let saved = await MainActor.run {
+                    VisualContextStore.shared.bind(conversationID: conv, preserving: Set(attached.map(\.id)))
+                    return self?.updateRequest(task.id) { $0.conversationID = conv } ?? false
+                }
+                guard saved else { throw NSError(domain: "Genie", code: 1, userInfo: [NSLocalizedDescriptionKey: "受付IDを保存できませんでした。依頼は送信していません。"] ) }
+                let outcome = try GenieCoreBridge.sendRecoverableTurn(base, accessToken: token, conversationId: conv,
+                    requestId: receiptID, text: text, attachments: attachments, replyCandidatesJson: replyCandidates)
                 let taskContext = outcome.taskId.isEmpty ? nil
                     : (try? GenieCoreBridge.taskGet(base, accessToken: token, taskId: outcome.taskId)).flatMap(TaskOutcomeContext.decode)
                 await MainActor.run {

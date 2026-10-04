@@ -3,7 +3,7 @@ import type { CheckoutService } from '@genie/contracts';
 /** Entire explicit requests only; never reinterpret questions, quoted text or order terms. */
 export function checkoutAssistanceRequest(text: string): CheckoutService | null {
   const match =
-    /^(マックデリバリー|マクドナルド|マック|ドミノ(?:・ピザ)?|ドミノピザ|Domino's)(?:(?:を)?注文して|で(?:ピザを)?注文して|の注文(?:画面|サイト)を開いて)(?:ください)?[。！!]?$/iu.exec(
+    /^(マックデリバリー|マクドナルド|マック|ドミノ(?:・ピザ)?|ドミノピザ|Domino's)(?:(?:を|で|の)?(?:ピザを)?(?:注文して|注文したい|頼みたい)(?:んだけど|んですけど|んですが|です)?|の注文(?:画面|サイト)を開いて|のメニューを(?:見せて|開いて|見たい))(?:ください)?[。！!]?$/iu.exec(
       text.trim(),
     );
   if (!match) return null;

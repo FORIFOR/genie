@@ -13,7 +13,7 @@ const step = (service = 'dominos_jp', extra = {}) => ({
   args: { service },
   ...extra,
 });
-test('both official services request background navigation using fixed executable/HTTPS URLs only', async () => {
+test('both official services request foreground navigation using fixed executable/HTTPS URLs only', async () => {
   for (const service of ['mcdelivery_jp', 'dominos_jp']) {
     const calls = [];
     const opener = nativeCheckoutOpener('darwin', async (...args) => {
@@ -24,7 +24,7 @@ test('both official services request background navigation using fixed executabl
     assert.equal(result.ok, true);
     assert.deepEqual(calls[0].slice(0, 2), [
       '/usr/bin/open',
-      ['-g', '-u', CHECKOUT_SERVICES[service].url],
+      ['-u', CHECKOUT_SERVICES[service].url],
     ]);
     assert.equal(calls[0][2].timeout, 10000);
     assert.equal(CheckoutHandoffResult.parse(result.result).navigation, 'requested');

@@ -12,6 +12,11 @@ describe('official checkout handoff requests', () => {
     ['ドミノ・ピザを注文して！', 'dominos_jp'],
     ['ドミノでピザを注文してください', 'dominos_jp'],
     ["Domino'sの注文画面を開いて", 'dominos_jp'],
+    // 話し言葉（2026-10-04 実機の発話）
+    ['マクドナルドの注文したいんだけど', 'mcdelivery_jp'],
+    ['マックで注文したいです', 'mcdelivery_jp'],
+    ['マックデリバリーのメニューを見せて', 'mcdelivery_jp'],
+    ['ドミノでピザを頼みたいんですけど', 'dominos_jp'],
   ])('routes %s to a handoff, without inventing terms', (text, service) => {
     expect(checkoutAssistanceRequest(text)).toBe(service);
     expect(routeLane({ text, modality: 'text' })).toMatchObject({
@@ -45,6 +50,8 @@ describe('official checkout handoff requests', () => {
     'ピザを注文して',
     '模擬ピザを注文して',
     '株を注文して',
+    'マクドナルドの注文したいんだけど、どうすればいい？',
+    'マックの注文したくない',
   ])('does not dispatch an inferred or partial request: %s', (text) => {
     expect(checkoutAssistanceRequest(text)).toBeNull();
   });
