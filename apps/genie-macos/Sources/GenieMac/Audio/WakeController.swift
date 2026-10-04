@@ -60,6 +60,10 @@ final class WakeController {
         if !hud.conversation.isActive { hub.detach() }
     }
 
-    /// 端末に置いた呼びかけ専用モデル。まだ無い（学習前）。
-    static func loadDetector() -> WakeDetector? { nil }
+    /// 端末に置いた呼びかけ専用モデル（`genie_ja.onnx`）。無い・読めなければ待ち受けない。
+    static func loadDetector() -> WakeDetector? {
+        guard let url = LiveKitWakeDetector.modelURL() else { return nil }
+        do { return try LiveKitWakeDetector(modelURL: url) }
+        catch { GenieLog.write("wake", "could not load the wake model: \(error)"); return nil }
+    }
 }

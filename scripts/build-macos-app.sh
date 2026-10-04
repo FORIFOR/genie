@@ -48,6 +48,12 @@ install_name_tool -add_rpath '@executable_path/../Frameworks' "$APP/Contents/Mac
 mkdir -p "$APP/Contents/Resources/plugins"
 cp -R "$ROOT/plugins/builtin" "$APP/Contents/Resources/plugins/builtin"
 # Rust 静的ライブラリは実行ファイルに static link 済み（dylib 同梱不要）。
+# 「ジーニー」の呼びかけ検出（端末の中だけ）: 前処理の凍結モデルと、Genie 用に学習した分類器。
+WAKE_VENDOR="$ROOT/apps/genie-macos/Vendor/LiveKitWakeWord/Resources"
+[[ -f "$WAKE_VENDOR/melspectrogram.onnx" ]] || bash "$ROOT/scripts/fetch-wakeword-runtime.sh"
+cp "$WAKE_VENDOR/melspectrogram.onnx" "$WAKE_VENDOR/embedding_model.onnx" "$APP/Contents/Resources/"
+WAKE_MODEL="$ROOT/apps/genie-macos/Resources/wake/genie_ja.onnx"
+[[ -f "$WAKE_MODEL" ]] && cp "$WAKE_MODEL" "$APP/Contents/Resources/genie_ja.onnx"
 # Optional publisher configuration: public native-client parameters only, never user tokens.
 if [[ -n "${ASTRA_CONNECTIONS_CONFIG:-}" ]]; then
   node "$ROOT/scripts/prepare-connection-config.mjs" "$ASTRA_CONNECTIONS_CONFIG" "$APP/Contents/Resources/connections.json"
