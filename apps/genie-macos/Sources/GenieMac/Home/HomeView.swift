@@ -124,15 +124,14 @@ struct HomeView: View {
                 }
                 // Accepted requests have their own persistent workspace. Only preflight
                 // failures belong beside the draft; never repeat a full result here.
-                if !submitIssue.isEmpty {
-                    if backend.connectionIssue == .credentialAccess {
-                        GatewayCredentialRecoveryView(state: credentialRecovery.state) {
-                            Task { await backend.confirmCredentialReadAfterUserRequest() }
-                        }
-                    } else {
-                        Text(submitIssue).font(.system(size: S.type(TypeScale.secondarySize)))
-                            .foregroundStyle(Palette.warning(dark)).textSelection(.enabled)
+                // Keychain に断られている間は、送る前から確かめる手を出す（声の会話では送れないことしか分からない）。
+                if backend.connectionIssue == .credentialAccess {
+                    GatewayCredentialRecoveryView(state: credentialRecovery.state) {
+                        Task { await backend.confirmCredentialReadAfterUserRequest() }
                     }
+                } else if !submitIssue.isEmpty {
+                    Text(submitIssue).font(.system(size: S.type(TypeScale.secondarySize)))
+                        .foregroundStyle(Palette.warning(dark)).textSelection(.enabled)
                 }
                 starterRequests
                 if !recentTasks.isEmpty {

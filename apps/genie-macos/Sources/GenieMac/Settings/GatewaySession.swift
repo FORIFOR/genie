@@ -132,11 +132,13 @@ actor GatewaySession {
             // The server has already issued a chain. A missing local item after a
             // failed first save must never cause repeated automatic sign-ins.
             failure = SessionError.renewalUncertain
+            GenieLog.write("connection", "issued credentials not saved: \(error.underlying)")
             if error.underlying is KeychainStore.KeychainError { throw SessionError.credentialAccessRequired }
             throw SessionError.renewalUncertain
-        } catch is KeychainStore.KeychainError {
+        } catch let keychain as KeychainStore.KeychainError {
             // No refresh was replayed or alternate identity created. The user may
             // resolve access in Keychain and retry this same stored session.
+            GenieLog.write("connection", "keychain: \(keychain) (reauthenticate: \(reauthenticate))")
             throw SessionError.credentialAccessRequired
         } catch SessionError.rateLimited {
             retryAt = now().addingTimeInterval(60)

@@ -893,7 +893,7 @@ final class VoiceHUDState: ObservableObject {
         mode = .thinking
         if !ask(text) {
             GenieLog.write("conversation", "not sent (held: \(heldUtterance == text)) \(GenieLog.clip(answer, 80))")
-            deliverConversationReply(heldUtterance == text ? .held : .failed(answer.isEmpty ? "送れませんでした。" : answer))
+            deliverConversationReply(heldUtterance == text ? .held : .failed("申し訳ありません。ご依頼を送れませんでした。" + answer))
         }
     }
 
@@ -1044,7 +1044,11 @@ final class VoiceHUDState: ObservableObject {
         guard let base = apiBase, let token = apiToken else {
             answer = MainData.shared.connectionIssue?.message
                 ?? "接続を確認してください。入力した内容は残しています。"
-            mode = .idle; return false
+            GenieLog.write("request", "no connection: \(MainData.shared.connectionIssue?.diagnosticCode ?? "not configured")")
+            // 会話中は面を待機に戻さない（戻すと会話が「置き換え」で終わり、理由も言えなかった。実機 2026-10-04）。
+            // 理由は会話の返事として声で言い、次を聞く。
+            if !conversation.isActive { mode = .idle }
+            return false
         }
         // 「あと、テストも追加して」: 直前の仕事がまだ動いていれば、新しい依頼ではなくその仕事への追加指示。
         if visualContext == nil, let target = followUpTarget(for: text) {

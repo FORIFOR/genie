@@ -136,9 +136,13 @@ final class MainData: ObservableObject {
             do {
                 if configuredToken == nil {
                     let reachable = await Task.detached { [base] in GenieCoreBridge.reachable(base) }.value
-                    guard reachable else { connected = false; connectionIssue = .unreachable; return }
+                    guard reachable else {
+                        GenieLog.write("connection", "unreachable")
+                        connected = false; connectionIssue = .unreachable; return
+                    }
                 }
                 let tokens = try await session.tokens(reauthenticate: reauthenticate)
+                if !connected || connectionIssue != nil { GenieLog.write("connection", "connected") }
                 connected = true; connectionIssue = nil
                 guard configuredToken != tokens.accessToken else { return }
                 let renewal = configuredToken != nil
@@ -167,6 +171,8 @@ final class MainData: ObservableObject {
                 connected = false
                 connectionIssue = GatewayConnectionIssue.classify(error)
                 NSLog("Genie: 接続を利用できません（%@）。", connectionIssue?.diagnosticCode ?? "unknown")
+                // 中身（トークン・URL の秘密）は書かない。種類と Keychain の状態コードだけ。
+                GenieLog.write("connection", "unavailable: \(connectionIssue?.diagnosticCode ?? "unknown") (\(GenieLog.clip(String(describing: error), 120)))")
             }
         }
     }
