@@ -12,13 +12,16 @@ extension SelfTest {
         }
         RecordingRuntime.shared.voiceInjection = frames
         var heard: [String] = []
+        let startedAt = Date()
         var woke = false
         let listener = WakeWordListener.shared
         // --start: 見つけたら本番どおり会話を始め、続くかを見る（会話のマイクは実マイク）。
         let startConversation = args.contains("--start")
         let realWake = listener.onWake
-        listener.onWake = { woke = true; if startConversation { realWake() } }
-        listener.onHeard = { heard.append($0) }
+        var wokeAt: Date?
+        listener.onWake = { woke = true; wokeAt = Date(); if startConversation { realWake() } }
+        var heardAt: [String] = []
+        listener.onHeard = { heard.append($0); heardAt.append(String(format: "%.2f", Date().timeIntervalSince(startedAt) - Double(frames.count) / 16_000) + ":" + $0) }
         listener.evaluate()
         guard listener.listening else {
             print("SELFTEST_FAIL wakeword: did not start listening (mic/speech permission or mic in use)"); exit(2)
@@ -42,7 +45,9 @@ extension SelfTest {
         }
         listener.suspend()
         let last = heard.suffix(4).joined(separator: " | ")
-        print((woke ? "SELFTEST_OK" : "SELFTEST_FAIL") + " wakeword: woke=\(woke) heard=[\(last)]")
+        // 音声を流し終えてから起きるまで（話し終えてからの待ち）。音声は実時間で流れる。
+        let afterSpeech = wokeAt.map { String(format: "%.2fs", $0.timeIntervalSince(startedAt) - Double(frames.count) / 16_000) } ?? "-"
+        print((woke ? "SELFTEST_OK" : "SELFTEST_FAIL") + " wakeword: woke=\(woke) afterSpeech=\(afterSpeech) heard=[\(last)] timeline=[\(heardAt.joined(separator: " "))]")
         exit(woke ? 0 : 2)
     }
 }

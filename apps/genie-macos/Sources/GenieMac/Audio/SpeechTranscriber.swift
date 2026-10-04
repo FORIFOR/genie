@@ -276,13 +276,15 @@ final class SpeechTranscriber {
         finishTimer = timer
     }
 
-    func finish() {
+    /// `waitForTail`: 止めた瞬間の発話の末尾を待つか。呼びかけの待ち受けは末尾が要らない
+    /// （待つと main を最大 closeTimeout 止め、呼んでから返事までが 1.5 秒遅れた。2026-10-04 計測）。
+    func finish(waitForTail: Bool = true) {
         finishTimer?.invalidate(); finishTimer = nil
         pausedEvent = nil
         gapTimer?.invalidate(); gapTimer = nil
         // 止めた瞬間の発話も、認識器に最後まで処理させてから確定する（途中で切ると末尾が欠ける:
         // 「共有します」が「共有しま」で残った）。待つのは closeTimeout まで。
-        if closing == nil, !lastText.isEmpty { beginClose(reopen: false) }
+        if waitForTail, closing == nil, !lastText.isEmpty { beginClose(reopen: false) }
         let deadline = Date().addingTimeInterval(Self.closeTimeout)
         while closing != nil, Date() < deadline { CFRunLoopRunInMode(.defaultMode, 0.05, true) }
         if closing != nil { finishClosing() }

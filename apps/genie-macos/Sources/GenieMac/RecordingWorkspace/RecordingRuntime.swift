@@ -498,12 +498,12 @@ final class RecordingRuntime {
     var voiceEchoCancellationActive: Bool { micCapture.voiceProcessingActive }
 
     /// Listening をやめる。マイクは閉じる（開いたままにしない）。
-    func endVoiceListening() {
+    func endVoiceListening(waitForTail: Bool = true) {
         guard voiceListening else { return }
         voiceListening = false
         onVoicePartial = nil
         onVoiceFinal = nil
-        voiceSpeech?.finish(); voiceSpeech = nil
+        voiceSpeech?.finish(waitForTail: waitForTail); voiceSpeech = nil
         voiceVad.reset()
         micQueue.async { [micCapture] in micCapture.stop(); micCapture.prewarm() }
     }

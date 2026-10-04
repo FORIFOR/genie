@@ -85,9 +85,11 @@ final class WakeWordListener {
 
     /// ほかの誰かがマイクを使う前に呼ぶ。待ち受けていればマイクを返す。
     func suspend() {
+        settleTimer?.cancel(); settleTimer = nil
         guard listening else { return }
         listening = false
-        RecordingRuntime.shared.endVoiceListening()
+        // 呼びかけの後ろの言葉は要らない。末尾を待たずにすぐ閉じる（待つと返事が遅れる）。
+        RecordingRuntime.shared.endVoiceListening(waitForTail: false)
     }
 
     /// 待ち受けてよいなら始める。だめなら何もしない（次の見直しでまた見る）。
@@ -120,6 +122,9 @@ final class WakeWordListener {
     private var heardCount = 0
     private var recent: [String] = []
     private var lastConversationEnd = ""
+    private var settleTimer: Task<Void, Never>?
+    /// 短い呼びかけの途中の文字が、この間変わらなければ話し終えたとみなす。
+    static let settle: TimeInterval = 0.6
     private var lastWake = ""
     private func writeStatus() {
         let c = conditions
@@ -146,6 +151,17 @@ final class WakeWordListener {
         onHeard?(text)
         heardCount += 1
         recent = Array((recent + [String(text.suffix(16)) + (final ? " [確定]" : "")]).suffix(6))
+        settleTimer?.cancel(); settleTimer = nil
+        // 「ジ」「字」のような短い形は、認識の確定（話し終えて約 2.5 秒）を待つと遅い（実機 2026-10-04）。
+        // 途中の文字がその形のまま `settle` 秒変わらなければ、話し終えたとみなして起こす。
+        if !final, listening, !Self.containsWakeWord(text, final: false), Self.containsWakeWord(text, final: true) {
+            settleTimer = Task { @MainActor [weak self] in
+                try? await Task.sleep(nanoseconds: UInt64(Self.settle * 1_000_000_000))
+                guard !Task.isCancelled else { return }
+                self?.heard(text, final: true)
+            }
+            return
+        }
         guard listening, Self.containsWakeWord(text, final: final),
               GenieSpeechOutput.shared.owner == nil,
               Date().timeIntervalSince(lastFired) >= Self.cooldown else { return }

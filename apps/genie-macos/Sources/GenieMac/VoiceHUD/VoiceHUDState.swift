@@ -316,7 +316,10 @@ final class VoiceHUDState: ObservableObject {
         let generation = dictationIdleGeneration
         Task { @MainActor [weak self] in
             try? await Task.sleep(nanoseconds: 30_000_000_000)
+            // 会話のマイクはこの音声入力用の見張りの対象外（会話には会話の時間切れがある）。
+            // 以前は会話中にこれが働き、黙って 30 秒で会話が終わっていた（genie.log 2026-10-04）。
             guard let self, self.dictationIdleGeneration == generation, self.listenPurpose == .dictation,
+                  !self.conversation.isActive,
                   case .listening(let partial) = self.mode, partial.isEmpty else { return }
             self.cancelListening()
         }

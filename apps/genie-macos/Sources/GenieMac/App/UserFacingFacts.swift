@@ -167,7 +167,7 @@ enum UserFacingFacts {
     static let dockDictation = "音声入力"
     static let conversationDuringRecording = "録音中は会話を始められません。録音を止めてから、もう一度どうぞ。"
     /// 「ジーニー」と呼ばれたときの返事（声で言ってから聞き始める）。
-    static let wakeAcknowledgement = "はい、ご用件をどうぞ。"
+    static let wakeAcknowledgement = "はい、何でしょう。"
     /// メニュー: 「ジーニー」の呼びかけで会話を始める（端末の中で聞き取る）。
     static let menuWakeWord = "「ジーニー」で呼びかける"
     /// Gemini のクレジット切れ・利用枠の上限で、標準の会話に切り替えたとき。
