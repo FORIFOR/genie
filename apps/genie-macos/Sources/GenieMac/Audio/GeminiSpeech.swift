@@ -5,7 +5,7 @@ import Foundation
 /// macOS 標準の読み上げには戻さない。作れなければ黙り、理由を genie.log に残す。
 ///
 /// - 送るのは読み上げる文だけ（会話の文脈・画像・キー以外の識別子は送らない）
-/// - 同じ文の音声は端末に残して使い回す（「はい、何でしょう。」を毎回作らない。呼んでから返事までを短くする）
+/// - 同じ文の音声は端末に残して使い回す（呼びかけへの返事を毎回作らない。呼んでから返事までを短くする）
 /// - API: Interactions（`POST /v1beta/interactions`、WAV 24 kHz mono 16-bit。公式 speech-generation、2026-10-04 確認）
 enum GeminiSpeech {
     static let model = "gemini-3.8-flash-tts"

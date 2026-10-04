@@ -32,7 +32,11 @@ final class WakeWordListener {
         // 読み上げの間はマイクを開かない（自分の声を聞かない）。読み終えてから会話を始める。
         GenieSpeechOutput.shared.read(Facts.wakeAcknowledgement, owner: UUID()) {
             GenieLog.write("wake", "acknowledged; starting the conversation")
-            VoiceHUDState.shared.beginConversation()
+            let hud = VoiceHUDState.shared
+            hud.beginConversation()
+            // 声が出せない時（Gemini のクレジット切れ等）も返事が分かるよう、聞いている面に文字でも出す
+            // （最初の言葉で置き換わる）。
+            if hud.conversation.isActive, case .listening = hud.mode { hud.mode = .listening(partial: Facts.wakeAcknowledgement) }
         }
     }
 
