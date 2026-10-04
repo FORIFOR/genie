@@ -114,6 +114,12 @@ enum GeminiLive {
 
     static let audioStreamEnd: [String: Any] = ["realtimeInput": ["audioStreamEnd": true]]
 
+    /// 呼びかけの声が届いていないまま始めた会話で、最初の挨拶を促す（AI 側から話し始めるための開始入力）。
+    static let greeting: [String: Any] = ["clientContent": [
+        "turns": [["role": "user", "parts": [["text": "（利用者が「ジーニー」と呼びかけました）"]]]],
+        "turnComplete": true,
+    ]]
+
     /// 仕事の受付を返す。話の途中に割り込ませず、区切りで伝える（`scheduling` は response の中）。
     static func toolResponse(id: String, name: String, response: [String: Any], scheduling: String = "WHEN_IDLE") -> [String: Any] {
         var body = response

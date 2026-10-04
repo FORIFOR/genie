@@ -134,8 +134,10 @@ final class GeminiLiveProvider: ConversationProvider {
     private var ready = false
     private var connectedAt: Date?
     private var pendingOpen: (() -> Void)?
-    private let mic = MicCapture()
-    private let micQueue = DispatchQueue(label: "genie.gemini.mic")
+    /// つながったら挨拶を促す（呼びかけの声が無いまま始めたとき）。1 回だけ。
+    var greetWhenReady = false
+    /// マイクは Genie 全体で 1 本（呼びかけの待ち受けと共有。呼びかけの前後の声もここから届く）。
+    private let input: VoiceInputHub
     private var streaming = false
 
     private var onFirstFrame: (() -> Void)?
@@ -170,7 +172,9 @@ final class GeminiLiveProvider: ConversationProvider {
     }
 
     init(apiKey: String, model: String = GeminiLive.defaultModel, settings: GeminiLiveSettings,
-         delegate: @escaping (String) async -> String, onLost: @escaping (String) -> Void) {
+         delegate: @escaping (String) async -> String, onLost: @escaping (String) -> Void,
+         input: VoiceInputHub = .shared) {
+        self.input = input
         self.apiKey = apiKey
         self.model = model
         self.settings = settings
@@ -200,7 +204,7 @@ final class GeminiLiveProvider: ConversationProvider {
         pendingOpen = nil
         guard streaming else { return }
         streaming = false
-        micQueue.async { [mic] in mic.stop() }
+        input.pause()
         send(GeminiLive.audioStreamEnd)
     }
 
@@ -288,6 +292,7 @@ final class GeminiLiveProvider: ConversationProvider {
         onReply = nil; onUtterance = nil; onFirstFrame = nil; pendingOpen = nil
         resumeHandle = nil; reconnects = 0
         if engine.isRunning { engine.stop() }
+        input.detach()
     }
 
     // MARK: - 接続
@@ -299,10 +304,10 @@ final class GeminiLiveProvider: ConversationProvider {
     /// （ループバック以外の宛先なら nil）。本物の Gemini へつなぐ提供元は `VoiceHUDState.beginConversation` だけが作る
     /// （同意・キー・上限を確かめた後。`scripts/verify-privacy-egress.sh`）。
     static func forLocalFake(url: URL, settings: GeminiLiveSettings, delegate: @escaping (String) async -> String,
-                             onLost: @escaping (String) -> Void) -> GeminiLiveProvider? {
+                             onLost: @escaping (String) -> Void, input: VoiceInputHub = .shared) -> GeminiLiveProvider? {
         guard ["ws", "wss"].contains(url.scheme ?? ""), ["127.0.0.1", "localhost", "::1"].contains(url.host ?? "") else { return nil }
         endpointOverride = url
-        return GeminiLiveProvider(apiKey: "local-fake", settings: settings, delegate: delegate, onLost: onLost)
+        return GeminiLiveProvider(apiKey: "local-fake", settings: settings, delegate: delegate, onLost: onLost, input: input)
     }
 
     private func connect() {
@@ -355,6 +360,10 @@ final class GeminiLiveProvider: ConversationProvider {
     毎回「承知しました」「なるほど」から始めないでください。相手の発言を毎回そのまま復唱しないでください。
     不自然な笑い声、過剰な共感、わざとらしい言い淀みを加えないでください。
 
+    【呼びかけ】
+    会話の最初に「ジーニー」とだけ呼ばれたら、「はい、どうされましたか？」と短く応えてください。
+    「ジーニー、〇〇して」のように続けて頼まれたら、挨拶を挟まずに依頼に答えてください。
+
     【会話】
     言い直しがあった場合は、最後の訂正を採用してください。
     確認質問は、回答や実行に必要なものを一つずつ聞いてください。
@@ -402,6 +411,10 @@ final class GeminiLiveProvider: ConversationProvider {
         switch event {
         case .setupComplete:
             ready = true
+            if greetWhenReady {
+                greetWhenReady = false
+                send(GeminiLive.greeting)
+            }
             pendingOpen?(); pendingOpen = nil
         case .inputTranscript(let t):
             heard += t
@@ -453,20 +466,20 @@ final class GeminiLiveProvider: ConversationProvider {
     private func startMic(echoCancellation: Bool) {
         streaming = true
         var first = true
-        micQueue.async { [weak self, mic] in
-            do {
-                try mic.start(echoCancellation: echoCancellation) { frame in
-                    let message = GeminiLive.json(GeminiLive.audioChunk(frame))
-                    Task { @MainActor in
-                        // 準備が済む前（つなぎ直しの間も）は送らない。setupComplete より前の音声は受け付けられない。
-                        guard let self, self.streaming, self.ready else { return }
-                        if first { first = false; self.onFirstFrame?() }
-                        self.socket?.send(.string(message)) { _ in }
-                    }
+        do {
+            // 預かっていた声（呼びかけの前後・接続を待つ間）を先に、以降の声を順に送る。
+            // ここに来るのは setupComplete の後（それより前の音声は受け付けられない）。
+            let flushed = try input.attach { [weak self] frame in
+                let message = GeminiLive.json(GeminiLive.audioChunk(frame))
+                Task { @MainActor in
+                    guard let self, self.streaming, self.ready else { return }
+                    if first { first = false; self.onFirstFrame?() }
+                    self.socket?.send(.string(message)) { _ in }
                 }
-            } catch {
-                Task { @MainActor in self?.lose("マイクを開けませんでした。") }
             }
+            if flushed > 0 { mark(String(format: "sent %.1fs held audio", flushed)) }
+        } catch {
+            lose("マイクを開けませんでした。")
         }
     }
 

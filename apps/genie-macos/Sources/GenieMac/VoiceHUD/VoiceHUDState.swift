@@ -661,7 +661,8 @@ final class VoiceHUDState: ObservableObject {
     // MARK: - Genie と会話（段階 2）
 
     /// 会話を始める。一回の音声入力（`beginListening`）とは別の入口。
-    func beginConversation(geminiSettings: GeminiLiveSettings? = nil) {
+    /// `greet`: 呼びかけの声が無いまま始めた（「呼びかけを試す」）。Gemini に「はい、どうされましたか？」を促す。
+    func beginConversation(geminiSettings: GeminiLiveSettings? = nil, greet: Bool = false) {
         guard !DesktopConnectionBootstrap.isInvalid else {
             GenieLog.write("conversation", "not started: desktop connection invalid")
             answer = DesktopConnectionBootstrap.issueMessage; mode = .answer(answer); return
@@ -685,7 +686,7 @@ final class VoiceHUDState: ObservableObject {
             Task { [weak self] in
                 await gemini.refreshKeyPresence()
                 guard !gemini.checkingKey else { return }
-                self?.beginConversation(geminiSettings: geminiSettings)
+                self?.beginConversation(geminiSettings: geminiSettings, greet: greet)
             }
             return
         }
@@ -719,6 +720,7 @@ final class VoiceHUDState: ObservableObject {
                     self.mode = .answer(reason)
                 })
         }
+        if greet, let gemini = provider as? GeminiLiveProvider { gemini.greetWhenReady = true }
         startConversation(using: provider)
         WindowCoordinator.shared.focusListeningDock()
         conversationClock?.cancel()

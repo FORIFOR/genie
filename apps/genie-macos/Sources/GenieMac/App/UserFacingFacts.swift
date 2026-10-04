@@ -170,6 +170,7 @@ enum UserFacingFacts {
     static let wakeAcknowledgement = "はい、どうされましたか？"
     /// メニュー: 「ジーニー」の呼びかけで会話を始める（端末の中で聞き取る）。
     static let menuWakeWord = "「ジーニー」で呼びかける"
+    static let menuTryWake = "呼びかけを試す"
     /// Gemini のクレジット切れ・利用枠の上限で、標準の会話に切り替えたとき。
     static let geminiLiveOff = "会話には Gemini Live を使います。設定で Gemini Live を有効にしてください。"
     static let geminiLiveNoKey = "会話には Gemini Live を使います。設定で Gemini の API キーを登録してください。"

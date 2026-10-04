@@ -14,6 +14,8 @@ import { appendFileSync, writeFileSync } from 'node:fs';
 
 const port = Number(process.argv[2] ?? 47461);
 const LOG = process.argv[3] ?? '/tmp/gemini-fake.log';
+// 'wake': 呼びかけの引き継ぎの検査。届いた音の先頭の値と clientContent を記録し、挨拶を促されたら短く答える。
+const MODE = process.argv[4] ?? 'script';
 writeFileSync(LOG, '');
 const log = (o) => appendFileSync(LOG, JSON.stringify({ t: Date.now(), ...o }) + '\n');
 
@@ -41,6 +43,18 @@ wss.on('connection', (ws, req) => {
       log({ event: 'setup', conn, handle: m.setup.sessionResumption?.handle ?? null, setup: m.setup });
       send({ setupComplete: {} });
       send({ sessionResumptionUpdate: { newHandle: `h${conn}`, resumable: true } });
+      return;
+    }
+    if (MODE === 'wake') {
+      if (m.realtimeInput?.audio) {
+        const pcm = Buffer.from(m.realtimeInput.audio.data, 'base64');
+        log({ event: 'audio', conn, first: pcm.length >= 2 ? pcm.readInt16LE(0) : null, samples: pcm.length / 2 });
+      } else if (m.clientContent) {
+        log({ event: 'clientContent', conn, text: m.clientContent.turns?.[0]?.parts?.[0]?.text ?? '' });
+        send({ serverContent: { outputTranscription: { text: 'はい、どうされましたか？' } } });
+        send(audio(null));
+        send({ serverContent: { turnComplete: true } });
+      }
       return;
     }
     if (m.realtimeInput?.audio) {

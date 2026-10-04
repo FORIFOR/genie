@@ -57,8 +57,11 @@ final class StatusBarController {
         menu.addItem(rec)
         let wake = NSMenuItem(title: Facts.menuWakeWord, action: #selector(toggleWakeWord), keyEquivalent: "")
         wake.target = self
-        wake.state = WakeWordListener.shared.enabled ? .on : .off
+        wake.state = WakeController.shared.enabled ? .on : .off
         menu.addItem(wake)
+        let tryWake = NSMenuItem(title: Facts.menuTryWake, action: #selector(tryWakeWord), keyEquivalent: "")
+        tryWake.target = self
+        menu.addItem(tryWake)
 
         menu.addItem(.separator())
 
@@ -115,8 +118,9 @@ final class StatusBarController {
     }
 
     @objc func toggleWakeWord() {
-        WakeWordListener.shared.enabled.toggle()
+        WakeController.shared.enabled.toggle()
     }
+    @objc func tryWakeWord() { WakeController.shared.simulateWake() }
 
     @objc private func openMain() { MainWindowController.shared.showSection(.home) }
     @objc private func toggleControls() {
