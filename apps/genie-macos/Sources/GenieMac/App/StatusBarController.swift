@@ -62,6 +62,10 @@ final class StatusBarController {
         let tryWake = NSMenuItem(title: Facts.menuTryWake, action: #selector(tryWakeWord), keyEquivalent: "")
         tryWake.target = self
         menu.addItem(tryWake)
+        let enroll = NSMenuItem(title: Facts.menuWakeEnroll, action: #selector(enrollWakeWord), keyEquivalent: "")
+        enroll.target = self
+        enroll.isEnabled = !WakeEnrollment.shared.running
+        menu.addItem(enroll)
 
         menu.addItem(.separator())
 
@@ -121,6 +125,7 @@ final class StatusBarController {
         WakeController.shared.enabled.toggle()
     }
     @objc func tryWakeWord() { WakeController.shared.simulateWake() }
+    @objc func enrollWakeWord() { Task { _ = await WakeEnrollment.shared.record() } }
 
     @objc private func openMain() { MainWindowController.shared.showSection(.home) }
     @objc private func toggleControls() {

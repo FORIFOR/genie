@@ -68,7 +68,13 @@ final class LiveKitWakeDetector: WakeDetector {
         return true
     }
 
+    private var nearMissLogged = Date.distantPast
     private func notePeak(_ score: Float) {
+        // 呼んだのに起きなかったときの調べ: 0.5 以上で閾値に届かなかった点を時刻つきで残す（10 秒に 1 回まで）。
+        if score >= 0.5, score < threshold, Date().timeIntervalSince(nearMissLogged) > 10 {
+            nearMissLogged = Date()
+            GenieLog.write("wake", String(format: "near miss %.2f (threshold %.2f)", score, threshold))
+        }
         peak = max(peak, score)
         guard Date().timeIntervalSince(lastPeakLog) > 30 else { return }
         if peak >= 0.3 { GenieLog.write("wake", String(format: "peak score in the last 30 s: %.2f", peak)) }

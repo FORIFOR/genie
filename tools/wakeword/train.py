@@ -11,7 +11,7 @@
 使い方: python train.py <data_dir> <frontend_dir> <out.onnx>
 前処理（mel・embedding）は livekit-wakeword 同梱の凍結モデル。学習するのは最後の分類器だけ（軽い）。
 """
-import hashlib, json, os, random, sys, wave
+import glob, hashlib, json, os, random, sys, wave
 import numpy as np
 import onnx
 import onnxruntime as ort
@@ -38,6 +38,24 @@ def index(per_phrase):
                 name = hashlib.sha1(f"{label}|{text}|{voice}|{style}".encode()).hexdigest()[:16]
                 out[f"{label}/{name}.wav"] = (label, text, voice)
     return out
+
+
+def enrollment_clips(path, count=20, first=1.0, interval=3.0):
+    """「声を覚える」の録音（合図の 1 秒後から 3 秒ごと）を 1 回ずつに切る。合図音の 0.25 秒は使わない。"""
+    with wave.open(path) as w:
+        a = np.frombuffer(w.readframes(w.getnframes()), dtype=np.int16).astype(np.float32) / 32768.0
+    clips, quiet = [], []
+    for k in range(count):
+        s0 = int((first + interval * k + 0.25) * SR); s1 = int((first + interval * (k + 1)) * SR)
+        seg = a[s0:s1]
+        if len(seg) < SR: continue
+        frame = 160
+        e = np.array([np.sqrt(np.mean(seg[i:i + frame] ** 2)) for i in range(0, len(seg) - frame, frame)])
+        idx = np.where(e > max(0.008, e.max() * 0.15))[0]
+        if len(idx) == 0 or e.max() < 0.01: continue
+        clips.append(seg[idx[0] * frame: (idx[-1] + 1) * frame])
+        quiet.append(seg[: max(0, idx[0] * frame - 800)])
+    return clips, [q for q in quiet if len(q) > SR // 4]
 
 
 def load(path):
@@ -123,11 +141,17 @@ def main():
         p = os.path.join(data, rel)
         if os.path.exists(p):
             clips["val" if voice in HOLDOUT_VOICES else "train"].append((load(p), label, text, voice))
+    # 本人の声（「声を覚える」の録音）: 最後の 5 回は検証にだけ使う
+    for path in sorted(glob.glob(os.path.join(os.environ.get("ENROLL_DIR", "/nonexistent"), "enroll-*.wav"))):
+        own, _ = enrollment_clips(path)
+        for i, clip in enumerate(own):
+            clips["val" if i >= len(own) - 5 else "train"].append((clip, "positive", "ジーニー", "本人"))
+        print(f"enrollment {os.path.basename(path)}: {len(own)} calls", flush=True)
     print({k: len(v) for k, v in clips.items()}, flush=True)
 
     Xa, Y, negpool = [], [], []
-    for clip, label, text, _ in clips["train"]:
-        for _ in range(2):
+    for clip, label, text, voice in clips["train"]:
+        for _ in range(8 if voice == "本人" else 2):
             for audio, y, _ in windows(clip, label, text, rng.uniform(0.3, 1.4), rng.uniform(0, 0.02)):
                 if y is None: continue
                 if y == 0 and label == "negative" and rng.random() < 0.5:
@@ -149,14 +173,16 @@ def main():
         clf = MLPClassifier(hidden_layer_sizes=(64,), alpha=1e-3, max_iter=300, random_state=7, early_stopping=True)
         clf.fit(X, Y)
 
-    result = {"positive": [0, 0], "negative": [0, 0], "false_by_text": {}}
-    for clip, label, text, _ in clips["val"]:
+    result = {"positive": [0, 0], "negative": [0, 0], "own": [0, 0], "false_by_text": {}}
+    for clip, label, text, voice in clips["val"]:
         f = fires(clf, front, clip, label, text)
+        if voice == "本人": result["own"][0] += int(f); result["own"][1] += 1; continue
         result[label][0] += int(f); result[label][1] += 1
         if label == "negative" and f: result["false_by_text"][text] = result["false_by_text"].get(text, 0) + 1
     print(json.dumps({"heldout_voices": sorted(HOLDOUT_VOICES), "threshold": THRESHOLD, "hits": HITS,
                       "wake_detected": f"{result['positive'][0]}/{result['positive'][1]}",
                       "false_wake": f"{result['negative'][0]}/{result['negative'][1]}",
+                      "own_voice_detected": f"{result['own'][0]}/{result['own'][1]}",
                       "false_by_text": result["false_by_text"]}, ensure_ascii=False, indent=1), flush=True)
 
     W1, b1 = clf.coefs_[0].astype(np.float32), clf.intercepts_[0].astype(np.float32)

@@ -89,7 +89,7 @@ enum GeminiLive {
                         "name": delegateTool,
                         // 仕事の完了を待たずに会話を続ける（3.8 の既定だが、意図として明示する）。
                         "behavior": "NON_BLOCKING",
-                        "description": "利用者が Mac での作業・アプリの操作・送信・注文や予約などを頼んだときに、その依頼文を Genie に渡す。受け付けたかどうかだけが返る。完了を待たない。支払いや確定の前には Genie が画面で本人に確認する。",
+                        "description": "利用者が Mac での作業・アプリの操作・送信・注文や予約、またはサイト・商品・ページを画面で見せる（ブラウザで開く）ことを頼んだときに、その依頼文を Genie に渡す。受け付けたかどうかだけが返る。完了を待たない。支払いや確定の前には Genie が画面で本人に確認する。",
                         "parameters": [
                             "type": "OBJECT",
                             "properties": ["request": ["type": "STRING", "description": "依頼文（利用者の言葉のまま）"]],
