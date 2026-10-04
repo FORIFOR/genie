@@ -103,6 +103,7 @@ enum SelfTest {
         case "wakeword": Task { await wakeWord(args) }; return true
         case "geminitts": Task { @MainActor in await geminiTTS(args) }; return true
         case "geminiping": Task { @MainActor in await geminiPing() }; return true
+        case "setgeminikey": Task { @MainActor in await setGeminiKey() }; return true
         case "wakehandoff": Task { await wakeHandoff() }; return true
         case "geminismoke": Task { await geminiSmoke() }; return true
         case "brief": briefGate(); return true
