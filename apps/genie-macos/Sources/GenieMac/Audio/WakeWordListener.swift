@@ -191,7 +191,19 @@ final class WakeWordListener {
         for prefix in ["ネエ", "ネー", "ヘイ", "HEY", "オイ"] where compact.hasPrefix(prefix) {
             compact.removeFirst(prefix.count)
         }
-        return ["ジー", "ジニ", "ジイ", "ジイニ", "ジニイ", "ジニー", "ジーニ", "G", "ジ"].contains(compact)
+        // 続けて 2〜3 回呼ぶこともある（実機 2026-10-04:「字に字に」）。呼びかけだけの繰り返しなら起こす。
+        return isCallOnly(compact, remaining: 3)
+    }
+
+    private static let looseForms = ["ジイニ", "ジニイ", "ジニー", "ジーニ", "ジー", "ジニ", "ジイ", "G", "ジ"]
+
+    /// 発話全体が、呼びかけの形を 1〜`remaining` 回並べただけか。
+    private static func isCallOnly(_ text: String, remaining: Int) -> Bool {
+        guard remaining > 0, !text.isEmpty else { return false }
+        if looseForms.contains(text) { return true }
+        return looseForms.contains { form in
+            text.hasPrefix(form) && isCallOnly(String(text.dropFirst(form.count)), remaining: remaining - 1)
+        }
     }
 
     /// 認識器が「じ」「に」の音に当てる漢字（一言だけの発話でだけ使う）。

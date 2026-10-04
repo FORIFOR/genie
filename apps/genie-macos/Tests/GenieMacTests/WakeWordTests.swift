@@ -23,7 +23,13 @@ final class WakeWordTests: XCTestCase {
         for text in ["地に", "字", "地に。", "ねえ、地に", "字に", "二"] where text != "二" {
             XCTAssertTrue(WakeWordListener.containsWakeWord(text, final: true), text)
         }
-        for text in ["現地に行く", "土地に", "地にある", "二つ", "時々", "字が汚い"] {
+        // 続けて呼ぶと「字に字に」と書かれた（実機 2026-10-04）。3 回までの繰り返しは呼びかけ。
+        for text in ["字に字に", "地に地に", "ジニジニ", "ジーニジーニ", "字に字に字に"] {
+            XCTAssertTrue(WakeWordListener.containsWakeWord(text, final: true), text)
+        }
+        XCTAssertFalse(WakeWordListener.containsWakeWord("字に字に字に字に", final: true))
+        XCTAssertFalse(WakeWordListener.containsWakeWord("字に字", final: false))
+        for text in ["現地に行く", "土地に", "地にある", "二つ", "時々", "字が汚い", "字に字に書く"] {
             XCTAssertFalse(WakeWordListener.containsWakeWord(text, final: true), text)
         }
         for text in ["ジーンズ", "ジーンズを買う", "ジニアの花", "爺さん", "Gメール"] {
