@@ -39,6 +39,8 @@ export function isMeteredStep(step: { readonly toolId: string }): boolean {
       'video.render',
       // 端末のモデルに案を出させる。応答が失われても、やり直すと 2 つ目のコピーと二重の利用になる。
       'office.edit',
+      // 端末のモデルで検索し、公式を見極める。
+      'browser.open_official',
     ].includes(step.toolId)
   );
 }
@@ -258,6 +260,7 @@ export const KNOWN_TASK_KINDS = [
   'info.lookup',
   'checkout.assist',
   'office.edit',
+  'browser.open_official',
   'transaction.order',
   'transaction.reconcile',
 ] as const;
@@ -668,6 +671,25 @@ export function planTask(kind: string, input: Record<string, unknown>): TaskPlan
           },
         ],
         artifact: { type: 'OTHER', title: '文書の編集', mimeType: 'text/markdown' },
+      };
+    }
+    case 'browser.open_official': {
+      const subject = input['subject'];
+      if (typeof subject !== 'string' || !subject.trim() || subject.length > 200)
+        throw new UnknownTaskKindError('browser.open_official needs a subject');
+      return {
+        steps: [
+          {
+            index: 0,
+            toolId: 'browser.open_official',
+            // 検索して、既定のブラウザでページを開くだけ。ページの中は操作しない。
+            risk: 'READ',
+            surface: 'local',
+            message: `「${subject.trim()}」の公式サイトを探しています`,
+            args: { subject: subject.trim() },
+          },
+        ],
+        artifact: { type: 'OTHER', title: '公式サイト', mimeType: 'text/markdown' },
       };
     }
     case 'checkout.assist':

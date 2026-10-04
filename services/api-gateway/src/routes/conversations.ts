@@ -23,6 +23,7 @@ import {
   classifyCurrentInfo,
   checkoutAssistanceRequest,
   officeEditRequest,
+  browserOpenRequest,
   clarificationFor,
   type CurrentInfoQuery,
   isDocumentRequest,
@@ -226,7 +227,10 @@ export function registerConversationRoutes(app: App, deps: ConversationRouteDeps
       });
       // 場所の書かれた文書を直す依頼の「その下」「この段落」は、会話ではなく文書の中を指す。
       // 文書を読む端末のモデルが解くので、ここで聞き返さない。
-      const clarification = officeEditRequest(body.text) ? null : clarificationFor(resolutions);
+      const clarification =
+        officeEditRequest(body.text) || browserOpenRequest(body.text)
+          ? null
+          : clarificationFor(resolutions);
 
       const decision = routeLane({
         text: body.text,
@@ -495,58 +499,66 @@ async function startWork(
   const simulation = lane === 'action' ? simulationOrderRequest(text) : null;
   // 場所の書かれた Word / Excel を直す依頼は、どの lane でも端末の編集に回す（原本は変えない）。
   const office = lane === 'meeting' ? null : officeEditRequest(text);
-  const request = office
+  // 「〇〇の公式サイトを開いて」: 端末が検索し、公式と見極めたページを既定のブラウザで開く。
+  const browser = lane === 'meeting' || office ? null : browserOpenRequest(text);
+  const request = browser
     ? {
-        kind: 'office.edit',
-        title: text.length > 30 ? `${text.slice(0, 30)}…` : text,
-        input: { path: office.path, instruction: office.instruction },
+        kind: 'browser.open_official',
+        title: `${browser.subject} の公式サイト`,
+        input: { subject: browser.subject },
       }
-    : simulation
+    : office
       ? {
-          kind: 'transaction.order',
-          title: '模擬注文（課金なし）',
-          input: { intent: simulationOrderIntent(simulation, `turn:${turnId}`) },
+          kind: 'office.edit',
+          title: text.length > 30 ? `${text.slice(0, 30)}…` : text,
+          input: { path: office.path, instruction: office.instruction },
         }
-      : checkout
+      : simulation
         ? {
-            kind: 'checkout.assist',
-            title: '注文画面への引き継ぎ（未注文）',
-            input: { service: checkout },
+            kind: 'transaction.order',
+            title: '模擬注文（課金なし）',
+            input: { intent: simulationOrderIntent(simulation, `turn:${turnId}`) },
           }
-        : info && info.kind !== 'quote'
-          ? // 端末が取りに行く。場所・話題だけを渡し、会話の文脈や Work Context は渡さない。
-            { kind: 'info.lookup', input: { question: text, ...info } }
-          : lane === 'chat'
-            ? {
-                kind: agentKindFor('com.astra.general', 'assistant'),
-                // 添付は id とラベルだけ。画素は端末に残り、端末のモデル呼び出しが読む。
-                // context は Work Graph から選んだ関連分だけ（無ければ付けない）。
-                input: {
-                  question: text,
-                  message: text,
-                  // 返信案: compose の段だけを走らせる（instruction がある = compose）。送らない。
-                  ...(isDocumentRequest(text) ? { instruction: text } : {}),
-                  ...(replyDraft
-                    ? { instruction: replyDraft.instruction, reply: replyDraft.meta }
-                    : {}),
-                  ...(attachments.length > 0 ? { attachments: [...attachments] } : {}),
-                  ...(workContext ? { context: workContext } : {}),
-                  // 渡した量の事実。何を知っているかではなく、何を渡したか。
-                  ...(contextStats ? { context_meta: contextStats } : {}),
-                },
-              }
-            : lane === 'research'
-              ? { kind: 'research', input: { question: text } }
-              : lane === 'action'
-                ? {
-                    kind: 'computer.run',
-                    input: {
-                      goal: text,
-                      title: text.length > 30 ? `${text.slice(0, 30)}…` : text,
-                      ...(attachments.length > 0 ? { attachments: [...attachments] } : {}),
-                    },
-                  }
-                : null;
+        : checkout
+          ? {
+              kind: 'checkout.assist',
+              title: '注文画面への引き継ぎ（未注文）',
+              input: { service: checkout },
+            }
+          : info && info.kind !== 'quote'
+            ? // 端末が取りに行く。場所・話題だけを渡し、会話の文脈や Work Context は渡さない。
+              { kind: 'info.lookup', input: { question: text, ...info } }
+            : lane === 'chat'
+              ? {
+                  kind: agentKindFor('com.astra.general', 'assistant'),
+                  // 添付は id とラベルだけ。画素は端末に残り、端末のモデル呼び出しが読む。
+                  // context は Work Graph から選んだ関連分だけ（無ければ付けない）。
+                  input: {
+                    question: text,
+                    message: text,
+                    // 返信案: compose の段だけを走らせる（instruction がある = compose）。送らない。
+                    ...(isDocumentRequest(text) ? { instruction: text } : {}),
+                    ...(replyDraft
+                      ? { instruction: replyDraft.instruction, reply: replyDraft.meta }
+                      : {}),
+                    ...(attachments.length > 0 ? { attachments: [...attachments] } : {}),
+                    ...(workContext ? { context: workContext } : {}),
+                    // 渡した量の事実。何を知っているかではなく、何を渡したか。
+                    ...(contextStats ? { context_meta: contextStats } : {}),
+                  },
+                }
+              : lane === 'research'
+                ? { kind: 'research', input: { question: text } }
+                : lane === 'action'
+                  ? {
+                      kind: 'computer.run',
+                      input: {
+                        goal: text,
+                        title: text.length > 30 ? `${text.slice(0, 30)}…` : text,
+                        ...(attachments.length > 0 ? { attachments: [...attachments] } : {}),
+                      },
+                    }
+                  : null;
 
   if (!request) {
     return {

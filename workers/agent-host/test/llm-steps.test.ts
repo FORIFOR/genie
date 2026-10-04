@@ -279,6 +279,13 @@ describe('what the device asks the model', () => {
     );
   });
 
+  it('answers as the user\'s secretary named Genie, never as the underlying model', () => {
+    const prompt = promptFor('llm.answer', { question: '自己紹介して' });
+    expect(prompt).toContain('秘書「Genie（ジーニー）」');
+    expect(prompt).toContain('かしこまりました');
+    expect(prompt).toContain('モデル名を名乗らない');
+  });
+
   it('does not invite the model to add topics of its own', () => {
     expect(promptFor('llm.decompose', { question: 'q', max: 3 })).toContain(
       '含まれていない話題を足さない',

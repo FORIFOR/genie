@@ -562,6 +562,9 @@ final class VoiceHUDState: ObservableObject {
         }
     }
 
+    /// 会話を終わらせた面（診断用）。
+    private(set) var lastConversationReplacedBy = ""
+
     /// いま聞く面を出しているか（遅れて届いた答えで、聞いている途中を消さないため）。
     var isListeningSurface: Bool { if case .listening = mode { return true }; return false }
 
@@ -580,7 +583,10 @@ final class VoiceHUDState: ObservableObject {
         if conversation.isActive {
             switch dock {
             case .listening, .thinking, .answer, .card, .ack: return
-            default: endConversation(.replaced)
+            default:
+                // どの面に替わって会話が終わったかを控える（呼んでも続かないときの調べ）。
+                lastConversationReplacedBy = String(String(describing: dock).prefix(60))
+                endConversation(.replaced)
             }
             return
         }

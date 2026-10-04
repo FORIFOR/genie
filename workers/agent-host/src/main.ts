@@ -34,6 +34,7 @@ import { visualContextDir } from './visual-context.js';
 import { NativeVisionDevice } from './computer-vision-device.js';
 import { CheckoutAssistanceRuntime } from './checkout-assistance.js';
 import { OfficeEditRuntime } from './office/runtime.js';
+import { BrowserOpenRuntime } from './browser-open.js';
 import { TransactionRuntime } from './transaction-runtime.js';
 import { SimulationOrders } from './simulation-orders.js';
 import { nativeSimulationConfirmation } from './simulation-native-checkout.js';
@@ -373,6 +374,17 @@ async function main(): Promise<void> {
         ask: async (args, signal) => {
           const outcome = await llm.run(
             { id: `office-${randomUUID()}`, toolId: 'llm.office_edit', args, approval: null },
+            signal,
+          );
+          if (!outcome.ok) throw new Error(outcome.error?.message ?? 'model failed');
+          return outcome.result;
+        },
+      }),
+      // 「〇〇の公式サイトを開いて」: 検索 → 公式の見極め → 既定のブラウザで開く。
+      new BrowserOpenRuntime({
+        ask: async (toolId, args, signal) => {
+          const outcome = await llm.run(
+            { id: `browser-${randomUUID()}`, toolId, args, approval: null },
             signal,
           );
           if (!outcome.ok) throw new Error(outcome.error?.message ?? 'model failed');

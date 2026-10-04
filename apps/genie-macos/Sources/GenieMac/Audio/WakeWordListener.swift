@@ -28,7 +28,11 @@ final class WakeWordListener {
     /// 見つけたときにすること（既定はいつもの会話を始める）。検査で差し替える。
     var onWake: () -> Void = {
         WindowCoordinator.shared.showVoiceHUD()
-        VoiceHUDState.shared.beginConversation()
+        // 秘書のように、まず声で返事をしてから聞く（本人の指示 2026-10-04）。
+        // 読み上げの間はマイクを開かない（自分の声を聞かない）。読み終えてから会話を始める。
+        GenieSpeechOutput.shared.read(Facts.wakeAcknowledgement, owner: UUID()) {
+            VoiceHUDState.shared.beginConversation()
+        }
     }
 
     /// 検査用: 認識器が書いた文字を受け取る（本番では使わない・残さない）。
@@ -66,7 +70,8 @@ final class WakeWordListener {
         _ = GenieEventBus.shared.subscribe { [weak self] event in
             guard case .voiceSessionEnded(let reason) = event else { return }
             Task { @MainActor in
-                self?.lastConversationEnd = "\(ISO8601DateFormatter().string(from: Date())) \(reason)"
+                let by = reason == "replaced" ? " by \(VoiceHUDState.shared.lastConversationReplacedBy)" : ""
+                self?.lastConversationEnd = "\(ISO8601DateFormatter().string(from: Date())) \(reason)\(by)"
                 self?.writeStatus()
             }
         }
