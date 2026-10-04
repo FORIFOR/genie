@@ -437,11 +437,12 @@ final class VoiceHUDState: ObservableObject {
     }
 
     /// 聞くのをやめる（Esc）。マイクが開いている面に逃げ道の鍵が無いのは危ない。
-    func cancelListening() {
+    func cancelListening(caller: String? = nil, file: String = #fileID, line: Int = #line) {
+        let caller = caller ?? "\(file):\(line)"
         inputLevel = 0
         inputLevels = []
         // 会話中の Esc は会話を終える（仕事は取り消さない）。
-        if conversation.isActive { endConversation(.user); return }
+        if conversation.isActive { endConversation(.user, caller: "cancelListening ← \(caller)"); return }
         // 表示が何であっても、開いているマイクは閉じる（遅れて届く確定文も捨てる）。
         closeMicrophone()
         listeningPrefill = nil
@@ -586,7 +587,7 @@ final class VoiceHUDState: ObservableObject {
             default:
                 // どの面に替わって会話が終わったかを控える（呼んでも続かないときの調べ）。
                 lastConversationReplacedBy = String(String(describing: dock).prefix(60))
-                endConversation(.replaced)
+                endConversation(.replaced, caller: "dock → \(lastConversationReplacedBy)")
             }
             return
         }
@@ -602,8 +603,9 @@ final class VoiceHUDState: ObservableObject {
 
     /// 考え中の面で Esc。声（会話）は止め、面は静かな入口へ戻す。依頼は取り消さない
     /// （答えは届けば Dock と Work に出る。二重送信を防ぐため送信中の印はそのまま）。
-    func leaveThinking() {
-        if conversation.isActive { endConversation(.user) }
+    func leaveThinking(caller: String? = nil, file: String = #fileID, line: Int = #line) {
+        let caller = caller ?? "\(file):\(line)"
+        if conversation.isActive { endConversation(.user, caller: "leaveThinking ← \(caller)") }
         if case .thinking = mode { mode = .idle }
     }
 
@@ -612,7 +614,7 @@ final class VoiceHUDState: ObservableObject {
         // Quick Actions の面には「聞いています」も止める手も無い。マイクや会話を開いたまま
         // 面だけ差し替えると、メニューバーにマイクの印が出たまま止め方が消える（2026-09-28 実機）。
         // 先に閉じてから開く（`--selftest micrelease`）。
-        if conversation.isActive || voiceCapture.isListening() { cancelListening() }
+        if conversation.isActive || voiceCapture.isListening() { cancelListening(caller: "Dock click (Quick Actions)") }
         mode = mode == .quickActions ? .idle : .quickActions
         // 開いた間は Esc で閉じられるよう、Dock がキー入力を受ける（閉じたら元のアプリへ返す）。
         if mode == .quickActions { WindowCoordinator.shared.focusDockForQuickActions() }
@@ -658,9 +660,13 @@ final class VoiceHUDState: ObservableObject {
     /// 会話を始める。一回の音声入力（`beginListening`）とは別の入口。
     func beginConversation(geminiSettings: GeminiLiveSettings? = nil) {
         guard !DesktopConnectionBootstrap.isInvalid else {
+            GenieLog.write("conversation", "not started: desktop connection invalid")
             answer = DesktopConnectionBootstrap.issueMessage; mode = .answer(answer); return
         }
-        guard GenieStateStore.shared.state.confirmation == nil, !conversation.isActive else { return }
+        guard GenieStateStore.shared.state.confirmation == nil, !conversation.isActive else {
+            GenieLog.write("conversation", "not started: \(conversation.isActive ? "already active" : "a confirmation is open")")
+            return
+        }
         guard Permissions.microphone == .granted else {
             PermissionGuideCoordinator.shared.explain(.microphone) { [weak self] in self?.beginConversation(geminiSettings: geminiSettings) }
             return
@@ -742,6 +748,7 @@ final class VoiceHUDState: ObservableObject {
         conversationProvider = provider
         isListeningMuted = false
         observeSleep()
+        GenieLog.write("conversation", "start: \(provider is GeminiLiveProvider ? "Gemini Live" : "standard")")
         run(conversation.start(now: now))
         GenieEventBus.shared.publish(.voiceSessionStarted(source: "dock"))
     }
@@ -765,7 +772,9 @@ final class VoiceHUDState: ObservableObject {
     }
 
     /// 会話を終える。**仕事は取り消さない**（止めるのは声だけ）。
-    func endConversation(_ reason: ConversationLoop.EndReason = .user) {
+    func endConversation(_ reason: ConversationLoop.EndReason = .user, caller: String? = nil, file: String = #fileID, line: Int = #line) {
+        let caller = caller ?? "\(file):\(line)"
+        if conversation.isActive { GenieLog.write("conversation", "end requested: \(reason.rawValue) by \(caller)") }
         run(conversation.end(reason))
     }
 
@@ -817,11 +826,13 @@ final class VoiceHUDState: ObservableObject {
                 inputLevel = 0
                 inputLevels = []
             case .send(let text):
+                GenieLog.write("conversation", "heard: \(GenieLog.clip(text))")
                 conversationProvider.send(text) { [weak self] reply in
                     guard let self else { return }
                     self.run(self.conversation.reply(reply))
                 }
             case .speak(let text, let g):
+                GenieLog.write("conversation", "speak: \(GenieLog.clip(text, 80))")
                 conversationProvider.speak(text) { [weak self] in
                     guard let self else { return }
                     self.run(self.conversation.speechFinished(generation: g))
@@ -834,6 +845,7 @@ final class VoiceHUDState: ObservableObject {
                 // 聞き始めた合図（その場で合成する短い音。通信しない）。
                 GenieEarcon.play(.start)
             case .ended(let reason):
+                GenieLog.write("conversation", "ended: \(reason.rawValue)")
                 conversationProvider.endSession()
                 GenieEarcon.play(.end)
                 conversationClock?.cancel(); conversationClock = nil
@@ -880,6 +892,7 @@ final class VoiceHUDState: ObservableObject {
     private func sendConversationTurn(_ text: String) {
         mode = .thinking
         if !ask(text) {
+            GenieLog.write("conversation", "not sent (held: \(heldUtterance == text)) \(GenieLog.clip(answer, 80))")
             deliverConversationReply(heldUtterance == text ? .held : .failed(answer.isEmpty ? "送れませんでした。" : answer))
         }
     }
@@ -920,9 +933,13 @@ final class VoiceHUDState: ObservableObject {
 
     /// `ask` の結果を会話へ返す（会話中で、答えを待っているときだけ）。
     private func conversationReply(_ reply: TaskReply?, draft: Bool = false, failed: String? = nil) {
-        guard conversation.isActive, conversation.phase == .waiting else { return }
-        if let failed { deliverConversationReply(.failed(failed)); return }
+        guard conversation.isActive, conversation.phase == .waiting else {
+            if reply != nil || failed != nil { GenieLog.write("conversation", "reply arrived after the conversation moved on") }
+            return
+        }
+        if let failed { GenieLog.write("conversation", "reply failed: \(GenieLog.clip(failed, 80))"); deliverConversationReply(.failed(failed)); return }
         guard let reply else { return }
+        GenieLog.write("conversation", "reply \(reply.phase): \(GenieLog.clip(reply.text, 80))")
         // 返信案の本文は読み上げない（宛先のある下書きを声で流さない）。確認カードを見てもらう。
         if draft, reply.settled { deliverConversationReply(.settled("返信案を用意しました。確認カードで内容を確かめてください。")); return }
         switch reply.phase {
@@ -1205,6 +1222,7 @@ final class VoiceHUDState: ObservableObject {
                 }
                 await MainActor.run { _ = self?.followingRequests.remove(task.id) }
             } catch {
+                GenieLog.write("request", "failed to reach the service: \(GenieLog.clip(String(describing: error), 160))")
                 await MainActor.run {
                     self?.updateRequest(task.id) {
                         if !$0.canReuse { return }

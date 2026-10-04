@@ -31,6 +31,7 @@ final class WakeWordListener {
         // 秘書のように、まず声で返事をしてから聞く（本人の指示 2026-10-04）。
         // 読み上げの間はマイクを開かない（自分の声を聞かない）。読み終えてから会話を始める。
         GenieSpeechOutput.shared.read(Facts.wakeAcknowledgement, owner: UUID()) {
+            GenieLog.write("wake", "acknowledged; starting the conversation")
             VoiceHUDState.shared.beginConversation()
         }
     }
@@ -52,6 +53,7 @@ final class WakeWordListener {
     func start() {
         // 検査の実行（--selftest）ではマイクを勝手に開かない。検査の音と取り合いになる。
         guard timer == nil, !CommandLine.arguments.contains("--selftest") else { return }
+        GenieLog.write("wake", "listener started (enabled: \(enabled))")
         let workspace = NSWorkspace.shared.notificationCenter
         observers.append(workspace.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.asleep = true; self?.suspend() }
@@ -149,6 +151,7 @@ final class WakeWordListener {
               Date().timeIntervalSince(lastFired) >= Self.cooldown else { return }
         lastFired = Date()
         NSLog("genie wake: detected")
+        GenieLog.write("wake", "detected in 「\(GenieLog.clip(text, 20))」")
         lastWake = ISO8601DateFormatter().string(from: Date())
         suspend()
         onWake()
