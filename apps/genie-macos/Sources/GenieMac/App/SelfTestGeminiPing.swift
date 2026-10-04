@@ -4,8 +4,9 @@ extension SelfTest {
     /// Gemini API の状態を 3 段で見る（キーは表示しない）: キーが通るか（モデル一覧）・文章・声。
     @MainActor static func geminiPing() async {
         guard let key = GeminiLiveSettings.shared.apiKey() else { print("SELFTEST_FAIL geminiping: key missing"); exit(2) }
-        // キーの形だけを見る（中身は出さない）: Google の API キーは「AIza」で始まる 39 文字。
-        let shape = "length=\(key.count) googleFormat=\(key.hasPrefix("AIza") && key.count == 39) whitespace=\(key.contains { $0.isWhitespace })"
+        // キーの形だけを見る（中身は出さない）: 従来の「AIza」39 文字と、新しい「AQ.」で始まる形がある。
+        let kind = key.hasPrefix("AIza") ? "AIza" : key.hasPrefix("AQ.") ? "AQ." : "other"
+        let shape = "length=\(key.count) kind=\(kind) whitespace=\(key.contains { $0.isWhitespace })"
         print("key: \(shape)")
         func call(_ method: String, _ path: String, _ body: [String: Any]? = nil) async -> (Int, String, Data) {
             var request = URLRequest(url: URL(string: "https://generativelanguage.googleapis.com/v1beta/" + path)!, timeoutInterval: 30)
