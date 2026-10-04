@@ -702,6 +702,7 @@ final class VoiceHUDState: ObservableObject {
                 delegate: { [weak self] request in await self?.delegateFromConversation(request) ?? "not_accepted" },
                 onLost: { [weak self] reason in
                     guard let self else { return }
+                    GenieLog.write("conversation", "Gemini Live lost: \(GenieLog.clip(reason, 120))")
                     if GeminiLive.isBillingUnavailable(reason) {
                         // 支払いで切れた。止めずに、標準の会話に切り替えて続ける。
                         gemini.pauseForBilling()
@@ -717,6 +718,11 @@ final class VoiceHUDState: ObservableObject {
                 })
         } else {
             provider = pipelineProvider
+            if gemini.enabled {
+                let why = !gemini.hasKey ? "no key" : gemini.keyAccessIssue != nil ? "key unreadable (Keychain)"
+                    : gemini.billingPaused() ? "paused after a billing failure" : "unknown"
+                GenieLog.write("conversation", "Gemini Live not used: \(why)")
+            }
         }
         startConversation(using: provider)
         WindowCoordinator.shared.focusListeningDock()
