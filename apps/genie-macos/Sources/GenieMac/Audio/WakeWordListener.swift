@@ -174,10 +174,21 @@ final class WakeWordListener {
         var compact = folded.uppercased().filter { !$0.isWhitespace && !"、。,.!?！？・「」〜-".contains($0) }
         if ["ジーニー", "ジーニ", "ジニー", "ジーニイ", "GENIE"].contains(where: { compact.contains($0) }) { return true }
         guard final else { return false }
+        /*
+         * 漢字で書かれることもある。実機（2026-10-04、本人の声）では「ジーニー」が「地に」「字」と
+         * 書かれ、一度も起きなかった。一言だけの発話に限り、「じ」「に」と読める漢字を仮名に戻す。
+         */
+        compact = String(compact.map { kanjiAsKana[$0] ?? String($0) }.joined())
         // 呼びかけの前置き（ねえ・ヘイ・おい）は外して、一言だけかを見る。
         for prefix in ["ネエ", "ネー", "ヘイ", "HEY", "オイ"] where compact.hasPrefix(prefix) {
             compact.removeFirst(prefix.count)
         }
-        return ["ジー", "ジニ", "ジイ", "爺", "G", "ジ"].contains(compact)
+        return ["ジー", "ジニ", "ジイ", "ジイニ", "ジニイ", "ジニー", "ジーニ", "G", "ジ"].contains(compact)
     }
+
+    /// 認識器が「じ」「に」の音に当てる漢字（一言だけの発話でだけ使う）。
+    private static let kanjiAsKana: [Character: String] = [
+        "地": "ジ", "字": "ジ", "自": "ジ", "次": "ジ", "時": "ジ", "児": "ジ", "治": "ジ", "事": "ジ",
+        "爺": "ジイ", "二": "ニ", "似": "ニ", "荷": "ニ", "煮": "ニ", "尼": "ニ",
+    ]
 }

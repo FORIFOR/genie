@@ -19,6 +19,13 @@ final class WakeWordTests: XCTestCase {
             XCTAssertTrue(WakeWordListener.containsWakeWord(text, final: true), text)
             XCTAssertFalse(WakeWordListener.containsWakeWord(text, final: false), text)
         }
+        // 本人の声では漢字で書かれた（「地に」「字」）。一言だけなら呼びかけとみなす。
+        for text in ["地に", "字", "地に。", "ねえ、地に", "字に", "二"] where text != "二" {
+            XCTAssertTrue(WakeWordListener.containsWakeWord(text, final: true), text)
+        }
+        for text in ["現地に行く", "土地に", "地にある", "二つ", "時々", "字が汚い"] {
+            XCTAssertFalse(WakeWordListener.containsWakeWord(text, final: true), text)
+        }
         for text in ["ジーンズ", "ジーンズを買う", "ジニアの花", "爺さん", "Gメール"] {
             XCTAssertFalse(WakeWordListener.containsWakeWord(text, final: true), text)
         }
