@@ -1,0 +1,920 @@
+
+> genie@0.1.4 build /Users/shuhei/Projects/genie
+> tsc -b tsconfig.build.json
+
+== current macOS debug candidate ==
+[0/1] Planning build
+Building for debugging...
+[0/3] Write swift-version--58304C5D6DBC2206.txt
+Build complete! (0.28s)
+
+== genie-core tests ==
+test result: ok. 44 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.02s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+== Tauri Rust regression ==
+test result: ok. 67 passed; 0 failed; 3 ignored; 0 measured; 0 filtered out; finished in 0.30s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+== Tauri desktop JS regression ==
+
+> @genie/desktop@0.0.0 test /Users/shuhei/Projects/genie/apps/desktop
+> vitest run --passWithNoTests
+
+
+ RUN  v3.2.7 /Users/shuhei/Projects/genie/apps/desktop
+
+(node:73321) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:73332) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:73325) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:73329) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:73327) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:73330) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:73331) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:73328) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:73322) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:73320) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:73323) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:73326) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:73324) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ test/artifact-actions.test.tsx (4 tests) 148ms
+ ✓ test/receipts.test.tsx (9 tests) 57ms
+(node:73346) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ test/evidence.test.tsx (12 tests) 112ms
+ ✓ test/work-detail.test.tsx (15 tests) 154ms
+ ✓ test/apps.test.tsx (17 tests) 142ms
+ ✓ test/home-library.test.tsx (32 tests) 209ms
+ ✓ test/topbar.test.tsx (10 tests) 101ms
+stderr | test/meeting.test.tsx > MeetingProvider (§12) > records only after consent, then shows the minimal indicator
+In HTML, <button> cannot be a descendant of <button>.
+This will cause a hydration error.
+
+  <Harness client={{...}}>
+    <MeetingProvider client={{...}}>
+      <MeetingLayer>
+        <div className="astra-meet..." data-phase="live">
+>         <button
+>           type="button"
+>           className="astra-meeting-layer__collapsed"
+>           onClick={function onClick}
+>           aria-label="A社 新規提案 の画面を開く"
+>         >
+            <RecordingIndicator state="recording" title="A社 新規提案" elapsedMs={0} speakers={0} ...>
+              <div className="astra-rec" data-state="recording" role="status" aria-label="Recording ...">
+                <span>
+                <span>
+                <span>
+                <span>
+                <span>
+                <span>
+>               <button
+>                 type="button"
+>                 className="astra-rec__button"
+>                 aria-label="一時停止"
+>                 title="一時停止"
+>                 onClick={function togglePause}
+>               >
+                ...
+          ...
+      ...
+
+<button> cannot contain a nested <button>.
+See this log for the ancestor stack trace.
+
+(node:73350) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ test/ux-acceptance.test.tsx (22 tests) 203ms
+ ✓ test/session.test.tsx (5 tests) 243ms
+(node:73351) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ test/signin-providers.test.tsx (4 tests) 104ms
+ ✓ test/meeting.test.tsx (26 tests) 315ms
+ ✓ test/shell.test.tsx (18 tests) 251ms
+(node:73354) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:73355) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ test/onboarding.test.tsx (12 tests) 541ms
+(node:73359) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:73358) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:73360) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ test/permission-ask.test.tsx (7 tests) 56ms
+(node:73363) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ test/proactive.test.tsx (6 tests) 110ms
+(node:73365) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:73366) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:73368) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ test/liquid-orb.test.ts (5 tests) 26ms
+ ✓ test/device-capabilities.test.tsx (5 tests) 43ms
+ ✓ test/shortcut-settings.test.tsx (6 tests) 84ms
+(node:73372) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ test/dock-pill.test.tsx (9 tests) 114ms
+ ✓ test/dock.test.tsx (38 tests) 788ms
+ ✓ test/share-state.test.tsx (7 tests) 52ms
+ ✓ test/work.test.tsx (23 tests) 96ms
+ ✓ test/a11y-live.test.tsx (8 tests) 17ms
+ ✓ test/inspector.test.tsx (4 tests) 51ms
+(node:73374) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ test/session-refresh.test.tsx (3 tests) 26ms
+(node:73375) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ test/launchable.test.ts (5 tests) 9ms
+ ✓ test/boot.test.tsx (3 tests) 58ms
+ ✓ test/connect.test.ts (4 tests) 9ms
+(node:73380) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:73378) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:73381) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ test/library-filters.test.ts (5 tests) 3ms
+ ✓ test/response.test.tsx (3 tests) 2ms
+(node:73382) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ test/seed-view.test.ts (3 tests) 2ms
+(node:73379) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:73385) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:73383) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ test/ux-metrics.test.ts (4 tests) 1ms
+ ✓ test/dock-voice-mode.test.ts (8 tests) 3ms
+ ✓ test/voice-runtime.test.ts (6 tests) 2ms
+(node:73390) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ test/work-view.test.ts (6 tests) 2ms
+ ✓ test/approval-outcome.test.ts (3 tests) 1ms
+
+ Test Files  36 passed (36)
+      Tests  357 passed (357)
+   Start at  04:55:55
+   Duration  2.47s (transform 1.53s, setup 149ms, collect 11.48s, tests 4.13s, environment 7.14s, prepare 1.59s)
+
+
+== TCC usage descriptions ==
+USAGE_DESCRIPTIONS_OK: 要求しうる権限の用途説明が揃っている (6 件)
+
+== release consistency ==
+  package.json=0.1.4 tauri.conf.json=0.1.4 src-tauri/Cargo.toml=0.1.4 genie-core/Cargo.toml=0.1.4
+RELEASE_CONSISTENCY_OK: 版番号 0.1.4 で一致・配布物は外部 dylib を掴まない・Developer ID + hardened runtime
+
+== release aggregation regression ==
+....................................................
+----------------------------------------------------------------------
+Ran 52 tests in 34.519s
+
+OK
+
+== managed preview lifecycle ==
+✔ scoped Mac launch gets the same absolute Codex executable that was verified (4.899709ms)
+✔ CLI rejects unsupported actions, external model URLs, ambiguous ports and unsafe names (0.454708ms)
+✔ transaction simulation is explicit, requires computer use and only exports the local fixture executable (2.121584ms)
+✔ native app launches through LaunchServices with instance-only scope and a waited lifecycle (0.126584ms)
+✔ native app monitor accepts confirmed normal exit and keeps early or abnormal exits as failures (76.172542ms)
+✔ native app monitor reads lifecycle at exit and does not replace an existing stop or failure (0.20975ms)
+✔ native ownership distinguishes simultaneous app instances and rejects PID reuse without matching argv (0.1525ms)
+✔ native process inspection takes one snapshot and never treats inspection errors as exit (0.304291ms)
+✔ native stop waits through macOS exiting argv loss and accepts only proven death (0.43525ms)
+✔ native stop verifies absence, escalates only after grace, and fails if exit stays unconfirmed (0.160708ms)
+✔ native stop rejects PID/start/argv changes before TERM and immediately before KILL (0.19525ms)
+✔ native stop does not report success after inspection or signal failures (0.134083ms)
+✔ native stop waits for a real tiny child exit and escalates a TERM-resistant child only (311.9245ms)
+✔ explicit local Docker selection pins child operations without inheriting or changing the user context (0.284875ms)
+✔ Docker endpoint changes are revalidated on every start and remote/relative/missing contexts fail closed (0.348625ms)
+✔ explicit Docker context persists for restart, migrates legacy state optionally and prevents changing its database host (33.193792ms)
+✔ model choice persists explicit intent, supports Ollama latest aliases and never picks a paid fallback (0.34025ms)
+✔ external CLI selection needs explicit opt-in, persists that choice, and never inherits the old local model (8.292167ms)
+✔ external conversation selection does not authorize screen egress or import credentials (7.017ms)
+✔ screen opt-in is separate, persists only for the exact provider/model, and can be revoked (6.71875ms)
+✔ screen permission cannot leak from another state directory or enable an inactive computer route (13.874ms)
+✔ computer status probes the selected helper anew and exposes only bounded status fields (308.699958ms)
+✔ unknown, invalid or failed helper probes remain unavailable without subprocess output disclosure (0.459833ms)
+✔ Codex omitted model uses the same explicit model for host, native translation and disclosure (8.464167ms)
+✔ explicit local selection reaches native translation with its exact model and endpoint (6.5865ms)
+✔ CLI readiness uses its own authentication boundary without a generated prompt or credential copy (0.208834ms)
+✔ Ollama cloud models and renamed remote aliases cannot be disclosed as local inference (0.261916ms)
+✔ service environment does not inherit paid credentials, remote infrastructure or shell hooks (6.752709ms)
+✔ first boot persists private keys, ports and identity; later starts keep them and reject silent port changes (9.27775ms)
+✔ saved configuration is validated before forming compose operations (6.734791ms)
+✔ an unrelated nonempty state directory is never taken over (1.301459ms)
+✔ managed service stops when its supervisor disappears (105.95775ms)
+✔ managed Compose isolates named volumes and all published ports; migration mounts are read-only (6.487667ms)
+✔ port conflicts fail without modifying the listener (0.489959ms)
+✔ owned processes fail on exit and stop children; unrelated processes stay alive (39.860834ms)
+✔ command timeout, startup abort and bounded readiness cannot report success (66.055416ms)
+✔ entrypoint help works from a symlink with spaces and importing it starts nothing (106.33125ms)
+✔ network errors and redirects do not expose returned response bodies (9.900209ms)
+ℹ tests 38
+ℹ suites 0
+ℹ pass 38
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1219.838958
+
+== transaction regression ==
+✔ lost task acceptance reuses the same persisted identity and never approves (2.088917ms)
+✔ an unrelated approval or non-order task cannot be approved through the order command (0.292041ms)
+✔ approval submission does not claim an order was accepted (0.151292ms)
+✔ two orders retain one owned PID/window with distinct load handshakes and normal begin calls (7.820167ms)
+✔ queued cancellation is prompt, skips its load and does not interrupt the active order (3.834083ms)
+✔ active cancellation stops only its owned session and a subsequent order creates a new PID (3.636542ms)
+✔ a changed native window under the same PID is refused before another begin or click (2.300292ms)
+✔ wrong captured window and unattended helper are never clicked (2.75775ms)
+✔ idle expiry closes the old process and never resurrects its PID (55.828ms)
+✔ device cleanup failure still terminates the owned window (12.902583ms)
+✔ both food demos and paper fill require independent persisted receipt; preparing never confirms (200.429ms)
+✔ unconfirmed click stays unknown across runtime restart and never clicks again (40.467166ms)
+✔ fictional catalog cannot be used for live identities, custom items, or prices above the supplied budget (12.576208ms)
+✔ revoking a claimed task aborts the native helper consent wait without input, and leaves reconciliation-only history (286.217542ms)
+✔ prepare pins exact quote; submit writes a durable private claim before one provider input and preserves accepted status (24.49ms)
+✔ approval binds complete exact args including destination, budget, quantity, and requested time (5.344083ms)
+✔ invalid money, currency/content substitutions, expired quotes, and over-budget totals never reach submit (10.1305ms)
+✔ inspection changes, approval expiry, and cancellation stop before the attempt claim (6.813167ms)
+✔ unknown delivery is durable across new runtime and task IDs; submit can only reconcile it (21.067292ms)
+✔ authorization deadline is propagated to the adapter and aborts in-flight submit without resending (253.533333ms)
+✔ provider receipts must match quote identity, paid total, destination, options, and execution mode (134.578083ms)
+✔ live provider and request-supplied URLs are unsupported; read-only reconcile never creates an order (2.421625ms)
+✔ paper stock remains simulation and distinguishes acceptance, partial fills, full fills, and cancelled partials (189.282375ms)
+✔ durable receipt history rejects changed provider order IDs, regressed state, and lost partial executions (106.576875ms)
+✔ multiple processes atomically claim the same order once; a crash after provider acceptance recovers read-only (528.178667ms)
+✔ a corrupt durable claim blocks a fresh attempt rather than silently forgetting it (21.760917ms)
+ℹ tests 26
+ℹ suites 0
+ℹ pass 26
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1707.325875
+
+ RUN  v3.2.7 /Users/shuhei/Projects/genie/packages/contracts
+
+ ✓ test/transaction-authorization.test.ts (3 tests) 16ms
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  04:56:43
+   Duration  250ms (transform 41ms, setup 0ms, collect 69ms, tests 16ms, environment 0ms, prepare 33ms)
+
+
+ RUN  v3.2.7 /Users/shuhei/Projects/genie/services/conversation
+
+ ✓ test/lane.test.ts (15 tests) 4ms
+ ✓ test/transaction-request.test.ts (14 tests) 4ms
+
+ Test Files  2 passed (2)
+      Tests  29 passed (29)
+   Start at  04:56:43
+   Duration  358ms (transform 126ms, setup 0ms, collect 232ms, tests 9ms, environment 0ms, prepare 63ms)
+
+
+ RUN  v3.2.7 /Users/shuhei/Projects/genie/services/task
+
+ ✓ test/transaction-plan.test.ts (9 tests) 8ms
+ ✓ test/transaction-artifact.test.ts (6 tests) 10ms
+ ✓ test/transaction-workflow.test.ts (15 tests) 10ms
+2026-10-01T19:56:45.915Z [INFO] asset workflow-bundle-8a5374528e42dae25e7f.js 1.66 MiB [emitted] [immutable] (name: main)
+runtime modules 1.34 KiB 4 modules
+modules by path ../../node_modules/.pnpm/ 438 KiB
+  modules by path ../../node_modules/.pnpm/@temporalio+common@1.22.0/node_modules/@temporal...(truncated) 161 KiB 35 modules
+  modules by path ../../node_modules/.pnpm/@temporalio+workflow@1.22.0/node_modules/@tempor...(truncated) 202 KiB 26 modules
+  modules by path ../../node_modules/.pnpm/nexus-rpc@0.0.2/node_modules/nexus-rpc/lib/ 22.3 KiB 13 modules
+  ../../node_modules/.pnpm/long@5.3.2/node_modules/long/umd/index.js 49.8 KiB [built] [code generated]
+  ../../node_modules/.pnpm/ms@3.0.0-canary.1/node_modules/ms/dist/index.cjs 3.41 KiB [built] [code generated]
+modules by path ./src/ 59.1 KiB
+  ./src/workflows-autogenerated-entrypoint.cjs 502 bytes [built] [code generated]
+  ./src/workflows.ts 22.9 KiB [built] [code generated]
+  ./src/plan.ts 35.7 KiB [built] [code generated]
+optional modules 30 bytes [optional]
+  __temporal_custom_payload_converter (ignored) 15 bytes [optional] [built] [code generated]
+  __temporal_custom_failure_converter (ignored) 15 bytes [optional] [built] [code generated]
+webpack 5.109.2 compiled successfully in 316 ms { sdkComponent: 'worker', taskQueue: 'fake_replay_queue-0' }
+2026-10-01T19:56:45.916Z [INFO] Workflow bundle created {
+  sdkComponent: 'worker',
+  taskQueue: 'fake_replay_queue-0',
+  size: '1.65MB'
+}
+2026-10-01T19:56:45.943Z [INFO] Worker state changed {
+  sdkComponent: 'worker',
+  taskQueue: 'fake_replay_queue-0',
+  state: 'RUNNING'
+}
+2026-10-01T19:56:45.970Z [INFO] Worker state changed {
+  sdkComponent: 'worker',
+  taskQueue: 'fake_replay_queue-0',
+  state: 'STOPPING'
+}
+2026-10-01T19:56:45.970Z [INFO] Worker state changed {
+  sdkComponent: 'worker',
+  taskQueue: 'fake_replay_queue-0',
+  state: 'DRAINING'
+}
+2026-10-01T19:56:45.970Z [INFO] Worker state changed {
+  sdkComponent: 'worker',
+  taskQueue: 'fake_replay_queue-0',
+  state: 'DRAINED'
+}
+2026-10-01T19:56:45.971Z [INFO] Worker state changed {
+  sdkComponent: 'worker',
+  taskQueue: 'fake_replay_queue-0',
+  state: 'STOPPED'
+}
+2026-10-01T19:56:46.116Z [INFO] asset workflow-bundle-8a5374528e42dae25e7f.js 1.66 MiB [emitted] [immutable] (name: main)
+runtime modules 1.34 KiB 4 modules
+modules by path ../../node_modules/.pnpm/ 438 KiB
+  modules by path ../../node_modules/.pnpm/@temporalio+common@1.22.0/node_modules/@temporal...(truncated) 161 KiB 35 modules
+  modules by path ../../node_modules/.pnpm/@temporalio+workflow@1.22.0/node_modules/@tempor...(truncated) 202 KiB 26 modules
+  modules by path ../../node_modules/.pnpm/nexus-rpc@0.0.2/node_modules/nexus-rpc/lib/ 22.3 KiB 13 modules
+  ../../node_modules/.pnpm/long@5.3.2/node_modules/long/umd/index.js 49.8 KiB [built] [code generated]
+  ../../node_modules/.pnpm/ms@3.0.0-canary.1/node_modules/ms/dist/index.cjs 3.41 KiB [built] [code generated]
+modules by path ./src/ 59.1 KiB
+  ./src/workflows-autogenerated-entrypoint.cjs 502 bytes [built] [code generated]
+  ./src/workflows.ts 22.9 KiB [built] [code generated]
+  ./src/plan.ts 35.7 KiB [built] [code generated]
+optional modules 30 bytes [optional]
+  __temporal_custom_payload_converter (ignored) 15 bytes [optional] [built] [code generated]
+  __temporal_custom_failure_converter (ignored) 15 bytes [optional] [built] [code generated]
+webpack 5.109.2 compiled successfully in 138 ms { sdkComponent: 'worker', taskQueue: 'fake_replay_queue-1' }
+2026-10-01T19:56:46.117Z [INFO] Workflow bundle created {
+  sdkComponent: 'worker',
+  taskQueue: 'fake_replay_queue-1',
+  size: '1.65MB'
+}
+2026-10-01T19:56:46.128Z [INFO] Worker state changed {
+  sdkComponent: 'worker',
+  taskQueue: 'fake_replay_queue-1',
+  state: 'RUNNING'
+}
+2026-10-01T19:56:46.136Z [INFO] Worker state changed {
+  sdkComponent: 'worker',
+  taskQueue: 'fake_replay_queue-1',
+  state: 'STOPPING'
+}
+2026-10-01T19:56:46.136Z [INFO] Worker state changed {
+  sdkComponent: 'worker',
+  taskQueue: 'fake_replay_queue-1',
+  state: 'DRAINING'
+}
+2026-10-01T19:56:46.136Z [INFO] Worker state changed {
+  sdkComponent: 'worker',
+  taskQueue: 'fake_replay_queue-1',
+  state: 'DRAINED'
+}
+2026-10-01T19:56:46.136Z [INFO] Worker state changed {
+  sdkComponent: 'worker',
+  taskQueue: 'fake_replay_queue-1',
+  state: 'STOPPED'
+}
+ ✓ test/replay-history.test.ts (2 tests) 796ms
+   ✓ previous-revision workflow replay with old void terminal activities > replays completed history without nondeterminism  630ms
+
+ Test Files  4 passed (4)
+      Tests  32 passed (32)
+   Start at  04:56:45
+   Duration  1.14s (transform 222ms, setup 0ms, collect 868ms, tests 825ms, environment 0ms, prepare 134ms)
+
+
+ RUN  v3.2.7 /Users/shuhei/Projects/genie/workers/task-worker
+
+ ✓ test/approval-proof.test.ts (4 tests) 3ms
+
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Start at  04:56:46
+   Duration  352ms (transform 96ms, setup 0ms, collect 179ms, tests 3ms, environment 0ms, prepare 33ms)
+
+
+ RUN  v3.2.7 /Users/shuhei/Projects/genie/workers/agent-host
+
+ ✓ test/step-transport.test.ts (3 tests) 5ms
+ ✓ test/step-loop.test.ts (18 tests) 79ms
+
+ Test Files  2 passed (2)
+      Tests  21 passed (21)
+   Start at  04:56:47
+   Duration  264ms (transform 48ms, setup 0ms, collect 60ms, tests 84ms, environment 0ms, prepare 66ms)
+
+
+ RUN  v3.2.7 /Users/shuhei/Projects/genie/services/task
+
+ ✓ test/transaction-authorization-ledger.db.test.ts (8 tests) 665ms
+ ✓ test/transaction-approval.db.test.ts (14 tests) 573ms
+
+ Test Files  2 passed (2)
+      Tests  22 passed (22)
+   Start at  04:56:48
+   Duration  1.18s (transform 232ms, setup 0ms, collect 780ms, tests 1.24s, environment 0ms, prepare 74ms)
+
+
+ RUN  v3.2.7 /Users/shuhei/Projects/genie/services/agent-host
+
+ ✓ test/bridge.db.test.ts (19 tests) 242ms
+
+ Test Files  1 passed (1)
+      Tests  19 passed (19)
+   Start at  04:56:50
+   Duration  680ms (transform 112ms, setup 0ms, collect 267ms, tests 242ms, environment 0ms, prepare 36ms)
+
+
+ RUN  v3.2.7 /Users/shuhei/Projects/genie/services/api-gateway
+
+ ✓ test/host-bridge.test.ts (16 tests) 147ms
+ ✓ test/transaction-authorizations.integration.test.ts (4 tests) 352ms
+ ✓ test/conversations-transaction.integration.test.ts (15 tests) 479ms
+
+ Test Files  3 passed (3)
+      Tests  35 passed (35)
+   Start at  04:56:51
+   Duration  1.57s (transform 456ms, setup 0ms, collect 2.78s, tests 978ms, environment 0ms, prepare 98ms)
+
+TRANSACTION_REGRESSION_OK: code-level checks only; native/main-app and live-provider evidence are separate.
+
+== computer vision contracts ==
+✔ requires goal, criteria, durable run file and explicit approval ID (0.592709ms)
+✔ lost acceptance response: explicit recover reuses identical key and request, never approves (0.548916ms)
+✔ status and recover with known identity only read; missing identity never posts (0.103625ms)
+✔ approval belongs to current computer task and matching pending approval (0.168125ms)
+✔ cancel only requests cancellation on same task, no success assertion (0.072917ms)
+✔ transport blocks redirects and does not retry errors (0.208584ms)
+✔ check uses the actual running helper and explicit screen recipient (0.115875ms)
+✔ conversation cloud permission alone is not screen readiness (0.09075ms)
+✔ check refuses stale, wrong, test-only or unavailable helper status (0.143125ms)
+✔ background planning uses empty-field AX input, not focus or keyboard fallback (0.746666ms)
+✔ background helper cannot call shared input/clipboard or legacy focus helpers (2.289375ms)
+✔ 自分が出した分だけを除く（人の入力は抑止窓の中でも数える） (1.104875ms)
+✔ 再開は必ず実行世代を進め、明示的な停止は再開しない (0.524459ms)
+✔ 送る前の関門は、承認・対象・停止に加えて実行世代を見る (0.916833ms)
+✔ 無人試験の経路は出荷ビルドに入らない (1.455666ms)
+✔ 背景で失敗しても前面操作へ切り替えない（経路の取り違えを静的に禁じる） (0.519542ms)
+✔ append retains native current-value binding and exact post-write readback without enabling replacement (0.613375ms)
+✔ a run is free-tier only unless paid is explicitly turned on (0.742541ms)
+✔ a key from a billed project is not treated as the free tier (1.133458ms)
+✔ once the provider says the allowance is gone, the month stops asking (0.61925ms)
+✔ per-task and per-month call limits stop before the call, not after (0.974375ms)
+✔ cost limits are judged including the call about to be made (0.624792ms)
+✔ the ledger keeps no key and no screen content, and is owner-only (1.903208ms)
+✔ a corrupt ledger does not become free rein (0.711667ms)
+✔ a cloud model without a budget never sends a screenshot (0.768625ms)
+✔ an exhausted month refuses before the first model call (4.791333ms)
+✔ a provider quota refusal stops the run and the month (0.85575ms)
+✔ a local model needs no budget and is never counted (0.297833ms)
+✔ native scroll adapter: confirmed native receipt (296.931625ms)
+✔ native scroll adapter: missing native receipt (237.269292ms)
+✔ native scroll adapter: unconfirmed dispatch (281.494875ms)
+✔ native scroll adapter: wrong direction (240.978583ms)
+✔ existing VisualContext -> HTTP vision request carries two PNGs, structured response, and pinned provider (16.238459ms)
+✔ durable local claim prevents replay across device instances / restarts (12.518458ms)
+✔ native begin forwards an optional exact owned target, rejects malformed constraints and mismatched helper frames (380.175541ms)
+✔ native preview adapter binds its request and validates actual PNG bytes before use, then removes them (407.607333ms)
+✔ target verification carries one bound preview PNG through the production LlmRuntime HTTP path (1.96375ms)
+✔ Codex target dispatch uses a private read-only copy of validated bytes and cleans it on success or failure (3.345ms)
+✔ HTTP model cancellation passes an aborted signal, not a successful model result (0.473208ms)
+✔ moving preview storage does not forget a claim in the legacy cache (11.895209ms)
+✔ actual before/after image references go to the action verifier; goal gets a NEW frame (3.340208ms)
+✔ a model saying done is not sufficient (0.5845ms)
+✔ pointer motion or a changed image hash alone is never completion (0.383542ms)
+✔ target changes stop before the next model call (0.160958ms)
+✔ aborted input never reaches the device or model (0.20025ms)
+✔ cancellation during a nonresponsive model prevents later action (3.636209ms)
+✔ an empty approval object is not approval and does not capture (0.180125ms)
+✔ expired and wrong-operation approvals are refused (0.143041ms)
+✔ external screenshot egress needs separate opt-in BEFORE capture (0.130708ms)
+✔ unavailable selected model does not silently fall back (0.136584ms)
+✔ action limit is enforced (0.317334ms)
+✔ ambiguous input failure is not automatically retried (0.340291ms)
+✔ locally cancelled action stops, not replans (0.265292ms)
+✔ duplicate request is refused by durable claim (0.276417ms)
+✔ uncertain visual verification cannot return success (0.200333ms)
+✔ an uncertain verdict spends the replan budget instead of stopping at once (0.205ms)
+✔ an uncertain verdict that later resolves completes the run (0.124083ms)
+✔ a low-confidence satisfied verdict never completes the run (0.159125ms)
+✔ a blocked verdict stops immediately and is not re-asked (0.121125ms)
+✔ a malformed verdict is re-asked with the rejection code, then accepted (0.127042ms)
+✔ a stopped run records its reason and audit beside the claim (0.210792ms)
+✔ a verdict that never takes shape stops the run (0.642167ms)
+✔ the planner is told how many inputs it already sent, and on which targets (0.305208ms)
+✔ a fresh run says nothing about progress (0.0405ms)
+✔ the audit records which element an action was sent to (0.21475ms)
+✔ a route refusal is replanned with the reason, not treated as the end (0.454834ms)
+✔ a policy refusal ends the run and is never retried (0.153458ms)
+✔ two different elements are not mistaken for a repeated action (0.206083ms)
+✔ a route refusal tells the planner to change its approach, a malformed reply to fix its JSON (0.0995ms)
+✔ a model slower than the freshness window stops as too slow, not as a stale frame (0.165375ms)
+✔ one slow decision is retried, not called too slow (0.154625ms)
+✔ an echoed old frame id is re-asked instead of ending the run (0.153667ms)
+✔ a decision without a frame id is taken as being about the frame just sent (0.130083ms)
+✔ a decision naming a different frame is still refused as stale (0.130958ms)
+✔ image pixels map correctly with Retina scale and negative monitor origin (0.064459ms)
+✔ old screenshot and NaN geometry are rejected (0.06975ms)
+✔ stale frame-id, out-of-bounds and low-confidence grounding are rejected (0.099667ms)
+✔ shell / Enter / arbitrary modifiers are not action capabilities (0.075167ms)
+✔ control text is rejected; Japanese and non-BMP emoji are preserved (0.131375ms)
+✔ unknown model fields are not forwarded to helper (0.031792ms)
+✔ goal verdict must reference latest frame and concrete evidence (0.048375ms)
+✔ audit does not retain screenshot paths, typed text, or model evidence (0.156917ms)
+✔ prompts separate goal from untrusted screen instructions and require real pixels (0.048667ms)
+✔ 成功条件を確かめられる単位に分ける（分けられないものは 1 つのまま） (0.245417ms)
+✔ 確認が断った理由と未達成の条件が、次の計画へ戻る (0.248625ms)
+✔ 未達成の条件が挙がらなければ、全部が未達成のまま（部分的な結果を完了にしない） (0.035833ms)
+✔ 自信の足りない「できた」は、条件を満たしたことにしない (0.03025ms)
+✔ 人が割り込んだら、人を止めずにこちらだけ待ち、手が空いたら続ける (3003.025208ms)
+✔ 再開できない装置では、割り込みはこれまでどおりその場で停止する (0.363625ms)
+✔ 割り込みで失効した世代の操作は、送らずに撮り直す（再送しない） (1002.247208ms)
+✔ 前へ進んだ操作は作り直しの持ち分を戻す（序盤のつまずきで打ち切らない） (0.718875ms)
+✔ 評価のための答えや採点先は、計画するモデルへ渡らない (0.415584ms)
+✔ 入力を送ったあとに止まったら、送ったことを先に伝える（取り消せるとは言わない） (0.222208ms)
+✔ 入力を 1 つも送っていない停止には、その断りを付けない (0.112542ms)
+✔ a wrong-field write is refused before delivery, without trying another field (0.265792ms)
+✔ both text routes need a confident current-frame target verdict before input (2.489792ms)
+✔ target verification uses the selected provider and its existing call budget (0.482333ms)
+✔ text input without a native target preview capability fails before verification or delivery (0.228709ms)
+✔ native preview binding and canonical writable identity are required before a verifier sees it (4.090792ms)
+✔ coordinate writes verify the resolved field crop and deliver that same canonical field (0.609667ms)
+✔ approval expiry or cancellation during read-only preview prevents verification and input (0.699417ms)
+✔ interruption during read-only preview discards the old proposal and obtains a fresh proof (1002.749042ms)
+✔ approval expiry or cancellation during target checking prevents input (0.965167ms)
+✔ a target verdict that aged its frame is discarded and checked again on a fresh frame (0.329834ms)
+✔ a failed capture after delivery still records and discloses the sent input (0.220625ms)
+✔ a failed effect verifier still records and discloses the sent input (0.167875ms)
+✔ a possibly partial input stops without retry and is disclosed as delivery unknown (1.320583ms)
+✔ cancelling an in-flight apply preserves an unknown-delivery audit row (0.971417ms)
+✔ a definite native pre-dispatch refusal records no delivered or unknown input (0.939792ms)
+✔ the target-check prompt checks the exact destination and text against the user request (0.136792ms)
+✔ copying the target verifier response schema preserves the actual current frame identity (0.295417ms)
+✔ explicit append is background-only, never replacement, and reaches both target check and delivery (0.978542ms)
+✔ coordinate grounding reaches the 61st native field without expanding public candidate context (0.421ms)
+✔ unlisted preview requires native text-role attestation and the exact requested point (0.260375ms)
+✔ scroll contract allows background vertical navigation only and never accepts model distance (0.327292ms)
+✔ scroll verifies the exact preview then keeps native offset readback and still verifies the goal (0.922834ms)
+✔ missing, stationary, reversed or excessive scroll readback is unknown and never resent (1.461625ms)
+✔ scroll edge or unsupported geometry is an unsent refusal with no alternate delivery retry (0.620625ms)
+ℹ tests 118
+ℹ suites 0
+ℹ pass 118
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5108.573167
+
+== background text policy ==
+PASS: background text value policy 11 cases; no AppKit, capture, input or model
+
+== background scroll policy ==
+PASS BackgroundScroll: 14 cases
+
+== background web link policy ==
+PASS BackgroundWebLink: 19 cases
+
+== UI taste ==
+== UI の癖 ==
+  gradient               4 /   4
+  角丸 >28pt           0 /   0
+  material/blur: actual=11, reviewed additions=3 (content-bound)
+  material/blur          8 /   8
+  sparkles アイコン   5 /   6
+  Capsule: actual=24, reviewed additions=5 (content-bound)
+  Capsule               19 /  20
+  shadow                 5 /   9
+  40字超の文言: actual=10, reviewed additions=4 (content-bound)
+  40字超の文言      6 /   6
+
+UI_TASTE_OK: 癖は上限内
+
+== permission JIT ==
+  起動経路（AppDelegate）で権限を求めていない OK
+  求めている場所:
+    apps/genie-macos/Sources/GenieMac/GuidedSetup/PermissionManager.swift:41:        Permissions.requestMicrophone(done)
+    apps/genie-macos/Sources/GenieMac/Settings/PermissionCenter.swift:88:            case .microphone: Permissions.requestMicrophone { _ in done() }
+    apps/genie-macos/Sources/GenieMac/Settings/PermissionCenter.swift:89:            case .screenRecording: Permissions.requestScreenRecording(); done()
+    apps/genie-macos/Sources/GenieMac/Settings/PermissionCenter.swift:91:            case .calendar: Permissions.requestCalendar { _ in done() }
+    apps/genie-macos/Sources/GenieMac/Settings/PermissionCenter.swift:92:            case .speechRecognition: Permissions.requestSpeechRecognition { _ in done() }
+    apps/genie-macos/Sources/GenieMac/Settings/SettingsView.swift:60:                              request: { Permissions.requestSpeechRecognition { _ in speech = Permissions.speechRecognition } })
+    apps/genie-macos/Sources/GenieMac/Settings/SettingsView.swift:62:                              request: { Permissions.requestCalendar { _ in cal = Permissions.calendar } })
+    apps/genie-macos/Sources/GenieMac/Settings/SettingsView.swift:66:                    if !Permissions.requestInputMonitoring() { Permissions.openInputMonitoringSettings() }
+    apps/genie-macos/Sources/GenieMac/Home/HomeView.swift:529:                PermissionCenter.request(.schedule) {
+    apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:225:            Permissions.requestSpeechRecognition { _ in }
+    apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:657:        if Permissions.speechRecognition == .notDetermined { Permissions.requestSpeechRecognition { _ in } }
+    apps/genie-macos/Sources/GenieMac/RecordingWorkspace/RecordingWorkspaceState.swift:319:            PermissionCenter.request(.meeting) {
+    apps/genie-macos/Sources/GenieMac/RecordingWorkspace/RecordingWorkspaceState.swift:348:        if screenAudio && requestPermissions { PermissionCenter.request(.meetingAudio) }
+  求める場所は機能の入口だけ OK
+  取扱説明書も「使うときに要るものだけ」 OK
+
+PERMISSION_JIT_OK: 起動時に求めず、使う直前に求める
+
+== privacy egress ==
+== PRIVACY_EGRESS_GATE ==
+  recording upload requires explicit cloud consent PASS
+  silent Apple STT fallback                0
+  screen audio permission follows selection PASS
+  connector egress requires user action    PASS
+  external action confirmation             PASS (Confirm.ask ×4 + Confirm.approve ×3; 面は CONFIRMATION_GATE)
+  transcription egress guide               consistent
+  current-info egress allowlist            PASS (4 hosts)
+  gemini live requires consent, key, limit PASS
+  nearby places require key, limit, request PASS
+  runtime (--selftest egress)              autoUpload=off cloudSTTConsent=off meeting=[microphone] sttNoFallback=NOT_MEASURED
+
+PRIVACY_EGRESS_GATE=PASS
+
+== no contradiction ==
+scripts/verify-no-contradiction.sh: line 28: 85431 Terminated: 15          "$BIN" --selftest hold-meeting 25 silent > /dev/null 2>&1
+NO_CONTRADICTION_OK: 画面の中で言っていることが食い違わない
+
+== confirmation surface ==
+== CONFIRMATION_GATE ==
+
+  · 面の寸法 560x286pt
+  ✓ 幅 <= 620pt
+  ✓ 高さ <= 360pt
+  ✓ ① どのアプリ / どこへ
+  ✓ ② 何が起きるか
+  ✓ ③ 決定的な値
+  ✓ ④ 中身の下見
+  ✓ ⑤ 出所
+  ✓ ⑥ 取消
+  ✓ ⑥ 直す
+  ✓ ⑥ 実行
+  ✓ 決断に不要なもの（履歴・会議ノート・sidebar）が無い
+  ✓ 主たる操作 96x32pt が逃げ道 74pt（やめる）以上
+  ✓ 中身の間の中央値 = 10.0pt（操作の手前 26.0pt は区切りとして除外）
+  ✓ 窓を増やしていない（同じ面が morph）
+
+  ✓ 窓を増やさない・焦点を奪わない・560x254pt・高さは中身で決まる（254→163）・取り消しで戻る
+
+CONFIRMATION_GATE=PASS
+
+== approval boundary ==
+== APPROVAL_BOUNDARY ==
+  files 272 / 証拠を作る入口 1 / APPROVED を送る所 1 / 違反 0
+  local servers 7 / 違反 0
+APPROVAL_BOUNDARY=PASS
+
+== approval boundary selfcheck ==
+== APPROVAL_BOUNDARY selfcheck ==
+  ✓ 落ちた — 承認待ちを見たら APPROVED を中継（元の欠陥）
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1497 "APPROVED" を GenieApproval の外で書いている
+  ✓ 落ちた — min(waitMs, 2000) で待つ時間を縮める（元の欠陥）
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1497 min(waitMs, …) で待つ時間を縮めている
+  ✓ 落ちた — follow が区切りを通らずに waitTask を直接呼ぶ
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1497 follow が waitForTask の区切りを通らずに waitTask を呼んでいる（TaskReader.live の外）
+  ✓ 落ちた — 声の「ストップ」で仕事を取り消す（元の欠陥）
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1497 声の経路から仕事を取り消している（VoiceInterruptionDetector。キーワードでの取り消しは戻さない）
+  ✓ 落ちた — 声の経路から /cancel を叩く
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1497 声の経路から /cancel を組み立てている
+  ✓ 落ちた — 声の経路から、カードの「やめる」以外で REJECTED を送る
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1497 声の経路で、確認カードの「やめる」以外から REJECTED を送っている
+  ✓ 落ちた — 生の FFI を直接呼ぶ
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1497 生の apiTaskApprove を GenieApproval の外で参照している（関数参照・補間の中も数える）
+  ✓ 落ちた — 関数参照で生の FFI を運ぶ（let relay = apiTaskApprove）
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1497 生の apiTaskApprove を GenieApproval の外で参照している（関数参照・補間の中も数える）
+  ✓ 落ちた — 文字列の補間の中に生の FFI を隠す
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1497 生の apiTaskApprove を GenieApproval の外で参照している（関数参照・補間の中も数える）
+  ✓ 落ちた — GenieCoreBridge に証拠の要らない承認の入口を足す
+      ✗ Sources/GenieMac/RecordingWorkspace/GenieCoreBridge.swift:235 生の apiTaskApprove を GenieApproval の外で参照している（関数参照・補間の中も数える）
+  ✓ 落ちた — GenieApproval に証拠を受け取らない APPROVED の関数を足す
+      ✗ decision "APPROVED" を送る所が 2 か所（ApprovalRelay.approve の 1 か所だけのはず）
+  ✓ 落ちた — GenieApproval で decision を変数で渡す
+      ✗ Sources/GenieApproval/UserApproval.swift:57 decision を文字の定数（APPROVED / REJECTED）以外で渡している
+  ✓ 落ちた — URLSession で /approve を叩く
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1497 /approve を直接組み立てている（GenieApproval の ApprovalRelay を通す）
+  ✓ 落ちた — 証拠を GenieMac で作る
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1497 UserApproval( を GenieApproval の外で使っている
+  ✓ 落ちた — 別のファイルで証拠の init を足す
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1497 extension UserApproval（改行をまたいでも数える）を GenieApproval の外で書いている
+  ✓ 落ちた — 別名（typealias）で extension を隠す
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1497 UserApproval に別名を付けている（数えるべき入口を名前から隠せる）
+  ✓ 落ちた — extension の直後で改行する
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1497 extension UserApproval（改行をまたいでも数える）を GenieApproval の外で書いている
+  ✓ 落ちた — .init(…) の省略形で作る
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1497 UserApproval を .init(…) の省略形で作っている
+  ✓ 落ちた — Unsafe…<UserApproval> で作る
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1497 UserApproval を型引数に渡している（Unsafe…<UserApproval> で作れる形）
+  ✓ 落ちた — 証拠を JSON から decode できるようにする
+      ✗ Sources/GenieMac/Components/Confirm.swift:264 extension UserApproval（改行をまたいでも数える）を GenieApproval の外で書いている
+  ✓ 落ちた — カードを出さずに証拠を作る（Confirm.swift の中の近道）
+      ✗ 証拠を作る入口（ApprovalLedger）は Confirm.approve の 1 か所だけのはず（Sources/GenieMac/Components/Confirm.swift:63, Sources/GenieMac/Components/Confirm.swift:264）
+  ✓ 落ちた — 証拠の入口を関数参照で持ち出す
+      ✗ 証拠を作る入口（ApprovalLedger）は Confirm.approve の 1 か所だけのはず（Sources/GenieMac/Components/Confirm.swift:63, Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1497）
+  ✓ 落ちた — 検査から証拠の internal init を覗く（@testable import GenieApproval）
+      ✗ Tests/GenieMacTests/ApprovalBoundaryTests.swift:579 @testable import GenieApproval（証拠の internal init が見える）
+  ✓ 落ちた — 証拠の init を public にする
+      ✗ Sources/GenieApproval/UserApproval.swift:24 UserApproval の init が public / package（GenieMac から作れる）
+  ✓ 落ちた — 証拠をコピーできる形にする（使い回せる）
+      ✗ Sources/GenieApproval/UserApproval.swift:19 UserApproval が ~Copyable ではない（1 回の「実行する」を使い回せる）
+  ✓ 落ちた — 声で「はい」をカードの承認にする（id 無し）
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1497 resolveConfirmation を id 無しで呼んでいる（描いたカードでなく store の現在値に答える）
+  ✓ 落ちた — 声で「はい」をカードの承認にする（id 付き）
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1497 resolveConfirmation(approved: true) を Dock のボタン以外から呼んでいる
+  ✓ 落ちた — Dock のボタンが描いたカードでなく現在値に答える
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDView.swift:1782 resolveConfirmation を id 無しで呼んでいる（描いたカードでなく store の現在値に答える）
+  ✓ 落ちた — 声で「はい」を、型名付きの .confirmationResolved で流す
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1497 .confirmationResolved を GenieStateStore の外で作っている（型名付き・変数経由の発行も数える）
+  ✓ 落ちた — 声で「はい」を、変数に入れた .confirmationResolved で流す
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1497 .confirmationResolved を GenieStateStore の外で作っている（型名付き・変数経由の発行も数える）
+  ✓ 落ちた — 声で「はい」を、resolveConfirmation の関数参照で答える
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1497 resolveConfirmation を呼び出し以外の形（関数参照）で使っている
+  ✓ 落ちた — 声で「はい」を、UIProbe.tap で「実行する」を押して答える
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1497 UIProbe.tap（検査の自動操作）を SelfTest の外で使っている
+  ✓ 落ちた — appendingPathComponent("approve") で承認の URL を組む
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1497 /approve を直接組み立てている（GenieApproval の ApprovalRelay を通す）
+  ✓ 落ちた — 証拠の入口を任意の UUID で呼ぶ（型では通る）
+      ✗ 証拠を作る入口（ApprovalLedger）は Confirm.approve の 1 か所だけのはず（Sources/GenieMac/Components/Confirm.swift:63, Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1497）
+  ✓ 落ちた — ローカル HTTP サーバが APPROVED を中継する
+      ✗ scripts/computer-use-ui.mjs:779 ローカル HTTP サーバが承認を中継している（承認は確認カードだけ）
+
+  ✓ 型が拒む — GenieMac から直接 init
+      'UserApproval' initializer is inaccessible due to 'internal' protection level
+  ✓ 型が拒む — .init(…) の省略形
+      'UserApproval' initializer is inaccessible due to 'internal' protection level
+  ✓ 型が拒む — 別名 + extension で let を埋める
+      'let' property 'confirmationID' may not be initialized directly; use "self.init(...)" or "self = ..." instead
+  ✓ 型が拒む — 改行をまたぐ extension
+      'let' property 'confirmationID' may not be initialized directly; use "self.init(...)" or "self = ..." instead
+  ✓ 型が拒む — JSON から decode
+      type 'UserApproval' does not conform to protocol 'Copyable'
+  ✓ 型が拒む — 1 回の証拠を 2 件の承認に使う
+      'a' consumed more than once
+  ✓ 型が拒む — 証拠をループで使い回す
+      'a' consumed in a loop
+  ✓ 型が拒む — unsafeBitCast で作る
+      global function 'unsafeBitCast(_:to:)' requires that 'UserApproval' conform to 'Copyable'
+  ✓ 型が拒む — 証拠なしで ApprovalRelay.approve
+      missing argument for parameter 'approval' in call
+  · 型では拒まない — ApprovalLedger.issue(forPressedCard: 任意の UUID)（public。字句の ⑦ だけが落とす）
+
+APPROVAL_BOUNDARY_SELFCHECK=PASS
+
+== approval boundary (real key) ==
+== APPROVAL_BOUNDARY runtime（実キー）==
+SELFTEST_OK approval-press: real_cmd_return=approved early_cmd_return=ignored real_escape=declined no_answer=pending
+APPROVAL_BOUNDARY_RUNTIME=PASS
+
+== screen terms (one word each) ==
+TERMS_OK: 画面の語は 1 語ずつ
+
+== guide facts (app words only) ==
+  facts 161 件 / ガイドが引く key 63 件 / 文字で書かれた protected 0 件 / 一字違い 0 件 / 古い綴り 0 件
+SELFTEST_OK shots: 16面を実アプリで撮影・geometry OK・面どうしが別の絵
+  guide build: written 953 KB / facts used 63
+GUIDE_FACTS_OK: ガイドの語はアプリの表示（UserFacingFacts）だけから来ている
+
+== guide facts selfcheck ==
+  selfcheck 1 一字違いの古い写し:
+    FAIL: protected の語「録音」(dock.record) がガイドに文字で書かれている（build.py:131 付近）。fact("dock.record") で引く
+    FAIL: 「録音の開始 / 停止」はアプリの語「録音を開始 / 停止」(settings.shortcutRow) と一字違い（build.py:131 付近）。古い写し。fact("settings.shortcutRow") で引く
+  selfcheck 2 許可名を文字で:
+    FAIL: protected の語「画面収録」(permission.screenRecording) がガイドに文字で書かれている（build.py:141 付近）。fact("permission.screenRecording") で引く
+  selfcheck 3 知らない key:
+    FAIL: ガイドが知らない fact を引いている: settings.noSuchRow
+GUIDE_FACTS_SELFCHECK_OK: 3 つの書き戻しを全部捕まえた
+
+== liquid orb assets fresh ==
+LIQUID_ORB_ASSETS_OK
+
+== design tokens fresh ==
+design tokens are current
+
+== type scale (no literals) ==
+TYPE_LITERALS_OK: 6 つの型の view に字の大きさの直書きは無い（5 scope）
+
+== button hit area ==
+BUTTON_HIT_AREA_OK: 223 ファイル、ボタンの高さ・余白はラベルの中
+
+== swift bindings fresh ==
+swift bindings are current
+
+== workspace fixture fresh ==
+recording-workspace fixture is current
+
+== conventions ==
+convention check passed
+
+== C ABI contract (3-way) ==
+C ABI contract ok: Rust 21 = header 21, C# が呼ぶ 21 個すべて一致
+
+== native path Tauri-free ==
+native product path is Tauri-free: 225 Swift files + genie-core に Tauri 依存なし (Done#8)
+
+== WinUI XAML well-formed ==
+xaml well-formed: 5 WinUI .xaml files OK
+
+== C# bridge -> core + gateway ==
+CS_OK gateway(GenieSession): signedIn apps=14 library=0 echoArtifact=52bytes
+CS_OK bridge->core: version=0.1.4 pkce=S256 authorizeUrl parseCallback elapsed=01:05; geometry matches shared fixture
+
+== Windows C# logic type-check ==
+CSLOGIC_OK: Windows C# 実ロジック全体(Window code-behind 含む)が型検査を通過
+
+== C ABI round-trip (C) ==
+note: default SDK cannot link here; using /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk
+CABI_OK connector: pkce=S256 authorizeUrl ok nonLoopbackRejected parseCallback ok
+CABI_OK api: me=owner meeting=ok agent=COMPLETED apps=[... library=[...
+CABI_OK closed=1 ms=5000 fragmentBytes=160000 markedUploaded=1
+
+== macOS recording + live E2E ==
+SELFTEST_OK record: closed=1 fragmentBytes=160000 elapsed=00:05 recoverable=1
+SELFTEST_OK lifecycle: elapsed=00:05 recovered=true
+SELFTEST_OK shortcut: registered=true combo=⌥Space matcher=ok receivedSyntheticPress=true
+SELFTEST_OK sysaudio: capturesAudio=true sampleRate=48000 channels=2 excludesSelf=true
+SELFTEST_OK calendar: status=未確認 upcoming=0
+SELFTEST_OK screen: width=1280 height=800 pixelFormat=BGRA audio=false
+SELFTEST_OK rag: order=a,c,b topScore=1.00 reason=語が 1 件一致 · 新しい · このプロジェクト
+SELFTEST_OK keychain: roundtrip ok, absent=nil, delete idempotent, service=com.astra.mac
+SELFTEST_OK files: candidates=2(binary除外) top=oauth.txt score=0.72
+SELFTEST_OK ax: trusted=true selection=nil candidates=0
+SELFTEST_OK speech: auth=0 onDeviceCapable=true started=false appendedFrames=false serverFallback=never
+SELFTEST_OK connector: pkce=S256✓ authorizeUrl✓ nonLoopbackRejected✓ configured=0
+SELFTEST_OK permissions: mic=許可済み screen=許可済み ax=許可済み calendar=未確認 speech=0
+SELFTEST_OK shape: path matches shared fixture (14 segments); taskDock content 296.0pt fits dockWidth 296.0pt
+SELFTEST_OK hudlifecycle: HUD→Recording→保存→HUD 復帰 の window 状態遷移 OK
+SELFTEST_OK panel: 全Space=true fullscreen補助=true borderless=true 透過=true notMain=true
+SELFTEST_OK render: VoiceHUD:c496/o1.00 IntentBar:c93/o1.00 RecordingIndicator:c166/o1.00 ConfirmationCard:c91/o0.94 MeetingArtifact:c99/o1.00 ResearchResult:c125/o0.81 MeetingSurface:c58/o1.00 LineagePanel:c130/o0.82 ApprovalCard:c107/o0.77 EvidenceSummary:c131/o0.70 WorkSurface:c122/o0.80 ContextLens:c102/o0.88 HomeView:c103/o1.00 RecordingWorkspace:c51/o0.99 MainWindow:c104/o1.00 Settings:c2/o0.11
+SELFTEST_OK pause: 停止中は録音が進まない before=5000 pause=5000 resume=10000
+SELFTEST_OK timer: 経過が進む running=2 停止で止まる paused=2 再開で進む resumed=3
+SELFTEST_FAIL aiaction result=AI 操作に失敗しました: GenieCore.ApiError.Server(status: 401, message: "{\"error\":{\"code\":\"auth.expired_token\",\"message\":\"access token expired\",\"request_id\":\"01a0f90c-8cb2-7000-8e2e-2986aab85d44\"}}")
+  ^ FAILED (exit 1)
+
+== liquid orb native lifecycle ==
+ORB_DISPLAY visible=true occlusion=false appHidden=false viewHidden=false paused=false size=(264.0, 264.0) frames=24
+SELFTEST_OK liquid-orb: real Metal snapshots; playback=false
+
+== initial profile native UI ==
+SELFTEST_OK initialprofile: 8 native captures; review/edit and defer/reopen actions verified; no external data or send
+
+== recording experience E2E ==
+  録音開始           id=meeting-56d9f1ae-d510-4f92-a6b4-eda1a2147c77 (停止前に DB へ recording を確認済み)
+  強制終了           kill -9（正常終了の経路を通さない）
+  DB(kill 直後)        meeting-56d9f1ae-d510-4f92-a6b4-eda1a2147c77=recording
+  再起動              meeting-56d9f1ae-d510-4f92-a6b4-eda1a2147c77=interrupted
+  続きから処理     id=meeting-56d9f1ae-d510-4f92-a6b4-eda1a2147c77 status=ready actions=1
+  再々起動           meeting-56d9f1ae-d510-4f92-a6b4-eda1a2147c77=ready (同じ id)
+RECORDING_EXPERIENCE_OK: 録音 → kill → interrupted → 続きから ready → 再起動で保持 (id=meeting-56d9f1ae-d510-4f92-a6b4-eda1a2147c77)
+
+== journeys JA/JB/JC ==
+  JOURNEY JA success=false ms=5133 interactions=4 windows=1 focusTheft=0 errors=2
+    - 確認で窓が増えた（2→3）
+    - 終わったのに窓の数が戻らない（2→3）
+  JOURNEY JB success=true ms=9956 interactions=7 windows=0 focusTheft=0 errors=0
+  JOURNEY JC success=true ms=7367 interactions=4 windows=0 focusTheft=0 errors=0
+FAIL: app selftest surfacemotion did not complete normally (logs: /var/folders/xn/mdmvpkwd0yx4tcr7rvn_3xv80000gn/T/tmp.c1XEnHCNqG)
+  MOTION T0-idle-to-listening frames=38 captured=38 fps=53 maxGap=70ms sameId=100% windows+1 focusTheft=0 top=0.0pt center=0.0pt missing=0 heightRev=0 maxStep=0.00 contentΔmax=0.0 other(shift=0.0pt alphaRev=0) settled=0ms
+    ^ 宣言していない窓が 1 枚増えた [FloatingPanel(com.astra.desktop)「」layer=3 312x189]
+  MOTION T3-dock-to-running frames=39 captured=39 fps=54 maxGap=68ms sameId=100% windows+1 focusTheft=0 top=0.0pt center=0.5pt missing=0 heightRev=0 maxStep=0.49 contentΔmax=7.2 other(shift=0.0pt alphaRev=0) settled=233ms
+    ^ 宣言していない窓が 1 枚増えた [FloatingPanel(com.astra.desktop)「」layer=3 312x189]
+  MOTION T4-running-to-confirmation frames=39 captured=39 fps=54 maxGap=63ms sameId=100% windows+1 focusTheft=0 top=0.0pt center=0.5pt missing=0 heightRev=0 maxStep=0.54 contentΔmax=4.0 other(shift=0.0pt alphaRev=0) settled=237ms
+    ^ 宣言していない窓が 1 枚増えた [FloatingPanel(com.astra.desktop)「」layer=3 312x189]
+  MOTION T1-meeting-to-notes frames=39 captured=39 fps=54 maxGap=46ms sameId=100% windows+1 focusTheft=0 top=0.0pt center=0.0pt missing=0 heightRev=0 maxStep=0.24 contentΔmax=0.6 other(shift=0.0pt alphaRev=0) settled=217ms
+    ^ 宣言していない窓が 1 枚増えた [FloatingPanel(com.astra.desktop)「」layer=3 312x189]
+  MOTION T2-notes-to-workspace frames=34 captured=34 fps=47 maxGap=102ms sameId=100% windows+1 focusTheft=0 top=0.0pt center=0.0pt missing=0 heightRev=0 maxStep=0.00 contentΔmax=102.7 other(shift=0.0pt alphaRev=0) settled=183ms
+    ^ 宣言していない窓が 1 枚増えた [GeniePanel<RecordingWorkspaceView>(com.astra.desktop)「」layer=3 1080x680, FloatingPanel(com.astra.desktop)「」layer=3 312x189]
+  NOT_MEASURED T2-notes-to-workspace: 実効 47fps（60 に届かない。frame pacing は参考値）
+SURFACE_CONTINUITY_MOTION=FAIL
+PERCEIVED_SURFACE_CONTINUITY=LAYER_B（この selftest では測らない。判定は journeys/perceived/answers/aggregate.md）
+  ^ FAILED (exit 1)
+
+== macOS swift unit tests ==
+macOS_swift_unit: 	 Executed 291 tests, with 0 failures (0 unexpected) in 16.300 (16.324) seconds
+macOS_swift_shutdown: 	 Executed 1 test, with 0 failures (0 unexpected) in 2.191 (2.192) seconds
+macOS_swift_external_translation: 	 Executed 1 test, with 0 failures (0 unexpected) in 5.202 (5.203) seconds
+SWIFT_TESTS_OK: unit, isolated shutdown and external semantic fixture completed
+
+== AppKit termination dispatch ==
+PASS legacy: dispatch-entered -> should-terminate
+PASS scheduled: dispatch-entered -> dispatch-returned -> should-terminate -> cleanup-started -> cleanup-mainactor -> cleanup-finished -> reply -> will-terminate
+PASS direct: dispatch-entered -> should-terminate -> cleanup-started -> cleanup-finished -> reply -> will-terminate
+PASS signal: signal-received -> dispatch-returned -> should-terminate -> cleanup-started -> cleanup-mainactor -> cleanup-finished -> reply -> will-terminate
+
+VERIFY_ALL_NOT_RUN: 3 reported checks/scopes (not passes)
+Tauri Rust regression: test result: ok. 67 passed; 0 failed; 3 ignored; 0 measured; 0 filtered out; finished in 0.30s
+journeys JA/JB/JC:   NOT_MEASURED T2-notes-to-workspace: 実効 47fps（60 に届かない。frame pacing は参考値）
+privacy egress:   runtime (--selftest egress)              autoUpload=off cloudSTTConsent=off meeting=[microphone] sttNoFallback=NOT_MEASURED
+VERIFY_ALL_FAIL

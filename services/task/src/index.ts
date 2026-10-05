@@ -41,3 +41,9 @@ export {
   planInstalledAgent,
   type InstalledAgent,
 } from './agent-plan.js';
+export * from './verifier.js';
+export * from './execution-ladder.js';
+export {
+  TransactionAuthorizationService,
+  type DerivedTransactionApproval,
+} from './transaction-authorizations.js';

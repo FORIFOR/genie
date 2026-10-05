@@ -1,0 +1,452 @@
+{
+  "_NSMenuItemAutoFillIdentifier" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_NSMenuItemLegacyWritingToolsSeparatorIdentifier" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "__NSTextViewContextSubmenuIdentifierWritingTools" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_aboutThisMacRequested:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_appStoreRequested:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_clearRecentItemsRequested:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_forceQuitPanelRequested:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_forceQuitRequested:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_handleInsertFromContactsCommand:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_handleInsertFromCreditCardsCommand:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_handleInsertFromPasswordsCommand:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_lockScreenRequested:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_logOutNowRequested:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_logOutRequested:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_recentItemRequested:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_recentsRequested:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_removeWindowFromStageManagerSet:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_restartNowRequested:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_restartRequested:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_shutDownNowRequested:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_shutDownRequested:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_sleepRequested:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_systemInformationRequested:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_systemSettingsRequested:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomBottom:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomBottomAndTop:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomBottomLeft:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomBottomRight:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomBottomThreeUp:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomCenter:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomFill:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomLeft:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomLeftAndRight:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomLeftThreeUp:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomQuarters:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomRight:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomRightAndLeft:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomRightThreeUp:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomTop:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomTopAndBottom:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomTopLeft:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomTopRight:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomTopThreeUp:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomUntile:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "closeAll:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "copy:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "cut:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "dockAgent" : {
+    "h" : 230,
+    "w" : 680,
+    "x" : 20,
+    "y" : 48
+  },
+  "miniaturizeAll:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "openWorkspace" : {
+    "h" : 28,
+    "w" : 131.5,
+    "x" : 568.5,
+    "y" : 250
+  },
+  "orderFrontCharacterPalette:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "paste:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "performClose:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "performMiniaturize:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "redo:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "selectAll:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "showPermissionGuide" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "showSettings" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "showWritingTools:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "startDictation:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "step-calendar" : {
+    "h" : 9.5,
+    "w" : 10,
+    "x" : 21.5,
+    "y" : 131.5
+  },
+  "step-gmail" : {
+    "h" : 11.5,
+    "w" : 11.5,
+    "x" : 21,
+    "y" : 166.5
+  },
+  "step-notion" : {
+    "h" : 11.5,
+    "w" : 11.5,
+    "x" : 21,
+    "y" : 202.5
+  },
+  "stopAgent" : {
+    "h" : 28,
+    "w" : 85.5,
+    "x" : 20,
+    "y" : 250
+  },
+  "terminate:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "text:Calendar" : {
+    "h" : 19,
+    "w" : 61.5,
+    "x" : 43,
+    "y" : 126.5
+  },
+  "text:Genie" : {
+    "h" : 16,
+    "w" : 36,
+    "x" : 60,
+    "y" : 51
+  },
+  "text:Gmail" : {
+    "h" : 19,
+    "w" : 41,
+    "x" : 43,
+    "y" : 162.5
+  },
+  "text:Notion" : {
+    "h" : 19,
+    "w" : 45.5,
+    "x" : 43,
+    "y" : 198.5
+  },
+  "text:作業中" : {
+    "h" : 16,
+    "w" : 36.5,
+    "x" : 663.5,
+    "y" : 51
+  },
+  "text:週次ブリーフィングを作る" : {
+    "h" : 24,
+    "w" : 222,
+    "x" : 20,
+    "y" : 82
+  },
+  "undo:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "voiceHUD" : {
+    "h" : 294.5,
+    "w" : 720.5,
+    "x" : -0.5,
+    "y" : -0.5
+  },
+  "window:GeniePanel<VoiceTaskDockView>" : {
+    "h" : 294,
+    "w" : 720,
+    "x" : 0,
+    "y" : 0
+  },
+  "window:GeniePanel<VoiceTaskDockView>:topOffset" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 0
+  }
+}

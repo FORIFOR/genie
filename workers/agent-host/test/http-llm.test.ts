@@ -84,10 +84,15 @@ describe('bounded generation costs', () => {
     });
     await expect(client.ask('question')).rejects.toThrow('output limit');
     expect(fetch).toHaveBeenCalledTimes(1);
-    for (const status of [429, 503]) {
-      fetch.mockResolvedValueOnce(new Response('{}', { status }));
-      await expect(client.ask('question')).rejects.toThrow(String(status));
-    }
+    /*
+     * 429 は「使える分を使い切った」として扱う。待って掛け直せば通ることもあるが、
+     * それは有料へ上がるかどうかを利用者が決める前に使い続けることになる。
+     * 他の失敗はこれまでどおり、状態番号のまま上へ返す。どちらも掛け直さない。
+     */
+    fetch.mockResolvedValueOnce(new Response('{}', { status: 429 }));
+    await expect(client.ask('question')).rejects.toMatchObject({ code: 'quota_exhausted' });
+    fetch.mockResolvedValueOnce(new Response('{}', { status: 503 }));
+    await expect(client.ask('question')).rejects.toThrow('503');
     expect(fetch).toHaveBeenCalledTimes(3);
     await expect(client.ask('   ')).rejects.toThrow('empty');
     expect(fetch).toHaveBeenCalledTimes(3);

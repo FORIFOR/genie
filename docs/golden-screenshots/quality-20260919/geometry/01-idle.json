@@ -1,0 +1,284 @@
+{
+  "_NSMenuItemAutoFillIdentifier" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "__NSTextViewContextSubmenuIdentifierWritingTools" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_handleInsertFromContactsCommand:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_handleInsertFromCreditCardsCommand:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_handleInsertFromPasswordsCommand:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_removeWindowFromStageManagerSet:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomBottom:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomBottomAndTop:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomBottomLeft:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomBottomRight:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomBottomThreeUp:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomCenter:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomFill:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomLeft:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomLeftAndRight:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomLeftThreeUp:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomQuarters:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomRight:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomRightAndLeft:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomRightThreeUp:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomTop:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomTopAndBottom:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomTopLeft:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomTopRight:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomTopThreeUp:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "_zoomUntile:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "closeAll:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "copy:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "cut:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "dockOpenActions" : {
+    "h" : 19,
+    "w" : 62,
+    "x" : 21,
+    "y" : 44.5
+  },
+  "dockStartRecording" : {
+    "h" : 32,
+    "w" : 48,
+    "x" : 152,
+    "y" : 38
+  },
+  "miniaturizeAll:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "orderFrontCharacterPalette:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "paste:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "performClose:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "performMiniaturize:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "redo:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "selectAll:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "showPermissionGuide" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "showSettings" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "showWritingTools:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "startDictation:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "terminate:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "undo:" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 1117
+  },
+  "voiceHUD" : {
+    "h" : 76.5,
+    "w" : 220.5,
+    "x" : -0.5,
+    "y" : -0.5
+  },
+  "window:GeniePanel<VoiceTaskDockView>" : {
+    "h" : 76,
+    "w" : 220,
+    "x" : 0,
+    "y" : 0
+  },
+  "window:GeniePanel<VoiceTaskDockView>:topOffset" : {
+    "h" : 0,
+    "w" : 0,
+    "x" : 0,
+    "y" : 0
+  }
+}

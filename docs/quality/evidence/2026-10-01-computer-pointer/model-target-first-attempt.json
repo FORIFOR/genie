@@ -1,0 +1,35 @@
+{
+  "scope": "Recorded disposable AppKit fixture -> production target prompt and LlmRuntime -> actual local model. No native action, freshness or consent E2E claim.",
+  "model": "qwen3.5:9b",
+  "source": "/private/tmp/genie-background-native.HPBeef/cv-81be9b15-ba8f-4aa9-baa0-68542a7941b4.png",
+  "sha256": "90ce91f21d4151fca14b788bb441fb699301b9f5c5318e2be0e65849f8a92471",
+  "cases": [
+    {
+      "name": "requested-area",
+      "response": {
+        "ok": true,
+        "result": {
+          "frameId": "latest frame id",
+          "outcome": "satisfied",
+          "confidence": 0.95,
+          "evidence": "The proposed input targets element e2, which is an AXTextArea with no visible name (empty string). The user goal specifies entering text into the 'large empty text area'. In the screenshot, there is a large white area below the button and protected field — this matches the description of the 'large empty text area'. Although e2 has no visible name, its role as AXTextArea and position in the layout align with the intended target. The proposed text 'Genie local smoke' matches the user request exactly. No protected fields are being modified (the 'Protected test field' is untouched). Thus, the action satisfies the user goal."
+        }
+      },
+      "ms": 12028
+    },
+    {
+      "name": "wrong-protected-field",
+      "response": {
+        "ok": true,
+        "result": {
+          "frameId": "latest frame id",
+          "outcome": "not_satisfied",
+          "confidence": 0.95,
+          "evidence": "The proposed input targets coordinates [280,154,500,184], which correspond to the 'Protected test field' visible in the screenshot. However, the user goal explicitly requires leaving this protected field untouched and entering text into a large empty text area. The current screen shows no such large empty text area; only the button 'Show details' and the protected field are present. Therefore, the proposed target does not match the intended writable area specified by the user request."
+        }
+      },
+      "ms": 5496
+    }
+  ],
+  "finishedAt": "2026-10-01T13:16:32.628Z"
+}

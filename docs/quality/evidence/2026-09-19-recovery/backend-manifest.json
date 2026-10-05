@@ -1,0 +1,38 @@
+{
+  "time": "2026-09-19T10:04:25.631122+00:00",
+  "revision": "28f89f2636a3b780e813ea902e07d2e4900a6e3f",
+  "files": {
+    "infra/db/migrations/20260919090000_conversation_requests.sql": "c035b50d0585df539ce0afc0508e628775eb91a4e49512429193d63ecaf2c7c9",
+    "infra/db/schema.sql": "f75fd78ab852c4a21fea69dcd1b42f27a901abc651faab3f05e8bfe595f57834",
+    "packages/db/src/generated/schema.ts": "ebef93f4e6f99ae01f08077009003170f9da4bd2faaadf238553994cedbb9006",
+    "services/conversation/src/service.ts": "d115ef07c321a70e43280830899b88f563a3aa86c55c547b4c8e4d754983e1b1",
+    "services/task/src/service.ts": "4283c52e58a51975f85552e8002e8b6261f7a6a76e706de3c6e7177310da129c",
+    "services/api-gateway/src/routes/conversations.ts": "21466db4c0299514e2f501fd0d1a49047df05eddaebf8f45c8c46ee1f59dbca9",
+    "services/api-gateway/src/server.ts": "4df9a17afda6c0258e0dde2a1dd4c9cb1081f4f14c6c6b5b0e4a8dd81e972ce7",
+    "services/api-gateway/test/support.ts": "9a842f5d324e18fa755cfe1020fdfb06be60fb26168eda4079f778484b60440e",
+    "services/api-gateway/test/conversations-recovery.integration.test.ts": "9b9811fbde7a584f8a33abb31c215f470cd634b947001d83cb599287d7d0a7f2"
+  },
+  "node": "v26.5.0",
+  "pnpm": "10.12.2",
+  "os": "macOS 26.6.2 (25G83)",
+  "database": "PostgreSQL16 in cached pgvector/pgvector:pg16, dedicated genie-recovery-db-20260919,127.0.0.1:32769, database recovery, forced RLS nonprivileged app role",
+  "checks": [
+    {
+      "command": "pnpm --filter @genie/service-api-gateway... build",
+      "exit_code": 0,
+      "evidence": "backend-build.log"
+    },
+    {
+      "command": "TEST_DATABASE_URL='postgres://genie_app:genie_app@127.0.0.1:32769/recovery?sslmode=disable' TEST_IDENTITY_DATABASE_URL='postgres://astra_identity:astra_identity@127.0.0.1:32769/recovery?sslmode=disable' pnpm --filter @genie/service-api-gateway exec vitest run test/conversations-recovery.integration.test.ts test/conversations-screenshot.integration.test.ts test/conversations-stream.integration.test.ts",
+      "exit_code": 0,
+      "tests": 16,
+      "skipped": 0,
+      "evidence": "backend-tests.log"
+    },
+    {
+      "command": "pnpm check:conventions",
+      "exit_code": 0,
+      "evidence": "backend-conventions.log"
+    }
+  ]
+}

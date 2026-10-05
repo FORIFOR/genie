@@ -5,6 +5,7 @@ import {
   TASK_TRANSITIONS,
   TERMINAL_TASK_STATUSES,
   Task,
+  TaskError,
   TaskDockState,
   canTransition,
   dockStateFor,
@@ -101,6 +102,33 @@ describe('task dock state mapping', () => {
 });
 
 describe('task schemas', () => {
+  it('retains an unconfirmed order lookup identity without accepting a receipt or external cancellation claim', () => {
+    const transaction_result = {
+      mode: 'simulation',
+      provider: 'fixture',
+      account: 'fixture-account',
+      orderKey: 'order-1',
+      quoteHash: 'a'.repeat(64),
+      status: 'unknown',
+    };
+    const error = {
+      code: 'task.step_failed',
+      message: 'Unconfirmed',
+      step_index: 1,
+      retryable: false,
+    };
+    expect(TaskError.parse({ ...error, transaction_result }).transaction_result).toEqual(
+      transaction_result,
+    );
+    for (const invalid of [
+      { ...transaction_result, quoteHash: 'invalid' },
+      { ...transaction_result, status: 'cancelled' },
+      { ...transaction_result, observation: { status: 'accepted' } },
+    ])
+      expect(TaskError.safeParse({ ...error, transaction_result: invalid }).success).toBe(false);
+    expect(TaskError.parse(error)).not.toHaveProperty('transaction_result');
+  });
+
   it('defaults input to an empty object', () => {
     const parsed = CreateTaskRequest.parse({ kind: 'echo' });
     expect(parsed.input).toEqual({});

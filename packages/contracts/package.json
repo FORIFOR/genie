@@ -2,6 +2,7 @@
   "name": "@genie/contracts",
   "version": "0.0.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "description": "Zod-first source of truth for API payloads, realtime event envelope, task/artifact/plugin schemas.",
   "main": "./dist/index.js",
@@ -10,6 +11,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./research": {
+      "types": "./dist/research.d.ts",
+      "default": "./dist/research.js"
     }
   },
   "files": [

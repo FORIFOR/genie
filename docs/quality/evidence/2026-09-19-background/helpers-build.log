@@ -1,0 +1,51 @@
+/Users/shuhei/Projects/genie/tools/computer-use/genie-computer.swift:83:38: warning: 'activateIgnoringOtherApps' was deprecated in macOS 14.0: ignoringOtherApps is deprecated in macOS 14 and will have no effect. [#DeprecatedDeclaration]
+ 81 |         else { throw Failure("user_cancelled") }
+ 82 |         let selected = apps[choice.indexOfSelectedItem]
+ 83 |         selected.activate(options: [.activateIgnoringOtherApps])
+    |                                      `- warning: 'activateIgnoringOtherApps' was deprecated in macOS 14.0: ignoringOtherApps is deprecated in macOS 14 and will have no effect. [#DeprecatedDeclaration]
+ 84 |         for _ in 0..<20 {
+ 85 |             try await Task.sleep(nanoseconds: 100_000_000)
+
+/Users/shuhei/Projects/genie/tools/computer-use/genie-computer.swift:234:33: warning: 'activateIgnoringOtherApps' was deprecated in macOS 14.0: ignoringOtherApps is deprecated in macOS 14 and will have no effect. [#DeprecatedDeclaration]
+232 |         stage("reveal")
+233 |         if app.isHidden { app.unhide() }
+234 |         app.activate(options: [.activateIgnoringOtherApps])
+    |                                 `- warning: 'activateIgnoringOtherApps' was deprecated in macOS 14.0: ignoringOtherApps is deprecated in macOS 14 and will have no effect. [#DeprecatedDeclaration]
+235 |         for _ in 0..<20 {
+236 |             try await Task.sleep(nanoseconds: 100_000_000)
+
+/Users/shuhei/Projects/genie/tools/computer-use/genie-computer.swift:357:33: warning: 'activateIgnoringOtherApps' was deprecated in macOS 14.0: ignoringOtherApps is deprecated in macOS 14 and will have no effect. [#DeprecatedDeclaration]
+355 |     static func restore(_ t: Target) async throws {
+356 |         guard let app = NSRunningApplication(processIdentifier: t.pid), !app.isTerminated else { throw Failure("target_changed") }
+357 |         app.activate(options: [.activateIgnoringOtherApps])
+    |                                 `- warning: 'activateIgnoringOtherApps' was deprecated in macOS 14.0: ignoringOtherApps is deprecated in macOS 14 and will have no effect. [#DeprecatedDeclaration]
+358 |         for _ in 0..<20 {
+359 |             try await Task.sleep(nanoseconds: 100_000_000)
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+GENIE_COMPUTER_SELF_TEST_OK
+/Users/shuhei/Projects/genie/tools/computer-use/genie-computer.swift:83:38: warning: 'activateIgnoringOtherApps' was deprecated in macOS 14.0: ignoringOtherApps is deprecated in macOS 14 and will have no effect. [#DeprecatedDeclaration]
+ 81 |         else { throw Failure("user_cancelled") }
+ 82 |         let selected = apps[choice.indexOfSelectedItem]
+ 83 |         selected.activate(options: [.activateIgnoringOtherApps])
+    |                                      `- warning: 'activateIgnoringOtherApps' was deprecated in macOS 14.0: ignoringOtherApps is deprecated in macOS 14 and will have no effect. [#DeprecatedDeclaration]
+ 84 |         for _ in 0..<20 {
+ 85 |             try await Task.sleep(nanoseconds: 100_000_000)
+
+/Users/shuhei/Projects/genie/tools/computer-use/genie-computer.swift:234:33: warning: 'activateIgnoringOtherApps' was deprecated in macOS 14.0: ignoringOtherApps is deprecated in macOS 14 and will have no effect. [#DeprecatedDeclaration]
+232 |         stage("reveal")
+233 |         if app.isHidden { app.unhide() }
+234 |         app.activate(options: [.activateIgnoringOtherApps])
+    |                                 `- warning: 'activateIgnoringOtherApps' was deprecated in macOS 14.0: ignoringOtherApps is deprecated in macOS 14 and will have no effect. [#DeprecatedDeclaration]
+235 |         for _ in 0..<20 {
+236 |             try await Task.sleep(nanoseconds: 100_000_000)
+
+/Users/shuhei/Projects/genie/tools/computer-use/genie-computer.swift:357:33: warning: 'activateIgnoringOtherApps' was deprecated in macOS 14.0: ignoringOtherApps is deprecated in macOS 14 and will have no effect. [#DeprecatedDeclaration]
+355 |     static func restore(_ t: Target) async throws {
+356 |         guard let app = NSRunningApplication(processIdentifier: t.pid), !app.isTerminated else { throw Failure("target_changed") }
+357 |         app.activate(options: [.activateIgnoringOtherApps])
+    |                                 `- warning: 'activateIgnoringOtherApps' was deprecated in macOS 14.0: ignoringOtherApps is deprecated in macOS 14 and will have no effect. [#DeprecatedDeclaration]
+358 |         for _ in 0..<20 {
+359 |             try await Task.sleep(nanoseconds: 100_000_000)
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>

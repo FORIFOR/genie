@@ -34,9 +34,12 @@ public static class Metrics
     public const double DockAgentRowHeight = 36;
     public const double DockResultWidth = 520;
     public const double DockResultHeight = 150;
+    public const double DockCardMaxHeight = 360;
+    public const double DockCardImageHeight = 150;
     public const double DockConfirmWidth = 560;
     public const double DockConfirmHeight = 176;
     public const double DockConfirmPrimaryMinWidth = 96;
+    public const double DockAuthorizationBodyMaxHeight = 160;
     public const double DockMeetingWidth = 820;
     public const double DockMeetingHeight = 76;
     public const double DockMeetingExpandedHeight = 460;
@@ -100,6 +103,8 @@ public static class Motion
     public const int HoverMs = 110;
     public const int DockResizeMs = 180;
     public const int DockContentDelayMs = 55;
+    public const int MarkStretchMs = 220;
+    public const int MarkAckMs = 320;
 }
 
 /// <summary>§17.1 カラートークン（Light/Dark, #AARRGGBB は不要な #RRGGBB 文字列）。</summary>
@@ -115,14 +120,16 @@ public static class Palette
     public const string MutedDark = "#98A2B3";
     public const string BorderLight = "#E6E8EC";
     public const string BorderDark = "#2B3038";
-    public const string AccentLight = "#5B4CF0";
-    public const string AccentDark = "#8A7DFF";
+    public const string AccentLight = "#1C6FA0";
+    public const string AccentDark = "#3E95D0";
     public const string SuccessLight = "#18794E";
     public const string SuccessDark = "#3CCB7F";
     public const string WarningLight = "#B54708";
     public const string WarningDark = "#F4B860";
     public const string DangerLight = "#B42318";
     public const string DangerDark = "#FF746C";
+    public const string PresenceLight = "#1C7FA8";
+    public const string PresenceDark = "#48BCEC";
 }
 
 /// <summary>§17.2 タイポグラフィ（pt / weight）。</summary>

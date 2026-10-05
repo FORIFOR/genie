@@ -9,12 +9,23 @@ struct SettingsView: View {
     @State private var input = Permissions.inputMonitoring
     @State private var speech = Permissions.speechRecognition
     @State private var showAdditionalPermissions: Bool
+    @State private var showTransactionAuthorizations = false
+    @State private var keyPresenceRevision = 0
 
-    init(showAdditionalPermissions: Bool = false) {
+    init(showAdditionalPermissions: Bool = false,
+         gemini: GeminiLiveSettings? = nil, places: PlacesSettings? = nil) {
         _showAdditionalPermissions = State(initialValue: showAdditionalPermissions)
+        _gemini = ObservedObject(wrappedValue: gemini ?? .shared)
+        _places = ObservedObject(wrappedValue: places ?? .shared)
     }
     @ObservedObject private var practice = PermissionPractice.shared
     @State private var cloudTranscription = RecordingRuntime.cloudTranscriptionAllowed
+    @ObservedObject private var gemini: GeminiLiveSettings
+    @State private var geminiKeyDraft = ""
+    @State private var geminiKeyMessage: String?
+    @ObservedObject private var places: PlacesSettings
+    @State private var placesKeyDraft = ""
+    @State private var placesKeyMessage: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -23,6 +34,10 @@ struct SettingsView: View {
             section("ショートカット") {
                 // 実際に登録しているグローバルショートカットを正として出す（GlobalShortcut）。
                 row(Facts.settingsShortcutRow, GlobalShortcut.label())
+            }
+            section("任せている注文") {
+                Button("条件・残りを確認、許可を取り消す…") { showTransactionAuthorizations = true }
+                    .accessibilityIdentifier("settingsTransactionAuthorizations")
             }
 
             // §10 Interface Size。文字だけでなく面・余白も一緒に動く。
@@ -70,6 +85,82 @@ struct SettingsView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
+            // Gemini Live は「会話」の相手を Google に替える。送るものと費用を、オンにする前に読める場所に書く。
+            section("会話（Gemini Live）") {
+                Toggle("会話で Gemini Live を使う", isOn: Binding(
+                    get: { gemini.enabled },
+                    set: { gemini.setEnabled($0) }))
+                .toggleStyle(.switch)
+                .disabled(!gemini.enabled && (!gemini.hasKey || gemini.checkingKey || gemini.keyAccessIssue != nil || gemini.budget.monthlyMinutes == 0))
+                .accessibilityIdentifier("geminiLiveToggle")
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("「会話」の間の声と文字起こしを Google に送ります。")
+                    Text("利用料はあなたの API キーにかかります。")
+                    Text("「聞く」と会議の録音は送りません。")
+                    Text("天気やニュースは Gemini が Google 検索で答えます。")
+                    Text("仕事の中身は Google に返しません。")
+                }
+                .font(.system(size: 11)).foregroundStyle(.primary).opacity(0.78)
+                HStack {
+                    SecureField(gemini.hasKey ? "API キーは保存済み（置き換える）" : "API キー", text: $geminiKeyDraft)
+                        .textFieldStyle(.roundedBorder)
+                        .accessibilityIdentifier("geminiLiveKey")
+                    Button(gemini.hasKey && geminiKeyDraft.isEmpty ? "キーを消す" : "保存") {
+                        let ok = gemini.setKey(geminiKeyDraft)
+                        geminiKeyMessage = ok ? (geminiKeyDraft.isEmpty ? "キーを消しました。" : "キーチェーンに保存しました。") : "キーチェーンに保存できませんでした。"
+                        if ok { geminiKeyDraft = ""; if !gemini.hasKey { gemini.setEnabled(false) } }
+                    }
+                    .controlSize(.small)
+                    .disabled(gemini.checkingKey || gemini.keyAccessIssue != nil || (!gemini.hasKey && geminiKeyDraft.isEmpty))
+                }
+                Stepper(value: Binding(get: { gemini.budget.monthlyMinutes },
+                                       set: { gemini.setMonthlyMinutes($0); if $0 == 0 { gemini.setEnabled(false) } }),
+                        in: 0...6_000, step: 10) {
+                    Text(gemini.budget.monthlyMinutes == 0
+                         ? "月の上限: 未設定（決めるまで使えません）"
+                         : "月の上限: \(gemini.budget.monthlyMinutes) 分 ・ 今月 \(Int(gemini.budget.current(at: Date()).usedSeconds / 60)) 分使用")
+                        .font(.system(size: 12))
+                }
+                .accessibilityIdentifier("geminiLiveMinutes")
+                if let message = gemini.keyAccessIssue ?? geminiKeyMessage {
+                    Text(message).font(.system(size: 11)).foregroundStyle(.secondary)
+                }
+            }
+
+            // 近くの店は、現在地と検索語を Google に送る。送るものと費用を、キーを置く前に読める場所に書く。
+            section("近くの店（Google マップ）") {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("近くの店を頼んだときだけ、現在地を Google に送ります。")
+                    Text("使う API: Places API (New) と Static Maps")
+                    Text("利用料はあなたの API キーにかかります。")
+                    Text("結果は画面に出すだけで、保存しません。")
+                }
+                .font(.system(size: 11)).foregroundStyle(.primary).opacity(0.78)
+                HStack {
+                    SecureField(places.hasKey ? "API キーは保存済み（置き換える）" : "API キー", text: $placesKeyDraft)
+                        .textFieldStyle(.roundedBorder)
+                        .accessibilityIdentifier("placesKey")
+                    Button(places.hasKey && placesKeyDraft.isEmpty ? "キーを消す" : "保存") {
+                        let ok = places.setKey(placesKeyDraft)
+                        placesKeyMessage = ok ? (placesKeyDraft.isEmpty ? "キーを消しました。" : "キーチェーンに保存しました。") : "キーチェーンに保存できませんでした。"
+                        if ok { placesKeyDraft = "" }
+                    }
+                    .controlSize(.small)
+                    .disabled(places.checkingKey || places.keyAccessIssue != nil || (!places.hasKey && placesKeyDraft.isEmpty))
+                }
+                Stepper(value: Binding(get: { places.monthlyLimit }, set: { places.setMonthlyLimit($0) }),
+                        in: 0...10_000, step: 10) {
+                    Text(places.monthlyLimit == 0
+                         ? "月の上限: 未設定（決めるまで使えません）"
+                         : "月の上限: \(places.monthlyLimit) 回 ・ 今月 \(places.usedThisMonth()) 回使用")
+                        .font(.system(size: 12))
+                }
+                .accessibilityIdentifier("placesMonthlyLimit")
+                if let message = places.keyAccessIssue ?? placesKeyMessage {
+                    Text(message).font(.system(size: 11)).foregroundStyle(.secondary)
+                }
+            }
+
             Text(practice.isReadingScreen ? "画面を1枚読み取り中です。外部には送信していません。" : "画面は必要なときだけ読み取ります。許可はmacOSの設定で変更できます。")
                 .font(.system(size: 11)).foregroundStyle(.secondary)
         }
@@ -77,9 +168,21 @@ struct SettingsView: View {
         .frame(width: 460)
         .fixedSize(horizontal: false, vertical: true)
         .onChange(of: showAdditionalPermissions) { _, _ in SettingsWindowController.shared.resizeToContent() }
+        .onChange(of: gemini.keyAccessIssue) { _, _ in SettingsWindowController.shared.resizeToContent() }
+        .onChange(of: places.keyAccessIssue) { _, _ in SettingsWindowController.shared.resizeToContent() }
+        .sheet(isPresented: $showTransactionAuthorizations) { TransactionAuthorizationListView() }
         .onAppear(perform: refreshPermissions)
-        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in refreshPermissions() }
-        .onReceive(NotificationCenter.default.publisher(for: SettingsWindowController.didShow)) { _ in refreshPermissions() }
+        .task(id: keyPresenceRevision) {
+            await gemini.refreshKeyPresence()
+            guard !Task.isCancelled else { return }
+            await places.refreshKeyPresence()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            refreshPermissions(); keyPresenceRevision += 1
+        }
+        .onReceive(NotificationCenter.default.publisher(for: SettingsWindowController.didShow)) { _ in
+            refreshPermissions(); keyPresenceRevision += 1
+        }
         .onReceive(PermissionGuideCoordinator.shared.$state) { _ in refreshPermissions() }
     }
 

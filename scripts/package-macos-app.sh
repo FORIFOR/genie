@@ -3,9 +3,11 @@
 # TCC プロンプトは署名 .app を LaunchServices(open) 経由で起動したときだけ出る。
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+source "$ROOT/scripts/build-resource-env.sh"
 IDENTITY="${ASTRA_SIGN_IDENTITY:-Apple Development}"   # security find-identity -v -p codesigning で確認
 APP="$ROOT/apps/genie-macos/.build/Genie.app"
-( cd "$ROOT/apps/genie-macos" && swift build -c release )
+VERSION="$(node -e 'const v=JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8")).version; if (!/^\d+\.\d+\.\d+$/.test(v)) throw Error("A numeric release version is required"); process.stdout.write(v)' "$ROOT/package.json")"
+( cd "$ROOT/apps/genie-macos" && swift build -c release --jobs "$GENIE_SWIFT_BUILD_JOBS" )
 rm -rf "$APP"; mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources/ja.lproj"
 cp "$ROOT/apps/genie-macos/.build/release/GenieMac" "$APP/Contents/MacOS/GenieMac"
 mkdir -p "$APP/Contents/Resources/plugins"
@@ -13,7 +15,7 @@ cp -R "$ROOT/plugins/builtin" "$APP/Contents/Resources/plugins/builtin"
 if [[ -n "${ASTRA_CONNECTIONS_CONFIG:-}" ]]; then
   node "$ROOT/scripts/prepare-connection-config.mjs" "$ASTRA_CONNECTIONS_CONFIG" "$APP/Contents/Resources/connections.json"
 fi
-ICON_SRC="$ROOT/apps/desktop/src-tauri/icons/icon.icns"
+ICON_SRC="$ROOT/apps/genie-macos/Resources/AppIcon.icns"   # ランプの印（Resources/GenieMark-source.png から作った）
 [[ -f "$ICON_SRC" ]] || { echo "FAIL: アイコン ($ICON_SRC) が無い" >&2; exit 1; }
 cp "$ICON_SRC" "$APP/Contents/Resources/AppIcon.icns"
 cp "$ROOT/shared/design/liquid-orb/LICENSE" "$APP/Contents/Resources/LiquidOrb-LICENSE.txt"
@@ -27,8 +29,8 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>CFBundleDisplayName</key><string>Genie</string>
   <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>CFBundlePackageType</key><string>APPL</string>
-  <key>CFBundleShortVersionString</key><string>1.0</string>
-  <key>CFBundleVersion</key><string>1</string>
+  <key>CFBundleShortVersionString</key><string>${VERSION}</string>
+  <key>CFBundleVersion</key><string>${VERSION}</string>
   <key>LSMinimumSystemVersion</key><string>14.0</string>
   <!-- 画面は日本語。Sparkle は**アプリの**言語に合わせて自分の窓を出すので、
        ja.lproj を持たないと更新の窓だけ英語になった（Atlas system.update-available）。 -->
@@ -40,6 +42,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
        要求しうるものは全部ここに書く。 -->
   <key>NSMicrophoneUsageDescription</key><string>会議を録音し、文字起こしするためにマイクを使います。クラウド文字起こしを許可した場合は、録音音声をGoogleへ送信します。</string>
   <key>NSSpeechRecognitionUsageDescription</key><string>ライブ文字起こしをこのMac内で処理するために使います。別途クラウド文字起こしを許可した場合はGoogleへ録音音声を送信します。</string>
+  <key>NSLocationWhenInUseUsageDescription</key><string>「近くの店」を頼んだときだけ、現在地の近くの店を探すために使います。現在地はそのときだけGoogleマップの検索に送り、保存しません。</string>
   <key>NSAppleEventsUsageDescription</key><string>前面アプリの文脈（開いている書類名など）を読むために使います。</string>
   <key>NSCameraUsageDescription</key><string>使いません。</string>
   <key>NSCalendarsUsageDescription</key><string>会議の予定を文脈として読むために、カレンダーを使います。</string>

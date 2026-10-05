@@ -1,0 +1,41 @@
+== tokens ==
+design tokens are current
+
+exit=0
+== type-scale ==
+TYPE_LITERALS_OK: 6 つの型の view に字の大きさの直書きは無い（5 scope）
+
+exit=0
+== hit-area ==
+BUTTON_HIT_AREA_OK: 226 ファイル、ボタンの高さ・余白はラベルの中
+
+exit=0
+== conventions ==
+convention check passed
+
+exit=0
+== terms ==
+TERMS_OK: 画面の語は 1 語ずつ
+
+exit=0
+== ui-taste ==
+== UI の癖 ==
+  gradient               4 /   4
+  角丸 >28pt           0 /   0
+  material/blur          8 /   8
+  sparkles アイコン   5 /   6
+  Capsule               19 /  20
+  shadow                 5 /   9
+  40字超の文言      6 /   6
+
+UI_TASTE_OK: 癖は上限内
+  material/blur: actual=11, reviewed additions=3 (content-bound)
+  Capsule: actual=24, reviewed additions=5 (content-bound)
+  40字超の文言: actual=10, reviewed additions=4 (content-bound)
+
+exit=0
+== release-consistency ==
+  package.json=0.1.4 tauri.conf.json=0.1.4 src-tauri/Cargo.toml=0.1.4 genie-core/Cargo.toml=0.1.4
+RELEASE_CONSISTENCY_OK: 版番号 0.1.4 で一致・配布物は外部 dylib を掴まない・Developer ID + hardened runtime
+
+exit=0

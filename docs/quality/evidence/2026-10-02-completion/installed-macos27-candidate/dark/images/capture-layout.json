@@ -1,0 +1,82 @@
+{
+  "01-voice-hud-idle" : {
+    "height" : 76,
+    "topInsetPx" : 32,
+    "width" : 220
+  },
+  "02-voice-hud-listening" : {
+    "height" : 100,
+    "topInsetPx" : 32,
+    "width" : 600
+  },
+  "02b-voice-hud-preparing" : {
+    "height" : 100,
+    "topInsetPx" : 32,
+    "width" : 600
+  },
+  "03-recording-workspace" : {
+    "height" : 680,
+    "topInsetPx" : 0,
+    "width" : 1080
+  },
+  "03b-recording-paused" : {
+    "height" : 680,
+    "topInsetPx" : 0,
+    "width" : 1080
+  },
+  "04-recording-transcript" : {
+    "height" : 680,
+    "topInsetPx" : 0,
+    "width" : 1080
+  },
+  "05-recording-rag" : {
+    "height" : 680,
+    "topInsetPx" : 0,
+    "width" : 1080
+  },
+  "06-main-home" : {
+    "height" : 820,
+    "topInsetPx" : 0,
+    "width" : 1240
+  },
+  "07-apps" : {
+    "height" : 820,
+    "topInsetPx" : 0,
+    "width" : 1240
+  },
+  "08-meeting-detail" : {
+    "height" : 820,
+    "topInsetPx" : 0,
+    "width" : 1240
+  },
+  "09-permission-denied" : {
+    "height" : 680,
+    "topInsetPx" : 0,
+    "width" : 1080
+  },
+  "09b-stt-unavailable" : {
+    "height" : 680,
+    "topInsetPx" : 0,
+    "width" : 1080
+  },
+  "09c-speech-denied" : {
+    "height" : 680,
+    "topInsetPx" : 0,
+    "width" : 1080
+  },
+  "10-agent-timeline" : {
+    "height" : 680,
+    "topInsetPx" : 0,
+    "width" : 1080
+  },
+  "11-meeting-canvas" : {
+    "height" : 680,
+    "topInsetPx" : 0,
+    "width" : 1080
+  },
+  "12-recording-now" : {
+    "height" : 820,
+    "topInsetPx" : 0,
+    "width" : 1240
+  }
+}

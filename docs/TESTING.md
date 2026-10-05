@@ -79,6 +79,23 @@ Have a team use case? [Describe the workflow and the useful outcome](https://git
 - Live transcription and connected services require separate providers and permissions. They are not required for this first test; production acceptance is [tracked separately](https://github.com/FORIFOR/genie/issues/1).
 - An explicitly selected local route does not silently switch to a paid provider. External providers receive submitted content and may charge; model quality and latency vary.
 - Generated HTML must be reviewed and opened outside the app. Automatic publishing, autonomous SNS promotion, and business returns are not demonstrated by this test.
-- There is no project-wide open-source license yet. Public source availability is not a broad license grant.
+- Current source is MIT-licensed; third-party licenses remain applicable. The historical v0.1.4 download predates the current licensing and editing changes; this guide’s pinned release path does not demonstrate those changes.
 
 Stop the host, worker, and gateway with Ctrl+C when finished. `pnpm dev:infra:down` stops the development containers and retains volumes. Do not remove volumes if you want to keep your local work.
+
+## Terminal-state regression tests (2026-09-19)
+
+For the current local changes, see [follow-up evidence](quality/FOLLOWUP.md).
+
+```sh
+# No database/model calls: deterministic workflow boundary injections.
+pnpm --filter @genie/service-task exec vitest run test/terminal-workflow.test.ts
+
+# Requires TEST_DATABASE_URL + TEST_IDENTITY_DATABASE_URL for an isolated, migrated test DB.
+pnpm --filter @genie/service-task exec vitest run test/terminal-state.test.ts
+
+# Use an already installed Temporal CLI binary to avoid SDK downloads.
+ASTRA_TEST_TEMPORAL_PATH=/absolute/path/to/temporal pnpm --filter @genie/service-task exec vitest run test/task.e2e.test.ts test/terminal-state.test.ts
+```
+
+The DB tests write synthetic tenants/tasks; use disposable test storage. Missing DB configuration means skipped, not passed. The real engine tests use local fixtures/fault injection, not a real external provider. They are not production-history replay tests.

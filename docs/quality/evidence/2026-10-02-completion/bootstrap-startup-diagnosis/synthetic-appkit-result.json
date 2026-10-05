@@ -1,0 +1,24 @@
+{
+  "afterAppKit" : {
+    "cModelMatches" : true,
+    "swiftModelMatches" : true,
+    "swiftWorkspaceMatches" : true
+  },
+  "afterLaunch" : {
+    "cModelMatches" : true,
+    "swiftModelMatches" : true,
+    "swiftWorkspaceMatches" : true
+  },
+  "beforeAppKit" : {
+    "cModelMatches" : true,
+    "swiftModelMatches" : true,
+    "swiftWorkspaceMatches" : true
+  },
+  "didFinishLaunching" : {
+    "cModelMatches" : true,
+    "swiftModelMatches" : true,
+    "swiftWorkspaceMatches" : true
+  },
+  "initialAstraKeyCount" : 0,
+  "selectionConfigured" : true
+}

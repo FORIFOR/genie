@@ -1,0 +1,18 @@
+{
+  "ready": true,
+  "permissions": {
+    "accessibility": true,
+    "capabilities": [
+      "ax_press",
+      "empty_text_field"
+    ],
+    "deliveryMode": "background",
+    "ready": true,
+    "screenRecording": true,
+    "supported": true
+  },
+  "computerUse": true,
+  "model": "qwen3.5:9b",
+  "gateway": "http://127.0.0.1:43151",
+  "next": "start で依頼を作成できます。"
+}

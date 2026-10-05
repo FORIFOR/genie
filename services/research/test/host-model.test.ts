@@ -124,6 +124,20 @@ describe('a model that runs on the device', () => {
     ]);
   });
 
+  it('keeps only judgments that point at real claims', async () => {
+    const h = host(() => ({
+      assessments: [
+        { text: '前走の勝ち方から有力', supports: [0, 1] },
+        { text: '根拠の無い断定', supports: [] },
+        { text: '存在しない主張に立つ判断', supports: [7] },
+        { text: '', supports: [0] },
+      ],
+    }));
+    const out = await model(h.host).assess('予想して', ['前走1着', '東京芝1800mで2勝']);
+    expect(out).toEqual([{ text: '前走の勝ち方から有力', supports: [0, 1] }]);
+    expect(h.asks[0]).toMatchObject({ toolId: 'llm.assess', args: { question: '予想して' } });
+  });
+
   it('gives every different call its own key, so answers do not get crossed', async () => {
     const { host: h, asks } = host((toolId) =>
       toolId === 'llm.decompose' ? { queries: ['x'] } : { findings: ['y'] },

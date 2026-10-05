@@ -448,6 +448,163 @@ mod tests {
     }
 }
 
+// Fixture-only reader: release WAVs may include LIST/JUNK chunks before data.
+// Never treat metadata, unsupported audio formats or a truncated file as PCM.
+#[cfg(test)]
+mod fixture_wav {
+    pub(super) fn samples(bytes: &[u8]) -> Result<Vec<f32>, &'static str> {
+        if bytes.len() < 12 || &bytes[..4] != b"RIFF" || &bytes[8..12] != b"WAVE" {
+            return Err("expected RIFF/WAVE");
+        }
+        let size = u32::from_le_bytes(bytes[4..8].try_into().unwrap()) as usize;
+        if size.checked_add(8) != Some(bytes.len()) {
+            return Err("RIFF length mismatch");
+        }
+        let mut offset = 12usize;
+        let mut has_format = false;
+        let mut pcm = None;
+        while offset < bytes.len() {
+            let header_end = offset.checked_add(8).ok_or("chunk overflow")?;
+            let header = bytes
+                .get(offset..header_end)
+                .ok_or("truncated chunk header")?;
+            let length = u32::from_le_bytes(header[4..8].try_into().unwrap()) as usize;
+            let end = header_end.checked_add(length).ok_or("chunk overflow")?;
+            let chunk = bytes.get(header_end..end).ok_or("truncated chunk")?;
+            match &header[..4] {
+                b"fmt " => {
+                    if has_format || chunk.len() < 16 {
+                        return Err("missing or duplicate PCM format");
+                    }
+                    let u16_at = |i| u16::from_le_bytes([chunk[i], chunk[i + 1]]);
+                    let u32_at = |i| u32::from_le_bytes(chunk[i..i + 4].try_into().unwrap());
+                    if u16_at(0) != 1
+                        || u16_at(2) != 1
+                        || u32_at(4) != 16_000
+                        || u32_at(8) != 32_000
+                        || u16_at(12) != 2
+                        || u16_at(14) != 16
+                    {
+                        return Err("fixture must be PCM16 mono 16kHz");
+                    }
+                    if chunk.len() != 16
+                        && (chunk.len() < 18 || usize::from(u16_at(16)) + 18 != chunk.len())
+                    {
+                        return Err("invalid extended PCM format length");
+                    }
+                    has_format = true;
+                }
+                b"data" => {
+                    if !has_format || pcm.is_some() || chunk.is_empty() || chunk.len() % 2 != 0 {
+                        return Err("missing format, duplicate, empty or partial PCM data");
+                    }
+                    pcm = Some(chunk);
+                }
+                _ => {}
+            }
+            offset = end.checked_add(length % 2).ok_or("padding overflow")?;
+            if offset > bytes.len() {
+                return Err("missing odd chunk padding");
+            }
+        }
+        let pcm = pcm.ok_or("missing PCM data")?;
+        Ok(crate::audio::frame::from_pcm16(pcm))
+    }
+
+    fn fixture(chunks: &[(&[u8; 4], &[u8])]) -> Vec<u8> {
+        let mut out = b"RIFF\0\0\0\0WAVE".to_vec();
+        for (name, bytes) in chunks {
+            out.extend_from_slice(*name);
+            out.extend_from_slice(&(bytes.len() as u32).to_le_bytes());
+            out.extend_from_slice(bytes);
+            if bytes.len() % 2 != 0 {
+                out.push(0);
+            }
+        }
+        let size = (out.len() - 8) as u32;
+        out[4..8].copy_from_slice(&size.to_le_bytes());
+        out
+    }
+
+    const FORMAT: [u8; 16] = [1, 0, 1, 0, 128, 62, 0, 0, 0, 125, 0, 0, 2, 0, 16, 0];
+    const PCM: [u8; 4] = [0, 128, 255, 127];
+
+    #[test]
+    fn decodes_only_data_after_even_and_odd_metadata_chunks() {
+        let plain = fixture(&[(b"fmt ", &FORMAT), (b"data", &PCM)]);
+        let metadata = fixture(&[
+            (b"fmt ", &FORMAT),
+            (b"LIST", &[9; 26]),
+            (b"JUNK", &[1, 2, 3]),
+            (b"data", &PCM),
+            (b"JUNK", &[4]),
+        ]);
+        let expected = crate::audio::frame::from_pcm16(&PCM);
+        assert_eq!(samples(&plain).unwrap(), expected);
+        assert_eq!(samples(&metadata).unwrap(), expected);
+        assert_eq!(samples(&metadata).unwrap().len(), 2);
+    }
+
+    #[test]
+    fn rejects_wrong_container_lengths_and_truncated_chunks() {
+        let valid = fixture(&[(b"fmt ", &FORMAT), (b"data", &PCM)]);
+        for end in 0..valid.len() {
+            assert!(samples(&valid[..end]).is_err());
+        }
+        for index in [0usize, 4, 8, 16, 40] {
+            let mut bad = valid.clone();
+            bad[index] ^= 255;
+            assert!(samples(&bad).is_err(), "offset {index}");
+        }
+        let mut extra = valid.clone();
+        extra.push(0);
+        assert!(samples(&extra).is_err());
+        let mut no_padding = fixture(&[(b"fmt ", &FORMAT), (b"data", &PCM), (b"JUNK", &[1])]);
+        no_padding.pop();
+        let size = (no_padding.len() - 8) as u32;
+        no_padding[4..8].copy_from_slice(&size.to_le_bytes());
+        assert!(samples(&no_padding).is_err());
+    }
+
+    #[test]
+    fn rejects_unsupported_format_or_inconsistent_pcm_metadata() {
+        for index in [0usize, 2, 4, 8, 12, 14] {
+            let mut format = FORMAT;
+            format[index] ^= 1;
+            assert!(samples(&fixture(&[(b"fmt ", &format), (b"data", &PCM)])).is_err());
+        }
+        let mut extended = FORMAT.to_vec();
+        extended.push(0);
+        assert!(samples(&fixture(&[(b"fmt ", &extended), (b"data", &PCM)])).is_err());
+        extended.push(0);
+        assert!(samples(&fixture(&[(b"fmt ", &extended), (b"data", &PCM)])).is_ok());
+        extended[16] = 1;
+        assert!(samples(&fixture(&[(b"fmt ", &extended), (b"data", &PCM)])).is_err());
+    }
+
+    #[test]
+    fn rejects_missing_duplicate_empty_or_partial_audio() {
+        for chunks in [
+            vec![(b"fmt ", FORMAT.as_slice())],
+            vec![(b"data", PCM.as_slice())],
+            vec![
+                (b"fmt ", FORMAT.as_slice()),
+                (b"fmt ", FORMAT.as_slice()),
+                (b"data", PCM.as_slice()),
+            ],
+            vec![
+                (b"fmt ", FORMAT.as_slice()),
+                (b"data", PCM.as_slice()),
+                (b"data", PCM.as_slice()),
+            ],
+            vec![(b"fmt ", FORMAT.as_slice()), (b"data", [].as_slice())],
+            vec![(b"fmt ", FORMAT.as_slice()), (b"data", [1].as_slice())],
+        ] {
+            assert!(samples(&fixture(&chunks)).is_err());
+        }
+    }
+}
+
 /// 実物のライブラリとモデルを使う検査。
 ///
 /// **代役では測れないものだけ**をここに置く。
@@ -456,16 +613,15 @@ mod tests {
 /// 実行:
 /// ```text
 /// ASTRA_SHERPA_LIB_DIR=... ASTRA_STT_MODEL_DIR=... \
-///   cargo test --lib stt::real -- --ignored --nocapture
+///   cargo test --lib stt::recognizer::real -- --ignored --nocapture --test-threads=1
 /// ```
 #[cfg(test)]
 mod real {
     use super::*;
 
     fn wav_samples(path: &Path) -> Vec<f32> {
-        // 16bit PCM mono 16k の WAV。ヘッダ 44 バイトを飛ばす。
-        let bytes = std::fs::read(path).expect("read wav");
-        crate::audio::frame::from_pcm16(&bytes[44..])
+        let bytes = std::fs::read(path).expect("read public fixture wav");
+        super::fixture_wav::samples(&bytes).expect("valid PCM16 mono 16kHz fixture WAV")
     }
 
     fn ready() -> Option<(std::path::PathBuf, Vec<std::path::PathBuf>)> {
@@ -478,11 +634,12 @@ mod real {
             eprintln!("[real] sherpa-onnx not installed; skipping");
             return None;
         }
-        let wavs: Vec<_> = std::fs::read_dir(dir.join("test_wavs"))
+        let mut wavs: Vec<_> = std::fs::read_dir(dir.join("test_wavs"))
             .ok()?
             .filter_map(|e| e.ok().map(|e| e.path()))
             .filter(|p| p.extension().map(|x| x == "wav").unwrap_or(false))
             .collect();
+        wavs.sort();
         if wavs.is_empty() {
             eprintln!("[real] no test wavs; skipping");
             return None;

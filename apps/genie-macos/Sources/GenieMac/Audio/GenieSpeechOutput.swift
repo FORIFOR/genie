@@ -1,29 +1,69 @@
 import AVFoundation
 import SwiftUI
 
-/// User-initiated macOS speech. No cloud TTS request or automatic reading of private answers.
-@MainActor final class GenieSpeechOutput: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {
+/// Genie の声。**Gemini TTS だけ**で読む（macOS 標準の読み上げは使わない。本人の指示 2026-10-04）。
+/// 音声を作れなければ黙って終わる（待つ側は止めない）。理由は genie.log に残す。
+@MainActor final class GenieSpeechOutput: NSObject, ObservableObject, AVAudioPlayerDelegate {
     static let shared = GenieSpeechOutput()
     @Published private(set) var mode: GenieOrbMode = .idle
     @Published private(set) var owner: UUID?
-    private let synthesizer = AVSpeechSynthesizer()
-    private var utterance: AVSpeechUtterance?
-    override init() { super.init(); synthesizer.delegate = self }
+    private var player: AVAudioPlayer?
+    private var work: Task<Void, Never>?
+    /// 読み終えた（止めた場合も）ときに一度だけ呼ぶ。会話の次のターンはこれを待ってマイクを開く。
+    private var completion: (() -> Void)?
 
-    func read(_ text: String, owner: UUID) {
+    func read(_ text: String, owner: UUID, onFinish: (() -> Void)? = nil) {
         stop()
         let content = Self.spokenText(text)
-        guard !content.isEmpty else { return }
-        let utterance = AVSpeechUtterance(string: content)
-        utterance.voice = AVSpeechSynthesisVoice(language: content.range(of: "[ぁ-んァ-ン一-龯]", options: .regularExpression) != nil ? "ja-JP" : "en-US")
-        self.utterance = utterance; self.owner = owner; mode = .preparing
-        synthesizer.speak(utterance)
+        // 読むものが無い（コードだけの答えなど）。**知らせずに黙らない** —— 待つ側が止まる。
+        guard !content.isEmpty else { onFinish?(); return }
+        self.owner = owner; completion = onFinish; mode = .preparing
+        let key = GeminiLiveSettings.shared.apiKey()
+        work = Task { [weak self] in
+            do {
+                let audio = try await GeminiSpeech.synthesize(content, apiKey: key)
+                guard let self, !Task.isCancelled, self.owner == owner else { return }
+                let player = try AVAudioPlayer(data: audio)
+                player.delegate = self
+                self.player = player
+                self.mode = .speaking
+                if !player.play() { self.finish(owner) }
+            } catch {
+                guard !Task.isCancelled else { return }
+                GenieLog.write("speech", "Gemini TTS failed: \(GenieLog.clip(String(describing: error), 160))")
+                self?.finish(owner)
+            }
+        }
     }
+
+    /// 決まった文（呼びかけへの返事など）の音声を先に作っておく。作れなくても何もしない。
+    func prepare(_ text: String) {
+        let content = Self.spokenText(text)
+        guard !content.isEmpty, !FileManager.default.fileExists(atPath: GeminiSpeech.cacheURL(for: content).path) else { return }
+        let key = GeminiLiveSettings.shared.apiKey()
+        Task.detached {
+            do { _ = try await GeminiSpeech.synthesize(content, apiKey: key) }
+            catch { GenieLog.write("speech", "Gemini TTS prepare failed: \(GenieLog.clip(String(describing: error), 160))") }
+        }
+    }
+
     func stop(owner: UUID? = nil) {
         if let owner, self.owner != owner { return }
-        utterance = nil; self.owner = nil; mode = .idle
-        synthesizer.stopSpeaking(at: .immediate)
+        let completion = self.completion
+        work?.cancel(); work = nil
+        player?.stop(); player = nil
+        self.owner = nil; self.completion = nil; mode = .idle
+        completion?()
     }
+
+    private func finish(_ owner: UUID) {
+        guard self.owner == owner else { return }
+        let completion = self.completion
+        work = nil; player = nil
+        self.owner = nil; self.completion = nil; mode = .idle
+        completion?()
+    }
+
     static func spokenText(_ text: String) -> String {
         text
             .replacingOccurrences(of: "(?s)```.*?```", with: "", options: .regularExpression)
@@ -32,18 +72,18 @@ import SwiftUI
             .replacingOccurrences(of: "[*`_]", with: "", options: .regularExpression)
             .trimmingCharacters(in: .whitespacesAndNewlines)
     }
-    nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didStart utterance: AVSpeechUtterance) {
+
+    nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
         Task { @MainActor [weak self] in
-            guard let self, self.utterance === utterance else { return }
-            self.mode = .speaking
+            guard let self, self.player === player, let owner = self.owner else { return }
+            self.finish(owner)
         }
     }
-    nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) { finished(utterance) }
-    nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) { finished(utterance) }
-    private nonisolated func finished(_ utterance: AVSpeechUtterance) {
+    nonisolated func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
         Task { @MainActor [weak self] in
-            guard let self, self.utterance === utterance else { return }
-            self.utterance = nil; self.owner = nil; self.mode = .idle
+            guard let self, self.player === player, let owner = self.owner else { return }
+            GenieLog.write("speech", "could not play the Gemini audio")
+            self.finish(owner)
         }
     }
 }
@@ -67,7 +107,7 @@ struct GenieReadAloudButton: View {
                 Text(active ? "停止" : "読み上げ")
             }
         }
-        .help(active ? "読み上げを停止" : "Macの音声で読み上げる")
+        .help(active ? "読み上げを停止" : "Genie の声で読み上げる")
         .accessibilityLabel(active ? "読み上げを停止" : "作成した文章を読み上げ")
         .accessibilityIdentifier("taskResultReadAloud")
         .onDisappear { output.stop(owner: owner) }

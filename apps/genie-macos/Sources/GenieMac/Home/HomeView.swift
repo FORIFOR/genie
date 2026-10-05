@@ -28,6 +28,7 @@ struct HomeView: View {
     private var intentPlaceholder: String { hasScreenshot ? "この画像について、何を知りたいですか？" : Facts.homeIntentPlaceholder }
     @ObservedObject private var nav = MainNav.shared
     @State private var submitIssue = ""
+    @State private var connectionTask: Task<Void, Never>?
     @State private var showContext = false
     /// 実データ。無ければその節ごと出さない。
     @State private var recentTasks: [AgentTask] = []
@@ -45,7 +46,8 @@ struct HomeView: View {
     @ObservedObject private var sheetOpener = NewRecordingSheetOpener.shared
     @ObservedObject private var initialProfile = InitialProfileStore.shared
     @ObservedObject private var work = WorkContextStore.shared
-    @ObservedObject private var consumer = ConsumerJourneyStore.shared
+    @ObservedObject private var backend = MainData.shared
+    @ObservedObject private var credentialRecovery = MainData.shared.credentialRecovery
     @FocusState private var intentFocused: Bool
 
     static func greetingForNow(_ date: Date = Date()) -> String {
@@ -74,13 +76,7 @@ struct HomeView: View {
         .animation(.easeOut(duration: 0.14), value: sheetOpener.isOpen)
         .onChange(of: nav.intentFocusRequest) { _, request in focusIntent(request) }
         .onAppear { if nav.intentVisualContext != nil { intentFocused = true } }
-        .sheet(item: $consumer.active) { draft in
-            ConsumerJourneyView(draft: draft, onClose: { consumer.close($0) }, onResearch: { prompt, mode in
-                guard voice.ask(prompt, newConversation: true, visualContext: [], consumerPlanning: mode) else { return false }
-                if let id = voice.latestRequestID { nav.openTask = LocalStore.shared.loadTasks().first { $0.id == id } }
-                return true
-            })
-        }
+        .onDisappear { connectionTask?.cancel() }
     }
 
     private func focusIntent(_ request: UUID) {
@@ -110,7 +106,7 @@ struct HomeView: View {
                     Text(hasScreenshot ? "この画像について質問" : "今日は、何を形にしますか。")
                         .font(.system(size: S.type(TypeScale.pageTitleSize), weight: TypeScale.pageTitleWeight))
                         .foregroundStyle(Palette.text(dark))
-                    Text(hasScreenshot ? "知りたいことや、してほしいことを書いてください。" : "つくりたいものと、実現したいことを教えてください。")
+                    Text(hasScreenshot ? "知りたいことや、してほしいことを書いてください。" : "メモから文章をつくり、Workで編集・Markdown保存できます。")
                         .font(.system(size: S.type(TypeScale.secondarySize)))
                         .foregroundStyle(Palette.muted(dark))
                 }
@@ -128,33 +124,16 @@ struct HomeView: View {
                 }
                 // Accepted requests have their own persistent workspace. Only preflight
                 // failures belong beside the draft; never repeat a full result here.
-                if !submitIssue.isEmpty {
+                // Keychain に断られている間は、送る前から確かめる手を出す（声の会話では送れないことしか分からない）。
+                if backend.connectionIssue == .credentialAccess {
+                    GatewayCredentialRecoveryView(state: credentialRecovery.state) {
+                        Task { await backend.confirmCredentialReadAfterUserRequest() }
+                    }
+                } else if !submitIssue.isEmpty {
                     Text(submitIssue).font(.system(size: S.type(TypeScale.secondarySize)))
                         .foregroundStyle(Palette.warning(dark)).textSelection(.enabled)
                 }
                 starterRequests
-                DisclosureGroup("映画・旅行・デリバリー") {
-                    VStack(alignment: .leading, spacing: Space.base) {
-                        ForEach(ConsumerJourneyKind.allCases) { kind in
-                            Button { consumer.present(kind) } label: {
-                                HStack(spacing: Space.cardPadding) {
-                                    Image(systemName: kind.symbol).frame(width: 24)
-                                    VStack(alignment: .leading, spacing: Space.compact) {
-                                        Text(kind.title).foregroundStyle(Palette.text(dark))
-                                        Text(kind.subtitle).font(.system(size: S.type(TypeScale.microSize)))
-                                    }
-                                    Spacer()
-                                    Image(systemName: "chevron.right")
-                                }.padding(Space.base).contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityIdentifier("homeConsumer-" + kind.rawValue)
-                        }
-                    }.padding(.top, Space.base)
-                }
-                .font(.system(size: S.type(TypeScale.secondarySize)))
-                .foregroundStyle(Palette.muted(dark))
-                .accessibilityIdentifier("homeConsumerDisclosure")
                 if !recentTasks.isEmpty {
                     VStack(alignment: .leading, spacing: 12) {
                         HStack {
@@ -255,16 +234,23 @@ struct HomeView: View {
                 .font(.system(size: S.type(TypeScale.bodySize)))
                 .foregroundStyle(Palette.text(dark))
                 .frame(height: S.metric(Metrics.homeComposerEditorHeight))
+            Text(ProcessInfo.processInfo.environment["ASTRA_MODEL_DISCLOSURE"]
+                 ?? "送信先: 接続先で設定されたモデル。外部モデルは内容を受信し、利用料金が発生する場合があります。接続設定を確認してから送信してください。")
+                .font(.system(size: S.type(TypeScale.microSize)))
+                .foregroundStyle(Palette.muted(dark))
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("homeModelDisclosure")
             HStack(spacing: 10) {
-                Button { voice.beginListening() } label: {
+                // 声で依頼する = Genie と会話（音声入力は文章を入れるだけなので、ここでは使わない）。
+                Button { voice.beginConversation() } label: {
                     Image(systemName: "mic").frame(width: 28, height: 28)
                 }
                 .buttonStyle(GenieControlStyle(radius: 8, filled: false))
-                .disabled(voice.requestInFlight)
+                .disabled(voice.requestInFlight || credentialRecovery.isChecking)
                 .accessibilityLabel("声で依頼する")
                 .help("声で依頼する")
                 .accessibilityIdentifier("homeIntentMic")
-                Text(voice.requestInFlight ? "依頼を処理しています…" : Facts.homeSubmitHint)
+                Text(connectionTask != nil ? "接続を確認しています…" : (voice.requestInFlight ? "依頼を処理しています…" : Facts.homeSubmitHint))
                     .font(.system(size: S.type(TypeScale.microSize)))
                     .foregroundStyle(Palette.muted(dark))
                 Spacer(minLength: 0)
@@ -275,7 +261,7 @@ struct HomeView: View {
                 }
                 .buttonStyle(.borderedProminent).tint(Palette.accent(dark))
                 .keyboardShortcut(UserShortcut.submitRequest.key, modifiers: UserShortcut.submitRequest.modifiers)
-                .disabled(nav.intentDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || voice.requestInFlight)
+                .disabled(nav.intentDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || voice.requestInFlight || connectionTask != nil || credentialRecovery.isChecking)
                 .accessibilityIdentifier("homeIntentSend")
             }
         }
@@ -332,19 +318,37 @@ struct HomeView: View {
     }
 
     private func submitIntent() {
+        guard connectionTask == nil, !voice.requestInFlight, !credentialRecovery.isChecking else { return }
+        let text = nav.intentDraft
+        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        let images = nav.intentVisualContext
         submitIssue = ""
-        if voice.ask(nav.intentDraft, newConversation: true, visualContext: nav.intentVisualContext) {
-            nav.finishIntentSubmission()
-            if let id = voice.latestRequestID {
-                nav.openTask = LocalStore.shared.loadTasks().first { $0.id == id }
+        connectionTask = Task { @MainActor in
+            defer { connectionTask = nil }
+            let result = await HomeIntentSubmission.run(
+                needsConnection: VoiceHUDState.homeIntentNeedsGateway(text, visualContext: images),
+                connect: { await MainData.shared.ensureConnected(afterUserAction: true) },
+                isCurrent: { nav.intentDraft == text && nav.intentVisualContext?.map(\.id) == images?.map(\.id) },
+                submit: { voice.ask(text, newConversation: true, visualContext: images) })
+            switch result {
+            case .submitted:
+                nav.finishIntentSubmission()
+                if let id = voice.latestRequestID {
+                    nav.openTask = LocalStore.shared.loadTasks().first { $0.id == id }
+                }
+            case .unavailable:
+                submitIssue = MainData.shared.connectionIssue?.message
+                    ?? "接続を確認してください。入力は残しています。"
+            case .rejected: submitIssue = voice.answer
+            case .cancelled, .draftChanged: break
             }
-        } else { submitIssue = voice.answer }
+        }
     }
 
     private var starterRequests: some View {
         HStack(alignment: .top, spacing: 12) {
-            starter("動画の構成案", detail: "冒頭から、最後の一言まで", icon: "film",
-                prompt: "短い動画の構成を3案つくってください。\nテーマ: \n届けたい相手: \n各案に、冒頭3秒の見せ方、展開、最後の一言を入れてください。")
+            starter("メモをチェックリストに", detail: "例文を編集して、最初の成果物へ", icon: "checklist",
+                prompt: TaskRequestRecord.firstExample)
             starter("Webの改善提案", detail: "課題を、伝わる提案に", icon: "rectangle.and.text.magnifyingglass",
                 prompt: "Webサイトの改善提案をまとめてください。\n会社・サービス: \n現在の内容と課題: \n目的: \n優先順位と、変更前後の文言案を含めてください。")
             starter("アイデアを具体化", detail: "検証できる計画をつくる", icon: "pencil.and.outline",
@@ -369,7 +373,7 @@ struct HomeView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(GenieControlStyle(radius: Metrics.paletteRadius, base: 0.0))
-        .accessibilityLabel(title + "の依頼文を入力")
+        .accessibilityLabel(title + "：依頼文を入力")
     }
 
     /// 節の見出し。**中身より小さく静かに**する。以前は 22pt で、行より目立っていた。

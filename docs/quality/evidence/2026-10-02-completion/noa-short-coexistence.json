@@ -1,0 +1,240 @@
+{
+  "status": "PASS",
+  "scope": "Short simultaneous synthetic generation fixture only; no livestream/OBS/playback/Jev; no long-duration stability or global quality claim",
+  "durationSeconds": 14.774,
+  "overlapWithGenieTaskSeconds": 11.173,
+  "noa": {
+    "startedAt": "2026-10-01T21:52:01.609Z",
+    "finishedAt": "2026-10-01T21:52:16.383Z",
+    "quality": {
+      "mode": "live",
+      "profile": "talk",
+      "llmProvider": "ollama",
+      "model": "qwen3.5:9b",
+      "llmURL": "http://127.0.0.1:11434/v1",
+      "generation": {
+        "temperature": 0.7,
+        "num_predict": 220,
+        "num_ctx": 4096,
+        "think": false,
+        "keep_alive": "30m"
+      },
+      "hostVoice": {
+        "provider": "aivisspeech",
+        "url": "http://127.0.0.1:10101",
+        "style": 1878365376,
+        "speed": 1,
+        "intonation": 1,
+        "tempo": 1,
+        "hostStyleMap": {}
+      },
+      "commentVoice": {
+        "enabled": true,
+        "url": "http://127.0.0.1:50021",
+        "speaker": 2,
+        "speed": 1.15
+      },
+      "speechDirection": "off",
+      "reactionAudio": false,
+      "phraseCache": false,
+      "maxTurnAudioMs": 18000,
+      "maxReadAudioMs": 10000,
+      "characterSha256": "85b5c2c6d1711d00fd7e884099389a313c2665ed178f9d415ba137194463864f"
+    },
+    "stages": [
+      {
+        "turn": 1,
+        "stage": "llm_draft_discarded",
+        "ms": 5441,
+        "chars": 29
+      },
+      {
+        "turn": 1,
+        "stage": "host_wav_discarded",
+        "ms": 1303,
+        "bytes": 393238,
+        "durationMs": 4458
+      },
+      {
+        "turn": 1,
+        "stage": "comment_wav_discarded",
+        "ms": 722,
+        "bytes": 199724,
+        "durationMs": 4160
+      },
+      {
+        "turn": 2,
+        "stage": "llm_draft_discarded",
+        "ms": 1755,
+        "chars": 41
+      },
+      {
+        "turn": 2,
+        "stage": "host_wav_discarded",
+        "ms": 1474,
+        "bytes": 716588,
+        "durationMs": 8125
+      },
+      {
+        "turn": 2,
+        "stage": "comment_wav_discarded",
+        "ms": 798,
+        "bytes": 228908,
+        "durationMs": 4768
+      },
+      {
+        "turn": 3,
+        "stage": "llm_draft_discarded",
+        "ms": 1382,
+        "chars": 18
+      },
+      {
+        "turn": 3,
+        "stage": "host_wav_discarded",
+        "ms": 707,
+        "bytes": 231068,
+        "durationMs": 2620
+      },
+      {
+        "turn": 3,
+        "stage": "comment_wav_discarded",
+        "ms": 670,
+        "bytes": 183340,
+        "durationMs": 3819
+      }
+    ],
+    "requests": [
+      {
+        "method": "POST",
+        "origin": "http://127.0.0.1:11435",
+        "path": "/api/chat"
+      },
+      {
+        "method": "GET",
+        "origin": "http://127.0.0.1:10101",
+        "path": "/version"
+      },
+      {
+        "method": "GET",
+        "origin": "http://127.0.0.1:10101",
+        "path": "/engine_manifest"
+      },
+      {
+        "method": "POST",
+        "origin": "http://127.0.0.1:10101",
+        "path": "/audio_query"
+      },
+      {
+        "method": "POST",
+        "origin": "http://127.0.0.1:10101",
+        "path": "/synthesis"
+      },
+      {
+        "method": "POST",
+        "origin": "http://127.0.0.1:50021",
+        "path": "/audio_query"
+      },
+      {
+        "method": "POST",
+        "origin": "http://127.0.0.1:50021",
+        "path": "/synthesis"
+      },
+      {
+        "method": "POST",
+        "origin": "http://127.0.0.1:11435",
+        "path": "/api/chat"
+      },
+      {
+        "method": "POST",
+        "origin": "http://127.0.0.1:10101",
+        "path": "/audio_query"
+      },
+      {
+        "method": "POST",
+        "origin": "http://127.0.0.1:10101",
+        "path": "/synthesis"
+      },
+      {
+        "method": "POST",
+        "origin": "http://127.0.0.1:50021",
+        "path": "/audio_query"
+      },
+      {
+        "method": "POST",
+        "origin": "http://127.0.0.1:50021",
+        "path": "/synthesis"
+      },
+      {
+        "method": "POST",
+        "origin": "http://127.0.0.1:11435",
+        "path": "/api/chat"
+      },
+      {
+        "method": "POST",
+        "origin": "http://127.0.0.1:10101",
+        "path": "/audio_query"
+      },
+      {
+        "method": "POST",
+        "origin": "http://127.0.0.1:10101",
+        "path": "/synthesis"
+      },
+      {
+        "method": "POST",
+        "origin": "http://127.0.0.1:50021",
+        "path": "/audio_query"
+      },
+      {
+        "method": "POST",
+        "origin": "http://127.0.0.1:50021",
+        "path": "/synthesis"
+      }
+    ],
+    "ownedCleanup": {
+      "unloadRequested": true,
+      "serveStopped": true,
+      "runnersStopped": true,
+      "assetsUnchanged": true,
+      "ok": true
+    }
+  },
+  "memory": {
+    "samples": 41,
+    "levels": [
+      1
+    ],
+    "minimumFreePercent": 43,
+    "warningObserved": false
+  },
+  "genie": {
+    "startedAt": "2026-10-01T21:52:01.608Z",
+    "scope": "Synthetic text-only task through private gateway and real host during separate bounded Noa generation fixture",
+    "provider": "codex",
+    "model": "gpt-6-sol",
+    "nativeHome": false,
+    "states": [
+      "PENDING",
+      "RUNNING",
+      "COMPLETED"
+    ],
+    "taskId": "01a0f973-f689-7000-9d57-16134855a341",
+    "taskStatus": "COMPLETED",
+    "artifactId": "01a0f974-1e19-7000-beab-a4b47fb25755",
+    "responseLength": 95,
+    "responseSHA256": "ba65502b30609b9003f633a5db847ee3742e85d23b6165303900dcbcb1bbfc6d",
+    "contentChecks": {
+      "saturday": true,
+      "time": true,
+      "location": true,
+      "free": true,
+      "bringBook": true,
+      "welcome": true
+    },
+    "status": "PASS",
+    "finishedAt": "2026-10-01T21:52:12.782Z"
+  },
+  "originalNoaReportSHA256": "b0a79c4f87ba7f0d1234df19a094e0f824860c4c91feef5804bfff44438187e2",
+  "firstSuccessfulAttemptDidNotOverlap": true,
+  "sharedAivisAndVoicevoxCacheMayRemain": true,
+  "sharedOllamaNotStopped": true
+}

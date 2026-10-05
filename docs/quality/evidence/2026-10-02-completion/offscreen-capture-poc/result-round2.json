@@ -1,0 +1,71 @@
+{
+  "memoryPressureBefore": 1,
+  "exitCode": 1,
+  "result": {
+    "errorCode": 1,
+    "metadata": {
+      "actualNSFrame": {
+        "height": 260,
+        "width": 400,
+        "x": 2728,
+        "y": 150
+      },
+      "captureCalls": 0,
+      "cg": {
+        "found": true,
+        "frame": {
+          "height": 260,
+          "width": 400,
+          "x": 2728,
+          "y": 707
+        },
+        "layer": 0,
+        "onScreen": true,
+        "pid": 90502,
+        "windowID": 3384
+      },
+      "cgFrameAppKit": {
+        "height": 260,
+        "width": 400,
+        "x": 2728,
+        "y": 150
+      },
+      "cgFrameIntersectsDisplay": false,
+      "nsFrameIntersectsDisplay": false,
+      "ownedPID": 90502,
+      "ownedWindowID": 3384,
+      "sc": [
+        {
+          "frame": {
+            "height": 260,
+            "width": 400,
+            "x": 2728,
+            "y": 707
+          },
+          "frameAppKit": {
+            "height": 260,
+            "width": 400,
+            "x": 2728,
+            "y": 150
+          },
+          "frameIntersectsDisplay": false,
+          "onScreen": true,
+          "pid": 90502,
+          "windowID": 3384
+        }
+      ],
+      "scOwnedMatchCount": 1,
+      "screensAppKit": [
+        {
+          "height": 1117,
+          "width": 1728,
+          "x": 0,
+          "y": 0
+        }
+      ]
+    },
+    "reason": "cg_classifies_owned_window_as_onscreen",
+    "status": "FAIL"
+  },
+  "memoryPressureAfter": 1
+}

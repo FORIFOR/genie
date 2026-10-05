@@ -1,0 +1,148 @@
+{
+  "schema": 1,
+  "recordedAt": "2026-10-01T21:36:14.052616+00:00",
+  "reviewer": "/root/verification_audit",
+  "method": "Independent read-only source and complete implementer mock-log review. No app, native UI, model, service, VM, network probe or load test executed by this reviewer. No Noa repository/config or production state changes.",
+  "status": "PASS",
+  "statusScope": "Preflight static review only; actual generation and real cleanup NOT_RUN at review checkpoint.",
+  "checks": [
+    {
+      "id": "NG1",
+      "expected": "Generation only with no broadcast/playback or production writes",
+      "observed": "Only real Conversation and voice generation methods are invoked; fresh private run directory/ledger. Synthetic public questions, no viewers/history/OBS; generated drafts/WAV remain in memory and are not logged. Network allowlist permits only fixed loopback inference/identity endpoints and rejects redirects/cloud/control/model-management.",
+      "status": "PASS",
+      "method": "source review"
+    },
+    {
+      "id": "NG2",
+      "expected": "Preserve selected model and inference/voice quality settings",
+      "observed": "Exact qwen3.5:9b local GGUF/config/manifest validation; same existing binary and weight path/inode/device/mtime/size. Request boundary preserves ctx4096, temperature0.7, num_predict220, think=false, generation keep_alive30m. Voice/style/rate/direction settings projected and bound in config hash; endpoint alone is overridden to owned11435. Source import closure and public asset hashes recorded.",
+      "status": "PASS",
+      "method": "source review; not perceptual output-quality evaluation"
+    },
+    {
+      "id": "NG3",
+      "expected": "Stop when memory or Noa activity becomes unsafe",
+      "observed": "Positive stopped health and shared Ollama zero-residency preflight; memory sampled before inference and every second during generation. Warning/critical/unknown or free<25 percent abort at next completed sample without production30-second grace. HTTP ownership signals cancel current work.",
+      "status": "PASS",
+      "method": "source review plus mock policy cases"
+    },
+    {
+      "id": "NG4",
+      "expected": "Only owned server/runner cleanup; no orphan falsely declared stopped",
+      "observed": "Initial P1 found parent-death path could omit an uncaptured runner and report cleanup success. Corrected to dedicated detached process group, pgid/start/full-command classification and re-enumeration after parent exit. Signals use existing exact identity stop helper; final live group membership must be empty. Unknown/reused group or surviving runner is FAIL.",
+      "status": "PASS",
+      "method": "corrected source review and direct cleanup mock cases; real child cleanup untested here"
+    },
+    {
+      "id": "NG5",
+      "expected": "No shared service control or secret/content logging",
+      "observed": "11434 receives only readonly /api/ps; unload applies only after exact owned11435 listener identity. Shared Aivis/VOICEVOX receive synthesis and identity queries only, never stop/unload. Logs contain safe request origin/path and numeric timing/size, not query/body/audio/credentials. No Keychain or credential-file read added.",
+      "status": "PASS",
+      "method": "source review"
+    }
+  ],
+  "mockEvidence": {
+    "log": "noa-generation-harness-fake-tests.log",
+    "sha256": "2cb51a2949b2a2d3d92ad97b45a3cf81caf1ae78bfcb09d9cbd7983e236968f4",
+    "executed": 18,
+    "pass": 18,
+    "fail": 0,
+    "skip": 0,
+    "exitCode": 0,
+    "exitCodeSource": "implementer report; complete log independently inspected"
+  },
+  "limits": [
+    "Actual generation, parallel Genie operation, process cleanup and memory pressure remain NOT_RUN at this checkpoint.",
+    "At most120 seconds and1-3 serial turns plus cleanup; not five minutes of sustained load or livestream stability.",
+    "Production Jev gate, stream, viewer history, playback, subjective voice/answer quality and long-term stability are not tested.",
+    "Shared Aivis/VOICEVOX can retain cache/residency and continue server computation after HTTP cancellation. Harness never stops those services.",
+    "Noa character is hashed but real saved persona can participate in local generation; only synthetic question/history scope is claimed.",
+    "Weight digest is declared by manifest, not independently rehashed; exact shared file identity plus GGUF/header/size/config validation is the stated evidence.",
+    "Inherited process environment is not proof of equality with a separately launched production service environment.",
+    "Config hash must be freshly computed after any relevant launcher/source change; successful mock tests do not satisfy whole-release gate."
+  ],
+  "sourceHashes": {
+    "/private/tmp/genie-transactions-20261002/noa-coexistence/generation-load.mjs": "21566cef6c38482043e24e80023d60edb663cd1132b8bda8fe912f466066a3c3",
+    "/private/tmp/genie-transactions-20261002/noa-coexistence/owned-ollama.mjs": "437efde1d0416684fd0f0a762953571f29ebed8290413dffa1831d423daa24ac",
+    "/private/tmp/genie-transactions-20261002/noa-coexistence/generation-load.test.mjs": "45e687982b06f02e4a7bf74b465fc69a23d9cac5f737a3737567cbb2651e59bc",
+    "/private/tmp/genie-transactions-20261002/noa-coexistence/README.md": "084503093adfa61ec6e1afb6e531a1ff271fd66019dd4c200030273b23b9721b"
+  },
+  "followUp": {
+    "recordedAt": "2026-10-01T21:50:28.255938+00:00",
+    "method": "Read-only final private source and complete round3 mock log review; reviewer did not start any process or model.",
+    "status": "PASS",
+    "scope": "Corrected preflight/lifecycle source and mock evidence only",
+    "observed": [
+      "Runner ownership now binds exact colocated llama-server binary SHA and manifest modelBlob, dedicated process group and start time. Two explicit loopback/offline discovery forms and fixed model-runner prefix are recognized; later signals retain exact full-argv identity check.",
+      "Fast unidentified spawn never authorizes a signal. Success requires spawn failure without PID, or observed child exit plus absent PID and empty dedicated group.",
+      "Startup diagnostic captures a bounded in-memory stderr prefix and persists only allowlisted category/byte count/hash; rejected child argv is hashed, not copied.",
+      "Report distinguishes eligibility for cleanup from confirmed cleanup outcome. Initial real startup failure is not reclassified as success or model generation."
+    ],
+    "mock": {
+      "executed": 25,
+      "pass": 25,
+      "fail": 0,
+      "skip": 0,
+      "exitCode": 0,
+      "exitCodeSource": "implementer report; complete log inspected",
+      "log": "noa-generation-harness-fake-tests-round3.log",
+      "sha256": "267a71ed6a7efe68c67c6717e6f23c5f7d84ebfa2642468713276c4f4375ca00"
+    },
+    "sourceHashes": {
+      "/private/tmp/genie-transactions-20261002/noa-coexistence/owned-ollama.mjs": "c5ea2d3de8c3ca2162c41b3ec0824352078686288d15a3cf82699309b7d34be0",
+      "/private/tmp/genie-transactions-20261002/noa-coexistence/generation-load.mjs": "50658ffad32cb381e467d6a6f4d815cebed083732053fd34f5dd6caebccfa2c4",
+      "/private/tmp/genie-transactions-20261002/noa-coexistence/generation-load.test.mjs": "e1132dc1d83ac866609fce1e2964b62e4d9c7e89017b5570d636493018d6c796",
+      "/private/tmp/genie-transactions-20261002/noa-coexistence/README.md": "8c7ea924f662debc8c88879238a8969d8cf725724368c9e2de6822dde8d68827"
+    },
+    "actualInitialAttempt": {
+      "status": "FAIL",
+      "observedByReviewer": false,
+      "source": "root/core report",
+      "elapsedApproxSeconds": 0.3,
+      "requests": 0,
+      "stages": 0,
+      "reason": "SERVE_START_CLEANUP_UNCONFIRMED",
+      "cause": "Unknown; original attempt lacked sufficient startup detail. Later read-only absence does not retroactively establish original cleanup path success."
+    },
+    "remaining": [
+      "Real generation and actual successful owned cleanup remain to be demonstrated.",
+      "Maximum120-second/3-turn generation window is not five-minute sustained load or livestream stability.",
+      "Shared Aivis/VOICEVOX computation/cache cleanup remains outside harness control."
+    ]
+  },
+  "residentObservationFollowUp": {
+    "recordedAt": "2026-10-01T21:58:45.896051+00:00",
+    "method": "Independent read-only source/test/README review plus complete implementer mock log; no load/model/service execution by reviewer.",
+    "status": "PASS",
+    "scope": "75-second opt-in observation harness only; actual added observation NOT_RUN at review",
+    "observed": [
+      "Explicit default0 integer0..75 flag, duplicate/rejected malformed values. Monotonic run-start deadline means remaining duration only; existing120-second controller remains active.",
+      "After three or fewer generation turns, no additional inference/TTS is scheduled. Existing memory/Noa-stopped/process-ownership checks continue.",
+      "Owned private11435 GET/api/ps requires sole resident model with exact alias and manifest digest; signal checked before/after and HTTP timeout2s.",
+      "The same AbortSignal interrupts every one-second sleep and unwinds to existing cleanup without waiting for75 seconds.",
+      "Report separates generation-finished and observation-finished elapsed time plus resident observations."
+    ],
+    "mock": {
+      "executed": 31,
+      "pass": 31,
+      "fail": 0,
+      "skip": 0,
+      "exitCode": 0,
+      "exitCodeSource": "implementer report; complete log inspected",
+      "log": "noa-generation-harness-fake-tests-resident-hold.log",
+      "sha256": "c0b03e0183dc0494b67657b3abd2c59614d629fafe70f5a26c660f85e165fcd3"
+    },
+    "sourceHashes": {
+      "/private/tmp/genie-transactions-20261002/noa-coexistence/generation-load.mjs": "43f17b5675513bfecd5b3673fd51fb168033043a2609fccde4a365dbb01dab34",
+      "/private/tmp/genie-transactions-20261002/noa-coexistence/owned-ollama.mjs": "c5ea2d3de8c3ca2162c41b3ec0824352078686288d15a3cf82699309b7d34be0",
+      "/private/tmp/genie-transactions-20261002/noa-coexistence/generation-load.test.mjs": "7777262b515e61dbfc60a09c715ce51068a7801f3e617547866e373e20c6b6fc",
+      "/private/tmp/genie-transactions-20261002/noa-coexistence/README.md": "1177cab039a088a7ff3ddf84148c0cc008af4d24ef9b46f63d45f71eb8408be4"
+    },
+    "limits": [
+      "75 seconds is measured from run start, not75 seconds of continuous inference or guaranteed post-load residence.",
+      "Generation ends before passive residency observation; this is not actual stream/OBS/Jev/playback or long-term stability evidence.",
+      "Earlier short actual run success was reported by root separately; its actual evidence has not been inspected in this follow-up."
+    ]
+  }
+}

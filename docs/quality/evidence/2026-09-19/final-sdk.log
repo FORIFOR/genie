@@ -1,0 +1,14 @@
+
+> @genie/api-client@0.0.0 test /Users/shuhei/Projects/genie/packages/api-client
+> vitest run --passWithNoTests
+
+
+ RUN  v3.2.7 /Users/shuhei/Projects/genie/packages/api-client
+
+ ✓ test/client.test.ts (30 tests) 32ms
+
+ Test Files  1 passed (1)
+      Tests  30 passed (30)
+   Start at  18:37:55
+   Duration  411ms (transform 112ms, setup 0ms, collect 209ms, tests 32ms, environment 0ms, prepare 36ms)
+

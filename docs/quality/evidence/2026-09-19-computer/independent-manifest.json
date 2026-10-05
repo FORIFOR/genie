@@ -1,0 +1,41 @@
+{
+  "time": "2026-09-19T11:05:18.538291+00:00",
+  "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+  "node": "v26.5.0",
+  "revision": "28f89f2636a3b780e813ea902e07d2e4900a6e3f",
+  "files": {
+    "scripts/computer-use.mjs": "2c574d964277e07e6261d22ffdd2c9e81098a356550668b6f920e7f69a45db19",
+    "scripts/tests/computer-use.test.mjs": "5742b6d7f8ad8a44eebb2be63532d13ba391f650deee1e363133c2b5657211fd",
+    "scripts/start-local-preview.mjs": "1169f9d56d02cdf4f7a4a49cb9a268985dc040690dc8504c5a10100c97a753af",
+    "tools/computer-use/genie-computer.swift": "1c2a0fa4b91fd9fa9008c44c1e55ea16f14e91f4a4e92c80d934df8fb96a0bdd",
+    "services/task/src/plan.ts": "c03e405f2b0ce9011cd2d1570f4a922b5794cda61a3b41e4317de12d5805eccb"
+  },
+  "commands": [
+    {
+      "command": [
+        "node",
+        "--test",
+        "scripts/tests/computer-use.test.mjs"
+      ],
+      "exit": 0,
+      "log": "independent-1.log"
+    },
+    {
+      "command": [
+        "node",
+        "--test",
+        "workers/agent-host/test/computer-vision.node.mjs"
+      ],
+      "exit": 0,
+      "log": "independent-2.log"
+    },
+    {
+      "command": [
+        ".build/computer/genie-computer",
+        "--status"
+      ],
+      "exit": 0,
+      "log": "independent-3.log"
+    }
+  ]
+}

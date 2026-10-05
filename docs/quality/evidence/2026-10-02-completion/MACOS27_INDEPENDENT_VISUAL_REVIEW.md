@@ -1,0 +1,11 @@
+# macOS 27 final capture: independent visual review
+
+2026-10-02 JST. This reviewer opened all **20** saved final PNGs (ten light and ten dark) with `view_image`, read both capture-layout/exit records, and independently matched the release manifest's source and binary hashes. Capture execution belongs to the implementation owner. [Image copies, hashes, layouts and scope](macos27-visual-review/review.json) preserve the reviewed candidate without changing the existing golden references.
+
+**PASS for visible layout in these twenty states only.** No primary text/control clipping or overlap was observed. The HUD is 220×76 or 600×100 with a 32-pixel safe-area inset, matching the dimensions of the already approved notch profile. Its title, recording, microphone and Escape elements fit. Listening has a blue icon outline; preparing retains the plain white icon. The HUD uses the same dark surface in both themes.
+
+The 1080×680 recording surfaces keep the upper recording toolbar, original/translation selector, lower prompt and actions, sources, permission recovery control and four canvas sections visible. The 1240×820 detail shows all three columns, eight transcript rows and the right-hand source passage without clipping. The native sidebar/top chrome appears inactive or faint; pixels alone do not establish disabled behavior or that this appearance is solely due to the OS. Dark secondary timestamps/labels and blue links are faint, while primary content is readable. Numerical contrast and accessibility conformance were not measured.
+
+The [earlier three-way reference review](HISTORICAL_GOLDEN_REVIEW.md) remains applicable as historical context. Blue accent, brand/purpose labels and two transcript modes have recorded source changes. This result cannot be described as an OS-only pixel change. Existing root/26.6.2 references and original FAIL evidence remain intact.
+
+**Profile adoption remains pending** own-process geometry/shape/occupation evidence and its method review, plus the normal unchanged-tolerance pixel/geometry/density checks. This visual result is not actual control interaction, AX permission coverage, or a complete release gate. No product source or golden baseline was edited by this reviewer.

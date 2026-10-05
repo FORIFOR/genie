@@ -1,0 +1,24 @@
+{
+    "audit": [
+        {
+            "after": "0af69db9eaaf2f95c923b8e8313df69a60951a9d048894f144dbec7e2ba56d3d",
+            "event": "type",
+            "route": "ax_value",
+            "before": "794af5485ab908871c31442c1296dd5d1cce47e24496281b6482d55b9518f027",
+            "evidence": "target",
+            "sequence": 1,
+            "verified": true,
+            "elementId": "e0-0-0-0-1-0-1-3-1"
+        },
+        {
+            "event": "goal_verification",
+            "before": "0af69db9eaaf2f95c923b8e8313df69a60951a9d048894f144dbec7e2ba56d3d",
+            "sequence": 1,
+            "verified": true
+        }
+    ],
+    "actions": 1,
+    "completed": true,
+    "modelCalls": 3,
+    "verification": "visual"
+}

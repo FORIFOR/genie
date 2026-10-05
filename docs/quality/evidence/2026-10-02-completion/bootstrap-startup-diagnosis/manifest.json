@@ -1,0 +1,27 @@
+{
+  "recordedAt": "2026-10-01T22:05:27.690921+00:00",
+  "scope": "Read-only launch diagnosis; tiny owned AppKit app had no windows, no model/API/Keychain access. The standard descriptor is non-secret and was read only; no descriptor content was saved.",
+  "initialResult": "Foundation and tiny LaunchServices probes do not reproduce environment caching or lost Swift/C projection. This does not supersede the real installed-app failure.",
+  "commands": [
+    "swiftc -target arm64-apple-macosx14.0 <probe-main> apps/genie-macos/Sources/GenieMac/App/DesktopConnectionBootstrap.swift -o <private-owned-app>/Contents/MacOS/EnvironmentProbe",
+    "codesign --force --sign - <private-owned-app>",
+    "open -n -W <private-owned-app>"
+  ],
+  "nativeNotes": [
+    "Initial tiny compile defaulted to macOS28 deployment target; LaunchServices rejected with -10825. Target14 was then explicit.",
+    "Synthetic and standard-choice AppKit probes exited normally with status0 and own app process terminated.",
+    "Installed app _main disassembly begins with a call to DesktopConnectionBootstrap.install; source list includes both entrypoint and bootstrap."
+  ],
+  "sourceHashes": {
+    "apps/genie-macos/Sources/GenieMac/App/DesktopConnectionBootstrap.swift": "d8ef810f6b43deb7586211ff4e4e3b9dfb846d5876e7533cccfa91c3ecc657b1",
+    "apps/genie-macos/Sources/GenieMac/App/SelfTest.swift": "e319008e237729bfdb02ad648131216a85b4e89d15e54906d5a6b6256f21a0ce",
+    "apps/genie-macos/Sources/GenieMac/App/main.swift": "897d1134748c348eeb00f51cb405f661f1bbccec01261f5db32df2a894cf7f3f"
+  },
+  "artifactHashes": {
+    "foundation-result.json": "9c94de92d0b5fd5efcd889c9a2d8910b65305da8eba11d31a30e93d838a5ed60",
+    "standard-choice-appkit-probe.swift": "d78d3cc2ed79228f8725021984181c347189a077d580cdbe36fdd40afeb45de3",
+    "standard-choice-appkit-result.json": "57e631a0e32d11fbc2b39cce22b20c0068a57624075b45a2cd7bc6f92805240f",
+    "synthetic-appkit-probe.swift": "1d12393e1b8662adce320a187fdd8b06c7a0ea57b115923de6d4080b902b6ba3",
+    "synthetic-appkit-result.json": "57e631a0e32d11fbc2b39cce22b20c0068a57624075b45a2cd7bc6f92805240f"
+  }
+}

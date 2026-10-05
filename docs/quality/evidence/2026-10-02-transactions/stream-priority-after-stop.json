@@ -1,0 +1,62 @@
+[
+  {
+    "at": "2026-10-01T18:10:07.968253+00:00",
+    "pressureLevel": 1,
+    "freePercent": 46.0,
+    "ownedPidsRemaining": []
+  },
+  {
+    "at": "2026-10-01T18:10:13.001704+00:00",
+    "pressureLevel": 1,
+    "freePercent": 45.0,
+    "ownedPidsRemaining": []
+  },
+  {
+    "at": "2026-10-01T18:10:18.031994+00:00",
+    "pressureLevel": 1,
+    "freePercent": 46.0,
+    "ownedPidsRemaining": []
+  },
+  {
+    "at": "2026-10-01T18:10:23.067525+00:00",
+    "pressureLevel": 1,
+    "freePercent": 45.0,
+    "ownedPidsRemaining": []
+  },
+  {
+    "at": "2026-10-01T18:10:28.100976+00:00",
+    "pressureLevel": 1,
+    "freePercent": 45.0,
+    "ownedPidsRemaining": []
+  },
+  {
+    "at": "2026-10-01T18:10:33.137127+00:00",
+    "pressureLevel": 1,
+    "freePercent": 46.0,
+    "ownedPidsRemaining": []
+  },
+  {
+    "at": "2026-10-01T18:10:38.167270+00:00",
+    "pressureLevel": 1,
+    "freePercent": 46.0,
+    "ownedPidsRemaining": []
+  },
+  {
+    "at": "2026-10-01T18:10:43.205222+00:00",
+    "pressureLevel": 1,
+    "freePercent": 45.0,
+    "ownedPidsRemaining": []
+  },
+  {
+    "at": "2026-10-01T18:10:48.239516+00:00",
+    "pressureLevel": 1,
+    "freePercent": 45.0,
+    "ownedPidsRemaining": []
+  },
+  {
+    "at": "2026-10-01T18:10:53.278162+00:00",
+    "pressureLevel": 1,
+    "freePercent": 45.0,
+    "ownedPidsRemaining": []
+  }
+]

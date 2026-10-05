@@ -2,6 +2,7 @@
   "name": "@genie/mcp",
   "version": "0.0.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "description": "MCP を tool の供給源として扱うためのクライアント。正本 §9.1・§21。",
   "main": "./dist/index.js",

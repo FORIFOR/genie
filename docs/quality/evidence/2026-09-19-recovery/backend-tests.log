@@ -1,0 +1,12 @@
+
+ RUN  v3.2.7 /Users/shuhei/Projects/genie/services/api-gateway
+
+ ✓ test/conversations-stream.integration.test.ts (3 tests) 182ms
+ ✓ test/conversations-screenshot.integration.test.ts (4 tests) 200ms
+ ✓ test/conversations-recovery.integration.test.ts (9 tests) 472ms
+
+ Test Files  3 passed (3)
+      Tests  16 passed (16)
+   Start at  19:03:32
+   Duration  1.95s (transform 586ms, setup 0ms, collect 3.70s, tests 854ms, environment 0ms, prepare 134ms)
+

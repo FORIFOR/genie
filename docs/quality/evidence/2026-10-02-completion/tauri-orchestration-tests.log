@@ -1,0 +1,11 @@
+test_default_never_runs_real_models_and_remains_partial (test_tauri_test_orchestration.TauriTestOrchestrationTests.test_default_never_runs_real_models_and_remains_partial) ... ok
+test_invalid_opt_in_starts_nothing (test_tauri_test_orchestration.TauriTestOrchestrationTests.test_invalid_opt_in_starts_nothing) ... ok
+test_opt_in_separates_real_cases_and_preserves_assets_and_latency_observation (test_tauri_test_orchestration.TauriTestOrchestrationTests.test_opt_in_separates_real_cases_and_preserves_assets_and_latency_observation) ... ok
+test_real_missing_assets_crash_wrong_count_or_summary_cannot_pass (test_tauri_test_orchestration.TauriTestOrchestrationTests.test_real_missing_assets_crash_wrong_count_or_summary_cannot_pass) ... ok
+test_unit_failure_wins_over_missing_opt_in (test_tauri_test_orchestration.TauriTestOrchestrationTests.test_unit_failure_wins_over_missing_opt_in) ... ok
+test_unrelated_ignored_test_is_not_resolved_by_real_stt_success (test_tauri_test_orchestration.TauriTestOrchestrationTests.test_unrelated_ignored_test_is_not_resolved_by_real_stt_success) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 1.567s
+
+OK

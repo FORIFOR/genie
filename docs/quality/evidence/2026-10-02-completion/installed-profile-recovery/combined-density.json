@@ -1,0 +1,15 @@
+{
+  "01-voice-hud-idle": 88.4,
+  "02-voice-hud-listening": 92.3,
+  "03-recording-workspace": 64.4,
+  "04-recording-transcript": 63.4,
+  "05-recording-rag": 67.7,
+  "06-main-home": 87.7,
+  "07-apps": 64.2,
+  "08-meeting-detail": 69.4,
+  "09-permission-denied": 62.8,
+  "10-agent-timeline": 63.6,
+  "11-meeting-canvas": 63.4,
+  "12-recording-now": 77.7,
+  "02b-voice-hud-preparing": 92.9
+}

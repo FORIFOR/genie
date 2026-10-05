@@ -1,0 +1,27 @@
+Evidence: /private/tmp/genie-background-native.sCAQm6
+STAGE route ax_press by element point 310,633 local 130,168
+STAGE route ax_value by element point 335,772 local 155,307
+STAGE route ax_value by element point 335,772 local 155,307
+TEST capture
+DIAGNOSTIC scroll area Optional((490.0, 677.0, 240.0, 190.0))
+DIAGNOSTIC AXContents Optional(<__NSArrayM 0x7beedc7750>(
+<AXUIElement 0x7beef3ff30> {pid=31398}
+)
+)
+DIAGNOSTIC AXVerticalScrollBar Optional(<AXUIElement 0x7beef3ff30> {pid=31398})
+DIAGNOSTIC AXWindow Optional(<AXUIElement 0x7beef3ff30> {pid=31398})
+DIAGNOSTIC child AXTextArea Optional((490.0, 677.0, 240.0, 2400.0))
+DIAGNOSTIC child AXScrollBar Optional((712.0, 676.0, 19.0, 192.0))
+DIAGNOSTIC AXValue Optional(0)
+DIAGNOSTIC AXMinValue nil
+DIAGNOSTIC AXMaxValue nil
+DIAGNOSTIC AXOrientation Optional(AXVerticalOrientation)
+DIAGNOSTIC AXEnabled Optional(1)
+TEST click
+TEST capture for text
+TEST type
+TEST append preserves existing native text
+TEST append refuses a value changed after preview during marker travel
+TEST background vertical scroll
+[Verify.BackgroundAX.Element(path: [1], role: "AXButton", subrole: "", identifier: "", title: "Show details", valueHash: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", x: 29.0, y: 143.0, width: 202.0, height: 50.0, detail: "", scroll: nil), Verify.BackgroundAX.Element(path: [3], role: "AXTextArea", subrole: "", identifier: "fixture-editor", title: "", valueHash: "e8e8aa64fd787346083a0f0626e1ef6e82245f13d6c1fc6b353956b3c97898ba", x: 30.0, y: 222.0, width: 250.0, height: 170.0, detail: "", scroll: nil), Verify.BackgroundAX.Element(path: [4, 1, 3], role: "AXButton", subrole: "AXIncrementPage", identifier: "", title: "", valueHash: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", x: 536.0, y: 235.0, width: 11.0, height: 164.0, detail: "", scroll: nil)]
+FAIL Failure(code: "scroll_fixture_missing")

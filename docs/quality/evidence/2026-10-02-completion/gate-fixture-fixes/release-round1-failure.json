@@ -1,0 +1,18 @@
+{
+  "recordedAt": "2026-10-01T22:56:07.774849+00:00",
+  "packageExit": 1,
+  "releaseBuild": "PASS",
+  "strictSignature": "PASS",
+  "headlessFacts": {
+    "exitCode": -5,
+    "error": "UniFFI API checksum mismatch",
+    "source": "GenieCore/genie_core.swift:3502"
+  },
+  "diagnostic": "One direct --selftest facts invocation with fresh private ASTRA_DATA_ROOT reproduced the same checksum failure; no credentials, user input, or OS permissions involved.",
+  "installedUnmodified": true,
+  "candidateExecutableSha256": "c0d8b2b2a548185784e6701dfb8d403f20722c0cef400e66b81195c903ed49d1",
+  "files": {
+    "release-package-round1-fail.log": "40e7362e8964f1788aae07fc887e8cb03bd24223edc470d717a5b7ec471fd1cb",
+    "facts-round1-fail.log": "7405a294e1686535a8e8c87409485204bcc641579d8425fd22cbec525bd41195"
+  }
+}

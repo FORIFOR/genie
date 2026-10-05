@@ -1,0 +1,43 @@
+
+> @genie/service-task@0.0.0 test /Users/shuhei/Projects/genie/services/task
+> vitest run --passWithNoTests test/replay-history.test.ts
+
+
+ RUN  v3.2.7 /Users/shuhei/Projects/genie/services/task
+
+time=2026-09-19T18:57:54.582 level=WARN msg="Cluster Id in Cluster Metadata config is not a valid uuid. Generating a new Cluster Id" component=metadata-initializer
+Temporal CLI 1.8.3 (Server 1.31.2, UI 2.50.1)
+
+Temporal Server:      localhost:52177
+Temporal Persistence: in-memory
+Temporal Metrics:     http://localhost:52178/metrics
+2026-09-19T09:57:55.216Z [INFO] asset workflow-bundle-762d7ac1c608c0c3d92e.js 1.58 MiB [emitted] [immutable] (name: main)
+runtime modules 1.34 KiB 4 modules
+modules by path ../../node_modules/.pnpm/ 438 KiB
+  modules by path ../../node_modules/.pnpm/@temporalio+common@1.22.0/node_modules/@temporal...(truncated) 161 KiB 35 modules
+  modules by path ../../node_modules/.pnpm/@temporalio+workflow@1.22.0/node_modules/@tempor...(truncated) 202 KiB 26 modules
+  modules by path ../../node_modules/.pnpm/nexus-rpc@0.0.2/node_modules/nexus-rpc/lib/ 22.3 KiB 13 modules
+  ../../node_modules/.pnpm/long@5.3.2/node_modules/long/umd/index.js 49.8 KiB [built] [code generated]
+  ../../node_modules/.pnpm/ms@3.0.0-canary.1/node_modules/ms/dist/index.cjs 3.41 KiB [built] [code generated]
+modules by path ../../../../../../private/var/folders/xn/mdmvpkwd0yx4tcr7rvn_3xv80000gn/T/genie-...(truncated) 31.9 KiB
+  ../../../../../../private/var/folders/xn/mdmvpkwd0yx4tcr7rvn_3xv80000gn/T/genie-...(truncated) 536 bytes [built] [code generated]
+  ../../../../../../private/var/folders/xn/mdmvpkwd0yx4tcr7rvn_3xv80000gn/T/genie-...(truncated) 15.5 KiB [built] [code generated]
+  ../../../../../../private/var/folders/xn/mdmvpkwd0yx4tcr7rvn_3xv80000gn/T/genie-...(truncated) 15.9 KiB [built] [code generated]
+optional modules 30 bytes [optional]
+  __temporal_custom_payload_converter (ignored) 15 bytes [optional] [built] [code generated]
+  __temporal_custom_failure_converter (ignored) 15 bytes [optional] [built] [code generated]
+webpack 5.109.2 compiled successfully in 288 ms { sdkComponent: 'worker', taskQueue: 'genie-previous-revision-replay' }
+2026-09-19T09:57:55.217Z [INFO] Workflow bundle created {
+  sdkComponent: 'worker',
+  taskQueue: 'genie-previous-revision-replay',
+  size: '1.58MB'
+}
+2026-09-19T09:57:55.332Z [INFO] Worker state changed {
+  sdkComponent: 'worker',
+  taskQueue: 'genie-previous-revision-replay',
+  state: 'RUNNING'
+}
+2026-09-19T09:57:55.333Z [INFO] No Nexus services registered, not polling for Nexus tasks { sdkComponent: 'worker', taskQueue: 'genie-previous-revision-replay' }
+/Users/shuhei/Projects/genie/services/task:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @genie/service-task@0.0.0 test: `vitest run --passWithNoTests test/replay-history.test.ts`
+Exit status 143

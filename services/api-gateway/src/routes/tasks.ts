@@ -13,6 +13,7 @@ import {
   IdempotencyKey,
   PageQuery,
   dockStateFor,
+  AddTaskInstructionRequest,
 } from '@genie/contracts';
 import type { TaskService } from '@genie/service-task';
 import type { App } from '../fastify.js';
@@ -99,6 +100,27 @@ export function registerTaskRoutes(app: App, deps: TaskRouteDeps): void {
     const principal = requirePrincipal();
     const body = CancelTaskRequest.parse(request.body ?? {});
     return deps.tasks.cancel(principal.tenantId, request.params.taskId, body.reason);
+  });
+
+  /**
+   * 動いている仕事への追加指示。返すのは「受け取った」（202）。反映したかは一覧で分かる
+   * （APPLIED と段 / NOT_APPLIED）。終わった仕事には 409（続きは新しい仕事として頼む）。
+   */
+  app.post<{ Params: { taskId: string } }>('/v1/tasks/:taskId/instructions', async (request, reply) => {
+    const principal = requirePrincipal();
+    const body = AddTaskInstructionRequest.parse(request.body ?? {});
+    const instruction = await deps.tasks.addInstruction(
+      principal.tenantId,
+      request.params.taskId,
+      principal.userId,
+      body,
+    );
+    return reply.status(202).send(instruction);
+  });
+
+  app.get<{ Params: { taskId: string } }>('/v1/tasks/:taskId/instructions', async (request) => {
+    const principal = requirePrincipal();
+    return { items: await deps.tasks.listInstructions(principal.tenantId, request.params.taskId) };
   });
 
   app.get<{ Params: { taskId: string } }>('/v1/tasks/:taskId/approvals', async (request) => {

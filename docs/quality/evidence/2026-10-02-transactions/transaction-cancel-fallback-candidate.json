@@ -1,0 +1,30 @@
+{
+  "recordedAt": "2026-10-01T17:21:01.053908+00:00",
+  "uncommitted": true,
+  "classification": "backend authored implementation candidate; separate independent static review of peer Mac changes",
+  "backendSourceSha256": {
+    "services/task/src/activities.ts": "377adbbacaab75eef729b7f88fb3c65c8953ff494468488259459bad57dc2c83",
+    "services/task/src/activity-types.ts": "66a307875a6dc2a2229bdc36bb455b77262b000e076c47c7ebe9bd4a03a37b27",
+    "services/task/src/workflows.ts": "4576e214131ccadc0f553eae952f3d3be20dbe8eeec2b7b1d776395f3796e4aa",
+    "services/task/test/transaction-workflow.test.ts": "3f8eb24459e37cd0e99eec0326e989a43e5aad9987d10fb09b726ec98800dc7f",
+    "services/task/test/transaction-approval.db.test.ts": "011d99b66ac867707c31728728f1c6cdac84edb6a4ae8a590bc82c5bbc67fe21"
+  },
+  "independentUiReadSha256": {
+    "apps/genie-macos/Sources/GenieMac/Core/TaskOutcomeContext.swift": "045b7359ead496fbc9599e9bbdfa3b964784a8f203c3e05054106fbc190bbf0f",
+    "apps/genie-macos/Sources/GenieMac/Core/TaskRequestRecord.swift": "d9ab6029bdd59882d8273bfe38e777378099130432c53154290c862843df5fb1",
+    "apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift": "479045ed1fb8926588f98f8934bcdd1b6e6cba39f2c470c36e7f21f01c366bfd",
+    "apps/genie-macos/Sources/GenieMac/Main/TaskHistoryView.swift": "025ab127a951fe0af557d960a1a76a1baa0a60549e769ef8619d997c8508ae8b",
+    "apps/genie-macos/Tests/GenieMacTests/TaskOutcomeTests.swift": "bc53cc5287142c24f1ce4fefefc62a908e66e6546d887a739ac967604c96e6ae"
+  },
+  "validation": {
+    "build": "NOT RUN on this later candidate",
+    "typecheck": "NOT RUN on this later candidate",
+    "tests": "NOT RUN; 2 workflow +8 DB cases added",
+    "reason": "User-reported streaming memory pressure; root requested no heavy build or DB tests. Earlier round1 results are not relabeled as current.",
+    "format": "prettier --write targeted five backend files exited0",
+    "whitespace": "git diff --check targeted files exited0"
+  },
+  "priorCandidateEvidence": "transaction-cancel-fix.json",
+  "nativeUi": "NOT RUN by this agent",
+  "reviewSummary": "Updated peer UI retains unknown through missing context, typed transaction CANCELLED/FAILED, generic terminal/empty artifact, and read failures; reuse disabled; existing task refresh only. No further material static issue identified."
+}

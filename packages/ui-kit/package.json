@@ -2,6 +2,7 @@
   "name": "@genie/ui-kit",
   "version": "0.0.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "description": "Shared React primitives and the dashboard-schema renderer used by desktop and share-web.",
   "main": "./dist/index.js",

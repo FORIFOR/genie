@@ -71,6 +71,8 @@ final class MainData: ObservableObject {
     @Published var apps: [String] = []
     @Published var library: [String] = []
     @Published var connected = false
+    @Published private(set) var connectionIssue: GatewayConnectionIssue?
+    let credentialRecovery = GatewayCredentialRecovery()
     private let base = ProcessInfo.processInfo.environment["ASTRA_GATEWAY_URL"] ?? "http://127.0.0.1:3000"
 
     private var session: GatewaySession?
@@ -79,7 +81,10 @@ final class MainData: ObservableObject {
     private var configuredToken: String?
 
     /// A Dock action can arrive before the main window has ever opened.
-    func ensureConnected(reconnect: Bool = false) async -> Bool {
+    func ensureConnected(reconnect: Bool = false, afterUserAction: Bool = false) async -> Bool {
+        if reconnect || afterUserAction {
+            guard credentialRecovery.resumeForUserSubmission() else { return false }
+        } else if credentialRecovery.holdsAutomaticConnection { return false }
         if reconnect && loading {
             for _ in 0..<150 {
                 if !loading { break }
@@ -97,6 +102,10 @@ final class MainData: ObservableObject {
     }
 
     func load(reauthenticate: Bool = false) {
+        guard !credentialRecovery.holdsAutomaticConnection else { return }
+        guard !DesktopConnectionBootstrap.isInvalid else {
+            connected = false; connectionIssue = .configuration; return
+        }
         if refreshLoop == nil {
             refreshLoop = Task { [weak self] in
                 while !Task.isCancelled {
@@ -111,7 +120,13 @@ final class MainData: ObservableObject {
         if session == nil {
             let isolatedRoot = ProcessInfo.processInfo.environment["ASTRA_DATA_ROOT"]
             let key = "astra.dev.identity.\(base)" + (isolatedRoot.map { ".data-root.\($0)" } ?? "")
-            let identity = UserDefaults.standard.string(forKey: key) ?? UUID().uuidString.lowercased()
+            let identity: String
+            if let selected = ProcessInfo.processInfo.environment["ASTRA_DESKTOP_IDENTITY"] {
+                guard let uuid = UUID(uuidString: selected) else {
+                    loading = false; connected = false; connectionIssue = .configuration; return
+                }
+                identity = uuid.uuidString.lowercased()
+            } else { identity = UserDefaults.standard.string(forKey: key) ?? UUID().uuidString.lowercased() }
             UserDefaults.standard.set(identity, forKey: key)
             session = GatewaySession.desktop(base: base, identity: identity)
         }
@@ -121,13 +136,17 @@ final class MainData: ObservableObject {
             do {
                 if configuredToken == nil {
                     let reachable = await Task.detached { [base] in GenieCoreBridge.reachable(base) }.value
-                    guard reachable else { return }
+                    guard reachable else {
+                        GenieLog.write("connection", "unreachable")
+                        connected = false; connectionIssue = .unreachable; return
+                    }
                 }
                 let tokens = try await session.tokens(reauthenticate: reauthenticate)
+                if !connected || connectionIssue != nil { GenieLog.write("connection", "connected") }
+                connected = true; connectionIssue = nil
                 guard configuredToken != tokens.accessToken else { return }
                 let renewal = configuredToken != nil
                 configuredToken = tokens.accessToken
-                connected = true
                 RecordingWorkspaceState.shared.configureBackend(base: base, token: tokens.accessToken)
                 VoiceHUDState.shared.configureBackend(base: base, token: tokens.accessToken, renewal: renewal)
                 InitialProfileStore.shared.configureBackend(base: base, token: tokens.accessToken, renewal: renewal)
@@ -150,8 +169,18 @@ final class MainData: ObservableObject {
                 }
             } catch {
                 connected = false
-                NSLog("Genie: 接続の認証を更新できませんでした。再接続が必要です。")
+                connectionIssue = GatewayConnectionIssue.classify(error)
+                NSLog("Genie: 接続を利用できません（%@）。", connectionIssue?.diagnosticCode ?? "unknown")
+                // 中身（トークン・URL の秘密）は書かない。種類と Keychain の状態コードだけ。
+                GenieLog.write("connection", "unavailable: \(connectionIssue?.diagnosticCode ?? "unknown") (\(GenieLog.clip(String(describing: error), 120)))")
             }
+        }
+    }
+
+    func confirmCredentialReadAfterUserRequest() async {
+        guard connectionIssue == .credentialAccess, !loading, let session else { return }
+        await credentialRecovery.confirm {
+            try await session.confirmCredentialReadAfterUserRequest()
         }
     }
 }

@@ -2,6 +2,7 @@
   "name": "@genie/service-task",
   "version": "0.0.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "description": "Task lifecycle, Temporal integration, durable progress and approval handling.",
   "main": "./dist/index.js",

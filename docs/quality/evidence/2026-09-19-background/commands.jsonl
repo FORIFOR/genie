@@ -1,0 +1,28 @@
+{"name": "native-background", "command": ["bash", "scripts/test-background-computer.sh"], "exit_code": 1, "seconds": 5.14}
+{"name": "native-background-r2", "command": ["bash", "scripts/test-background-computer.sh"], "exit_code": 1, "seconds": 5.72}
+{"name": "native-background-r3", "command": ["bash", "scripts/test-background-computer.sh"], "exit_code": 1, "seconds": 5.9}
+{"name": "native-background-diagnose", "command": ["bash", "scripts/test-background-computer.sh"], "exit_code": 1, "seconds": 5.84}
+{"name": "native-background-text", "command": ["bash", "scripts/test-background-computer.sh"], "exit_code": 1, "seconds": 5.92}
+{"name": "native-background-value", "command": ["bash", "scripts/test-background-computer.sh"], "exit_code": 1, "seconds": 6.25}
+{"name": "native-background-unicode", "command": ["bash", "scripts/test-background-computer.sh"], "exit_code": 1, "seconds": 5.8}
+{"name": "native-background-unfocused", "command": ["bash", "scripts/test-background-computer.sh"], "exit_code": 0, "seconds": 7.11}
+{"name": "native-background-indicator", "command": ["bash", "scripts/test-background-computer.sh"], "exit_code": 1, "seconds": 5.0}
+{"name": "native-background-final", "command": ["bash", "scripts/test-background-computer.sh"], "exit_code": 1, "seconds": 5.15}
+{"name": "helpers-build", "command": ["bash", "scripts/build-computer-helper.sh"], "exit_code": 0, "seconds": 7.54}
+{"name": "typecheck", "command": ["pnpm", "typecheck"], "exit_code": 0, "seconds": 7.22}
+{"name": "mode-tests", "command": ["node", "--test", "workers/agent-host/test/background-vision.node.mjs", "workers/agent-host/test/computer-vision.node.mjs", "workers/agent-host/test/computer-vision-integration.node.mjs"], "exit_code": 0, "seconds": 0.23}
+{"name": "native-background-passive", "command": ["bash", "scripts/test-background-computer.sh"], "exit_code": 1, "seconds": 5.78}
+{"name": "native-background-passive-final", "command": ["bash", "scripts/test-background-computer.sh"], "exit_code": 1, "seconds": 6.18}
+{"name": "native-background-passive-diagnostic", "command": ["bash", "scripts/test-background-computer.sh"], "exit_code": 1, "seconds": 6.92}
+{"name": "cli-tests", "command": ["node", "--test", "scripts/tests/computer-use.test.mjs", "scripts/tests/managed-local-preview.test.mjs"], "exit_code": 0, "seconds": 0.47}
+{"name": "native-background-passive-readback", "command": ["bash", "scripts/test-background-computer.sh"], "exit_code": 0, "seconds": 6.92}
+{"name": "native-background-visible-final", "command": ["bash", "scripts/test-background-computer.sh"], "exit_code": 1, "seconds": 5.25}
+{"name": "final-typecheck", "command": ["pnpm", "typecheck"], "exit_code": 0, "seconds": 6.69}
+{"name": "final-helper-build", "command": ["bash", "scripts/build-computer-helper.sh"], "exit_code": 0, "seconds": 7.6}
+{"name": "final-native-passive", "command": ["bash", "scripts/test-background-computer.sh"], "exit_code": 0, "seconds": 6.98}
+{"name": "final-mode-tests", "command": ["node", "--test", "workers/agent-host/test/background-vision.node.mjs", "workers/agent-host/test/computer-vision.node.mjs", "workers/agent-host/test/computer-vision-integration.node.mjs"], "exit_code": 0, "seconds": 0.22}
+{"name": "final-cli-tests", "command": ["node", "--test", "scripts/tests/computer-use.test.mjs", "scripts/tests/managed-local-preview.test.mjs"], "exit_code": 0, "seconds": 0.46}
+{"name": "final-readiness", "command": ["node", "scripts/computer-use.mjs", "check", "--state-dir", "/tmp/genie-computer-preview-20260919"], "exit_code": 0, "seconds": 0.49}
+{"name": "final-managed-stop", "command": ["node", "scripts/start-local-preview.mjs", "stop", "--state-dir", "/tmp/genie-computer-preview-20260919"], "exit_code": 0, "seconds": 0.07}
+{"name": "final-managed-start", "command": ["node", "scripts/start-local-preview.mjs", "--state-dir", "/tmp/genie-computer-preview-20260919", "--port", "43151", "--model", "qwen3.5:9b", "--computer-use", "--no-open"], "exit_code": 0, "seconds": 80.61}
+{"name": "final-diff-check", "command": ["git", "diff", "--check"], "exit_code": 0, "seconds": 0.04}

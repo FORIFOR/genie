@@ -1,0 +1,30 @@
+{
+  "recordedAt": "2026-10-01T22:45:37.211659+00:00",
+  "scope": "Isolate microphone-lifecycle selftest from the person's live Gemini account; no production provider-default change.",
+  "priorGate": "verify-all-installed-current.log retained FAIL: six conversation cases did not have running input at sampling time. Every after-close observation was false; real opened dictation/meeting/reopen paths had no observed leak.",
+  "cause": "Default shared Gemini settings reached async key checking and likely real provider prepayment refusal before the two-second sample. A remote-service attempt is possible; this was not merely local budget refusal and is not recorded as zero external connections.",
+  "change": "Every micrelease beginConversation call receives a fresh suite and initialHasKey=false. The existing default remains shared; the permission callback preserves the supplied settings.",
+  "unchanged": [
+    "real mic capture",
+    "CoreAudio input-running measurement",
+    "during=true requirement",
+    "after=false requirement",
+    "2-second open observation",
+    "1.5-second close observation",
+    "all stop/replace/mute/reopen routes"
+  ],
+  "focused": {
+    "tests": 21,
+    "failures": 0,
+    "skips": 0,
+    "exitCode": 0,
+    "command": "GENIE_SWIFT_BUILD_JOBS=1 CARGO_BUILD_JOBS=1 swift test --jobs 1 --filter 'ConversationWiringTests|GeminiLiveTests|SettingsKeyPresenceTests'"
+  },
+  "nativeResult": "NOT_RUN on revised source; awaiting combined signed package and root-owned native slot",
+  "sourceHashes": {
+    "apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift": "e71fc95da88a408ffccb27c7985b40c7e5be6818a8974cb225a045e54159c345",
+    "apps/genie-macos/Sources/GenieMac/App/SelfTestMicRelease.swift": "61ecb7ddb1abd35cb83190ba75caf0450830282ba2d1e1347b81df7e9b0b19ff",
+    "apps/genie-macos/Tests/GenieMacTests/ConversationWiringTests.swift": "7ac4faa4d309147e9336391223084f2a94a816cd165ead389602b28a19fda7bd"
+  },
+  "logSha256": "ddd9e33e9cfbeb1b6b08011dd6cb38a309b4f5c2fc0b69ca67aacebe5532f2bc"
+}

@@ -1,0 +1,53 @@
+{
+  "at": "2026-10-01T16:17:10.535317+00:00",
+  "classification": "independent read-only local simulated provider ledger inspection; no real provider and no claim of UI approval",
+  "providerReceiptCount": 1,
+  "records": [
+    {
+      "path": "/private/tmp/genie-transactions-20261002/preview/app/Transactions/simulation/e17c9b0557f2f5f49e0954f621d7a54888a23d15e73b845e1b9bf1442676f4ab/receipt.json",
+      "receiptSha256": "452ab7b40e87bd76486b21acc1e5fc78665dc15a1e92dc3f8598d55453f5324e",
+      "receipt": {
+        "observedAt": "2026-10-01T16:05:08.398Z",
+        "orderKey": "turn:01a0f833-3232-7000-af64-8ef6ff336466",
+        "mode": "simulation",
+        "account": "demo-account",
+        "provider": "genie.simulation",
+        "status": "accepted",
+        "details": {
+          "totalMinor": 1500,
+          "currency": "JPY",
+          "requestedTime": "asap",
+          "destinationId": "demo-destination",
+          "items": [
+            {
+              "quantity": 1,
+              "id": "demo-pizza",
+              "label": "模擬マルゲリータ",
+              "options": [
+                "M",
+                "レギュラー生地"
+              ],
+              "unitMinor": 1200,
+              "lineMinor": 1200
+            }
+          ],
+          "paymentMethodRef": "demo-no-charge"
+        },
+        "providerOrderId": "SIM-064994d3-c097-44d0-b4ae-ff4056139016",
+        "quoteHash": "c93d5fcf7e3d2271e30cd91e77230c993f1a15fc5ec3154f2408cc16b4243b4e"
+      },
+      "quoteHashIndependentComparison": "c93d5fcf7e3d2271e30cd91e77230c993f1a15fc5ec3154f2408cc16b4243b4e",
+      "fullKnownTermsMatch": true,
+      "window": {
+        "pid": 32696,
+        "ready": true,
+        "quoteHash": "c93d5fcf7e3d2271e30cd91e77230c993f1a15fc5ec3154f2408cc16b4243b4e",
+        "clicks": 1,
+        "visible": true,
+        "status": "模擬受付: SIM-064994d3-c097-44d0-b4ae-ff4056139016\n状態: accepted",
+        "activations": 0,
+        "onActiveSpace": true
+      }
+    }
+  ]
+}

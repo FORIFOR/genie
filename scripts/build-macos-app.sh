@@ -3,26 +3,62 @@
 # usage 文言が要る。ad-hoc 署名まで行う（正式配布は Developer ID 署名 + notarize が別途必要）。
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+source "$ROOT/scripts/build-resource-env.sh"
 PKG="$ROOT/apps/genie-macos"
+# 実体は build.noindex に置き、build はそこへの symlink にする。Spotlight は名前が .noindex で
+# 終わるフォルダを索引しないので、作った .app が /Applications の Genie と並んで出てこない
+# （2026-10-03: 検索で Genie が 8 個並んだ）。build/Genie.app の道はそのまま使える。
+if [[ -d "$PKG/build" && ! -L "$PKG/build" ]]; then
+  mkdir -p "$PKG/build.noindex"
+  find "$PKG/build" -mindepth 1 -maxdepth 1 -exec mv {} "$PKG/build.noindex/" \;
+  rmdir "$PKG/build"
+fi
+mkdir -p "$PKG/build.noindex"
+[[ -L "$PKG/build" ]] || ln -s build.noindex "$PKG/build"
 APP="$PKG/build/Genie.app"
 # 版は package.json 1 か所から（release-macos.sh と同じ）。
 VERSION="$(node -p "require('$ROOT/package.json').version")"
 
+# A clean checkout has no Rust archive for Swift to link. Build it locally and
+# give both compilers the declared minimum OS instead of the build host's OS.
+export MACOSX_DEPLOYMENT_TARGET=14.0
+if [[ -z "${ASTRA_CORE_LIB_DIR:-}" ]]; then
+  command -v cargo >/dev/null || { echo "FAIL: Rust (cargo) is required; see docs/LOCAL_PREVIEW.md." >&2; exit 1; }
+  cargo build --manifest-path "$ROOT/core/genie-core/Cargo.toml" --lib
+  export ASTRA_CORE_LIB_DIR="$ROOT/core/genie-core/target/debug"
+fi
+
 cd "$PKG"
-swift build -c release >/dev/null
-BIN="$(swift build -c release --show-bin-path)/GenieMac"
+swift build -c release --jobs "$GENIE_SWIFT_BUILD_JOBS" >/dev/null
+BIN="$(swift build -c release --jobs "$GENIE_SWIFT_BUILD_JOBS" --show-bin-path)/GenieMac"
 
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/Genie"
+# SwiftPM's build-folder rpath is not portable. Ship the existing pinned runtime
+# with the app, so another developer can launch it outside this checkout.
+SPARKLE_FW="$PKG/Vendor/Sparkle/Sparkle.xcframework/macos-arm64_x86_64/Sparkle.framework"
+if [[ ! -d "$SPARKLE_FW" ]]; then
+  echo "FAIL: Sparkle runtime missing. Run bash scripts/fetch-sparkle.sh first." >&2
+  exit 1
+fi
+mkdir -p "$APP/Contents/Frameworks"
+cp -R "$SPARKLE_FW" "$APP/Contents/Frameworks/Sparkle.framework"
+install_name_tool -add_rpath '@executable_path/../Frameworks' "$APP/Contents/MacOS/Genie"
 mkdir -p "$APP/Contents/Resources/plugins"
 cp -R "$ROOT/plugins/builtin" "$APP/Contents/Resources/plugins/builtin"
 # Rust 静的ライブラリは実行ファイルに static link 済み（dylib 同梱不要）。
+# 「ジーニー」の呼びかけ検出（端末の中だけ）: 前処理の凍結モデルと、Genie 用に学習した分類器。
+WAKE_VENDOR="$ROOT/apps/genie-macos/Vendor/LiveKitWakeWord/Resources"
+[[ -f "$WAKE_VENDOR/melspectrogram.onnx" ]] || bash "$ROOT/scripts/fetch-wakeword-runtime.sh"
+cp "$WAKE_VENDOR/melspectrogram.onnx" "$WAKE_VENDOR/embedding_model.onnx" "$APP/Contents/Resources/"
+WAKE_MODEL="$ROOT/apps/genie-macos/Resources/wake/genie_ja.onnx"
+[[ -f "$WAKE_MODEL" ]] && cp "$WAKE_MODEL" "$APP/Contents/Resources/genie_ja.onnx"
 # Optional publisher configuration: public native-client parameters only, never user tokens.
 if [[ -n "${ASTRA_CONNECTIONS_CONFIG:-}" ]]; then
   node "$ROOT/scripts/prepare-connection-config.mjs" "$ASTRA_CONNECTIONS_CONFIG" "$APP/Contents/Resources/connections.json"
 fi
-ICON_SRC="$ROOT/apps/desktop/src-tauri/icons/icon.icns"
+ICON_SRC="$ROOT/apps/genie-macos/Resources/AppIcon.icns"   # ランプの印（Resources/GenieMark-source.png から作った）
 [[ -f "$ICON_SRC" ]] || { echo "FAIL: アイコン ($ICON_SRC) が無い" >&2; exit 1; }
 cp "$ICON_SRC" "$APP/Contents/Resources/AppIcon.icns"
 
@@ -44,6 +80,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>LSUIElement</key><true/>
   <!-- 許可の説明文言（無いと TCC プロンプトが出ない） -->
   <key>NSMicrophoneUsageDescription</key><string>会議を録音し、手元で文字にするためにマイクを使います。</string>
+  <key>NSLocationWhenInUseUsageDescription</key><string>「近くの店」を頼んだときだけ、現在地の近くの店を探すために使います。現在地はそのときだけGoogleマップの検索に送り、保存しません。</string>
   <key>NSAppleEventsUsageDescription</key><string>他アプリの文脈を読むために使います。</string>
   <key>NSCalendarsUsageDescription</key><string>会議の予定を取り込むために使います。</string>
   <key>NSCalendarsFullAccessUsageDescription</key><string>会議の予定を取り込むために使います。</string>
@@ -52,7 +89,15 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 </plist>
 PLIST
 
-# ad-hoc 署名（"-" は ad-hoc）。TCC はバンドル識別子で許可を覚える。
-codesign --force --sign - --timestamp=none "$APP" >/dev/null 2>&1 || codesign --force --sign - "$APP"
+# 署名。ad-hoc（"-"）だと TCC は実行ファイルの cdhash で許可を覚えるので、作り直すたびに
+# マイク・音声認識・画面収録の許可が消える（本人がまた許可し直すことになる）。
+# 手元に Apple Development の証明書があればそれで署名し、識別子と証明書で覚えてもらう。
+# GENIE_SIGN_IDENTITY で指定でき、"-" なら従来の ad-hoc。証明書が無ければ ad-hoc。
+IDENTITY="${GENIE_SIGN_IDENTITY:-}"
+if [[ -z "$IDENTITY" ]]; then
+  IDENTITY="$(security find-identity -v -p codesigning 2>/dev/null | sed -n 's/.*"\(Apple Development: [^"]*\)".*/\1/p' | head -1)"
+fi
+codesign --force --deep --sign "${IDENTITY:--}" --timestamp=none "$APP"
+codesign --verify --deep --strict "$APP"
 echo "built $APP"
-codesign -dv "$APP" 2>&1 | grep -E "Identifier|Signature" | head -2 || true
+codesign -dv "$APP" 2>&1 | grep -E "Identifier|Signature|^Authority" | head -3 || true

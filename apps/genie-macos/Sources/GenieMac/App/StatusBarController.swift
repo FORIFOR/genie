@@ -14,8 +14,9 @@ final class StatusBarController {
         guard item == nil else { return }
         let status = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = status.button {
-            button.image = NSImage(systemSymbolName: "waveform", accessibilityDescription: "Genie")
-            button.image?.isTemplate = true
+            // Genie の印（ランプ）。template なのでメニューバーの明暗に合わせて色が変わる。
+            button.image = GenieBrandMark.image(height: 13)
+            button.setAccessibilityLabel("Genie")
             button.toolTip = "Genie"
         }
         status.menu = buildMenu()
@@ -54,6 +55,17 @@ final class StatusBarController {
         )
         rec.target = self
         menu.addItem(rec)
+        let wake = NSMenuItem(title: Facts.menuWakeWord, action: #selector(toggleWakeWord), keyEquivalent: "")
+        wake.target = self
+        wake.state = WakeController.shared.enabled ? .on : .off
+        menu.addItem(wake)
+        let tryWake = NSMenuItem(title: Facts.menuTryWake, action: #selector(tryWakeWord), keyEquivalent: "")
+        tryWake.target = self
+        menu.addItem(tryWake)
+        let enroll = NSMenuItem(title: Facts.menuWakeEnroll, action: #selector(enrollWakeWord), keyEquivalent: "")
+        enroll.target = self
+        enroll.isEnabled = !WakeEnrollment.shared.running
+        menu.addItem(enroll)
 
         menu.addItem(.separator())
 
@@ -108,6 +120,12 @@ final class StatusBarController {
         buildMenu().items.filter { !$0.isSeparatorItem && $0.isEnabled }
             .map { ($0.title, $0.action != nil && $0.target != nil) }
     }
+
+    @objc func toggleWakeWord() {
+        WakeController.shared.enabled.toggle()
+    }
+    @objc func tryWakeWord() { WakeController.shared.simulateWake() }
+    @objc func enrollWakeWord() { Task { _ = await WakeEnrollment.shared.record() } }
 
     @objc private func openMain() { MainWindowController.shared.showSection(.home) }
     @objc private func toggleControls() {

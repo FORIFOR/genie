@@ -1,0 +1,14 @@
+{
+  "recordedAt": "2026-10-01T21:56:53.698137+00:00",
+  "binarySHA256": "5a27e3f39e06c0bb43c2a343dee478c7b6922e5df36d9b8a5f28aa4d90a6ad1a",
+  "normalLaunchHomeVisible": true,
+  "normalLaunchSettingsResponsive": true,
+  "settingsVisualClippingObserved": false,
+  "modelDisclosure": "Generic connected-model text, not selected gpt-6-sol",
+  "selectedWorkspaceObserved": false,
+  "requestSubmitted": false,
+  "secretsOrPermissionsChanged": false,
+  "appExitedViaQuit": true,
+  "status": "FAIL",
+  "reason": "Saved connection not visible in ordinary native UI; diagnosis pending. Settings freeze repair works for metadata read in this run."
+}

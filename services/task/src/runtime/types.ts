@@ -18,6 +18,8 @@ export interface TaskRuntime {
   start(input: TaskWorkflowInput, workflowId: string): Promise<StartedWorkflow>;
   approve(workflowId: string, approvalId: string, decision: 'APPROVED' | 'REJECTED'): Promise<void>;
   cancel(workflowId: string, reason: string): Promise<void>;
+  /** 動いている仕事へ追加指示を渡す。反映するかどうかは workflow が次の段の前で決める。 */
+  instruct(workflowId: string, instruction: { requestId: string; text: string }): Promise<void>;
   describe(workflowId: string): Promise<TaskStateSnapshot | null>;
   close(): Promise<void>;
 }

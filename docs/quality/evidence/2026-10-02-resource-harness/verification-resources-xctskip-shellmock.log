@@ -1,0 +1,19 @@
+test_default_does_not_launch_a_model_and_is_not_a_pass (scripts.tests.test_verification_resources.VerificationResourceTests.test_default_does_not_launch_a_model_and_is_not_a_pass) ... ok
+test_explicit_opt_in_uses_the_existing_semantic_selftest (scripts.tests.test_verification_resources.VerificationResourceTests.test_explicit_opt_in_uses_the_existing_semantic_selftest) ... ok
+test_failures_win_over_skip_and_exit_two_without_skip_is_a_failure (scripts.tests.test_verification_resources.VerificationResourceTests.test_failures_win_over_skip_and_exit_two_without_skip_is_a_failure) ... ok
+test_full_gate_keeps_swift_unit_tests_and_propagates_job_limits (scripts.tests.test_verification_resources.VerificationResourceTests.test_full_gate_keeps_swift_unit_tests_and_propagates_job_limits) ... ok
+test_full_gate_tracks_omissions_and_never_calls_them_green (scripts.tests.test_verification_resources.VerificationResourceTests.test_full_gate_tracks_omissions_and_never_calls_them_green) ... ok
+test_job_defaults_overrides_and_invalid_values (scripts.tests.test_verification_resources.VerificationResourceTests.test_job_defaults_overrides_and_invalid_values) ... ok
+test_packager_keeps_release_optimization_and_limits_parallelism (scripts.tests.test_verification_resources.VerificationResourceTests.test_packager_keeps_release_optimization_and_limits_parallelism) ... ok
+test_recording_harness_leaves_real_translation_unrun_by_default (scripts.tests.test_verification_resources.VerificationResourceTests.test_recording_harness_leaves_real_translation_unrun_by_default) ... ok
+test_skip_failure_crash_and_missing_result_cannot_count_as_success (scripts.tests.test_verification_resources.VerificationResourceTests.test_skip_failure_crash_and_missing_result_cannot_count_as_success) ... ok
+test_xctest_failure_still_wins_over_skipped_tests (scripts.tests.test_verification_resources.VerificationResourceTests.test_xctest_failure_still_wins_over_skipped_tests) ... ok
+test_xctest_opt_in_skips_remain_partial_through_summary_wrapper (scripts.tests.test_verification_resources.VerificationResourceTests.test_xctest_opt_in_skips_remain_partial_through_summary_wrapper) ... ok
+test_empty_environment_runs_under_system_bash_nounset (scripts.tests.test_macos_recording_env.MacOSRecordingEnvironmentTests.test_empty_environment_runs_under_system_bash_nounset) ... ok
+test_forwarded_values_stay_single_arguments (scripts.tests.test_macos_recording_env.MacOSRecordingEnvironmentTests.test_forwarded_values_stay_single_arguments) ... ok
+test_launch_failure_is_not_reported_as_a_pass (scripts.tests.test_macos_recording_env.MacOSRecordingEnvironmentTests.test_launch_failure_is_not_reported_as_a_pass) ... ok
+
+----------------------------------------------------------------------
+Ran 14 tests in 9.107s
+
+OK

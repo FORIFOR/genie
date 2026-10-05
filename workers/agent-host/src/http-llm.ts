@@ -3,7 +3,13 @@ import type { LanguageModelKind } from '@genie/contracts';
 export class HttpLlmError extends Error {
   constructor(
     readonly code:
-      'output_limit' | 'empty_output' | 'timeout' | 'image_unavailable' | 'image_unsupported',
+      | 'output_limit'
+      | 'empty_output'
+      | 'timeout'
+      | 'image_unavailable'
+      | 'image_unsupported'
+      /** 使える分を使い切った。**別の提供元へ移らず、課金へも上がらずに止める。** */
+      | 'quota_exhausted',
     message: string,
   ) {
     super(message);
@@ -97,8 +103,9 @@ export class HttpLlmClient {
     prompt: string,
     images: readonly HttpLlmImage[] = [],
     signal?: AbortSignal,
+    reasoning?: 'none' | 'low' | 'medium' | 'high',
   ): Promise<unknown> {
-    const content = await this.#request(prompt, true, false, images, signal);
+    const content = await this.#request(prompt, true, false, images, signal, reasoning);
     try {
       return JSON.parse(content) as unknown;
     } catch {
@@ -122,6 +129,8 @@ export class HttpLlmClient {
     creative = false,
     images: readonly HttpLlmImage[] = [],
     signal?: AbortSignal,
+    /** この呼び出しに限った指定。設定より優先する（急ぐ仕事のためにある）。 */
+    reasoning?: 'none' | 'low' | 'medium' | 'high',
   ): Promise<string> {
     if (!prompt.trim()) throw new Error('LLM prompt is empty');
     if (
@@ -164,8 +173,8 @@ export class HttpLlmClient {
                 : prompt,
             },
           ],
-          ...(this.#config.reasoningEffort
-            ? { reasoning_effort: this.#config.reasoningEffort }
+          ...(reasoning ?? this.#config.reasoningEffort
+            ? { reasoning_effort: reasoning ?? this.#config.reasoningEffort }
             : {}),
           ...(structured ? { response_format: { type: 'json_object' } } : {}),
           ...(this.#config.kind === 'local' ? { temperature: creative ? 0.6 : 0 } : {}),
@@ -182,6 +191,13 @@ export class HttpLlmClient {
     if (!response.ok) {
       if (images.length && response.status === 400)
         throw new HttpLlmError('image_unsupported', 'Model rejected the image request');
+      /*
+       * 429 は「無料の分を使い切った」の合図でもある。**ここで止める。**
+       * 待って再送すれば通ることもあるが、それは利用者が有料に上がるかどうかを
+       * 決める前に勝手に使い続けることになる。本文は読まない（鍵も画面も残さない）。
+       */
+      if (response.status === 429)
+        throw new HttpLlmError('quota_exhausted', `${this.#config.kind} quota is exhausted`);
       throw new Error(`${this.#config.kind} request failed (${response.status})`);
     }
     const body = (await response.json()) as {

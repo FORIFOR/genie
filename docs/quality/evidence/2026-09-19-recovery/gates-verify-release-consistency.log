@@ -1,0 +1,2 @@
+  package.json=0.1.4 tauri.conf.json=0.1.4 src-tauri/Cargo.toml=0.1.4 genie-core/Cargo.toml=0.1.4
+RELEASE_CONSISTENCY_OK: 版番号 0.1.4 で一致・配布物は外部 dylib を掴まない・Developer ID + hardened runtime

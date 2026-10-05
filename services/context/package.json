@@ -2,6 +2,7 @@
   "name": "@genie/service-context",
   "version": "0.0.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "description": "Context Capsule assembly and world/context retrieval.",
   "main": "./dist/index.js",

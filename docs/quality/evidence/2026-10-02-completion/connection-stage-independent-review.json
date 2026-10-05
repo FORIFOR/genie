@@ -1,0 +1,43 @@
+{
+  "schema": 1,
+  "recordedAt": "2026-10-01T21:45:48.415250+00:00",
+  "method": "Independent actual bundle read, plist comparison, complete resources/frameworks inventory, fresh codesign validation and in-memory Mach-O comparison. No launch/install or permission action by reviewer.",
+  "status": "PASS",
+  "scope": "Bundle identity/content/signature only; actual app connection and Keychain UX NOT_RUN by reviewer.",
+  "candidate": "/private/tmp/genie-transactions-20261002/user-app-connection-stage/Genie.app",
+  "candidateExecutableSha256": "5a27e3f39e06c0bb43c2a343dee478c7b6922e5df36d9b8a5f28aa4d90a6ad1a",
+  "canonicalExecutableSha256": "5ff9fb74c6ed490e227a5d996fc6a9f7a23e982b8e6eaeb073c79c043168cfe4",
+  "installedAtReviewExecutableSha256": "2880bc06f89e4a468d8c9c2981fc2916b87265ee0868cedce86fe1348fa3d74e",
+  "checks": {
+    "codesignDeepStrict": {
+      "command": "/usr/bin/codesign --verify --deep --strict --verbose=2 <candidate>",
+      "exitCode": 0
+    },
+    "designatedRequirementMatchesInstalled": true,
+    "infoDifferencesFromCanonical": [
+      "CFBundleExecutable",
+      "LSUIElement",
+      "CFBundleIdentifier"
+    ],
+    "resources": {
+      "entries": 54,
+      "identical": true
+    },
+    "frameworks": {
+      "entries": 97,
+      "identical": true
+    },
+    "machineCodeComparison": {
+      "normalization": "Read actual signed Mach-O64 bytes; exclude embedded LC_CODE_SIGNATURE payload, zero its dataoff/datasize and __LINKEDIT segment vmsize/filesize only. Compare remaining bytes without writing or stripping either binary.",
+      "canonicalAndCandidateSha256": "ae30ffbe3cd38242e2ee8ee4a92edb34cf4da7baa42f1dc92ad3315c27a4f543",
+      "equal": true
+    },
+    "sourceManifestMatchesStage": true,
+    "packageLogMatchesStage": true
+  },
+  "stageManifestSha256": "17ce3d336f30a0ee3380cb17d92d8e6807671c21f9a3404c342481fd02745890",
+  "limits": [
+    "Preserving code identity is not an OS grant and does not prove current TCC access.",
+    "Signature/content match does not prove actual Home task completion or whole-release gate success."
+  ]
+}

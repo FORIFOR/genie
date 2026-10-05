@@ -1,0 +1,8 @@
+{
+  "time": "2026-09-19T12:12:54.529443+00:00",
+  "method": "read-only final source review; no native execution",
+  "sha256": {
+    "tools/computer-use/BackgroundAX.swift": "6783fe912f796e35fab1ed58d51f0ce71a973f7123afcc83fb6985125f0f4f30",
+    "tools/computer-use/BackgroundAXTests.swift": "9da60b4ab2172369652f66c385a5fe7685884b34c3a248dbff21adcd4d21dc30"
+  }
+}

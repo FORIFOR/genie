@@ -1,24 +1,50 @@
 # Genieをまとめて起動する
 
-DBの準備とGateway・Task Worker・Agent Hostの起動を、ひとつの操作にまとめる開発者向けの起動方法です。**Node 22以降、Docker Desktop、Ollamaの導入済みモデル、Genie.appは必要です。** `psql`・`dbmate`・pnpmの手動インストール、SQL操作、3つのターミナルでの起動は不要です。
+DBの準備とGateway・Task Worker・Agent Hostの起動を、ひとつの操作にまとめる開発者向けの起動方法です。**Node 22以降、Docker、Genie.appと、サインイン済みCodex CLIまたはOllamaの導入済みモデルが必要です。** `psql`・`dbmate`・pnpmの手動インストール、SQL操作、3つのターミナルでの起動は不要です。
 
-この起動ツールはv0.1.4の配布後に追加されました。v0.1.4のDMGには含まれていません。現在のソースから実行し、同じバージョン番号のGenie.appを使用してください。番号が違う場合は、起動時に案内して停止します。既存の手動セットアップは[従来の手順](LOCAL_PREVIEW.ja.md)で引き続き使えます。
+この起動ツールはv0.1.4の配布後に追加されました。v0.1.4のDMGには含まれていません。アプリとサービスを同じソースrevisionからビルドして使用してください。番号が違う場合は起動を止めますが、同じ0.1.4でも異なるrevisionの互換性までは判定できません。既存の手動セットアップは[従来の手順](LOCAL_PREVIEW.ja.md)で引き続き使えます。
 
-## 最初の起動
+## 既存の外部接続で始める
 
-1. [Macアプリ](https://github.com/FORIFOR/genie/releases)をApplicationsへコピーします。
-2. Docker DesktopとOllamaを導入し、使うモデルを用意します。Docker Desktopの初回設定は先に完了してください。モデルのダウンロード容量と必要なメモリはモデルによって異なります。
-3. このリポジトリのソースを取得し、フォルダ内の **`Start Genie.command`** を開きます。Nodeが見つからない場合は、その場に導入先を表示します。
+同じソースから`pnpm build:macos-app`で`apps/genie-macos/build/Genie.app`を作成します。ビルドにはXcode・Command Line Tools・Rustなどの[ネイティブビルドの前提](LOCAL_PREVIEW.md#requirements)が必要です。手動セットアップに書かれたOllama・dbmate・psqlは、外部モデルを使うこの起動経路には不要です。Dockerの初回設定と、既存Codex CLIへのサインインを済ませてください。
 
-Genieを既に単独起動している場合は、Genieのメニューから一度終了してください。異なる保存先のウインドウが重ならないよう、起動済みのアプリを検出した場合は案内して停止します。
-
-ターミナルからも、ソースのフォルダで次の1行を実行できます。
+リポジトリのフォルダで次を実行します。
 
 ```sh
-node scripts/start-local-preview.mjs --model qwen3.5:9b
+node scripts/start-local-preview.mjs --app apps/genie-macos/build/Genie.app \
+  --model-provider codex --allow-cloud --model gpt-6-sol
 ```
 
-既に`llama3.2`を導入している場合は、`--model llama3.2`で文章の依頼を試せます。画像の質問には画像対応モデルが必要です。モデルを指定せず起動し、複数のモデルがある場合は番号で選びます。選択は保存され、次回も同じモデルを使います。
+サインイン済みCodex CLIを使い、Ollamaのモデルは読み込みません。資格情報の読み取り・コピーや、`.env`のAPIキーの取り込みは行いません。モデルと会話・添付内容の外部送信の選択はこの保存先に保持され、HomeにOpenAIと選んだモデルを表示します。送信した文章や添付画像は既存アカウントの利用枠を使います。無料利用を保証するものではありません。新しいAPI課金を有効にする操作はなく、起動検査はCLIとサインイン状態の確認だけで文章生成はしません。接続できなければQwenへ自動で戻さず停止します。Dockerとローカルサービスは、この経路でもMac上で動きます。
+
+この保存先とモデル表示を持つ専用アプリをLaunchServices経由で開きます。通常起動中のGenieは終了しません。この仕事にはプレビュー側のHomeを使ってください。次回は同じコマンドを使うか、同じrevisionのアプリをApplicationsへコピーして **`Start Genie.command`** を開くと、保存済みモデルを再利用できます。標準の保存先で準備が完了した後は、Genie.appを直接開いても接続先・モデル・作業場所を引き継ぎます。アプリだけでは停止中のサービスを起動しないため、接続できないときは起動ツールを再開してください。未設定時の既定はlocalのままで、初回起動だけでは外部モデルを選びません。
+
+## ローカル処理を選ぶ場合
+
+Ollamaへ導入済みのモデルを、明示的に選びます。
+
+```sh
+node scripts/start-local-preview.mjs --app apps/genie-macos/build/Genie.app \
+  --model-provider local --model qwen3.5:9b
+```
+
+既に`llama3.2`を導入している場合はモデル名を置き換え、文章の依頼を試せます。画像の質問には画像対応モデルが必要です。localを選びモデルを指定せず起動し、複数のモデルがあれば番号で選びます。選択は保存され、モデルを自動ダウンロードしたり、有料の提供元へ自動で切り替えたりしません。ローカルモデルはアプリやサービスとは別にメモリを使います。
+
+## 必要な場合だけ、自動画面操作を有効にする
+
+文章の依頼に画面操作は不要で、既定では無効です。外部モデルへ操作対象の画像を送る場合は、次の2つのフラグを明示します。
+
+```sh
+node scripts/start-local-preview.mjs --app apps/genie-macos/build/Genie.app \
+  --model-provider codex --allow-cloud --model gpt-6-sol \
+  --computer-use --allow-external-screen
+```
+
+`--allow-cloud`だけでは自動取得する画面画像の送信を許可せず、`--computer-use`だけを足しても外部送信は有効になりません。画面送信の選択は、この保存先の`externalScreenAuthorization`として**提供元・モデルの完全一致**に限定して保存します。同じ選択で再起動したときだけ再利用でき、どちらかを変えると失効します。localでは`--allow-external-screen`を指定できません。画面操作そのものは起動ごとに`--computer-use`が必要です。次回起動時に`--no-external-screen`を指定すると、会話の接続設定を残して画面送信許可を解除できます。
+
+起動ツールは選択したネイティブヘルパーを準備します。ヘルパーのOS権限、タスク承認、実行時の対象窓・送信先への同意は別途必要で、このフラグから許可や取引の承認が派生することはありません。`node scripts/computer-use.mjs check`は起動中の実ヘルパーの権限・対応操作・送信先・画面送信許可を読み取り確認します。画面の撮影や送信はしません。ローカルモデルでの画面操作には、上のlocal例へ`--computer-use`だけを追加します。[画面操作の手順と制約](COMPUTER_VISION.md)も確認してください。
+
+Ollamaのクラウド名やリモートモデル情報をローカル扱いで通しません。localhost経由でも処理がクラウドなら端末内とは表示できません。この起動経路の外部モデル対応は現在Codexで、Ollamaクラウド用アダプターは含みません。
 
 初回は、固定版の起動ツール、ソースが指定する依存パッケージ、コンテナイメージをダウンロードします。ダウンロードと初期化には時間がかかります。画面には準備中の工程が表示され、失敗すると確認先と再開方法が出ます。
 
@@ -36,7 +62,7 @@ Markdownのチェックリストを作ってください。
 
 結果ができたらWorkで開き、コピーまたはMarkdown保存を試します。別の画面へ移ってから同じ結果を開き直せることも確認してください。
 
-起動準備や接続確認は文章を生成しません。依頼を送信したときに選択したローカルモデルを使います。有料APIへの自動切替や、モデルの自動ダウンロードはありません。この起動経路では外部サービスの定期同期も無効です。
+起動準備や接続確認は文章を生成しません。依頼を送信したときに選択したモデルを使います。有料APIへの自動切替や、モデルの自動ダウンロードはありません。この起動経路では外部サービスの定期同期も無効です。
 
 ## 停止と次回の起動
 
@@ -55,14 +81,16 @@ node scripts/start-local-preview.mjs stop
 
 既定の保存先は`~/Library/Application Support/Genie/local-preview`です。ローカルアプリの履歴、成果物、設定、診断用ログを置きます。DBとRedisは、この保存先に記録した専用Dockerプロジェクトの名前付きボリュームへ保存します。
 
-既存の`.env`、手動で立ち上げたサービスやDB、通常起動のアプリ履歴は引き継ぎません。**この起動方法で作った仕事は、同じ起動方法で開いてください。** アプリだけを単独起動しても、この保存先には接続しません。既存データの移行は行いません。
+既存の`.env`、手動で立ち上げたサービスやDB、以前のアプリ履歴を変更・移行しません。標準の保存先だけは準備完了後に、非秘密の接続情報を本人だけが読める`desktop-connection.json`へ保存します。通常のアプリ直接起動はこの接続先・端末識別子・作業場所を使います。別の保存先、明示した起動環境、自己検証の隔離は維持します。このファイルに資格情報・署名鍵・稼働中という保証・新しい画面送信許可は含みません。保存済みの選択を変えると旧設定を先に無効にし、新しい準備が完了した後だけ再利用できます。未設定なら従来の未設定状態を保ちますが、存在する設定が壊れている・読めない場合は、モデルへの依頼と翻訳を止めます。ローカルモデルへ自動で戻さず、起動ツールの設定を確認して再開する案内を出します。
 
 Gatewayは`127.0.0.1:43123`、その他のサービスもこのMacのループバックだけで待ち受けます。既存のポートやサービスを奪って起動することはありません。
 
 初回だけ別の保存先とGatewayポートを選ぶ例:
 
 ```sh
-node scripts/start-local-preview.mjs --state-dir "$HOME/Library/Application Support/Genie/second-preview" --port 43124 --model llama3.2
+node scripts/start-local-preview.mjs --app apps/genie-macos/build/Genie.app \
+  --state-dir "$HOME/Library/Application Support/Genie/second-preview" --port 43124 \
+  --model-provider codex --allow-cloud --model gpt-6-sol
 ```
 
 その後の起動・`status`・`stop`にも同じ`--state-dir`を指定します。保存先はGenie専用の空のフォルダを選んでください。
@@ -73,7 +101,8 @@ node scripts/start-local-preview.mjs --state-dir "$HOME/Library/Application Supp
 | -------------------------- | ---------------------------------------------------------- |
 | Nodeが見つからない         | [Node](https://nodejs.org/)の22以降を導入して再実行        |
 | Dockerが起動しない         | Docker Desktopを開き、初回設定・エラー・空き容量を確認     |
-| モデルが見つからない       | `ollama list`で名前を確認し、`--model`で選択               |
+| Codexへ接続できない        | 既存Codex CLIのサインインと選択モデルを確認。自動でlocalへ切り替えません |
+| ローカルモデルが見つからない | `ollama list`で名前を確認し、`--model-provider local --model`で選択 |
 | 保存先は起動中             | `status`で確認。停止する場合は同じ保存先を指定して`stop`   |
 | ポートが使用中             | 既存の環境を確認。別の保存先を作る場合は別の`--port`を指定 |
 | 工程名とログ名が表示された | 保存先の`logs`にある該当ファイルを確認して再実行           |
@@ -81,3 +110,5 @@ node scripts/start-local-preview.mjs --state-dir "$HOME/Library/Application Supp
 設定ファイルにはこのプレビューの認証情報が含まれ、ログにも依頼内容が含まれる場合があります。公開Issueにはファイル全体を貼らず、工程名・エラーの要約・再現手順を伝えてください。`stop`はデータを削除しません。保存先の削除やDockerボリュームの削除は復旧操作には使わないでください。
 
 この改善は開発者プレビューの起動をまとめたものです。Node・Docker・モデルをアプリに同梱した一般利用者向けインストーラではありません。Google/Microsoft連携や録音には、別途その機能の設定と許可が必要です。
+
+最初の文章の作成・編集・保存は[First Run](FIRST_RUN.md)、今回の実行証拠と未達条件は[品質結果](quality/RESULTS.md)を参照してください。`pnpm doctor`は従来の.envを使う手動起動用で、managedの事前検査ではありません。

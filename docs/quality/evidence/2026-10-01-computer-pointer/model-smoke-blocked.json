@@ -1,0 +1,77 @@
+{
+  "scope": "real local model -> ComputerVisionRuntime -> NativeVisionDevice -> production native consent -> disposable AppKit fixture",
+  "excludes": [
+    "gateway/task-worker path",
+    "main app UI",
+    "human concurrent-input acceptance",
+    "external applications"
+  ],
+  "startedAt": "2026-10-01T13:04:32.981Z",
+  "root": "/private/tmp/genie-local-smoke-20261001/run-hQO5kY",
+  "model": {
+    "kind": "local",
+    "name": "qwen3.5:9b",
+    "endpoint": "http://127.0.0.1:11434/v1"
+  },
+  "helper": "/private/tmp/GenieComputerPointerTest.app/Contents/MacOS/GenieComputer",
+  "modelCalls": [],
+  "status": "FAIL",
+  "revision": "ee857a5b13482cbd2d986a1f9b466c8e49a149c3",
+  "executedFileHashes": {
+    "/private/tmp/GenieComputerPointerTest.app/Contents/MacOS/GenieComputer": "97cfac4ac5d4a71a6c84625a8d9e755a8ea2ba926d08f0a8dbc813ab0e2f4293",
+    "/Users/shuhei/Projects/genie/workers/agent-host/dist/computer-vision.js": "a23aa4232a15c0fa5b2f04004a8890911cac711774c314c527bfc1755cb0a90b",
+    "/Users/shuhei/Projects/genie/workers/agent-host/dist/computer-vision-policy.js": "d1509f7089bb9c6d9180eb672a81f0cf1e30ea5c74f7cb08c8737f6a1c26ef0f",
+    "/Users/shuhei/Projects/genie/workers/agent-host/dist/computer-vision-prompts.js": "ee68b1aa07f44d2839b47b1480320490cff71e8439637e88c258f58073903ee2",
+    "/Users/shuhei/Projects/genie/workers/agent-host/dist/computer-vision-device.js": "e35753bd1cf1964e0f94a25bb35d802c108f0b0df158408f83d5dd080ab0d9c2",
+    "/Users/shuhei/Projects/genie/workers/agent-host/dist/llm-steps.js": "17948d9cac33e69f01534b57eac4d117b07da5401b70396625499a9290fcef6f",
+    "/Users/shuhei/Projects/genie/workers/agent-host/dist/http-llm.js": "dc18c9190b30f0bd096336e2c0f623170166459b2d265ed600af18d81459a0e7",
+    "/Users/shuhei/Projects/genie/workers/agent-host/dist/visual-context.js": "535f69be66cdb55505612186f859065c8368c4bb45fbf72de8d1ceb85604e886"
+  },
+  "helperStatus": {
+    "accessibility": true,
+    "capabilities": [
+      "ax_press",
+      "empty_text_field",
+      "native_click",
+      "native_keys",
+      "space_key"
+    ],
+    "deliveryMode": "background",
+    "ready": true,
+    "screenRecording": true,
+    "supported": true,
+    "unattendedTest": false
+  },
+  "fixture": {
+    "pid": 87579,
+    "bundleId": "org.genie.smoke.aceb04e93b4d4aef81f5f938781c4447",
+    "source": "tools/computer-use/BackgroundFixture.swift"
+  },
+  "before": {
+    "clicks": 0,
+    "activations": 0,
+    "text": ""
+  },
+  "outcome": {
+    "ok": false,
+    "error": {
+      "code": "computer.vision.timeout",
+      "message": "画面操作を停止しました。完了は確認されていません。権限・対象画面・モデル設定を確認してください。"
+    },
+    "result": {
+      "completed": false,
+      "audit": []
+    }
+  },
+  "after": {
+    "clicks": 0,
+    "activations": 0,
+    "text": ""
+  },
+  "readbackChecks": {
+    "textMatches": false,
+    "clickedExactlyOnce": false,
+    "targetDidNotActivate": true
+  },
+  "finishedAt": "2026-10-01T13:09:35.082Z"
+}

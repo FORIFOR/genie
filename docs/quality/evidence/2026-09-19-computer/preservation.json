@@ -1,0 +1,10 @@
+{
+  "modified_already_dirty": [
+    "README.md",
+    "docs/COMPUTER_VISION.md",
+    "scripts/start-local-preview.mjs",
+    "tools/computer-use/genie-computer.swift",
+    "workers/agent-host/src/computer-vision-device.ts"
+  ],
+  "note": "Only targeted additions in listed files; no existing changes reverted."
+}

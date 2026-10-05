@@ -1,0 +1,44 @@
+{
+  "cases" : [
+    {
+      "compositePixels" : [
+        1188,
+        920
+      ],
+      "exactCropPixels" : [
+        380,
+        120
+      ],
+      "name" : "correct-lower",
+      "sourceRectTopLeftPixels" : [
+        40,
+        212,
+        380,
+        120
+      ]
+    },
+    {
+      "compositePixels" : [
+        640,
+        710
+      ],
+      "exactCropPixels" : [
+        180,
+        50
+      ],
+      "name" : "wrong-upper",
+      "sourceRectTopLeftPixels" : [
+        40,
+        152,
+        180,
+        50
+      ]
+    }
+  ],
+  "invalidInputsRejected" : 8,
+  "source" : "synthetic native input fixture screenshot",
+  "sourcePixels" : [
+    460,
+    372
+  ]
+}

@@ -1,0 +1,3 @@
+Dockerの起動を待っています…
+Genie: Dockerを起動できません。Docker Desktopの画面で初回設定を完了し、同じコマンドを再実行してください。
+起動案内: node scripts/start-local-preview.mjs --help

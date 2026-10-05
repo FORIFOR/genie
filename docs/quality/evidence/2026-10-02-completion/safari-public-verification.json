@@ -1,0 +1,34 @@
+{
+  "recordedAt": "2026-10-01T19:57:06.670621+00:00",
+  "status": "BLOCKED",
+  "scope": "production signed helper, normal consent dialog, managed external gpt-6-sol selection; public Safari window",
+  "observed": "Public McDelivery page was accessible through independent CUA AX and window screenshot. The actual Genie chooser listed only ChatGPT windows; refresh after Safari Raise and selecting its owned private window did not expose Safari. No target was selected. Clicking cancel produced user_cancelled and empty audit.",
+  "modelCalls": 0,
+  "inputs": 0,
+  "userPermissionGranted": false,
+  "completionClaim": false,
+  "notEstablished": [
+    "actual Safari navigation",
+    "Genie image transmission to gpt-6-sol",
+    "order submission",
+    "whether hidden windows or another Space caused the missing target"
+  ],
+  "sources": {
+    "scripts/computer-use.mjs": "a3cbf1419b9d19286df3970e902817d3bc2e8ed45e6d81f508824bdf585e6395",
+    "scripts/start-local-preview.mjs": "5a12e7f903d48cf377a9804e7d21aae9ade3076f9b12e24f1319176871869924",
+    "scripts/local-preview/config.mjs": "15b9d16e914403cce9bead40e78c363af0f3c12c3798921ce878fd9130aa6255"
+  },
+  "artifacts": {
+    "safari-runtime-readiness.json": "4b8cec8b130f92b6fde3904df915e37154708bf7d5c5bd1814cff705bca301cf",
+    "safari-task-start.json": "a61af4762bcf840b90da5f6b2ffc1dc63b69ad6fe7d1df2166b880f316801b07",
+    "safari-task-approve.json": "4f3281f53d307147e7607eb7c207e6f383d1b17e322c33a6c510478d6174e937",
+    "safari-task-status.json": "4c7c7ff3c7041f4c0d15ad7996e6fb37dc0b2aba51980fe753fe16c21d28f9fb",
+    "safari-run-stop.json": "847a9c144b6f3a016a269663b7a6ed191dd294e86dd1873571a4b5140a167fcd",
+    "safari-service-start-snapshot.log": "f47deb7114f0e72aeb9ef0697ed3b98e56d7a4f93c5dce3b9453f12e1d9a5dd4",
+    "safari-service-start.log": "23db95fbef547939488d94ca288176300c4553f14225c03a0a121b4c94db79d8"
+  },
+  "artifactUpdate": {
+    "at": "2026-10-01T20:07:29.446357+00:00",
+    "reason": "Managed stop appended to the running supervisor log. The exact original hash-matching prefix is now preserved separately; final complete log is retained."
+  }
+}

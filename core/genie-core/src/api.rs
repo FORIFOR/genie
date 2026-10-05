@@ -148,19 +148,78 @@ pub fn api_finish_meeting(
     Ok(resp.task_id)
 }
 
-/// gateway に届くか（GET /v1/auth/providers, 認証不要）。オフライン判定に。
+/// gateway に届くか（GET /healthz, 認証・rate limit 対象外）。依存サービスの readiness は判定しない。
 #[uniffi::export]
 pub fn api_reachable(base_url: String) -> bool {
-    ureq::get(&format!("{}/v1/auth/providers", base(&base_url)))
+    ureq::get(&format!("{}/healthz", base(&base_url)))
         .timeout(std::time::Duration::from_secs(3))
         .call()
-        .is_ok()
+        .is_ok_and(|response| (200..300).contains(&response.status()))
 }
 
 // gateway を起動して実行する結合テスト。`ASTRA_GATEWAY_URL` が無ければ skip。
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn reachability_server(statuses: Vec<u16>) -> (String, std::thread::JoinHandle<Vec<String>>) {
+        use std::io::{BufRead, Write};
+        use std::time::{Duration, Instant};
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        listener.set_nonblocking(true).unwrap();
+        let url = format!("http://{}", listener.local_addr().unwrap());
+        let thread = std::thread::spawn(move || {
+            let mut requests = Vec::new();
+            for health_status in statuses {
+                let deadline = Instant::now() + Duration::from_secs(5);
+                let mut socket = loop {
+                    match listener.accept() {
+                        Ok((socket, _)) => break socket,
+                        Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
+                            assert!(Instant::now() < deadline, "reachability probe did not arrive");
+                            std::thread::sleep(Duration::from_millis(5));
+                        }
+                        Err(error) => panic!("reachability listener failed: {error}"),
+                    }
+                };
+                // On macOS an accepted socket inherits the listener's non-blocking mode, so a
+                // read before the client's bytes arrive failed with WouldBlock (flaky in verify-all).
+                socket.set_nonblocking(false).unwrap();
+                socket.set_read_timeout(Some(Duration::from_secs(3))).unwrap();
+                let mut request = String::new();
+                std::io::BufReader::new(&socket).read_line(&mut request).unwrap();
+                // Auth is deliberately unavailable: probes must not consume its shared budget.
+                let status = if request.starts_with("GET /healthz ") { health_status } else { 429 };
+                requests.push(request.trim_end().to_owned());
+                write!(socket, "HTTP/1.1 {status} Test\r\nContent-Length: 0\r\nConnection: close\r\n\r\n").unwrap();
+            }
+            requests
+        });
+        (url, thread)
+    }
+
+    #[test]
+    fn reachable_repeated_probes_use_health_without_auth_budget() {
+        let (url, server) = reachability_server(vec![200; 12]);
+        let results: Vec<_> = (0..12).map(|_| api_reachable(format!("{url}/"))).collect();
+        let requests = server.join().unwrap();
+        assert!(results.into_iter().all(|reachable| reachable));
+        assert_eq!(requests, vec!["GET /healthz HTTP/1.1"; 12]);
+    }
+
+    #[test]
+    fn reachable_requires_success_status_and_rejects_transport_failure() {
+        let (url, server) = reachability_server(vec![200, 204, 302, 401, 429, 500, 503]);
+        let results: Vec<_> = (0..7).map(|_| api_reachable(url.clone())).collect();
+        let requests = server.join().unwrap();
+        assert_eq!(results, vec![true, true, false, false, false, false, false]);
+        assert_eq!(requests, vec!["GET /healthz HTTP/1.1"; 7]);
+
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let unavailable = format!("http://{}", listener.local_addr().unwrap());
+        drop(listener);
+        assert!(!api_reachable(unavailable));
+    }
 
     fn task_server(responses: Vec<u16>, minimum_spacing_ms: u128) -> (String, std::thread::JoinHandle<()>) {
         use std::io::{Read, Write};
@@ -435,19 +494,7 @@ pub fn api_send_turn_with_attachments(
     text: String,
     attachments: Vec<TurnAttachment>,
 ) -> Result<TurnOutcome, ApiError> {
-    #[derive(Deserialize)]
-    struct Resp {
-        needs_clarification: bool,
-        #[serde(default)]
-        answer: Option<String>,
-        #[serde(default)]
-        task_id: Option<String>,
-        #[serde(default)]
-        notice: Option<String>,
-        #[serde(default)]
-        reply: Option<serde_json::Value>,
-    }
-    let resp: Resp = ureq::post(&format!(
+    let resp: TurnResponse = ureq::post(&format!(
         "{}/v1/conversations/{}/turns",
         base(&base_url),
         conversation_id
@@ -459,7 +506,7 @@ pub fn api_send_turn_with_attachments(
     .map_err(|e| ApiError::Decode { message: e.to_string() })?;
     Ok(TurnOutcome {
         needs_clarification: resp.needs_clarification,
-        answer: resp.answer.unwrap_or_default(),
+        answer: resp.answer_text(),
         task_id: resp.task_id.unwrap_or_default(),
         notice: resp.notice.unwrap_or_default(),
         reply_json: resp.reply.map(|v| v.to_string()).unwrap_or_default(),
@@ -476,25 +523,13 @@ pub fn api_send_turn_with_reply_candidates(
     attachments: Vec<TurnAttachment>,
     reply_candidates_json: String,
 ) -> Result<TurnOutcome, ApiError> {
-    #[derive(Deserialize)]
-    struct Resp {
-        needs_clarification: bool,
-        #[serde(default)]
-        answer: Option<String>,
-        #[serde(default)]
-        task_id: Option<String>,
-        #[serde(default)]
-        notice: Option<String>,
-        #[serde(default)]
-        reply: Option<serde_json::Value>,
-    }
     let candidates: serde_json::Value =
         serde_json::from_str(&reply_candidates_json).unwrap_or(serde_json::json!([]));
     let mut body = turn_body(&text, &attachments);
     if let serde_json::Value::Object(ref mut map) = body {
         map.insert("reply_candidates".to_string(), candidates);
     }
-    let resp: Resp = ureq::post(&format!(
+    let resp: TurnResponse = ureq::post(&format!(
         "{}/v1/conversations/{}/turns",
         base(&base_url),
         conversation_id
@@ -506,7 +541,7 @@ pub fn api_send_turn_with_reply_candidates(
     .map_err(|e| ApiError::Decode { message: e.to_string() })?;
     Ok(TurnOutcome {
         needs_clarification: resp.needs_clarification,
-        answer: resp.answer.unwrap_or_default(),
+        answer: resp.answer_text(),
         task_id: resp.task_id.unwrap_or_default(),
         notice: resp.notice.unwrap_or_default(),
         reply_json: resp.reply.map(|v| v.to_string()).unwrap_or_default(),
@@ -890,6 +925,47 @@ pub fn api_task_approve(
     Ok(())
 }
 
+/// 動いている仕事へ追加指示を渡す（POST /v1/tasks/:id/instructions）。返すのは状態（RECEIVED など）。
+/// 受け取った ≠ 反映した。反映したかは一覧（GET 同じパス）で分かる。終わった仕事は 409（task.invalid_state）。
+/// `request_id` は呼ぶ側が保存しておき、送り直しても 1 件にする。
+#[uniffi::export]
+pub fn api_add_task_instruction(
+    base_url: String,
+    access_token: String,
+    task_id: String,
+    request_id: String,
+    text: String,
+) -> Result<String, ApiError> {
+    #[derive(Deserialize)]
+    struct Resp {
+        status: String,
+    }
+    let resp: Resp = ureq::post(&format!("{}/v1/tasks/{}/instructions", base(&base_url), path_segment(&task_id)))
+        .set("Authorization", &format!("Bearer {access_token}"))
+        .send_json(ureq::json!({ "request_id": request_id, "text": text }))
+        .map_err(map_transport)?
+        .into_json()
+        .map_err(|e| ApiError::Decode { message: e.to_string() })?;
+    Ok(resp.status)
+}
+
+/// 仕事を取り消す（POST /v1/tasks/:id/cancel）。返すのは取り消し後の状態（CANCELLING / CANCELLED）。
+/// 終わった仕事は 409（task.invalid_state）。呼ぶのは人が「止める」を押したときだけ。
+#[uniffi::export]
+pub fn api_cancel_task(base_url: String, access_token: String, task_id: String, reason: String) -> Result<String, ApiError> {
+    #[derive(Deserialize)]
+    struct Resp {
+        status: String,
+    }
+    let resp: Resp = ureq::post(&format!("{}/v1/tasks/{}/cancel", base(&base_url), path_segment(&task_id)))
+        .set("Authorization", &format!("Bearer {access_token}"))
+        .send_json(ureq::json!({ "reason": reason }))
+        .map_err(map_transport)?
+        .into_json()
+        .map_err(|e| ApiError::Decode { message: e.to_string() })?;
+    Ok(resp.status)
+}
+
 /// 仕事そのもの（GET /v1/tasks/:id）。JSON 本文。失敗の理由（error.code）を読むために使う。
 #[uniffi::export]
 pub fn api_task_json(base_url: String, access_token: String, task_id: String) -> Result<String, ApiError> {
@@ -920,4 +996,118 @@ pub fn api_initial_profile(
         .send_json(body).map_err(map_transport)?;
     if response.status() == 204 { return Ok("{}".into()); }
     response.into_string().map_err(|e| ApiError::Decode { message: e.to_string() })
+}
+
+
+/// Wire shape shared by submission and read-only recovery. Legacy strings also decode.
+#[derive(Deserialize)]
+struct TurnResponse {
+    needs_clarification: bool,
+    #[serde(default)]
+    answer: Option<serde_json::Value>,
+    #[serde(default)]
+    task_id: Option<String>,
+    #[serde(default)]
+    notice: Option<String>,
+    #[serde(default)]
+    reply: Option<serde_json::Value>,
+}
+impl TurnResponse {
+    fn answer_text(&self) -> String {
+        self.answer.as_ref().and_then(|v| v.as_str().or_else(|| v.get("text").and_then(|t| t.as_str())))
+            .unwrap_or_default().to_string()
+    }
+    fn outcome(self) -> TurnOutcome {
+        TurnOutcome { needs_clarification: self.needs_clarification, answer: self.answer_text(),
+            task_id: self.task_id.unwrap_or_default(), notice: self.notice.unwrap_or_default(),
+            reply_json: self.reply.map(|v| v.to_string()).unwrap_or_default() }
+    }
+}
+
+/// Send exactly once with a caller-persisted identity. There is no transport retry.
+#[uniffi::export]
+pub fn api_send_recoverable_turn(base_url: String, access_token: String, conversation_id: String,
+    request_id: String, text: String, attachments: Vec<TurnAttachment>, reply_candidates_json: String,
+) -> Result<TurnOutcome, ApiError> {
+    let mut body = turn_body(&text, &attachments);
+    body["request_id"] = serde_json::Value::String(request_id);
+    if !reply_candidates_json.is_empty() {
+        body["reply_candidates"] = serde_json::from_str(&reply_candidates_json)
+            .map_err(|e| ApiError::Decode { message: e.to_string() })?;
+    }
+    let response: TurnResponse = ureq::post(&format!("{}/v1/conversations/{}/turns", base(&base_url), conversation_id))
+        .set("Authorization", &format!("Bearer {access_token}"))
+        .send_json(body).map_err(map_transport)?.into_json()
+        .map_err(|e| ApiError::Decode { message: e.to_string() })?;
+    Ok(response.outcome())
+}
+
+/// Pending is not failure/success. This GET never starts or resumes external execution.
+#[uniffi::export]
+pub fn api_recover_turn(base_url: String, access_token: String, conversation_id: String,
+    request_id: String,
+) -> Result<Option<TurnOutcome>, ApiError> {
+    #[derive(Deserialize)]
+    #[serde(tag = "status", rename_all = "lowercase")]
+    enum Receipt { Pending, Resolved { response: TurnResponse } }
+    let receipt: Receipt = ureq::get(&format!("{}/v1/conversations/{}/requests/{}", base(&base_url), conversation_id, request_id))
+        .set("Authorization", &format!("Bearer {access_token}"))
+        .call().map_err(map_transport)?.into_json()
+        .map_err(|e| ApiError::Decode { message: e.to_string() })?;
+    Ok(match receipt { Receipt::Pending => None, Receipt::Resolved { response } => Some(response.outcome()) })
+}
+
+#[cfg(test)]
+mod receipt_tests {
+    use super::*;
+    use std::io::{Read, Write};
+    use std::net::TcpListener;
+
+    #[test]
+    fn lost_response_is_recovered_by_get_without_a_second_post() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let url = format!("http://{}", listener.local_addr().unwrap());
+        let server = std::thread::spawn(move || {
+            let mut requests = Vec::new();
+            for index in 0..2 {
+                let (mut stream, _) = listener.accept().unwrap();
+                stream.set_read_timeout(Some(std::time::Duration::from_secs(5))).unwrap();
+                let mut bytes = Vec::new();
+                let mut byte = [0u8; 1];
+                while !bytes.ends_with(b"\r\n\r\n") { stream.read_exact(&mut byte).unwrap(); bytes.push(byte[0]); }
+                let head = String::from_utf8(bytes).unwrap();
+                let length = head.lines().find_map(|line| {
+                    let (key, value) = line.split_once(':')?;
+                    key.eq_ignore_ascii_case("content-length").then(|| value.trim().parse::<usize>().unwrap())
+                }).unwrap_or(0);
+                let mut body = vec![0; length]; stream.read_exact(&mut body).unwrap();
+                requests.push((head.lines().next().unwrap().to_string(), body));
+                if index == 0 { continue; } // Server accepted; response is lost.
+                let body = r#"{"status":"resolved","response":{"needs_clarification":false,"task_id":"original-task","notice":null}}"#;
+                write!(stream, "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}", body.len(), body).unwrap();
+            }
+            requests
+        });
+        let id = "00000000-0000-4000-8000-000000000001".to_string();
+        assert!(api_send_recoverable_turn(url.clone(), "test-token".into(), "conversation".into(), id.clone(), "メモを整理".into(), vec![], "".into()).is_err());
+        let outcome = api_recover_turn(url, "test-token".into(), "conversation".into(), id.clone()).unwrap().unwrap();
+        assert_eq!(outcome.task_id, "original-task");
+        let requests = server.join().unwrap();
+        assert_eq!(requests[0].0, "POST /v1/conversations/conversation/turns HTTP/1.1");
+        assert_eq!(requests[1].0, format!("GET /v1/conversations/conversation/requests/{id} HTTP/1.1"));
+        let body: serde_json::Value = serde_json::from_slice(&requests[0].1).unwrap();
+        assert_eq!(body["request_id"], id);
+        assert_eq!(body["text"], "メモを整理");
+    }
+
+    #[test]
+    fn clarification_object_and_legacy_string_preserve_the_answer() {
+        for answer in [serde_json::json!({"text":"対象を教えてください"}), serde_json::json!("対象を教えてください")] {
+            let response: TurnResponse = serde_json::from_value(serde_json::json!({"needs_clarification":true,"answer":answer})).unwrap();
+            let result = response.outcome();
+            assert!(result.needs_clarification);
+            assert_eq!(result.answer, "対象を教えてください");
+            assert!(result.task_id.is_empty());
+        }
+    }
 }

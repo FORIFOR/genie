@@ -1,0 +1,6 @@
+
+> genie@0.1.4 check:generated /Users/shuhei/Projects/genie
+> ./scripts/check-generated.sh
+
+./scripts/check-generated.sh: line 10: DATABASE_URL: DATABASE_URL is required
+ ELIFECYCLE  Command failed with exit code 1.

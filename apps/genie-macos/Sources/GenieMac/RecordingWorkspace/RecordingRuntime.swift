@@ -105,8 +105,40 @@ final class RecordingRuntime {
     var onSystemAudioFailure: (() -> Void)?
     /// Listening（声で頼む）の取り込み。録音とは別で、ディスクには残さない。
     private var voiceSpeech: SpeechTranscriber?
+    private var onVoicePartial: ((String) -> Void)?
+    private var onVoiceFinal: ((String) -> Void)?
     private var voiceVad = VoiceActivityDetector()
     private(set) var voiceListening = false
+    /// 検査専用: 次の 1 回の聞き取りで、マイクの代わりに流す音（16 kHz mono）。本番では nil。
+    /// 流した音は本物のマイクの音と同じ道（VAD → オンデバイス STT）を通る。
+    var voiceInjection: [Float]?
+    /// オンデバイス STT を始められなかったか（取り込みは続くが文字は出ない）。画面と検査が読む。
+    private(set) var voiceTranscriptionUnavailable = false
+
+    private func startVoiceSpeechTranscriber() {
+        guard SpeechTranscriber.authorization == .authorized, voiceSpeech == nil else { return }
+        // 音声指示（Voice HUD）では、息継ぎや思考の間のポーズ（1〜1.5秒程度）で途中で途切れて誤送信されないよう、
+        // 会議録音用の 0.9 秒より余裕を持った 2.2 秒の無音判定を適用する。
+        // 周りの音で無音にならなくても、文字が 2.5 秒変わらなければ話し終えたとみなす。
+        let st = SpeechTranscriber(utteranceGap: 2.2, punctuate: true, textStableGap: 2.5)
+        do {
+            try st.start { [weak self] live in
+                DispatchQueue.main.async {
+                    guard let self, self.voiceListening else { return }
+                    if live.isFinal {
+                        self.onVoiceFinal?(live.text)
+                    } else {
+                        self.onVoicePartial?(live.text)
+                    }
+                }
+            }
+            voiceSpeech = st
+        } catch {
+            // オンデバイス資産が無い。取り込みは続けるが文字は出ない（サーバへは落とさない）。
+            NSLog("voice listening: on-device STT unavailable: \(error)")
+            voiceTranscriptionUnavailable = true
+        }
+    }
     /// 文字起こしを頼まれたのに、この Mac ではオンデバイス STT が始められなかった。
     /// **録音は続いている。**サーバへは落とさない（`SpeechTranscriber` 冒頭）。画面はこれを見て
     /// 「文字起こしが出ない理由」を言う。黙って空のまま「聞いています」と出さない。
@@ -160,11 +192,15 @@ final class RecordingRuntime {
         }
     }
 
-    /// 音声認識の許可の答えが来た（会議の許可要求の完了。求めるのは PermissionCenter だけ）。録音中で、
+    /// 音声認識の許可の答えが来た（会議または Voice HUD の許可要求の完了）。
     /// 文字起こしを頼まれていて、まだ始まっていなければ、ここから始める。
     func speechAuthorizationChanged() {
-        guard !cloudRequestedForRecording, speechWanted, speech == nil, SpeechTranscriber.authorization == .authorized else { return }
-        startSpeech()
+        if !cloudRequestedForRecording, speechWanted, speech == nil, SpeechTranscriber.authorization == .authorized {
+            startSpeech()
+        }
+        if voiceListening, voiceSpeech == nil, SpeechTranscriber.authorization == .authorized {
+            startVoiceSpeechTranscriber()
+        }
     }
     /// マイクの音量（0..1）を UI（波形）へ渡す。
     var onLevel: ((Float) -> Void)?
@@ -233,6 +269,8 @@ final class RecordingRuntime {
     @discardableResult
     func begin(meetingId localId: String, captureMic: Bool = true,
                captureSystemAudio: Bool = false, transcribe: Bool = true) -> Bool {
+        // 「ジーニー」の待ち受けは録音の間は止める（マイクは録音が使う）。
+        WakeWordListener.shared.suspend()
         try? FileManager.default.createDirectory(
             atPath: root, withIntermediateDirectories: true)
         // サインイン済みなら実 gateway に会議を作り、その id で録音する（Tauri を介さない）
@@ -292,7 +330,9 @@ final class RecordingRuntime {
                 // 開いている間に end() が来ていたら、いま止める（開きっぱなしにしない）。
                 DispatchQueue.main.async { [weak self] in
                     guard let self else { mic.stop(); return }
-                    if !self.micActive || self.micGeneration != gen { self.micQueue.async { mic.stop() } }
+                    // 止めるのは、この開始がまだ最新で、もう要らないときだけ。世代が進んでいれば、
+                    // 進めた側（end の stop → 次の start）が同じ列に並んでいる。ここで止めると次の取り込みを殺す。
+                    if self.micGeneration == gen, !self.micActive { self.micQueue.async { mic.stop() } }
                 }
             }
         }
@@ -381,37 +421,56 @@ final class RecordingRuntime {
     /// 「聞いています」と名乗ってよいのは**最初の 1 フレームが届いてから**なので、
     /// `onFirstFrame` を返す。返り値 false は「始められなかった」（録音中・許可なし）。
     @discardableResult
-    func beginVoiceListening(onFirstFrame: @escaping () -> Void,
+    func beginVoiceListening(echoCancellation: Bool = false,
+                             onFirstFrame: @escaping () -> Void,
                              onPartial: @escaping (String) -> Void,
                              onFinal: @escaping (String) -> Void) -> Bool {
         // 会議の録音中はマイクを二重に開かない。その間の partial は録音側の STT から流れる。
         guard session == nil, !voiceListening else { return false }
-        guard Permissions.microphone == .granted else { return false }
+        let injected = voiceInjection
+        voiceInjection = nil
+        guard injected != nil || Permissions.microphone == .granted else { return false }
         voiceListening = true
+        voiceTranscriptionUnavailable = false
         voiceVad.reset()
+        onVoicePartial = onPartial
+        onVoiceFinal = onFinal
         var sawFirst = false
 
         if SpeechTranscriber.authorization == .authorized {
-            let st = SpeechTranscriber()
-            do {
-                try st.start { live in
-                    DispatchQueue.main.async {
-                        if live.isFinal { onFinal(live.text) } else { onPartial(live.text) }
-                    }
+            startVoiceSpeechTranscriber()
+        } else if SpeechTranscriber.authorization == .notDetermined {
+            SpeechTranscriber.requestAuthorization { [weak self] ok in
+                DispatchQueue.main.async {
+                    guard let self, self.voiceListening, ok else { return }
+                    self.startVoiceSpeechTranscriber()
                 }
-                voiceSpeech = st
-            } catch {
-                // オンデバイス資産が無い。取り込みは続けるが文字は出ない（サーバへは落とさない）。
-                NSLog("voice listening: on-device STT unavailable: \(error)")
             }
         }
 
         let mic = micCapture
         micGeneration += 1
         let gen = micGeneration
+        if let injected {
+            // 検査: マイクの代わりに、実時間で 0.1 秒ずつ流す（最後に 4 秒の無音）。
+            let chunk = 1_600
+            let frames = injected + [Float](repeating: 0, count: 64_000)
+            micQueue.async { [weak self] in
+                var offset = 0
+                while offset < frames.count {
+                    guard let self, self.voiceListening, self.micGeneration == gen else { return }
+                    let frame = Array(frames[offset..<min(offset + chunk, frames.count)])
+                    if offset == 0 { DispatchQueue.main.async { onFirstFrame() } }
+                    if self.voiceVad.accept(frame) { self.voiceSpeech?.append(frame, sampleRate: 16_000) }
+                    offset += chunk
+                    Thread.sleep(forTimeInterval: 0.1)
+                }
+            }
+            return true
+        }
         micQueue.async { [weak self] in
             do {
-                try mic.start { frame in
+                try mic.start(echoCancellation: echoCancellation) { frame in
                     guard let self, self.voiceListening else { return }
                     let first = !sawFirst
                     sawFirst = true
@@ -428,17 +487,23 @@ final class RecordingRuntime {
             }
             DispatchQueue.main.async { [weak self] in
                 guard let self else { mic.stop(); return }
-                if !self.voiceListening || self.micGeneration != gen { self.micQueue.async { mic.stop() } }
+                // 上の録音側と同じ: 世代が進んでいたら止めない（素早く閉じて開き直すと、新しい取り込みを殺していた）。
+                if self.micGeneration == gen, !self.voiceListening { self.micQueue.async { mic.stop() } }
             }
         }
         return true
     }
 
+    /// 直近の声の取り込みでエコー除去が効いたか（測定・表示用）。
+    var voiceEchoCancellationActive: Bool { micCapture.voiceProcessingActive }
+
     /// Listening をやめる。マイクは閉じる（開いたままにしない）。
-    func endVoiceListening() {
+    func endVoiceListening(waitForTail: Bool = true) {
         guard voiceListening else { return }
         voiceListening = false
-        voiceSpeech?.finish(); voiceSpeech = nil
+        onVoicePartial = nil
+        onVoiceFinal = nil
+        voiceSpeech?.finish(waitForTail: waitForTail); voiceSpeech = nil
         voiceVad.reset()
         micQueue.async { [micCapture] in micCapture.stop(); micCapture.prewarm() }
     }

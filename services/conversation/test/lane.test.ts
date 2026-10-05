@@ -16,8 +16,122 @@ describe('routeLane', () => {
   });
 
   it('sends an outward request to action', () => {
-    for (const text of ['見積を送信して', '会議室を予約して', 'CRM を更新して']) {
+    for (const text of [
+      '見積を送信して',
+      '会議室を予約して',
+      'CRM を更新して',
+      'ボタンをクリックして',
+      'GenieTestAppを開いて',
+      'アプリを起動して',
+      '次へボタンを押して',
+      '画面を操作して',
+      'computer-useを実行して',
+      'Xをsafariでログインを手伝って',
+      'Safariでログインして',
+      'Googleにログインして',
+      '検索欄に入力して',
+      'ウィンドウを閉じて',
+      'Xを読み取って',
+      'Xのタイムラインを読み取って',
+      '画面を読み取って',
+      'Xから流行を検索して見せて',
+      'Xでトレンドを調べて',
+      'テストテスト聞こえますか、Xから流行を検索して見せて',
+      'Xの流行を教えて',
+      'カレンダーの予定を確認して',
+      'メモの内容を見て',
+      'Slackの未読をチェックして',
+      'リマインダーに牛乳を買うと追加して',
+      '設定画面を開いて',
+      'X（旧Twitter）でトレンドを見て',
+      'Twitterの話題を教えて',
+      'Xで猫の画像を検索して',
+      'Safariで天気を検索して',
+      'Excelを開いて',
+      'カレンダーの予定を確認してくれない？',
+      'Safariを開いて、ログインはしないで、トレンドだけ見て',
+    ]) {
       expect(lane(text).lane, text).toBe('action');
+    }
+  });
+
+  it('answers how-to and explanation questions instead of operating the screen', () => {
+    // 操作の語を含んでも、ほしいのは説明。computer.run に回さない。
+    for (const text of [
+      '設定の方法を教えて',
+      'メモの書き方を教えて',
+      'カレンダーの使い方を教えて',
+      'このページの要点を教えて',
+      'Excelの使い方を教えて',
+      'Next.jsの新機能を教えて',
+      'taxの計算方法を教えて',
+      'メールの書き方を教えて',
+      'Safariでログインする方法を教えて',
+      'Safariでログインするにはどうすればいい？',
+      'SafariとChromeの違いを教えて',
+      'カレンダーに予定を追加する方法を教えて',
+      'アプリの画面で入力する手順を教えて',
+      '画面操作とは何か教えて',
+      'computer useって何？',
+      'このページの内容を教えて',
+      'Xcodeの使い方を教えて',
+    ]) {
+      expect(lane(text).lane, text).toBe('chat');
+    }
+    for (const text of ['メールの書き方を調べて', 'ページの読み込みが遅い原因を調べて']) {
+      expect(lane(text).lane, text).toBe('research');
+    }
+  });
+
+  it('keeps committing requests as actions even with a question attached', () => {
+    // 説明の句で chat に落とすのは画面の操作の規則だけ。送信・予約・削除などの依頼は落とさない。
+    for (const text of [
+      '請求書を送って。どうすればいい？',
+      '会議室を予約して、キャンセルの手順も教えて',
+      '古いレコードを削除して。やり方も知りたい',
+      '経費を申請して、仕組みも説明して',
+      'この下書きを送信して。要点を教えて',
+      '予定を作成して。どうやって共有するの？',
+    ]) {
+      expect(lane(text).lane, text).toBe('action');
+    }
+  });
+
+  it('reads X only as the standalone letter', () => {
+    // /i の [Xx] は Excel・Next.js・tax の x まで拾っていた
+    for (const text of [
+      'Next.jsのリリースノートを確認して',
+      'taxの計算結果を確認して',
+      '3x4の結果を表示して',
+    ]) {
+      expect(lane(text).lane, text).toBe('chat');
+    }
+  });
+
+  it('does not operate the screen when told not to', () => {
+    for (const text of [
+      'Safariを開かないで',
+      '画面を操作しないで',
+      '画面操作はしないで',
+      'Safariでログインしないで',
+      'Safariでログインしなくていい',
+      'カレンダーの予定を削除しないで',
+      'Xでポストしないで',
+      'Safariで検索しないで',
+      '画面を読み取らないで',
+    ]) {
+      expect(lane(text).lane, text).toBe('chat');
+    }
+  });
+
+  it('does not take a bare search or a vague request for help as screen control', () => {
+    // アプリの名指しが無いものは、これまでどおり（推測で操作にしない）
+    for (const text of [
+      '最新のAIニュースを検索して',
+      'Googleで天気を検索して',
+      'レポート作成の作業を手伝って',
+    ]) {
+      expect(lane(text).lane, text).toBe('chat');
     }
   });
 
@@ -78,5 +192,8 @@ describe('routeLane', () => {
     for (const text of ['調べて', '送信して', 'こんにちは']) {
       expect(lane(text).reason.length, text).toBeGreaterThan(0);
     }
+    expect(lane('Safariでログインする方法を教えて').reason).toBe(
+      'asked how to do something, not to do it',
+    );
   });
 });

@@ -1,0 +1,38 @@
+✔ background planning uses empty-field AX input, not focus or keyboard fallback (0.5305ms)
+✔ background helper cannot call shared input/clipboard or legacy focus helpers (2.409708ms)
+✔ existing VisualContext -> HTTP vision request carries two PNGs, structured response, and pinned provider (15.550083ms)
+✔ durable local claim prevents replay across device instances / restarts (13.200459ms)
+✔ HTTP model cancellation passes an aborted signal, not a successful model result (0.568375ms)
+✔ moving preview storage does not forget a claim in the legacy cache (12.938334ms)
+✔ actual before/after image references go to the action verifier; goal gets a NEW frame (1.977458ms)
+✔ a model saying done is not sufficient (0.36575ms)
+✔ pointer motion or a changed image hash alone is never completion (0.362875ms)
+✔ target changes stop before the next model call (0.150334ms)
+✔ aborted input never reaches the device or model (0.1815ms)
+✔ cancellation during a nonresponsive model prevents later action (2.296416ms)
+✔ an empty approval object is not approval and does not capture (0.22775ms)
+✔ expired and wrong-operation approvals are refused (0.175416ms)
+✔ external screenshot egress needs separate opt-in BEFORE capture (0.139459ms)
+✔ unavailable selected model does not silently fall back (0.171375ms)
+✔ action limit is enforced (0.253292ms)
+✔ ambiguous input failure is not automatically retried (0.157583ms)
+✔ locally cancelled action stops, not replans (0.146125ms)
+✔ duplicate request is refused by durable claim (0.234209ms)
+✔ uncertain visual verification cannot return success (0.130916ms)
+✔ image pixels map correctly with Retina scale and negative monitor origin (0.07525ms)
+✔ old screenshot and NaN geometry are rejected (0.092625ms)
+✔ stale frame-id, out-of-bounds and low-confidence grounding are rejected (0.099125ms)
+✔ shell / Enter / arbitrary modifiers are not action capabilities (0.0865ms)
+✔ control text is rejected; Japanese and non-BMP emoji are preserved (0.241917ms)
+✔ unknown model fields are not forwarded to helper (0.060875ms)
+✔ goal verdict must reference latest frame and concrete evidence (0.075167ms)
+✔ audit does not retain screenshot paths, typed text, or model evidence (0.613667ms)
+✔ prompts separate goal from untrusted screen instructions and require real pixels (0.15825ms)
+ℹ tests 30
+ℹ suites 0
+ℹ pass 30
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 178.958167

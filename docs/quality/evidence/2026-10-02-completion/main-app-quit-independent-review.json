@@ -1,0 +1,11 @@
+{
+  "reviewedAt": "2026-10-01T18:56:49.770255+00:00",
+  "reviewer": "verification_audit",
+  "method": "Read saved root execution record and actual managed log; no UI/process action by reviewer",
+  "result": "PASS limited idle normal menu Quit; SIGTERM and active child not performed; supervisor exit0-as-failure remains P2",
+  "logHashMatchesRecord": true,
+  "sha256": {
+    "main-app-quit-initial.json": "c9569091c65f5989f746904361a0f9b79a139e35ea905339913b03a5c6dcd76b",
+    "preview-start.log": "ee874ec4ac34ee20f66556c31f7e74f6072be64c98cc5eee66d355b4302c12ab"
+  }
+}

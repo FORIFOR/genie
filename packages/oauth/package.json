@@ -2,6 +2,7 @@
   "name": "@genie/oauth",
   "version": "0.0.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "description": "端末で走らせる OAuth2 + PKCE。正本 §21 Credential。トークンは keychain へ、サーバへは参照だけ。",
   "main": "./dist/index.js",

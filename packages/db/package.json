@@ -2,6 +2,7 @@
   "name": "@genie/db",
   "version": "0.0.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "description": "Typed PostgreSQL access: connection factory, tenant-scoped query guard, generated schema types.",
   "main": "./dist/index.js",

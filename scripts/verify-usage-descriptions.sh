@@ -14,6 +14,7 @@ declare -a NEEDED=(
   "NSCalendarsUsageDescription"         # CalendarAccess
   "NSCalendarsFullAccessUsageDescription" # macOS 14+ CalendarAccess
   "NSAppleEventsUsageDescription"       # AccessibilityContext / Dictation
+  "NSLocationWhenInUseUsageDescription" # CurrentLocation（近くの店）
 )
 
 fail=0

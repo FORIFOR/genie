@@ -1,0 +1,40 @@
+{
+  "measuredAt": "2026-09-22",
+  "note": "製品経路と同じ OpenAI 互換 /v1/chat/completions で reasoning_effort を A/B した。ベンチ本体は native /api/chat の think を使うため、両者が同じ効果かをここで確かめた。",
+  "endpoint": "http://127.0.0.1:11434/v1/chat/completions",
+  "model": "qwen3.5:9b",
+  "image": "docs/quality/evidence/2026-09-20-computer/completed-field.png (1400x660)",
+  "question": "画面に「保存しました」があるか（実際には無い）",
+  "runs": [
+    {
+      "reasoning_effort": null,
+      "seconds": 12.86,
+      "promptTokens": 979,
+      "completionTokens": 391,
+      "outcome": "not_satisfied"
+    },
+    {
+      "reasoning_effort": "none",
+      "seconds": 0.88,
+      "promptTokens": 981,
+      "completionTokens": 34,
+      "outcome": "not_satisfied"
+    },
+    {
+      "reasoning_effort": null,
+      "seconds": 9.83,
+      "promptTokens": 979,
+      "completionTokens": 391,
+      "outcome": "not_satisfied"
+    },
+    {
+      "reasoning_effort": "none",
+      "seconds": 0.85,
+      "promptTokens": 981,
+      "completionTokens": 34,
+      "outcome": "not_satisfied"
+    }
+  ],
+  "finding": "reasoning_effort=none は OpenAI 互換経路でも効く。11〜15 倍速く、画像は同じだけ読み（入力トークン 979 対 981）、答えは 4 回とも同じ。",
+  "wiredAt": "workers/agent-host/src/llm-steps.ts:624 — kind==='local' && VISION_TOOLS.has(tool) のときだけ 'none' を渡す"
+}

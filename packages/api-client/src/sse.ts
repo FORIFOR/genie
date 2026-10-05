@@ -40,15 +40,22 @@ const defaultBackoff = (attempt: number): number => Math.min(250 * 2 ** attempt,
 /** SSE のテキストを 1 フレームずつ切り出す。 */
 export function parseSseFrames(chunk: string): { id?: number; event?: string; data?: string }[] {
   return chunk
+    .replace(/\r\n|\r/g, '\n')
     .split('\n\n')
-    .filter((block) => block.trim().length > 0 && !block.startsWith(':'))
     .map((block) => {
       const frame: { id?: number; event?: string; data?: string } = {};
+      const data: string[] = [];
       for (const line of block.split('\n')) {
-        if (line.startsWith('id: ')) frame.id = Number(line.slice(4));
-        else if (line.startsWith('event: ')) frame.event = line.slice(7);
-        else if (line.startsWith('data: ')) frame.data = line.slice(6);
+        if (line.startsWith(':')) continue;
+        const colon = line.indexOf(':');
+        const field = colon < 0 ? line : line.slice(0, colon);
+        const raw = colon < 0 ? '' : line.slice(colon + 1);
+        const value = raw.startsWith(' ') ? raw.slice(1) : raw;
+        if (field === 'id' && /^\d+$/.test(value)) frame.id = Number(value);
+        else if (field === 'event') frame.event = value;
+        else if (field === 'data') data.push(value);
       }
+      if (data.length) frame.data = data.join('\n');
       return frame;
     })
     .filter((frame) => frame.data !== undefined);
@@ -131,6 +138,7 @@ async function readOnce(
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
+  let previousCR = false;
   let expected = after + 1;
 
   try {
@@ -138,7 +146,15 @@ async function readOnce(
       const { done, value } = await reader.read();
       if (done) return false;
 
-      buffer += decoder.decode(value, { stream: true });
+      // Normalize line endings incrementally: a CRLF may straddle byte chunks.
+      for (const character of decoder.decode(value, { stream: true })) {
+        if (character === '\n' && previousCR) {
+          previousCR = false;
+          continue;
+        }
+        buffer += character === '\r' ? '\n' : character;
+        previousCR = character === '\r';
+      }
       // 最後の未完成フレームは次の chunk まで持ち越す
       const boundary = buffer.lastIndexOf('\n\n');
       if (boundary < 0) continue;
@@ -156,15 +172,12 @@ async function readOnce(
           throw new Error(`sequence gap: expected ${expected}, received ${sequence}`);
         }
 
+        if (decoded.known) options.onEvent(decoded.event);
+        else options.onUnknown?.(sequence, decoded.event.type);
+        // A failed consumer must receive this event again on reconnect.
         expected = sequence + 1;
         advance(sequence);
-
-        if (decoded.known) {
-          options.onEvent(decoded.event);
-          if (TERMINAL.has(decoded.event.type)) return true;
-        } else {
-          options.onUnknown?.(sequence, decoded.event.type);
-        }
+        if (decoded.known && TERMINAL.has(decoded.event.type)) return true;
       }
     }
   } finally {

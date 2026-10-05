@@ -1,0 +1,14 @@
+{
+  "time": "2026-09-19T11:12:27.162585+00:00",
+  "command": [
+    "node",
+    "--test",
+    "workers/agent-host/test/computer-vision-integration.node.mjs"
+  ],
+  "exit": 0,
+  "files": {
+    "workers/agent-host/src/computer-vision-device.ts": "97fd4446f5df02b033762190da580e92e887c063b774c7bd3fecba00f10f06bc",
+    "workers/agent-host/dist/computer-vision-device.js": "2e40bd71060ceb37be9e1ac01432e9ea9319479783615b8981e236c8806be5bf",
+    "workers/agent-host/test/computer-vision-integration.node.mjs": "a167c978f80ca843ab9a0fadd18c109d59053b49ba2d54110cfc38b6dc42de3c"
+  }
+}

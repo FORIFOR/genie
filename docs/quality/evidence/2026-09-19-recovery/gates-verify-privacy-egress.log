@@ -1,0 +1,10 @@
+== PRIVACY_EGRESS_GATE ==
+  recording upload requires explicit cloud consent PASS
+  silent Apple STT fallback                0
+  screen audio permission follows selection PASS
+  connector egress requires user action    PASS
+  external action confirmation             PASS (Confirm.ask ×5; 面は CONFIRMATION_GATE)
+  transcription egress guide               consistent
+  runtime (--selftest egress)              autoUpload=off cloudSTTConsent=off meeting=[microphone] sttNoFallback=NOT_MEASURED
+
+PRIVACY_EGRESS_GATE=PASS

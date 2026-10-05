@@ -1,0 +1,172 @@
+{
+  "recordedAt": "2026-10-01T17:31:34.133324+00:00",
+  "classification": "Evidence review: memory/process/crash observations reported by root; verification_audit independently read the completed partial log. No independent memory measurements or streaming reproduction.",
+  "baseRevision": "ee857a5b13482cbd2d986a1f9b466c8e49a149c3",
+  "workingTree": "Uncommitted candidate; native translation and test-isolation changes continued after this run.",
+  "environment": {
+    "physicalMemoryBytes": 38654705664,
+    "physicalMemoryGiB": 36,
+    "timezone": "Asia/Tokyo",
+    "observedBy": "root"
+  },
+  "before": {
+    "approximateTimeUTC": "2026-10-01T17:15:00Z",
+    "memoryPressureFreePercent": 37,
+    "swapUsedMiB": 3323.12,
+    "ollamaModel": "qwen2.5:7b",
+    "ollamaResidentSizeReported": "6.4 GB",
+    "ollamaContext": 32768,
+    "ollamaProcessor": "GPU",
+    "llamaServer": {
+      "pid": 64349,
+      "rssKiB": 6431344
+    },
+    "ownedColimaVM": {
+      "pid": 13800,
+      "rssKiB": 1228080
+    }
+  },
+  "actionsReportedByRoot": [
+    "Stopped owned full-gate PID 58530 and scoped selftests",
+    "ollama stop qwen2.5:7b",
+    "colima stop --profile genie-transactions-20261002"
+  ],
+  "after": {
+    "approximateTimeUTC": "2026-10-01T17:17:00Z",
+    "memoryPressureFreePercent": 61,
+    "swapUsedMiB": 3259.12,
+    "ollamaPs": "empty"
+  },
+  "laterObservationReportedByRoot": {
+    "exactTimeNotRecorded": true,
+    "vmMemoryPressure": 1,
+    "memoryPressureFreePercent": 67,
+    "ollamaPs": "empty"
+  },
+  "attributionLimit": "Other processes changed concurrently. This is not a controlled before/after measurement and the whole free-memory delta is not attributed to Genie.",
+  "fullGate": {
+    "command": "bash scripts/verify-all.sh",
+    "executor": "root",
+    "reportedExitCode": 143,
+    "state": "INTERRUPTED; incomplete with known UI taste and light golden failures",
+    "lastStage": "initial profile native UI",
+    "log": "verify-all-interrupted-memory.log",
+    "sha256": "ee26b690626f6b7d6f8eb5977fef023f89d6042206c7bf48eecf051047c4d45b",
+    "localModelExecutionEvidence": "SELFTEST_OK translate: local model preserved Friday and 3 pm"
+  },
+  "crashReviewReportedByRoot": {
+    "Genie": "Three reports were TCC/NSSpeechRecognitionUsageDescription failures, not OOM evidence.",
+    "OBS": "2026-09-30 report: copy_audio_data EXC_BAD_ACCESS; not OOM evidence.",
+    "latestStreamingFailure": "Cause remains unconfirmed; not reproduced in this review."
+  },
+  "streamingScope": "No stream settings changed here. Root identified Noah as Jev_VTuber_Studio from the other authorized task; its owner is investigating separately.",
+  "qualityConstraint": "External gpt-6-sol remains selected. No model downgrade, reduced output quality, audio dropping or context shortening is justified by these measurements.",
+  "notEstablished": [
+    "Current whole-product gate PASS",
+    "Latest streaming crash caused by Genie or memory pressure",
+    "Measured savings from proposed source changes",
+    "Final revised native translation correctness"
+  ],
+  "subsequentProfileReportedByRoot": {
+    "name": "genie-transactions-20261002",
+    "cpus": 2,
+    "memoryGiB": 2,
+    "previousCpus": 4,
+    "previousMemoryGiB": 4,
+    "scope": "Dedicated verification profile only; historical first-start evidence retained."
+  },
+  "subsequentObservationReportedByRoot": {
+    "approximateTimeUTC": "2026-10-01T17:34:00Z",
+    "memoryPressureFreePercent": 54,
+    "swapUsedMiB": 1397.12,
+    "vmMemoryPressure": 1,
+    "ollamaPs": "empty",
+    "attributionLimit": "Concurrent work and process changes; not a controlled causal comparison."
+  },
+  "releaseBuildObservationsReportedByRoot": {
+    "during": {
+      "approximateTimeUTC": "2026-10-01T17:43:00Z",
+      "vmMemoryPressure": 2,
+      "memoryPressureFreePercent": 51,
+      "action": "Root stopped the unnecessary owned Colima profile during release compilation."
+    },
+    "after": {
+      "approximateTimeUTC": "2026-10-01T17:44:00Z",
+      "vmMemoryPressure": 1,
+      "memoryPressureFreePercent": 54,
+      "swapUsedMiB": 2607.94
+    },
+    "attributionLimit": "Other app workloads varied. No causal assignment of this delta.",
+    "nextPlannedAction": "Root plans to restart only the dedicated 2 CPU / 2 GiB profile and scoped preview; runtime results pending."
+  },
+  "finalRuntimeObservation": {
+    "approximateTimeUTC": "2026-10-01T17:50:00Z",
+    "memoryPressureFreePercent": 61,
+    "vmMemoryPressure": 1,
+    "swapUsedMiB": 2607.94,
+    "appRSSKiB": 163952,
+    "containersHealthy": [
+      "postgres",
+      "redis",
+      "temporal"
+    ],
+    "dockerStatsMiB": {
+      "temporal": 248.4,
+      "redis": 13.45,
+      "postgres": 157.6
+    },
+    "containerAccounting": "Container use is inside the VM; do not add these values again to VM memory."
+  },
+  "otherModelObservation": {
+    "approximateTimeUTC": "2026-10-01T17:46:00Z",
+    "memoryPressureFreePercent": 43,
+    "vmMemoryPressure": 1,
+    "ollamaModel": "noa-qwen35-9b-text:verified",
+    "residentSizeReported": "5.2 GB",
+    "genieVerificationQwen25Present": false,
+    "action": "Not touched; belongs to the separate Noa workload.",
+    "laterApproximateTimeUTC": "2026-10-01T17:50:00Z",
+    "laterOllamaPs": "empty",
+    "attributionLimit": "The other workload may have ended. This task does not attribute its unload or total memory delta to Genie."
+  },
+  "currentStateLimit": "Ollama observations are time-specific. A separate Noa model was present at 17:46 and absent at 17:50; do not claim globally that Genie made Ollama empty.",
+  "latestRootSnapshot": {
+    "file": "memory-final-runtime-observation.json",
+    "sha256": "f592c72becea0c63eab5aed4d708c63a769151a4b9bc082cf6544397cf4152b6",
+    "observedAt": "2026-10-01T17:54:12.949712+00:00",
+    "classification": "Root read-only runtime snapshot, copied byte-for-byte by reviewer.",
+    "memoryPressureFreePercent": 62,
+    "vmMemoryPressure": 1,
+    "swapUsedMiB": 2607.94,
+    "appPID": 85691,
+    "appRSSKiB": 164624,
+    "modelProvider": "codex",
+    "model": "gpt-6-sol",
+    "containersHealthyMinutes": 8,
+    "loadedOllamaModels": "empty at this snapshot only",
+    "fixtureAndHelperExited": "Reported by root; main app, model connection and preview services remain active."
+  },
+  "subsequentActualStopFailure": {
+    "evidence": "termination-hang-review.json",
+    "status": "FAIL: real managed SIGTERM hang, P1",
+    "currentState": "Owned preview app/services/VM stopped by root; saved external-model configuration unchanged. Prior running snapshots are historical.",
+    "recoveryAroundJST": "2026-10-02T03:08:00+09:00"
+  },
+  "postStopSampling": {
+    "file": "stream-priority-after-stop.json",
+    "sha256": "77e176f26ba6aafb8a122dd6df7154f672b1ac79dac161abee22561475e93d90",
+    "executor": "root",
+    "startUTC": "2026-10-01T18:10:07.968253+00:00",
+    "endUTC": "2026-10-01T18:10:53.278162+00:00",
+    "samples": 10,
+    "allPressureLevels": [
+      1
+    ],
+    "freePercentRange": [
+      45.0,
+      46.0
+    ],
+    "everyOwnedPIDSetEmpty": true,
+    "attributionLimit": "Pressure had already returned to 1 before stopping Genie. This sequence does not establish that stopping Genie caused recovery."
+  }
+}

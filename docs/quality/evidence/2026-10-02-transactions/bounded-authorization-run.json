@@ -1,0 +1,163 @@
+{
+  "recordedAt": "2026-10-01T16:38:19.651795+00:00",
+  "timezone": "Asia/Tokyo",
+  "scope": "bounded authorization backend in this conversation; no UI/native/live execution claim",
+  "status": "PASS",
+  "statusMeaning": "Only the individually listed completed code-level checks; not whole-product completion",
+  "baseCommit": "ee857a5b13482cbd2d986a1f9b466c8e49a149c3",
+  "branch": "feat/genie-stage0-5",
+  "workingTreeDirty": true,
+  "commitOrPushPerformedByThisEvidenceTask": false,
+  "environment": {
+    "os": "ProductName:\t\tmacOS\nProductVersion:\t\t27.0.1\nBuildVersion:\t\t26A434",
+    "node": "v26.5.0",
+    "pnpm": "10.12.2",
+    "postgres": "isolated disposable wrapper databases at 127.0.0.1:32768, not preview data"
+  },
+  "classifications": {
+    "coreRuns": "implementation-authored and implementation-executed real PostgreSQL/RLS/process tests plus pure contracts",
+    "rootApiReview": "independent AI static review by computer_correctness of root API/activity/resume/proof code; shared core helper excluded from independent claim",
+    "rootRuns": "separate root execution; API activities use a mocked workflow signal/host executor and real HTTP/PostgreSQL"
+  },
+  "runs": [
+    {
+      "command": "pnpm exec vitest run packages/contracts/test/transaction-authorization.test.ts",
+      "executor": "/root/computer_correctness",
+      "localStart": "2026-10-02T01:25:18+09:00",
+      "exitCode": 0,
+      "passed": 3,
+      "skipped": 0,
+      "evidence": "bounded-authorization-tool-transcripts.log",
+      "provenance": "transcribed returned tool output"
+    },
+    {
+      "command": "PATH=/opt/homebrew/opt/libpq/bin:$PATH ASTRA_TEST_PGPORT=32768 ./infra/db/with-test-db.sh pnpm exec vitest run services/task/test/transaction-authorization-ledger.db.test.ts services/agent-host/test/bridge.db.test.ts services/api-gateway/test/tasks.integration.test.ts",
+      "executor": "/root/computer_correctness",
+      "localStart": "2026-10-02T01:25:57+09:00",
+      "exitCode": 0,
+      "passed": 52,
+      "breakdown": {
+        "ledger": 7,
+        "bridge": 19,
+        "existingTaskHttp": 26
+      },
+      "evidence": "bounded-authorization-tool-transcripts.log",
+      "provenance": "transcribed returned tool output"
+    },
+    {
+      "command": "PATH=/opt/homebrew/opt/libpq/bin:$PATH ASTRA_TEST_PGHOST=127.0.0.1 ASTRA_TEST_PGPORT=32768 ./infra/db/with-test-db.sh bash scripts/verify-transactions.sh",
+      "executor": "/root",
+      "localStartApproximate": "2026-10-02T01:29:00+09:00",
+      "exitCode": 0,
+      "exitCodeProvenance": "root confirmed",
+      "passed": 162,
+      "skipped": 1,
+      "skipReason": "opt-in previous-revision history regeneration; the two existing replay checks passed",
+      "evidence": "bounded-authorization-regression.log",
+      "provenance": "byte-for-byte copy of root log",
+      "historicalScriptDiffersFromCurrent": true,
+      "historicalCoverage": "ledger7 and HTTP3; script later gained contracts3 and native-session7",
+      "allCurrentScriptChecksRerun": false
+    },
+    {
+      "command": "PATH=/opt/homebrew/opt/libpq/bin:$PATH ASTRA_TEST_PGPORT=32768 ./infra/db/with-test-db.sh pnpm exec vitest run services/task/test/transaction-authorization-ledger.db.test.ts",
+      "executor": "/root/computer_correctness",
+      "localStart": "2026-10-02T01:33:16+09:00",
+      "exitCode": 0,
+      "passed": 8,
+      "skipped": 0,
+      "evidence": "bounded-authorization-tool-transcripts.log",
+      "provenance": "transcribed returned tool output",
+      "addedCoverage": "real worker approvalProof -> HostStepExecutor -> persisted request/claim -> authority, then revocation and retained failure; no provider call"
+    },
+    {
+      "command": "PATH=/opt/homebrew/opt/libpq/bin:$PATH ASTRA_TEST_PGHOST=127.0.0.1 ASTRA_TEST_PGPORT=32768 ./infra/db/with-test-db.sh pnpm --filter @genie/service-api-gateway exec vitest run test/transaction-authorizations.integration.test.ts",
+      "executor": "/root",
+      "localStart": "2026-10-02T01:34:06+09:00",
+      "exitCode": 0,
+      "exitCodeProvenance": "root confirmed",
+      "passed": 4,
+      "skipped": 0,
+      "evidence": "bounded-authorization-http-final.log",
+      "provenance": "byte-for-byte copy of root log"
+    },
+    {
+      "command": "pnpm exec tsc -p tsconfig.tests.json",
+      "executor": "/root/computer_correctness",
+      "exitCode": 0,
+      "evidence": "bounded-authorization-tool-transcripts.log",
+      "provenance": "returned tool output after eighth ledger test"
+    },
+    {
+      "command": "git diff --check",
+      "executor": "/root/computer_correctness",
+      "exitCode": 0,
+      "evidence": "bounded-authorization-tool-transcripts.log",
+      "provenance": "returned tool output after eighth ledger test"
+    }
+  ],
+  "reviewFindings": [
+    {
+      "finding": "creation receipt recovery after terminal task or expired/revoked grant",
+      "reportedBy": "/root/verification_audit",
+      "fixedBy": "/root/computer_correctness",
+      "status": "PASS",
+      "verification": "ledger regression"
+    },
+    {
+      "finding": "RUNNING + revoked grant should return existing creation receipt without a new workflow signal",
+      "priority": "P2",
+      "reportedBy": "/root/computer_correctness",
+      "fixedBy": "/root",
+      "status": "PASS",
+      "verification": "root final HTTP4 log plus independent final static inspection"
+    }
+  ],
+  "limitations": [
+    "Overlapping run counts are not a unique aggregate.",
+    "Source hashes were captured at documentation time, not before every historical run; current script has added coverage not included in historical 162.",
+    "No test rerun was performed during evidence documentation.",
+    "Live adapters remain unregistered/unsupported; stock is paper simulation only.",
+    "Quota is never refunded after reservation, including cancellation, unknown results and pre-submission failure.",
+    "Semantic duplicates with a new explicit business key are not detected.",
+    "Revocation propagation is cooperative, not instantaneous cancellation of an already-submitted external order.",
+    "UI/goldens, long-lived native consent, native main-app E2E, actual merchant/broker completion and external compatibility require separate evidence."
+  ],
+  "sourceHashTiming": "current scoped working tree at recordedAt; files may include later reviewed corrections than an earlier run",
+  "sourceSha256": {
+    "packages/contracts/src/transaction-authorization.ts": "decc0b8007e9cd6881d9731900c7e0ee6bf8568fc65b9d73901117e63285781c",
+    "packages/contracts/src/transaction.ts": "7eeb9dc9d0ae99c33d50d711a833938cf14c1a347575d2ad9c9923a5e3b00363",
+    "packages/contracts/test/transaction-authorization.test.ts": "c4750e02112fa0e7ffcf49e1ea489c77502e174cbb6ea65fb2bde48ae376e1f6",
+    "packages/db/src/transaction-authority.ts": "fad48ebba50c8acf2511432282917ecb579e9931aacfac45bd3356c2cc4864e0",
+    "packages/db/src/generated/schema.ts": "a8b064488b12be03a2f4a763099ad42148f0eeb2db7f23151be6f23103e3cbab",
+    "infra/db/migrations/20261002020000_transaction_authorizations.sql": "7d15198f6af8873fa97c6409a27d1eb9793b169f787e79ba0d889c88568c8b66",
+    "packages/telemetry/src/audit.ts": "ddbe49ba884a19f5dec77e460c851542325ce119451247f4121b07404dedfcc6",
+    "services/task/src/transaction-authorizations.ts": "7872f12d291d12457b6570a334c035f43d2e7c2740ca32421a47c6edbd2a0ad6",
+    "services/task/src/activities.ts": "dc0872f0e98d316c6d568ba6cd5ce08566b26bc5c4445f62103f40c4d7a44124",
+    "services/task/src/service.ts": "4c519449b32a6e8a4dd8160e59f5f19ba512a4f3c4e2a7267cca524176928039",
+    "services/task/src/workflows.ts": "5e6b78a5b26d7f2f3a4d018cd4c3c220f34e0aed8ffbdbd00da130349f84a67e",
+    "services/task/test/transaction-authorization-ledger.db.test.ts": "0c9b466f12ff198d532ecd8bdff8bdce2c97f00af5065441dbf0f49c1348729a",
+    "services/task/test/transaction-fixture.ts": "2489701e679b0f6b523ec1c58a3c8c83e73d4e80db380595987f9a8353143156",
+    "services/api-gateway/src/routes/transaction-authorizations.ts": "0bdfa03e4d83316baab91e24fe3e39b06050a9d642ca7898d14baceca20a5722",
+    "services/api-gateway/test/transaction-authorizations.integration.test.ts": "f89db29ac5b5a392a965d80a247378a556a362a4c6dffab9d25445dd6fc9cf8a",
+    "services/api-gateway/test/tasks.integration.test.ts": "ea1ec5f99b6d4fa2956e1e3ad401b5f8b9920b3503ab761e03fc4b2fb96400d0",
+    "services/agent-host/src/bridge.ts": "e85381305e84a36fbeac04e318e5f8218b678b75a7604a2bb3c4c9ec575a7e27",
+    "services/agent-host/src/step-executor.ts": "64bff5166d65eb7919142595c86fb0ac8748284905eed25409dd990815a9f41b",
+    "services/agent-host/test/bridge.db.test.ts": "93824f1a4d4db1570cef4761b96ad576b025ac761939fed7805106bcd56e512c",
+    "workers/task-worker/src/approval-proof.ts": "8a41bb51149bf9ceecf5c59e254346bf0cb920eac3220d27fe59c55914381aee",
+    "workers/task-worker/src/worker-main.ts": "3f4c90193021b72e1afc3390ebea8fcde520ddb732072f217ab3c4223280c8fd",
+    "workers/agent-host/src/step-loop.ts": "3155661ff8b8af55a18ffdd3faf3546ffdc254af3420e49a4f38b96c49e08d2f",
+    "workers/agent-host/src/step-transport.ts": "e0a0894f615097637d953e0c82aea0b5e37f35804c047a8c14ed1070daf74ed5",
+    "scripts/verify-transactions.sh": "646622a413ed1ae732f1c209ef71db29fa28d6402fe3534a477face011607eda"
+  },
+  "artifactSha256": {
+    "BOUNDED_AUTHORIZATION.md": "6f20823c177f1637a0d7d243d1f2c30e5a8a2b2a7053845bac05bdde31303fc4",
+    "bounded-authorization-regression.log": "f8373c850f64a7cb4817e67c838f7722bffeb5385bebf253907a3ddb9ffb9594",
+    "bounded-authorization-http-final.log": "7396aa6b6192bcf729bbbf67ebbdcb42cd66c9e08ec4216fc3c590890b6583bd",
+    "bounded-authorization-tool-transcripts.log": "8c1f600ec6fa110de76bf2f1eb91eb33e28ad137b84b22084354849a6a90658d"
+  },
+  "originalRootLogPaths": {
+    "bounded-authorization-regression.log": "/private/tmp/genie-transactions-20261002/transactions-with-authorization.log",
+    "bounded-authorization-http-final.log": "/private/tmp/genie-transactions-20261002/authorization-http-final.log"
+  }
+}

@@ -1,6 +1,7 @@
 import AppKit
 import Combine
 import Foundation
+import GenieApproval
 
 /// 「これ返して」の端末側。REPLY_IN_CONTEXT_GATE。
 ///
@@ -36,7 +37,11 @@ final class ReplyFlow: ObservableObject {
     }
 
     /// 送る経路。検査では差し替える（本物は cloud の task + 承認）。
-    var sender: (Draft) -> Outcome = { draft in ReplyFlow.sendThroughCloud(draft) }
+    /// **本人がこの下書きのカードで「送る」を押した証拠**（`UserApproval`）と一緒でないと呼べない。
+    /// 証拠はコピーできないので、1 回の「送る」で送れるのは 1 回だけ。
+    var sender: (Draft, consuming UserApproval) -> Outcome = { draft, approval in
+        ReplyFlow.sendThroughCloud(draft, approval: approval)
+    }
     /// 接続を始める経路。検査では差し替える。
     var connector: (String, String) -> Bool = { pluginId, connectorId in
         ConnectorState.shared.connectActions(pluginId: pluginId, connectorId: connectorId)
@@ -60,7 +65,7 @@ final class ReplyFlow: ObservableObject {
                 let (pluginId, connectorId) = Self.actionsConnection(for: draft.source)
                 if status["\(pluginId)#\(connectorId)"] == .connected {
                     self.pendingDraft = nil
-                    self.present(draft)
+                    Task { @MainActor in await self.present(draft) }
                 }
             }
             .store(in: &cancellables)
@@ -108,9 +113,9 @@ final class ReplyFlow: ObservableObject {
         return counts.sorted { $0.key < $1.key }.map { "\($0.key) \($0.value)件" }.joined(separator: " · ")
     }
 
-    /// 確認カードを出す。答えは同期で返る（既存の Confirm と同じ）。**送るのは押されたときだけ。**
+    /// 確認カードを出して答えを待つ（止まらずに待つ）。**送るのは押されたときだけ。**
     @discardableResult
-    func present(_ draft: Draft) -> Outcome {
+    func present(_ draft: Draft) async -> Outcome {
         presentedCount += 1
         let confirmation = ActionConfirmation(
             app: Self.providerLabel(for: draft.source), appIcon: nil,
@@ -124,22 +129,32 @@ final class ReplyFlow: ObservableObject {
             details: [draft.basis, "\(Facts.sourceLabel): \(Self.sourceLine(draft.sources))"],
             risk: .r2,
             confirmLabel: Facts.replySend)
-        let store = GenieStateStore.shared
-        store.lastConfirmationEdits = [:]
-        guard Confirm.ask(confirmation) else { return .cancelled }
-        var final = draft
-        if let editedBody = store.lastConfirmationEdits["__preview"], !editedBody.trimmingCharacters(in: .whitespaces).isEmpty {
-            final.body = editedBody
+        let answer = await Confirm.approve(confirmation)
+        switch consume answer {
+        case .approved(let approval):
+            var final = draft
+            let edits = GenieStateStore.shared.takeConfirmationEdits(confirmation.id)
+            if let editedBody = edits["__preview"], !editedBody.trimmingCharacters(in: .whitespaces).isEmpty {
+                final.body = editedBody
+            }
+            return await deliver(final, approval: approval)
+        case .declined:
+            return .cancelled
+        case .unanswered:
+            // 答えが無かっただけでも送らない（下書きは Work に残る）。
+            return .cancelled
+        case .delegated: return .cancelled
+        case .authorizationUnknown: return .cancelled
         }
-        return deliver(final)
     }
 
     /// 送る。送る接続が無ければ、理由を見せて接続を求め、**接続後は確認へ戻る。**
-    private func deliver(_ draft: Draft) -> Outcome {
+    private func deliver(_ draft: Draft, approval: consuming UserApproval) async -> Outcome {
         sendCalls += 1
-        let outcome = sender(draft)
+        let outcome = sender(draft, approval)
         switch outcome {
         case .needsConnection(let pluginId, let connectorId):
+            // 接続後は確認へ戻す。前の「送る」の証拠は sender が使い切っている（もう一度押されたときだけ送る）。
             pendingDraft = draft
             let source = ConnectorState.shared.actionsSource(pluginId: pluginId, connectorId: connectorId)
             let purpose = source?.purpose ?? "確認した返信を送信するため"
@@ -150,7 +165,7 @@ final class ReplyFlow: ObservableObject {
                 params: [], preview: nil, source: nil,
                 details: [purpose, "同意画面で許可すると、この確認に戻ります。自動では送りません。"],
                 risk: .r2, confirmLabel: Facts.replyConnect)
-            if Confirm.ask(ask) {
+            if await Confirm.ask(ask) {
                 _ = connector(pluginId, connectorId)
             } else {
                 pendingDraft = nil
@@ -168,7 +183,10 @@ final class ReplyFlow: ObservableObject {
     }
 
     /// 本物: cloud に task を起こし、承認に答え、端末の worker が送る。
-    static func sendThroughCloud(_ draft: Draft) -> Outcome {
+    ///
+    /// 承認に写すのは、本人がこの下書きのカードで押した 1 回（`approval`）だけ。
+    /// 中継する承認は、この送信の中身（件名・本文）と一致するものに限る（items の先頭を黙って選ばない）。
+    static func sendThroughCloud(_ draft: Draft, approval: consuming UserApproval) -> Outcome {
         guard let base = shared.base, let token = shared.token else { return .failed("サインインすると送れます。") }
         let body: [String: Any] = [
             "source": draft.source,
@@ -183,20 +201,27 @@ final class ReplyFlow: ObservableObject {
         }
         do {
             let taskId = try GenieCoreBridge.workReplySend(base, accessToken: token, sendJson: json)
-            // 承認: 本人がいま「送る」を押した。その 1 回だけを承認に写す。
-            var approved = false
+            // 承認: 本人がいま「送る」を押した。その 1 回だけを、この下書きの承認に写す。
+            var matched: String?
             for _ in 0..<40 {
-                let text = try GenieCoreBridge.taskApprovals(base, accessToken: token, taskId: taskId)
-                if let d = text.data(using: .utf8),
-                   let obj = try? JSONSerialization.jsonObject(with: d) as? [String: Any],
-                   let items = obj["items"] as? [[String: Any]], let first = items.first, let id = first["id"] as? String {
-                    try GenieCoreBridge.taskApprove(base, accessToken: token, taskId: taskId, approvalId: id, decision: "APPROVED")
-                    approved = true
+                let pending = try GenieCoreBridge.pendingApprovals(base, accessToken: token, taskId: taskId)
+                if let match = pending.first(where: { approvalMatches($0, draft: draft) }) {
+                    matched = match.id
                     break
+                }
+                if !pending.isEmpty {
+                    // この送信のために起こした仕事なのに、見せた下書きと違う承認が来た。答えずに止める。
+                    for other in pending { try? GenieCoreBridge.taskReject(base, accessToken: token, taskId: taskId, approvalId: other.id) }
+                    return .failed("確認した内容と送る内容が一致しなかったため、送っていません。")
                 }
                 let st = try GenieCoreBridge.waitTask(base, accessToken: token, taskId: taskId, timeoutMs: 500)
                 if st.status == "FAILED" || st.status == "COMPLETED" || st.status == "CANCELLED" { break }
             }
+            // 証拠は 1 件の承認にだけ使える（コピーできない）。
+            if let matched {
+                try GenieCoreBridge.taskApprove(base, accessToken: token, taskId: taskId, approvalId: matched, approval: approval)
+            }
+            let approved = matched != nil
             let done = try GenieCoreBridge.waitTask(base, accessToken: token, taskId: taskId, timeoutMs: 60_000)
             switch done.status {
             case "COMPLETED": return .sent(taskId: taskId)
@@ -212,6 +237,15 @@ final class ReplyFlow: ObservableObject {
         } catch {
             return .failed("送れませんでした: \(error)")
         }
+    }
+
+    /// backend の承認が、この下書きを送るためのものか。JSON にある項目は**すべて一致**を求める
+    /// （tool が返れば送る tool であること、件名・本文が返ればカードで見せた値と同じこと）。
+    nonisolated static func approvalMatches(_ a: BackendApproval, draft: Draft) -> Bool {
+        if let tool = a.toolID, tool != "mail.send", tool != "outlook.mail.reply" { return false }
+        if let subject = a.detail("subject"), subject != draft.subject { return false }
+        if let body = a.detail("body") ?? a.detail("comment"), body != draft.body { return false }
+        return true
     }
 
     /// 検査用。

@@ -1,0 +1,56 @@
+{
+  "recordedAt": "2026-10-01T19:08:59.516489+00:00",
+  "scope": "Uncommitted Git-tracked changed files plus nonignored untracked files only; no ignored credential files read; pattern triage, not a complete secret detection proof. Values intentionally omitted.",
+  "files": 462,
+  "bytes": 10132773,
+  "largeFiles": [],
+  "patternHits": [
+    {
+      "path": "scripts/local-preview/config.mjs",
+      "line": 345,
+      "category": "private-key",
+      "matchLength": 27,
+      "matchSHA256": "3021d90eb9437b2d8f30e8363695c4418b5e5f1870801b5c317e9398ee0f572d",
+      "triage": "PEM header validation only, no private key material",
+      "liveCredentialFound": false
+    },
+    {
+      "path": "scripts/local-preview/config.mjs",
+      "line": 413,
+      "category": "credential-url",
+      "matchLength": 48,
+      "matchSHA256": "8fa263ef42e912564749aa9d0c089e010eca37cb76f0a135c115f6bacec88f82",
+      "triage": "Compose migration URL interpolating the required runtime-generated password variable; no credential material",
+      "liveCredentialFound": false
+    },
+    {
+      "path": "scripts/local-preview/config.mjs",
+      "line": 433,
+      "category": "credential-url",
+      "matchLength": 41,
+      "matchSHA256": "1a6960b8f1749e91813cceebc48c478174582f955cefee345a5ece50a0cc2600",
+      "triage": "URL builder interpolating runtime-generated config credential, not credential material",
+      "liveCredentialFound": false
+    },
+    {
+      "path": "scripts/tests/managed-local-preview.test.mjs",
+      "line": 84,
+      "category": "credential-url",
+      "matchLength": 19,
+      "matchSHA256": "7f8183fd094a7b10753ce6a5f1a4388aa1afeda990c4134417045c78fcec9a2d",
+      "triage": "Rejected credential-bearing model URL negative-test fixture",
+      "liveCredentialFound": false
+    },
+    {
+      "path": "services/agent-host/test/bridge.db.test.ts",
+      "line": 205,
+      "category": "provider-key",
+      "matchLength": 40,
+      "matchSHA256": "6675cd0c365d2c7d9027a150ec24850631369632248b4b346210ebdf1a59d6b7",
+      "triage": "Synthetic credential-shaped test string for secret rejection",
+      "liveCredentialFound": false
+    }
+  ],
+  "skipped": [],
+  "conclusion": "No live credential found in these five pattern matches; no changed/untracked file >=1 MiB. Pattern-only scan does not inspect image pixels for privacy or prove absence of all secrets."
+}

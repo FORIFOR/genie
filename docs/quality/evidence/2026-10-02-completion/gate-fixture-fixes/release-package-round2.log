@@ -1,0 +1,61 @@
+[0/1] Planning build
+Building for production...
+[0/3] Write swift-version--58304C5D6DBC2206.txt
+[1/3] Write sources
+[3/4] Compiling GenieCore genie_core.swift
+[3/5] Write Objects.LinkFileList
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[358](25ac62e5b3c53843-curve25519.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[359](0bbbd18bda93c05b-aes_nohw.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[360](00c879ee3285a50d-montgomery.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[361](00c879ee3285a50d-montgomery_inv.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[362](a0330e891e733f4e-ecp_nistz.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[364](a0330e891e733f4e-gfp_p384.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[366](aaa1ba3e455ee2e1-limbs.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[367](a4019cc0736b0423-mem.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[368](d5a9841f3dc6e253-poly1305.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[369](a0330e891e733f4e-p256-nistz.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[370](c322a0bcc369f531-chacha-armv8-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[371](c322a0bcc369f531-chacha20_poly1305_armv8-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[372](c322a0bcc369f531-aesv8-armx-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[373](c322a0bcc369f531-aesv8-gcm-armv8-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[374](c322a0bcc369f531-ghash-neon-armv8-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[375](c322a0bcc369f531-ghashv8-armx-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[376](c322a0bcc369f531-vpaes-armv8-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[377](c322a0bcc369f531-armv8-mont-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[378](c322a0bcc369f531-p256-armv8-asm-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[379](c322a0bcc369f531-sha512-armv8-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[380](c322a0bcc369f531-sha256-armv8-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[560](std-ddc72da0927e9db9.std.61a5f0013896dfb1-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[561](panic_unwind-63ea78ca2e1c0db3.panic_unwind.b9418b0471e31d36-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[562](object-c0adbf29d899f046.object.cf48ae80852c1dc4-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[564](addr2line-b92825ace6709456.addr2line.f3cce53e8c22052d-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[565](gimli-49cd0cae66d7f640.gimli.a9de2a852aa7a696-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[567](rustc_demangle-a5e20ae1249591d9.rustc_demangle.c8ddca633150ec1-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[569](hashbrown-7ef914ecbc5b3828.hashbrown.f3d328c4a0fd8a24-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[571](miniz_oxide-d817fa4718a8ef96.miniz_oxide.cf735aedbe58ef77-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[572](adler2-b603e41842b612c3.adler2.c400f6a6402c7116-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[576](alloc-7d19d4a84a64ec6c.alloc.650f235c7e2e357a-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[577](core-f186bd403406965f.core.aedb9fd4ead64aec-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[594](compiler_builtins-28935136ed986f39.compiler_builtins.bb8f0d37d096e781-cgu.016.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[722](compiler_builtins-28935136ed986f39.compiler_builtins.bb8f0d37d096e781-cgu.144.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[771](compiler_builtins-28935136ed986f39.compiler_builtins.bb8f0d37d096e781-cgu.193.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+[4/5] Linking GenieMac
+Build complete! (4.52s)
+/Users/shuhei/Projects/genie/apps/genie-macos/.build/Genie.app/Contents/Frameworks/Sparkle.framework/Versions/B/Autoupdate: replacing existing signature
+/Users/shuhei/Projects/genie/apps/genie-macos/.build/Genie.app/Contents/Frameworks/Sparkle.framework/Versions/B/Updater.app: replacing existing signature
+/Users/shuhei/Projects/genie/apps/genie-macos/.build/Genie.app/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Downloader.xpc: replacing existing signature
+/Users/shuhei/Projects/genie/apps/genie-macos/.build/Genie.app/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Installer.xpc: replacing existing signature
+/Users/shuhei/Projects/genie/apps/genie-macos/.build/Genie.app/Contents/Frameworks/Sparkle.framework/Autoupdate: replacing existing signature
+/Users/shuhei/Projects/genie/apps/genie-macos/.build/Genie.app/Contents/Frameworks/Sparkle.framework/Updater.app: replacing existing signature
+/Users/shuhei/Projects/genie/apps/genie-macos/.build/Genie.app/Contents/Frameworks/Sparkle.framework: replacing existing signature
+/Users/shuhei/Projects/genie/apps/genie-macos/.build/Genie.app: replacing existing signature
+--prepared:/Users/shuhei/Projects/genie/apps/genie-macos/.build/Genie.app/Contents/Frameworks/Sparkle.framework/Versions/Current/.
+--validated:/Users/shuhei/Projects/genie/apps/genie-macos/.build/Genie.app/Contents/Frameworks/Sparkle.framework/Versions/Current/.
+/Users/shuhei/Projects/genie/apps/genie-macos/.build/Genie.app: valid on disk
+/Users/shuhei/Projects/genie/apps/genie-macos/.build/Genie.app: satisfies its Designated Requirement
+Identifier=com.astra.desktop
+Authority=Apple Development: Shuhei Horio (N5DXXRWC3M)
+TeamIdentifier=6RR7572ZLU
+launch: OK（実行体は起動する）
+packaged: /Users/shuhei/Projects/genie/apps/genie-macos/.build/Genie.app
+実 Calendar 検証: open "/Users/shuhei/Projects/genie/apps/genie-macos/.build/Genie.app" --args --selftest calendarlive  → プロンプトで許可 → 結果は /tmp/astra-calendarlive.txt

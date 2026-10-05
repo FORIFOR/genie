@@ -52,6 +52,10 @@ export function researchExecutors(research: ResearchService): Record<string, Exe
       execute: (input) => research.search(input.tenantId, input.taskId),
       onFailure,
     },
+    'research.deepen': {
+      execute: (input) => research.deepen(input.tenantId, input.taskId),
+      onFailure,
+    },
     'research.verify': {
       execute: (input) => research.verify(input.tenantId, input.taskId),
       onFailure,

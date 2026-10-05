@@ -1,0 +1,26 @@
+/Users/shuhei/Projects/genie/tools/computer-use/genie-computer.swift:81:38: warning: 'activateIgnoringOtherApps' was deprecated in macOS 14.0: ignoringOtherApps is deprecated in macOS 14 and will have no effect. [#DeprecatedDeclaration]
+ 79 |         else { throw Failure("user_cancelled") }
+ 80 |         let selected = apps[choice.indexOfSelectedItem]
+ 81 |         selected.activate(options: [.activateIgnoringOtherApps])
+    |                                      `- warning: 'activateIgnoringOtherApps' was deprecated in macOS 14.0: ignoringOtherApps is deprecated in macOS 14 and will have no effect. [#DeprecatedDeclaration]
+ 82 |         for _ in 0..<20 {
+ 83 |             try await Task.sleep(nanoseconds: 100_000_000)
+
+/Users/shuhei/Projects/genie/tools/computer-use/genie-computer.swift:232:33: warning: 'activateIgnoringOtherApps' was deprecated in macOS 14.0: ignoringOtherApps is deprecated in macOS 14 and will have no effect. [#DeprecatedDeclaration]
+230 |         stage("reveal")
+231 |         if app.isHidden { app.unhide() }
+232 |         app.activate(options: [.activateIgnoringOtherApps])
+    |                                 `- warning: 'activateIgnoringOtherApps' was deprecated in macOS 14.0: ignoringOtherApps is deprecated in macOS 14 and will have no effect. [#DeprecatedDeclaration]
+233 |         for _ in 0..<20 {
+234 |             try await Task.sleep(nanoseconds: 100_000_000)
+
+/Users/shuhei/Projects/genie/tools/computer-use/genie-computer.swift:346:33: warning: 'activateIgnoringOtherApps' was deprecated in macOS 14.0: ignoringOtherApps is deprecated in macOS 14 and will have no effect. [#DeprecatedDeclaration]
+344 |     static func restore(_ t: Target) async throws {
+345 |         guard let app = NSRunningApplication(processIdentifier: t.pid), !app.isTerminated else { throw Failure("target_changed") }
+346 |         app.activate(options: [.activateIgnoringOtherApps])
+    |                                 `- warning: 'activateIgnoringOtherApps' was deprecated in macOS 14.0: ignoringOtherApps is deprecated in macOS 14 and will have no effect. [#DeprecatedDeclaration]
+347 |         for _ in 0..<20 {
+348 |             try await Task.sleep(nanoseconds: 100_000_000)
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+GENIE_COMPUTER_SELF_TEST_OK

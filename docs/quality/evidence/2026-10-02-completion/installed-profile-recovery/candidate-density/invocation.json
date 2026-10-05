@@ -1,0 +1,19 @@
+{
+  "label": "candidate-density",
+  "command": [
+    "/Applications/Genie.app/Contents/MacOS/Genie",
+    "--selftest",
+    "density",
+    "/Users/shuhei/Projects/genie/docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/light/images",
+    "/private/tmp/genie-transactions-20261002/installed-profile-recovery/candidate-density.json"
+  ],
+  "startedAt": "2026-10-01T22:26:21.824483+00:00",
+  "finishedAt": "2026-10-01T22:26:22.474533+00:00",
+  "exitCode": 0,
+  "receipt": {
+    "schema": 1,
+    "exitCode": 0,
+    "normalExit": true
+  },
+  "binarySHA256": "a01378c92ef466086c4e6e0c1f8263e66a9da61ec24d026c86ef6cda0f678801"
+}
