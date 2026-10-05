@@ -137,6 +137,9 @@ final class GeminiLiveProvider: ConversationProvider {
     private var pendingOpen: (() -> Void)?
     /// つながったら挨拶を促す（呼びかけの声が無いまま始めたとき）。1 回だけ。
     var greetWhenReady = false
+    /// 本人が会話を終えたいと言った（end_conversation）。会話の側が閉じる。
+    var onEndRequested: (() -> Void)?
+    private var endWhenDrained = false
     /// マイクは Genie 全体で 1 本（呼びかけの待ち受けと共有。呼びかけの前後の声もここから届く）。
     private let input: VoiceInputHub
     private var streaming = false
@@ -257,6 +260,7 @@ final class GeminiLiveProvider: ConversationProvider {
             Task { @MainActor in
                 guard let self, self.playbackGeneration == generation else { return }
                 self.queuedBuffers = max(0, self.queuedBuffers - 1)
+                if self.queuedBuffers == 0, self.endWhenDrained { self.endWhenDrained = false; self.onEndRequested?() }
                 if self.queuedBuffers == 0, let waiter = self.drainWaiter {
                     self.drainWaiter = nil
                     waiter()
@@ -365,6 +369,9 @@ final class GeminiLiveProvider: ConversationProvider {
     会話の最初に「ジーニー」とだけ呼ばれたら、「はい、どうされましたか？」と短く応えてください。
     「ジーニー、〇〇して」のように続けて頼まれたら、挨拶を挟まずに依頼に答えてください。
 
+    【会話を終える】
+    「終了して」「終わり」「おしまい」「閉じて」など会話を終えたいと言われたら、「承知しました」とだけ言ってから end_conversation を呼んでください。
+
     【会話】
     言い直しがあった場合は、最後の訂正を採用してください。
     確認質問は、回答や実行に必要なものを一つずつ聞いてください。
@@ -430,6 +437,19 @@ final class GeminiLiveProvider: ConversationProvider {
             said += t
         case .toolCall(let id, let name, let request):
             userTurnEnded()
+            if name == GeminiLive.endTool {
+                send(GeminiLive.toolResponse(id: id, name: name, response: ["status": "closing"], scheduling: "SILENT"))
+                mark("end-requested")
+                // 「承知しました」を言い終えてから閉じる（流している声があれば待つ）。
+                endWhenDrained = true
+                // 声が来ない・止まったままでも 4 秒で閉じる。
+                Task { @MainActor [weak self] in
+                    try? await Task.sleep(nanoseconds: 4_000_000_000)
+                    guard let self, self.endWhenDrained else { return }
+                    self.endWhenDrained = false; self.onEndRequested?()
+                }
+                return
+            }
             guard name == GeminiLive.delegateTool else {
                 send(GeminiLive.toolResponse(id: id, name: name, response: ["error": "unknown tool"]))
                 return

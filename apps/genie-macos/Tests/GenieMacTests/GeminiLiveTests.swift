@@ -7,7 +7,7 @@ final class GeminiLiveTests: XCTestCase {
         (try? JSONSerialization.jsonObject(with: Data(json.utf8))) as? [String: Any] ?? [:]
     }
 
-    func testSetupAsksForAudioWithTranscriptsSearchAndOnlyTheDelegateFunction() {
+    func testSetupAsksForAudioWithTranscriptsSearchAndOnlyTheDelegateAndEndFunctions() {
         let setup = object(GeminiLive.json(GeminiLive.setup(instruction: "短く")))["setup"] as? [String: Any]
         XCTAssertEqual(setup?["model"] as? String, "models/gemini-3.8-live")
         XCTAssertEqual((setup?["generationConfig"] as? [String: Any])?["responseModalities"] as? [String], ["AUDIO"])
@@ -16,7 +16,8 @@ final class GeminiLiveTests: XCTestCase {
         let tools = setup?["tools"] as? [[String: Any]] ?? []
         XCTAssertEqual(tools.flatMap { $0.keys }.sorted(), ["functionDeclarations", "googleSearch"], "道具は Google 検索と、仕事を渡す関数だけ")
         let functions = tools.compactMap { $0["functionDeclarations"] as? [[String: Any]] }.flatMap { $0 }
-        XCTAssertEqual(functions.map { $0["name"] as? String }, ["delegate_task"], "関数は仕事を渡す 1 つだけ")
+        // 関数は、仕事を渡すものと、会話を閉じるもの（端末の中だけ・外へ何もしない）の 2 つだけ。
+        XCTAssertEqual(functions.map { $0["name"] as? String }, ["delegate_task", "end_conversation"])
     }
 
     func testQuotaAndKeyClosuresAreExplainedInsteadOfRetried() {

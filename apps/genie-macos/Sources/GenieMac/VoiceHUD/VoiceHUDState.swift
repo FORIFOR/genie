@@ -662,6 +662,13 @@ final class VoiceHUDState: ObservableObject {
 
     /// 会話を始める。一回の音声入力（`beginListening`）とは別の入口。
     /// `greet`: 呼びかけの声が無いまま始めた（「呼びかけを試す」）。Gemini に「はい、どうされましたか？」を促す。
+    /// 会話を終えたいだけの発話か（文の一部に「終わり」があるだけのもの —「終わりの時間は？」— は含めない）。
+    nonisolated static func isEndRequest(_ text: String) -> Bool {
+        let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "[。．.!！、,\\s]+", with: "", options: .regularExpression)
+        return t.range(of: "^(?:ジーニー)?(?:ありがとう(?:ございます)?)?(?:会話を)?(?:終了|終わり|おわり|おしまい|閉じて|終えて|終わって|終わろう|終わりにして|終わりで)(?:して|します|しよう|で|だよ|です|ね|よ)?(?:ください|ちょうだい)?$", options: .regularExpression) != nil
+    }
+
     /// 有料の会話（Gemini Live）: 最初の言葉を待つ長さと、途中で黙ったら終える長さ。
     static let paidFirstSpeechLimit: TimeInterval = 10
     static let paidIdleLimit: TimeInterval = 45
@@ -729,6 +736,9 @@ final class VoiceHUDState: ObservableObject {
                 })
         }
         if greet, let gemini = provider as? GeminiLiveProvider { gemini.greetWhenReady = true }
+        if let gemini = provider as? GeminiLiveProvider {
+            gemini.onEndRequested = { [weak self] in self?.endConversation(.user, caller: "spoken: end_conversation") }
+        }
         startConversation(using: provider)
         WindowCoordinator.shared.focusListeningDock()
         conversationClock?.cancel()
@@ -844,6 +854,11 @@ final class VoiceHUDState: ObservableObject {
                 inputLevels = []
             case .send(let text):
                 GenieLog.write("conversation", "heard: \(GenieLog.clip(text))")
+                // 「終了して」「終わり」だけの発話は、会話の提供元に関係なくここで閉じる（Gemini が道具を呼ばなくても）。
+                if Self.isEndRequest(text) {
+                    endConversation(.user, caller: "spoken: \(GenieLog.clip(text, 12))")
+                    return
+                }
                 conversationProvider.send(text) { [weak self] reply in
                     guard let self else { return }
                     self.run(self.conversation.reply(reply))

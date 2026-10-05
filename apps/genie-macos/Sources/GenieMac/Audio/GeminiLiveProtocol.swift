@@ -15,6 +15,8 @@ enum GeminiLive {
     /// 仕事を Genie に渡す道具。会話の中で「やって」と言われたらこれを呼ばせる。
     /// 返すのは受け付けたかだけ（仕事の中身・結果の本文は渡さない）。
     static let delegateTool = "delegate_task"
+    /// 本人が会話を終えたいと言った（「終了して」「終わり」）。Genie が会話を閉じる。
+    static let endTool = "end_conversation"
 
     /// サーバーが接続を閉じた理由のうち、つなぎ直しても直らないもの（本人が直す）を言葉にする。それ以外は nil。
     /// 例: 利用枠の超過は close 1011「You exceeded your current quota…」、前払いの残高切れは
@@ -95,6 +97,10 @@ enum GeminiLive {
                             "properties": ["request": ["type": "STRING", "description": "依頼文（利用者の言葉のまま）"]],
                             "required": ["request"],
                         ],
+                    ], [
+                        "name": endTool,
+                        "description": "利用者が「終了して」「終わり」「おしまい」「閉じて」など、この会話を終えたいと言ったときに呼ぶ。短く「承知しました」と言ってから呼ぶ。仕事は止めない。",
+                        "parameters": ["type": "OBJECT", "properties": [String: Any]()],
                     ]],
                 ]],
             ],

@@ -157,10 +157,11 @@ def main():
 
     Xa, Y, negpool = [], [], []
     for clip, label, text, voice in clips["train"]:
-        for _ in range(8 if voice == "本人" else 2):
+        # 本人の声と、実機で誤って起きた音は少ないので、多く学ばせる
+        for _ in range(8 if voice == "本人" else 12 if voice == "実機" else 2):
             for audio, y, _ in windows(clip, label, text, rng.uniform(0.3, 1.4), rng.uniform(0, 0.02)):
                 if y is None: continue
-                if y == 0 and label == "negative" and rng.random() < 0.5:
+                if y == 0 and label == "negative" and voice != "実機" and rng.random() < 0.5:
                     negpool.append(audio); continue   # 後で間違えやすいものだけ足す
                 Xa.append(audio); Y.append(y)
     for _ in range(800):
