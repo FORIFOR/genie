@@ -24,8 +24,9 @@ final class WakeController {
     /// Gemini の支払い・クレジットで断られた後は、呼びかけのたびに接続し直さない。
     /// 本人が Dock から会話を始める・「呼びかけを試す」・キーを登録し直すまで、検出しても理由を出すだけ。
     private(set) var billingBlocked: String?
-    /// いまの会話が（試しではない）呼びかけの検出で始まったか。
+    /// いまの会話が（試しではない）呼びかけの検出で始まったか・いつ起きたか。
     var startedByWake = false
+    private(set) var wokeAt: Date?
 
     func noteBillingFailure(_ reason: String) { billingBlocked = reason }
 
@@ -114,6 +115,7 @@ final class WakeController {
         // 呼びかけの音が無い（試し）なら、Gemini に挨拶を促す。音があれば Gemini が聞いて応える。
         hud.beginConversation(greet: simulated)
         startedByWake = !simulated
+        wokeAt = Date()
         // 始められなかった（Gemini Live が使えない等）。預かった声は送らずに捨て、待機へ戻る。
         if !hud.conversation.isActive { hub.detach() }
     }

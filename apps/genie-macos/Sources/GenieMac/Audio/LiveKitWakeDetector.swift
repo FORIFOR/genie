@@ -30,7 +30,10 @@ final class LiveKitWakeDetector: WakeDetector {
     static let speechLevel: Float = 0.006
     private var recentLoud: [(rms: Float, samples: Int)] = []   // フレームごとの大きさ（直近 1 秒ぶん）
 
-    init(modelURL: URL, threshold: Float = 0.8, hits: Int = 2, provider: ExecutionProvider = .cpu) throws {
+    /// 判定の厳しさ。学習に使っていない声で（2026-10-05）:
+    /// 0.80×2 = 検出 39/46・誤検出 3/116、**0.90×3 = 38/46・1/116**、0.95×4 = 30/46・1/116。
+    /// 「Mac が音を出している間だけ厳しく」は、OBS 等が出力装置を開いたままだと常に「出している」になり、見分けられなかった。
+    init(modelURL: URL, threshold: Float = 0.9, hits: Int = 3, provider: ExecutionProvider = .cpu) throws {
         model = try WakeWordModel(models: [modelURL], sampleRate: 16_000, executionProvider: provider)
         self.threshold = threshold
         self.hits = hits

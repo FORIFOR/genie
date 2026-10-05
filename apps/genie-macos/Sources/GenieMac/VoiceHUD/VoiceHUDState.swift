@@ -671,6 +671,8 @@ final class VoiceHUDState: ObservableObject {
 
     /// 有料の会話（Gemini Live）: 最初の言葉を待つ長さと、途中で黙ったら終える長さ。
     static let paidFirstSpeechLimit: TimeInterval = 10
+    /// この会話で聞き取った言葉（誤検出かどうかの見分けにだけ使う。会話が終われば捨てる）。
+    private var heardThisConversation: [String] = []
     static let paidIdleLimit: TimeInterval = 45
 
     /// 回答面に一言出す（会話の外の知らせ）。
@@ -854,6 +856,7 @@ final class VoiceHUDState: ObservableObject {
                 inputLevels = []
             case .send(let text):
                 GenieLog.write("conversation", "heard: \(GenieLog.clip(text))")
+                heardThisConversation.append(text)
                 // 「終了して」「終わり」だけの発話は、会話の提供元に関係なくここで閉じる（Gemini が道具を呼ばなくても）。
                 if Self.isEndRequest(text) {
                     endConversation(.user, caller: "spoken: \(GenieLog.clip(text, 12))")
@@ -879,7 +882,16 @@ final class VoiceHUDState: ObservableObject {
             case .ended(let reason):
                 GenieLog.write("conversation", "ended: \(reason.rawValue)")
                 // 呼びかけで始まり、一言も無いまま終わった = 誤検出。学び直しの材料に残す。
-                if reason == .idle, !conversation.heardAny, WakeController.shared.startedByWake { WakeController.shared.noteFalseWake() }
+                let wake = WakeController.shared
+                if wake.startedByWake {
+                    if reason == .idle, !conversation.heardAny { wake.noteFalseWake() }
+                    // 起きてすぐ本人が閉じ、日本語が一言も無かった（動画の英語など）= 誤検出。
+                    else if reason == .user, let at = wake.wokeAt, Date().timeIntervalSince(at) < 20,
+                            !heardThisConversation.contains(where: { $0.range(of: "[ぁ-んァ-ン一-龯]", options: .regularExpression) != nil }) {
+                        wake.noteFalseWake()
+                    }
+                }
+                heardThisConversation = []
                 WakeController.shared.startedByWake = false
                 conversationProvider.endSession()
                 GenieEarcon.play(.end)
