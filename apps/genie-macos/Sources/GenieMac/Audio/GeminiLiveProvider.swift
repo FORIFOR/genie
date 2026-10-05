@@ -156,6 +156,9 @@ final class GeminiLiveProvider: ConversationProvider {
         if ready { send(GeminiLive.greeting); mark("greeting-prompted") } else { greetWhenReady = true }
     }
 
+    /// 本人が仕事を止めたいと言った（stop_work）。止めた結果の短い説明を返す。
+    var onStopWork: (() -> String)?
+
     /// 本人が会話を終えたいと言った（end_conversation）。会話の側が閉じる。
     var onEndRequested: (() -> Void)?
     private var endWhenDrained = false
@@ -410,6 +413,10 @@ final class GeminiLiveProvider: ConversationProvider {
     会話の最初に「ジーニー」とだけ呼ばれたら、「はい、どうされましたか？」と短く応えてください。
     「ジーニー、〇〇して」のように続けて頼まれたら、挨拶を挟まずに依頼に答えてください。
 
+    【仕事を止める】
+    「ちょっと待って、止めて」「作業をやめて」など、Genie が進めている仕事を止めたいと言われたら、stop_work を呼び、
+    返ってきた結果（止めた仕事と、止める前に済んでいた部分）を短く伝えてください。「読み上げだけ止めて」なら、話すのをやめるだけにしてください。
+
     【会話を終える】
     「終了して」「終わって」「終わり」「おしまい」「閉じて」「バイバイ」「さようなら」「またね」など会話を終えたいと言われたら、
     必ず「承知しました」とだけ言ってから end_conversation を呼んでください。会話を続けようとしないでください。
@@ -482,6 +489,12 @@ final class GeminiLiveProvider: ConversationProvider {
             said += t
         case .toolCall(let id, let name, let request):
             userTurnEnded()
+            if name == GeminiLive.stopTool {
+                let summary = onStopWork?() ?? "止められる仕事はありませんでした。"
+                mark("stop-work")
+                send(GeminiLive.toolResponse(id: id, name: name, response: ["result": summary], scheduling: "WHEN_IDLE"))
+                return
+            }
             if name == GeminiLive.endTool {
                 send(GeminiLive.toolResponse(id: id, name: name, response: ["status": "closing"], scheduling: "SILENT"))
                 mark("end-requested")

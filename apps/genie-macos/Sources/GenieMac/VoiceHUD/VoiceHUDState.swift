@@ -683,6 +683,21 @@ final class VoiceHUDState: ObservableObject {
     private var heardThisConversation: [String] = []
     static let paidIdleLimit: TimeInterval = 45
 
+    /// 声の「止めて」: Dock で動いている仕事をすべて止める（行の「止める」と同じ。backend の取り消しを含む）。
+    /// 取り消し（元に戻す）ではない。止める前に済んでいた分はそのまま残る。会話は続ける。
+    func stopWorkFromVoice() -> String {
+        let store = GenieStateStore.shared
+        let running = store.state.board.active
+        guard !running.isEmpty else {
+            GenieLog.write("conversation", "voice stop: nothing running")
+            return "いま動いている仕事はありません。"
+        }
+        for task in running { store.stopTask(task.id) }
+        let names = running.map(\.title).prefix(3).joined(separator: "、")
+        GenieLog.write("conversation", "voice stop: \(running.count) task(s)")
+        return "\(running.count) 件の仕事を止めました（\(names)）。止める前に済んでいた部分は残っています。元に戻してはいません。"
+    }
+
     /// 回答面に一言出す（会話の外の知らせ）。
     func showAnswer(_ text: String) { answer = text; mode = .answer(text) }
 
@@ -748,6 +763,7 @@ final class VoiceHUDState: ObservableObject {
         if greet, let gemini = provider as? GeminiLiveProvider { gemini.greetWhenReady = true }
         if let gemini = provider as? GeminiLiveProvider {
             gemini.onEndRequested = { [weak self] in self?.endConversation(.user, caller: "spoken: end_conversation") }
+            gemini.onStopWork = { [weak self] in self?.stopWorkFromVoice() ?? "止められる仕事はありませんでした。" }
         }
         startConversation(using: provider)
         WindowCoordinator.shared.focusListeningDock()
