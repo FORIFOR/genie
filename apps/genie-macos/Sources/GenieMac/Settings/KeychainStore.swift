@@ -92,6 +92,7 @@ enum KeychainStore {
     static let accessMessage = "キーチェーンでGenieのアクセスを確認してください。"
 
     static func error(_ status: OSStatus) -> KeychainError {
+        GenieLog.write("keychain", "status \(status) (\(SecCopyErrorMessageString(status, nil) as String? ?? "?"))")
         switch status {
         case errSecInteractionNotAllowed: return .interactionRequired
         case errSecAuthFailed, errSecUserCanceled: return .accessDenied

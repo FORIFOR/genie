@@ -38,10 +38,13 @@ actor GatewaySession {
     static func desktop(base: String, identity: String, now: @escaping () -> Date = Date.init) -> GatewaySession {
         let key = "astra.gateway.session.\(base).\(identity)"
         return GatewaySession(read: {
-            guard let value = try KeychainStore.get(key) else { return nil }
-            return try JSONDecoder().decode(Credentials.self, from: Data(value.utf8))
+            do {
+                guard let value = try KeychainStore.get(key) else { return nil }
+                return try JSONDecoder().decode(Credentials.self, from: Data(value.utf8))
+            } catch { GenieLog.write("connection", "session read failed for \(key): \(error)"); throw error }
         }, save: { credentials in
-            try KeychainStore.set(key, String(decoding: JSONEncoder().encode(credentials), as: UTF8.self))
+            do { try KeychainStore.set(key, String(decoding: JSONEncoder().encode(credentials), as: UTF8.self)) }
+            catch { GenieLog.write("connection", "session save failed: \(error)"); throw error }
         }, signIn: {
             try await Task.detached {
                 try GenieCoreBridge.devSignIn(base, email: "main-\(identity)@astra.local", displayName: "Genie")
