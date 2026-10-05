@@ -988,7 +988,24 @@ final class VoiceHUDState: ObservableObject {
     }
 
     /// `ask` の結果を会話へ返す（会話中で、答えを待っているときだけ）。
+    /// Gemini Live の会話中なら、仕事の結果を会話に戻す（受け付けただけの知らせは戻さない）。戻したら true。
+    @discardableResult
+    private func reportToGemini(_ reply: TaskReply?, draft: Bool = false, failed: String? = nil) -> Bool {
+        guard conversation.isActive, let gemini = conversationProvider as? GeminiLiveProvider else { return false }
+        if let failed { gemini.report("失敗: " + failed); return true }
+        guard let reply else { return true }
+        switch reply.phase {
+        case .working, .waiting: return true   // まだ途中。終わったら後で戻す
+        default:
+            // 返信案の本文は流さない（宛先のある下書きを声で読ませない）。
+            gemini.report(draft ? "返信案を用意しました。確認カードで内容を確かめてもらってください。" : reply.text)
+            GenieLog.write("conversation", "reported to Gemini: \(reply.phase)")
+            return true
+        }
+    }
+
     private func conversationReply(_ reply: TaskReply?, draft: Bool = false, failed: String? = nil) {
+        if reportToGemini(reply, draft: draft, failed: failed) { return }
         guard conversation.isActive, conversation.phase == .waiting else {
             if reply != nil || failed != nil { GenieLog.write("conversation", "reply arrived after the conversation moved on") }
             return
@@ -1242,6 +1259,8 @@ final class VoiceHUDState: ObservableObject {
                             self?.dropFromDock(task.id)
                             return nil
                         }
+                        // 12 秒を過ぎて終わった仕事も、会話が続いていれば Gemini に知らせる（カードの答えも、仕事の結果も）。
+                        self?.reportToGemini(later, draft: !outcome.replyJson.isEmpty)
                         // 後から届いた結果は Work に残る。例外のカード（天気・ニュース…）は、これがいちばん新しい依頼で、
                         // 会話が次のターンを聞いていないときだけ出す（聞いている面・新しい答えを上書きしない）。
                         // それ以外は Dock の結果（何ができたかと、開く・コピー）になる。

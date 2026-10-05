@@ -56,12 +56,17 @@ extension SelfTest {
         await pause(2.0)
         let greeted = events().contains { $0["event"] as? String == "clientContent" && $0["conn"] as? Int == 2 }
         let played = second.trace.contains { $0.1 == "playback-start" }
+        // 3. 頼まれた仕事の結果を、会話中の Gemini に戻す
+        second.report("マクドナルドの公式サイトをブラウザで開きました。")
+        await pause(1.0)
+        let reported = events().contains { ($0["event"] as? String) == "clientContent" && ($0["conn"] as? Int) == 2
+            && (($0["text"] as? String) ?? "").contains("Genie からの報告") }
         hud.endConversation(.user)
         UserDefaults().removePersistentDomain(forName: suite)
 
         let orderOK = Array(order.prefix(4)) == [0.1, 0.2, 0.3, 0.4]
-        let ok = orderOK && backToStandby && greeted && played
-        print((ok ? "SELFTEST_OK" : "SELFTEST_FAIL") + " wakehandoff: order=\(order.prefix(6)) standbyAfter=\(backToStandby) greetPrompted=\(greeted) greetingPlayed=\(played)")
+        let ok = orderOK && backToStandby && greeted && played && reported
+        print((ok ? "SELFTEST_OK" : "SELFTEST_FAIL") + " wakehandoff: order=\(order.prefix(6)) standbyAfter=\(backToStandby) greetPrompted=\(greeted) greetingPlayed=\(played) resultReported=\(reported)")
         exit(ok ? 0 : 2)
     }
 }

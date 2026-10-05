@@ -141,6 +141,16 @@ final class GeminiLiveProvider: ConversationProvider {
     var greetWhenReady = false
     /// 検査用: 挨拶の代わりに送る最初の依頼文。
     var openingPrompt: String?
+    /// 頼まれた仕事の結果を会話に戻す（delegate_task には受付だけを返している。終わったらここで知らせる）。
+    /// Gemini はこれを受けて、利用者に短く伝える。新しい作業は始めさせない。
+    func report(_ result: String) {
+        guard ready else { return }
+        let text = String(result.trimmingCharacters(in: .whitespacesAndNewlines).prefix(600))
+        guard !text.isEmpty else { return }
+        send(GeminiLive.userText("（Genie からの報告です。頼まれた仕事の結果を、利用者に一、二文で伝えてください。新しい作業は始めないでください）\n" + text))
+        mark("reported")
+    }
+
     /// 挨拶を促す（「ジーニー」とだけ呼ばれた）。つながっていればすぐ、まだなら setupComplete で。
     func greetSoon() {
         if ready { send(GeminiLive.greeting); mark("greeting-prompted") } else { greetWhenReady = true }
