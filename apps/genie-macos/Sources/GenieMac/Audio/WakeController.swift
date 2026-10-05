@@ -13,6 +13,9 @@ import AppKit
 final class WakeController {
     static let shared = WakeController()
     static let enabledKey = WakeWordListener.enabledKey
+    /// 検出の後、話が続くかを見る長さと、続いたとみなす声の長さ。
+    static let continuationWindow = 0.9
+    static let continuationSpeech = 0.25
     private let hub: VoiceInputHub
     private(set) var detector: WakeDetector?
 
@@ -115,6 +118,21 @@ final class WakeController {
         // 呼びかけの音が無い（試し）なら、Gemini に挨拶を促す。音があれば Gemini が聞いて応える。
         hud.beginConversation(greet: simulated)
         startedByWake = !simulated
+        // 「ジーニー」だけで止まったなら、Gemini に挨拶を促す（名前だけでは Gemini は返事をしなかった。genie.log 2026-10-05）。
+        // 続けて話しているなら促さない（「ジーニー、〇〇して」は Gemini がそのまま答える）。
+        if !simulated, hud.conversation.isActive {
+            Task { @MainActor [weak self] in
+                try? await Task.sleep(nanoseconds: UInt64(Self.continuationWindow * 1_000_000_000))
+                guard let self, hud.conversation.isActive, let gemini = hud.conversationProvider as? GeminiLiveProvider else { return }
+                let (speech, observed) = self.hub.speechSinceWake()
+                if speech < Self.continuationSpeech {
+                    GenieLog.write("wake", String(format: "name only (speech %.2f s of %.2f s) — prompting a greeting", speech, observed))
+                    gemini.greetSoon()
+                } else {
+                    GenieLog.write("wake", String(format: "continued speaking (%.2f s) — no greeting", speech))
+                }
+            }
+        }
         wokeAt = Date()
         // 始められなかった（Gemini Live が使えない等）。預かった声は送らずに捨て、待機へ戻る。
         if !hud.conversation.isActive { hub.detach() }

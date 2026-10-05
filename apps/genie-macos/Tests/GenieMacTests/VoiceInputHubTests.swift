@@ -60,6 +60,20 @@ final class VoiceInputHubTests: XCTestCase {
         XCTAssertEqual(hub.state, .standby)
     }
 
+    func testItTellsANameOnlyCallFromOneThatKeepsTalking() throws {
+        let quiet = VoiceInputHub(mic: nil)
+        try quiet.startStandby(detector: FakeDetector()) {}
+        quiet.inject(frame(9))                                  // 検出
+        for _ in 0..<9 { quiet.inject(Array(repeating: 0.001, count: 1600)) }   // 0.9 秒の静けさ
+        XCTAssertLessThan(quiet.speechSinceWake().speech, 0.25)
+
+        let talking = VoiceInputHub(mic: nil)
+        try talking.startStandby(detector: FakeDetector()) {}
+        talking.inject(frame(9))
+        for _ in 0..<9 { talking.inject(Array(repeating: 0.2, count: 1600)) }   // 続けて話している
+        XCTAssertGreaterThan(talking.speechSinceWake().speech, 0.25)
+    }
+
     func testWithoutADetectorTheMicrophoneIsNotKeptOpen() throws {
         let hub = VoiceInputHub(mic: nil)
         try hub.attach { _ in }

@@ -137,6 +137,11 @@ final class GeminiLiveProvider: ConversationProvider {
     private var pendingOpen: (() -> Void)?
     /// つながったら挨拶を促す（呼びかけの声が無いまま始めたとき）。1 回だけ。
     var greetWhenReady = false
+    /// 挨拶を促す（「ジーニー」とだけ呼ばれた）。つながっていればすぐ、まだなら setupComplete で。
+    func greetSoon() {
+        if ready { send(GeminiLive.greeting); mark("greeting-prompted") } else { greetWhenReady = true }
+    }
+
     /// 本人が会話を終えたいと言った（end_conversation）。会話の側が閉じる。
     var onEndRequested: (() -> Void)?
     private var endWhenDrained = false

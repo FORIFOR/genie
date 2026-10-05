@@ -128,7 +128,23 @@ final class VoiceInputHub: @unchecked Sendable {
         mic?.stop()
     }
 
+    // 呼びかけの後に話が続いたか（「ジーニー」だけか、「ジーニー、〇〇して」か）を見るための大きさ。
+    private var afterWakeSamples = 0
+    private var afterWakeLoud = 0
+    /// 声とみなす大きさ（RMS）。
+    static let speechLevel: Float = 0.01
+
+    /// 検出からいままでに、声らしい大きさの音がどれだけあったか（秒）と、見た長さ（秒）。
+    func speechSinceWake() -> (speech: Double, observed: Double) {
+        queue.sync { (Double(afterWakeLoud) / Self.sampleRate, Double(afterWakeSamples) / Self.sampleRate) }
+    }
+
     private func receiveLocked(_ frame: [Float]) {
+        if stateValue == .holding || stateValue == .streaming {
+            afterWakeSamples += frame.count
+            let rms = sqrt(frame.reduce(0) { $0 + $1 * $1 } / Float(max(1, frame.count)))
+            if rms >= Self.speechLevel { afterWakeLoud += frame.count }
+        }
         switch stateValue {
         case .off:
             return
@@ -148,6 +164,7 @@ final class VoiceInputHub: @unchecked Sendable {
         guard stateValue == .standby || stateValue == .off else { return }
         held = ring; heldSamples = ringSamples
         ring = []; ringSamples = 0
+        afterWakeSamples = 0; afterWakeLoud = 0
         stateValue = .holding
         if !micRunning { try? startMicLocked() }
         let onWake = onWakeValue
