@@ -41,6 +41,28 @@ struct NearbyPlaceIntent: Equatable {
         let found = brands.filter { matches($0.words) }
         if found.count == 1 { return found[0].intent }
         guard found.isEmpty else { return nil }
-        return categories.first { matches($0.words) }?.intent
+        if let kind = categories.first(where: { matches($0.words) })?.intent { return kind }
+        // 表に無い店名（「近くのマクドナルド」「最寄りのユニクロ」）: その名前で探し、名前で絞る。
+        return named(in: request)
+    }
+
+    /// 「近くの〇〇」「〇〇の近く」から店名を取り出す。曖昧な語（店・ところ・場所）だけなら拾わない。
+    static func named(in request: String) -> NearbyPlaceIntent? {
+        // 注文・配達・予約は別の仕事（注文画面への引き継ぎ）。店探しにしない。
+        guard request.range(of: "注文|デリバリー|配達|出前|予約", options: .regularExpression) == nil else { return nil }
+        let patterns = ["(?:近く|近所|周辺|最寄り|この辺|付近|近場)の([^、。を？?！!\\s]{2,20}?)(?:を|は|って|に|で|が|の|まで|教えて|調べて|探して|$)",
+                        "([^、。を？?！!\\s]{2,20}?)の(?:近く|最寄り)"]
+        for p in patterns {
+            guard let r = request.range(of: p, options: .regularExpression) else { continue }
+            let found = String(request[r])
+            guard let re = try? NSRegularExpression(pattern: p),
+                  let m = re.firstMatch(in: found, range: NSRange(found.startIndex..., in: found)),
+                  let nameRange = Range(m.range(at: 1), in: found) else { continue }
+            let name = String(found[nameRange]).trimmingCharacters(in: .whitespaces)
+            guard !["店", "お店", "ところ", "所", "場所", "建物", "駅", "人", "天気", "気温", "雨", "ニュース", "地震", "時間"].contains(name),
+                  name.range(of: "^(?:おすすめ|いい|良い)", options: .regularExpression) == nil else { continue }
+            return NearbyPlaceIntent(display: name, query: name, nameMustContain: [name])
+        }
+        return nil
     }
 }

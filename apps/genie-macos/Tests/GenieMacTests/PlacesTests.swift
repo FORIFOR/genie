@@ -136,4 +136,11 @@ final class PlacesTests: XCTestCase {
         XCTAssertNil(NearbyPlaceIntent.detect("ご飯屋さんのアプリを実装して"))
         XCTAssertNil(NearbyPlaceIntent.detect("近くのご飯屋さんには行かない"))
     }
+
+    func testAnyShopNameNearbyIsSearchedByName() {
+        XCTAssertEqual(NearbyPlaceIntent.detect("近くのマクドナルドを調べて")?.query, "マクドナルド")
+        XCTAssertEqual(NearbyPlaceIntent.detect("近くのマクドナルドを調べて")?.nameMustContain, ["マクドナルド"])
+        XCTAssertEqual(NearbyPlaceIntent.detect("最寄りのユニクロはどこ")?.query, "ユニクロ")
+        XCTAssertNil(NearbyPlaceIntent.detect("近くのお店を教えて"), "too vague to search by name")
+    }
 }

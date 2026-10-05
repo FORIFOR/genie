@@ -101,6 +101,13 @@ final class MainData: ObservableObject {
         return false
     }
 
+    private var lastAutoReconnect = Date.distantPast
+
+    static func isLoopback(_ base: String) -> Bool {
+        guard let host = URL(string: base)?.host else { return false }
+        return ["127.0.0.1", "localhost", "::1"].contains(host)
+    }
+
     func load(reauthenticate: Bool = false) {
         guard !credentialRecovery.holdsAutomaticConnection else { return }
         guard !DesktopConnectionBootstrap.isInvalid else {
@@ -173,6 +180,16 @@ final class MainData: ObservableObject {
                 NSLog("Genie: 接続を利用できません（%@）。", connectionIssue?.diagnosticCode ?? "unknown")
                 // 中身（トークン・URL の秘密）は書かない。種類と Keychain の状態コードだけ。
                 GenieLog.write("connection", "unavailable: \(connectionIssue?.diagnosticCode ?? "unknown") (\(GenieLog.clip(String(describing: error), 120)))")
+                // この Mac の中のサービス（127.0.0.1）で更新が途切れた（サービスの再起動中など）なら、同じ利用者として
+                // 入り直す。別の利用者・別の端末は作らない（同じ開発用の本人 ID で入る）。外のサービスでは本人の操作を待つ。
+                // 繰り返さない（5 分に 1 回まで）。2026-10-05、ボタンを押すまで何も頼めない状態が続いた。
+                if connectionIssue == .reconnect, !reauthenticate, Self.isLoopback(base),
+                   Date().timeIntervalSince(lastAutoReconnect) > 300 {
+                    lastAutoReconnect = Date()
+                    GenieLog.write("connection", "local service: signing in again as the same user")
+                    loading = false
+                    load(reauthenticate: true)
+                }
             }
         }
     }
