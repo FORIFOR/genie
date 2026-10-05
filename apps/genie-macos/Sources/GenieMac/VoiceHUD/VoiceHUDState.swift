@@ -859,7 +859,8 @@ final class VoiceHUDState: ObservableObject {
                 if isListeningMuted { break }
                 if !openConversationMicrophone(generation: g) { run(conversation.end(.microphoneLost)) }
             case .closeMicrophone:
-                conversationProvider.closeInput()
+                // 声で割り込める提供元（全二重）は、考え中・話している間も聞き続ける（閉じるのは会話の終わり・消音だけ）。
+                if !conversationProvider.capabilities.bargeIn || !conversation.isActive { conversationProvider.closeInput() }
                 inputLevel = 0
                 inputLevels = []
             case .send(let text):

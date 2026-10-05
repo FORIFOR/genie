@@ -1,4 +1,4 @@
-import Foundation
+import AVFoundation
 
 /// 呼びかけを聞き分ける部品（端末の中だけで動く）。16 kHz mono の音を渡し、呼びかけらしさが閾値を超えたら true。
 /// 標準の音声認識（文字起こし）は使わない（本人の指示 2026-10-04）。
@@ -39,6 +39,35 @@ final class VoiceInputHub: @unchecked Sendable {
     private var detectorValue: WakeDetector?
     private var onWakeValue: (() -> Void)?
     private var micRunning = false
+    /// エコー除去（会話で Genie の声を鳴らしている間だけ。待ち受けの音は変えない）。
+    private var echoCancellation = false
+
+    // MARK: - 再生（同じ engine で鳴らす = エコー除去で消える）
+
+    /// このハブで鳴らせるか（実マイクがあるとき）。
+    var canPlay: Bool { mic != nil }
+
+    /// エコー除去の切り替え。engine を開き直すので、切り替えの間（0.1〜0.3 秒）の音は落ちる。
+    /// だから話し始め（Gemini が答え始めた時）と会話の終わりにだけ切り替える。
+    func setEchoCancellation(_ on: Bool) {
+        queue.sync {
+            guard echoCancellation != on else { return }
+            echoCancellation = on
+            guard micRunning, let mic else { return }
+            mic.stop()
+            micRunning = false
+            try? startMicLocked()
+            GenieLog.write("voice", "echo cancellation \(on ? "on" : "off") (active: \(mic.voiceProcessingActive))")
+        }
+    }
+
+    func play(_ buffer: AVAudioPCMBuffer, completion: @escaping () -> Void) {
+        guard let player = mic?.player else { completion(); return }
+        player.scheduleBuffer(buffer, completionCallbackType: .dataPlayedBack) { _ in completion() }
+        if !player.isPlaying { player.play() }
+    }
+
+    func stopPlayback() { mic?.player.stop() }
 
     init(mic: MicCapture? = MicCapture()) { self.mic = mic }
 
@@ -93,6 +122,7 @@ final class VoiceInputHub: @unchecked Sendable {
 
     /// 会話の受け手を外す。検出器があれば待機へ戻り、無ければマイクを止める。
     func detach() {
+        setEchoCancellation(false)
         queue.sync {
             consumer = nil
             held = []; heldSamples = 0
@@ -115,7 +145,7 @@ final class VoiceInputHub: @unchecked Sendable {
     private func startMicLocked() throws {
         guard !micRunning else { return }
         guard let mic else { micRunning = true; return }
-        try mic.start(echoCancellation: false) { [weak self] frame in
+        try mic.start(echoCancellation: echoCancellation) { [weak self] frame in
             guard let self else { return }
             self.queue.async { self.receiveLocked(frame) }
         }

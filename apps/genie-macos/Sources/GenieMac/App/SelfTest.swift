@@ -91,6 +91,10 @@ enum SelfTest {
         case "selfecho": Task { await selfEcho() }; return true
         case "inputfocus": Task { await inputFocus() }; return true
         case "micprobe": Task { await micProbe() }; return true
+        case "aecprobe": Task { @MainActor in await aecProbe() }; return true
+        case "hubecho": Task { @MainActor in await hubEcho() }; return true
+        case "duplexlive": Task { @MainActor in await duplexLive() }; return true
+        case "aecvariants": Task { @MainActor in await aecVariants(args) }; return true
         case "micrelease": Task { await micRelease() }; return true
         case "quickesc": Task { await quickEsc() }; return true
         case "geminiresume": Task { await geminiResume() }; return true

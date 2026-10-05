@@ -122,8 +122,9 @@ final class GeminiLiveSettings: ObservableObject {
 @MainActor
 final class GeminiLiveProvider: ConversationProvider {
     let name = "gemini-live"
-    let capabilities = ConversationCapabilities(bargeIn: false, sendsAudioOffDevice: true,
-                                                synthesizesOffDevice: true, mayNotRespond: true)
+    /// 声で割り込める（全二重）のは、Gemini の声を共有マイクと同じ engine で鳴らし、エコー除去できるときだけ。
+    var capabilities: ConversationCapabilities { ConversationCapabilities(bargeIn: input.canPlay, sendsAudioOffDevice: true,
+                                                synthesizesOffDevice: true, mayNotRespond: true) }
 
     private let apiKey: String
     private let model: String
@@ -137,6 +138,8 @@ final class GeminiLiveProvider: ConversationProvider {
     private var pendingOpen: (() -> Void)?
     /// つながったら挨拶を促す（呼びかけの声が無いまま始めたとき）。1 回だけ。
     var greetWhenReady = false
+    /// 検査用: 挨拶の代わりに送る最初の依頼文。
+    var openingPrompt: String?
     /// 挨拶を促す（「ジーニー」とだけ呼ばれた）。つながっていればすぐ、まだなら setupComplete で。
     func greetSoon() {
         if ready { send(GeminiLive.greeting); mark("greeting-prompted") } else { greetWhenReady = true }
@@ -200,6 +203,7 @@ final class GeminiLiveProvider: ConversationProvider {
         self.onFirstFrame = onFirstFrame
         self.onUtterance = onUtterance
         heard = ""; said = ""; answered = false; streamedThisTurn = false
+        if streaming { onFirstFrame(); return true }   // 全二重: 送り続けている（次のターンの区切りだけ戻す）
         if ready { startMic(echoCancellation: echoCancellation) }
         else {
             pendingOpen = { [weak self] in self?.startMic(echoCancellation: echoCancellation) }
@@ -249,19 +253,11 @@ final class GeminiLiveProvider: ConversationProvider {
               let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(samples.count)) else { return }
         buffer.frameLength = AVAudioFrameCount(samples.count)
         samples.withUnsafeBufferPointer { src in buffer.floatChannelData![0].update(from: src.baseAddress!, count: samples.count) }
-        do {
-            if playerFormat?.sampleRate != format.sampleRate {
-                engine.disconnectNodeOutput(player)
-                engine.connect(player, to: engine.mainMixerNode, format: format)
-                playerFormat = format
-            }
-            if !engine.isRunning { try engine.start() }
-        } catch { return }
         let generation = playbackGeneration
         if queuedBuffers == 0 { mark("playback-start") }
         queuedBuffers += 1
         streamedThisTurn = true
-        player.scheduleBuffer(buffer, completionCallbackType: .dataPlayedBack) { [weak self] _ in
+        let finished: () -> Void = { [weak self] in
             Task { @MainActor in
                 guard let self, self.playbackGeneration == generation else { return }
                 self.queuedBuffers = max(0, self.queuedBuffers - 1)
@@ -272,6 +268,21 @@ final class GeminiLiveProvider: ConversationProvider {
                 }
             }
         }
+        // 共有マイクの engine で鳴らす（エコー除去で Genie 自身の声を消し、話しながら聞ける）。
+        if input.canPlay, format.sampleRate == MicCapture.playbackFormat.sampleRate {
+            input.setEchoCancellation(true)
+            input.play(buffer, completion: finished)
+            return
+        }
+        do {
+            if playerFormat?.sampleRate != format.sampleRate {
+                engine.disconnectNodeOutput(player)
+                engine.connect(player, to: engine.mainMixerNode, format: format)
+                playerFormat = format
+            }
+            if !engine.isRunning { try engine.start() }
+        } catch { finished(); return }
+        player.scheduleBuffer(buffer, completionCallbackType: .dataPlayedBack) { _ in finished() }
         if !player.isPlaying { player.play() }
     }
 
@@ -281,6 +292,7 @@ final class GeminiLiveProvider: ConversationProvider {
         playbackGeneration += 1
         queuedBuffers = 0
         player.stop()
+        input.stopPlayback()
     }
 
     func stopSpeaking() {
@@ -433,7 +445,7 @@ final class GeminiLiveProvider: ConversationProvider {
             ready = true
             if greetWhenReady {
                 greetWhenReady = false
-                send(GeminiLive.greeting)
+                send(openingPrompt.map(GeminiLive.userText) ?? GeminiLive.greeting)
             }
             pendingOpen?(); pendingOpen = nil
         case .inputTranscript(let t):

@@ -76,6 +76,8 @@ enum GeminiLive {
                         "prefixPaddingMs": prefixPaddingMs,
                         "silenceDurationMs": silenceDurationMs,
                         "endOfSpeechSensitivity": "END_SENSITIVITY_LOW",
+                        // 話しながら聞く（全二重）。エコー除去で消しきれない Genie 自身の声で割り込まれないよう、話し始めの判定は控えめに。
+                        "startOfSpeechSensitivity": "START_SENSITIVITY_LOW",
                     ],
                     "activityHandling": "START_OF_ACTIVITY_INTERRUPTS",
                 ],
@@ -119,6 +121,10 @@ enum GeminiLive {
     }
 
     static let audioStreamEnd: [String: Any] = ["realtimeInput": ["audioStreamEnd": true]]
+
+    static func userText(_ text: String) -> [String: Any] {
+        ["clientContent": ["turns": [["role": "user", "parts": [["text": text]]]], "turnComplete": true]]
+    }
 
     /// 呼びかけの声が届いていないまま始めた会話で、最初の挨拶を促す（AI 側から話し始めるための開始入力）。
     static let greeting: [String: Any] = ["clientContent": [
