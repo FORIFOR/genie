@@ -59,8 +59,9 @@ struct PlacesClient {
         let needles = mustContain.map { $0.lowercased() }
         return (response.places ?? [])
             .compactMap { p -> PlacesCard.Place? in
+                // 名前で絞るのはブランドの検索だけ（種類の検索「ご飯屋さん」は絞らない）。
                 guard let name = p.displayName?.text, let location = p.location,
-                      needles.contains(where: { name.lowercased().contains($0) }) else { return nil }
+                      needles.isEmpty || needles.contains(where: { name.lowercased().contains($0) }) else { return nil }
                 let here = CLLocation(latitude: location.latitude, longitude: location.longitude)
                 let maps = p.googleMapsUri.flatMap(URL.init(string:)).flatMap { $0.scheme == "https" ? $0 : nil }
                 return PlacesCard.Place(id: p.id, name: name, address: p.formattedAddress ?? "",

@@ -120,10 +120,14 @@ final class WakeController {
         startedByWake = !simulated
         // 「ジーニー」だけで止まったなら、Gemini に挨拶を促す（名前だけでは Gemini は返事をしなかった。genie.log 2026-10-05）。
         // 続けて話しているなら促さない（「ジーニー、〇〇して」は Gemini がそのまま答える）。
-        if !simulated, hud.conversation.isActive {
+        if !simulated {
             Task { @MainActor [weak self] in
                 try? await Task.sleep(nanoseconds: UInt64(Self.continuationWindow * 1_000_000_000))
-                guard let self, hud.conversation.isActive, let gemini = hud.conversationProvider as? GeminiLiveProvider else { return }
+                // 起動直後はキーの確認を待ってから会話が始まる。始まるまで少し待つ（最大 3 秒）。
+                for _ in 0..<30 where !hud.conversation.isActive { try? await Task.sleep(nanoseconds: 100_000_000) }
+                guard let self, hud.conversation.isActive, let gemini = hud.conversationProvider as? GeminiLiveProvider else {
+                    GenieLog.write("wake", "greeting check skipped: the conversation did not start"); return
+                }
                 let (speech, observed) = self.hub.speechSinceWake()
                 if speech < Self.continuationSpeech {
                     GenieLog.write("wake", String(format: "name only (speech %.2f s of %.2f s) — prompting a greeting", speech, observed))

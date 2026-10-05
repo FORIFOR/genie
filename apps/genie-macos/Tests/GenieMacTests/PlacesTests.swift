@@ -126,4 +126,14 @@ final class PlacesTests: XCTestCase {
         XCTAssertLessThanOrEqual(size.height, Metrics.dockCardMaxHeight)
         XCTAssertGreaterThan(size.height, Metrics.dockCardImageHeight + 90, "地図と 3 行が入っている")
     }
+
+    func testNearbyFoodAndShopKindsAreFoundWithoutNameFiltering() {
+        XCTAssertEqual(NearbyPlaceIntent.detect("近くのご飯屋さんを教えて")?.query, "レストラン")
+        XCTAssertEqual(NearbyPlaceIntent.detect("この辺でラーメン食べたい")?.query, "ラーメン")
+        XCTAssertEqual(NearbyPlaceIntent.detect("近くのカフェ")?.query, "カフェ")
+        XCTAssertEqual(NearbyPlaceIntent.detect("近くのご飯屋さん")?.nameMustContain, [])
+        XCTAssertEqual(NearbyPlaceIntent.detect("近くのスタバ")?.display, "スターバックス", "a brand still wins")
+        XCTAssertNil(NearbyPlaceIntent.detect("ご飯屋さんのアプリを実装して"))
+        XCTAssertNil(NearbyPlaceIntent.detect("近くのご飯屋さんには行かない"))
+    }
 }
