@@ -132,7 +132,8 @@ final class GeminiLiveProvider: ConversationProvider {
     private let onLost: (String) -> Void
     private let settings: GeminiLiveSettings
 
-    private var socket: URLSessionWebSocketTask?
+    private var socket: URLSessionWebSocketTask? { didSet { lane.attach(socket) } }
+    private let lane = AudioSendLane()
     private var ready = false
     private var connectedAt: Date?
     private var pendingOpen: (() -> Void)?
@@ -217,6 +218,7 @@ final class GeminiLiveProvider: ConversationProvider {
         pendingOpen = nil
         guard streaming else { return }
         streaming = false
+        lane.setOpen(false)
         input.pause()
         send(GeminiLive.audioStreamEnd)
     }
@@ -309,6 +311,7 @@ final class GeminiLiveProvider: ConversationProvider {
         if let connectedAt { settings.record(seconds: Date().timeIntervalSince(connectedAt)) }
         connectedAt = nil
         ready = false
+        lane.setOpen(false)
         socket?.cancel(with: .normalClosure, reason: nil)
         socket = nil
         onReply = nil; onUtterance = nil; onFirstFrame = nil; pendingOpen = nil
@@ -332,10 +335,19 @@ final class GeminiLiveProvider: ConversationProvider {
         return GeminiLiveProvider(apiKey: "local-fake", settings: settings, delegate: delegate, onLost: onLost, input: input)
     }
 
+    /// つながる（setupComplete）までの待ちの上限。超えたら預かった声は送らずに終える（再発話してもらう）。
+    static let connectTimeout: TimeInterval = 8
+
     private func connect() {
         guard socket == nil else { return }
         openSocket(resume: nil)
         connectedAt = Date()
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(Self.connectTimeout * 1_000_000_000))
+            guard let self, self.socket != nil, !self.ready else { return }
+            self.mark("connect-timeout")
+            self.lose("Gemini Live に \(Int(Self.connectTimeout)) 秒つながらなかったので、会話を終えました。もう一度お話しください。")
+        }
         // 今月の残りを超えて話し続けない。
         let remaining = settings.budget.remainingSeconds(at: Date())
         budgetTimer = Task { [weak self] in
@@ -351,6 +363,7 @@ final class GeminiLiveProvider: ConversationProvider {
         let task = URLSession.shared.webSocketTask(with: request)
         socket = task
         ready = false
+        lane.setOpen(false)
         task.resume()
         send(GeminiLive.setup(model: model, instruction: Self.instruction, resumeHandle: handle))
         receive(task)
@@ -443,6 +456,7 @@ final class GeminiLiveProvider: ConversationProvider {
         switch event {
         case .setupComplete:
             ready = true
+            lane.setOpen(streaming)
             if greetWhenReady {
                 greetWhenReady = false
                 send(openingPrompt.map(GeminiLive.userText) ?? GeminiLive.greeting)
@@ -510,17 +524,17 @@ final class GeminiLiveProvider: ConversationProvider {
 
     private func startMic(echoCancellation: Bool) {
         streaming = true
+        lane.setOpen(ready)
+        let lane = self.lane
         var first = true
         do {
             // 預かっていた声（呼びかけの前後・接続を待つ間）を先に、以降の声を順に送る。
             // ここに来るのは setupComplete の後（それより前の音声は受け付けられない）。
+            // 送るのは共有マイクの直列の列から、1 本の流れで（順番を仕組みで守る）。
             let flushed = try input.attach { [weak self] frame in
-                let message = GeminiLive.json(GeminiLive.audioChunk(frame))
-                Task { @MainActor in
-                    guard let self, self.streaming, self.ready else { return }
-                    if first { first = false; self.onFirstFrame?() }
-                    self.socket?.send(.string(message)) { _ in }
-                }
+                guard lane.send(frame), first else { return }
+                first = false
+                Task { @MainActor in self?.onFirstFrame?() }
             }
             if flushed > 0 { mark(String(format: "sent %.1fs held audio", flushed)) }
         } catch {
@@ -540,6 +554,7 @@ final class GeminiLiveProvider: ConversationProvider {
         onReply = nil
         closeInput()
         ready = false
+        lane.setOpen(false)
         budgetTimer?.cancel(); budgetTimer = nil
         if let connectedAt { settings.record(seconds: Date().timeIntervalSince(connectedAt)) }
         connectedAt = nil
@@ -556,5 +571,26 @@ final class GeminiLiveProvider: ConversationProvider {
                 return Float(v) / Float(Int16.max)
             }
         }
+    }
+}
+
+/// マイクの声を Gemini へ送る**1 本の流れ**。共有マイクの直列の列（`VoiceInputHub` の queue）から順に呼ばれ、
+/// そのままの順で WebSocket へ渡す（音の小片ごとに別の非同期処理を作らない = 順番が入れ替わる余地を作らない）。
+/// 開いているのは setupComplete の後・送ってよい間だけ。
+final class AudioSendLane: @unchecked Sendable {
+    private let lock = NSLock()
+    private var socket: URLSessionWebSocketTask?
+    private var open = false
+
+    func attach(_ socket: URLSessionWebSocketTask?) { lock.lock(); self.socket = socket; lock.unlock() }
+    func setOpen(_ on: Bool) { lock.lock(); open = on; lock.unlock() }
+
+    /// 送れたら true（閉じている間の声は送らない）。
+    @discardableResult
+    func send(_ frame: [Float]) -> Bool {
+        lock.lock(); let target = open ? socket : nil; lock.unlock()
+        guard let target else { return false }
+        target.send(.string(GeminiLive.json(GeminiLive.audioChunk(frame)))) { _ in }
+        return true
     }
 }
