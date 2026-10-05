@@ -47,6 +47,8 @@ struct ConversationLoop: Equatable {
 
     enum EndReason: String, Equatable {
         case user, timeout, sleep, microphoneLost, replaced
+        /// 話しかけられないまま `idleLimit` / `firstSpeechLimit` が過ぎた（有料の提供元だけ）。
+        case idle
         /// 会話の提供元（Gemini Live など）との接続が切れた・上限に達した。
         case providerLost
     }
@@ -68,6 +70,14 @@ struct ConversationLoop: Equatable {
     private(set) var endsAt: Date?
     private(set) var warned = false
     private(set) var cued = false
+    /// 聞いている間に話しかけられなければ終える長さ（nil = 終えない）。
+    /// 有料で声を外へ送る提供元（Gemini Live）だけに付ける。呼びかけの誤検出で 5 分つながり続け、
+    /// 部屋の音楽を送り続けていた（genie.log 2026-10-05）。端末の中の会話は従来どおり 5 分。
+    var idleLimit: TimeInterval?
+    /// 始めてから最初の言葉までの長さ（呼びかけで始めた会話。誤検出ならすぐ終える）。
+    var firstSpeechLimit: TimeInterval?
+    private(set) var listeningSince: Date?
+    private(set) var heardAny = false
 
     var isActive: Bool { phase != .inactive }
 
@@ -90,6 +100,8 @@ struct ConversationLoop: Equatable {
         endsAt = now.addingTimeInterval(Self.duration)
         warned = false
         cued = false
+        heardAny = false
+        listeningSince = now
         phase = .preparing
         return [.openMicrophone(generation: generation)]
     }
@@ -107,6 +119,8 @@ struct ConversationLoop: Equatable {
         guard g == generation, phase == .listening || phase == .preparing else { return [] }
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return [] }
+        heardAny = true
+        listeningSince = nil
         phase = .waiting
         return [.closeMicrophone, .send(trimmed)]
     }
@@ -146,6 +160,14 @@ struct ConversationLoop: Equatable {
         guard isActive else { return [] }
         let left = remaining(at: now)
         if left <= 0 { return end(.timeout) }
+        // 聞いている間だけ数える（考え中・読み上げ中は数えない）。
+        if phase == .listening || phase == .preparing {
+            if listeningSince == nil { listeningSince = now }
+            let limit = heardAny ? idleLimit : (firstSpeechLimit ?? idleLimit)
+            if let limit, let since = listeningSince, now.timeIntervalSince(since) >= limit { return end(.idle) }
+        } else {
+            listeningSince = nil
+        }
         if !warned, left <= Self.warningLead {
             warned = true
             return [.warnEnding]
@@ -170,6 +192,7 @@ struct ConversationLoop: Equatable {
         startedAt = nil
         endsAt = nil
         warned = false
+        listeningSince = nil
         return (wasSpeaking ? [.stopSpeaking] : []) + [.closeMicrophone, .ended(reason: reason)]
     }
 

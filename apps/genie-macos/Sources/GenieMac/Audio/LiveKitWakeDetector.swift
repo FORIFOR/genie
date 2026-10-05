@@ -64,10 +64,13 @@ final class LiveKitWakeDetector: WakeDetector {
         guard streak >= hits else { return false }
         streak = 0
         quietUntil = Date().addingTimeInterval(Self.cooldown)
+        lastFiredWindow = ring
         GenieLog.write("wake", String(format: "model score %.2f", score))
         return true
     }
 
+    /// 直近に起きたときの 2 秒（誤検出だったら学び直しに使う。端末の中だけ）。
+    private(set) var lastFiredWindow: [Int16]?
     private var nearMissLogged = Date.distantPast
     private func notePeak(_ score: Float) {
         // 呼んだのに起きなかったときの調べ: 0.5 以上で閾値に届かなかった点を時刻つきで残す（10 秒に 1 回まで）。

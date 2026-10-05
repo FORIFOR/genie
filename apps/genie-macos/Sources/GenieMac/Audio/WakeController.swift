@@ -24,8 +24,27 @@ final class WakeController {
     /// Gemini の支払い・クレジットで断られた後は、呼びかけのたびに接続し直さない。
     /// 本人が Dock から会話を始める・「呼びかけを試す」・キーを登録し直すまで、検出しても理由を出すだけ。
     private(set) var billingBlocked: String?
+    /// いまの会話が（試しではない）呼びかけの検出で始まったか。
+    var startedByWake = false
 
     func noteBillingFailure(_ reason: String) { billingBlocked = reason }
+
+    /// 呼びかけで始めた会話が、言葉の無いまま終わった = 誤検出。起きた 2 秒を端末の中に残す
+    /// （`~/Library/Application Support/Genie/wake/false/`、0600。次の学び直しで「起きない」例にする）。
+    func noteFalseWake() {
+        guard let window = (detector as? LiveKitWakeDetector)?.lastFiredWindow else { return }
+        let dir = WakeEnrollment.directory.appendingPathComponent("false", isDirectory: true)
+        let stamp = ISO8601DateFormatter().string(from: Date()).replacingOccurrences(of: ":", with: "")
+        let url = dir.appendingPathComponent("false-\(stamp).wav")
+        do {
+            try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+            try WakeEnrollment.writeWAV(window.map { Float($0) / Float(Int16.max) }, to: url)
+            try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
+            GenieLog.write("wake", "false wake kept for retraining")
+        } catch {
+            GenieLog.write("wake", "could not keep the false wake: \(error)")
+        }
+    }
     func clearBillingFailure() { billingBlocked = nil }
 
     private func observeLockAndSleep() {
@@ -94,6 +113,7 @@ final class WakeController {
         }
         // 呼びかけの音が無い（試し）なら、Gemini に挨拶を促す。音があれば Gemini が聞いて応える。
         hud.beginConversation(greet: simulated)
+        startedByWake = !simulated
         // 始められなかった（Gemini Live が使えない等）。預かった声は送らずに捨て、待機へ戻る。
         if !hud.conversation.isActive { hub.detach() }
     }

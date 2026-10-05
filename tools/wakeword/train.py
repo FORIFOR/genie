@@ -147,6 +147,12 @@ def main():
         for i, clip in enumerate(own):
             clips["val" if i >= len(own) - 5 else "train"].append((clip, "positive", "ジーニー", "本人"))
         print(f"enrollment {os.path.basename(path)}: {len(own)} calls", flush=True)
+    # 実際に誤って起きた 2 秒（アプリが ~/Library/Application Support/Genie/wake/false/ に残す）: 学習の負例
+    false_dir = os.environ.get("FALSE_DIR", os.path.join(os.environ.get("ENROLL_DIR", "/nonexistent"), "false"))
+    falses = sorted(glob.glob(os.path.join(false_dir, "false-*.wav")))
+    for path in falses:
+        clips["train"].append((load(path), "negative", "誤検出", "実機"))
+    if falses: print(f"false wakes from the Mac: {len(falses)}", flush=True)
     print({k: len(v) for k, v in clips.items()}, flush=True)
 
     Xa, Y, negpool = [], [], []

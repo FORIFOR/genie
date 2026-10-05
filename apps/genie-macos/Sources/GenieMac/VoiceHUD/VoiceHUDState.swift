@@ -662,6 +662,10 @@ final class VoiceHUDState: ObservableObject {
 
     /// 会話を始める。一回の音声入力（`beginListening`）とは別の入口。
     /// `greet`: 呼びかけの声が無いまま始めた（「呼びかけを試す」）。Gemini に「はい、どうされましたか？」を促す。
+    /// 有料の会話（Gemini Live）: 最初の言葉を待つ長さと、途中で黙ったら終える長さ。
+    static let paidFirstSpeechLimit: TimeInterval = 10
+    static let paidIdleLimit: TimeInterval = 45
+
     /// 回答面に一言出す（会話の外の知らせ）。
     func showAnswer(_ text: String) { answer = text; mode = .answer(text) }
 
@@ -759,6 +763,9 @@ final class VoiceHUDState: ObservableObject {
         isListeningMuted = false
         observeSleep()
         GenieLog.write("conversation", "start: \(provider is GeminiLiveProvider ? "Gemini Live" : "standard")")
+        // 有料で声を外へ送る提供元は、話しかけられなければ早めに終える（つなぎっぱなしで課金しない）。
+        conversation.idleLimit = provider.capabilities.sendsAudioOffDevice ? Self.paidIdleLimit : nil
+        conversation.firstSpeechLimit = provider.capabilities.sendsAudioOffDevice ? Self.paidFirstSpeechLimit : nil
         run(conversation.start(now: now))
         GenieEventBus.shared.publish(.voiceSessionStarted(source: "dock"))
     }
@@ -856,6 +863,9 @@ final class VoiceHUDState: ObservableObject {
                 GenieEarcon.play(.start)
             case .ended(let reason):
                 GenieLog.write("conversation", "ended: \(reason.rawValue)")
+                // 呼びかけで始まり、一言も無いまま終わった = 誤検出。学び直しの材料に残す。
+                if reason == .idle, !conversation.heardAny, WakeController.shared.startedByWake { WakeController.shared.noteFalseWake() }
+                WakeController.shared.startedByWake = false
                 conversationProvider.endSession()
                 GenieEarcon.play(.end)
                 conversationClock?.cancel(); conversationClock = nil
