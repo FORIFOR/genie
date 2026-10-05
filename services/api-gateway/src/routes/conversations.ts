@@ -505,7 +505,10 @@ async function startWork(
     ? {
         kind: 'browser.open_official',
         title: `${browser.subject} の公式サイト`,
-        input: { subject: browser.subject },
+        input: {
+          subject: browser.subject,
+          ...(browser.browser ? { browser: browser.browser } : {}),
+        },
       }
     : office
       ? {

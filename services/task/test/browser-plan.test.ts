@@ -25,11 +25,23 @@ describe('opening an official site', () => {
         title: '日本マクドナルド',
         opened: true,
         reason: '運営会社のドメイン',
+        shown: true,
       },
     ])!;
     expect(opened.markdown.split('\n')[0]).toBe(
-      'かしこまりました。マクドナルドの公式サイトをブラウザで開きました。',
+      'かしこまりました。マクドナルドの公式サイトをブラウザで開き、表示されたのを確認しました。',
     );
+    const unconfirmed = formatBrowserArtifact('browser.open_official', [
+      {
+        subject: 'マクドナルド',
+        url: 'https://www.mcdonalds.co.jp/',
+        title: '',
+        opened: true,
+        reason: '',
+        shown: null,
+      },
+    ])!;
+    expect(unconfirmed.markdown).toContain('表示まではまだ確認できていません');
     expect(opened.markdown).toContain('https://www.mcdonalds.co.jp/');
     const failed = formatBrowserArtifact('browser.open_official', [
       {

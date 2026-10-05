@@ -12,7 +12,11 @@ export function formatBrowserArtifact(kind: string, results: readonly unknown[])
     markdown:
       result.opened && result.url
         ? [
-            `かしこまりました。${result.subject}の公式サイトをブラウザで開きました。`,
+            result.shown === true
+              ? `かしこまりました。${result.subject}の公式サイトをブラウザで開き、表示されたのを確認しました。`
+              : result.shown === false
+                ? `${result.subject}の公式サイトを開きましたが、いま前に出ているのは別のページです。ブラウザを確認してください。`
+                : `${result.subject}の公式サイトをブラウザで開いています。表示まではまだ確認できていません。`,
             '',
             `[${result.title || result.subject}](${result.url})`,
           ].join('\n')

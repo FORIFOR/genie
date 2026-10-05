@@ -8,7 +8,7 @@
  */
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { BrowserOpenArgs, type BrowserOpenResult } from '@genie/contracts';
+import { BrowserOpenArgs, type BrowserChoice, type BrowserOpenResult } from '@genie/contracts';
 import type { HostStep, StepOutcome } from './connector-steps.js';
 
 const exec = promisify(execFile);
@@ -20,7 +20,10 @@ export type BrowserAsk = (
 
 export interface BrowserOpenDeps {
   readonly ask: BrowserAsk;
-  readonly open?: (url: string, signal?: AbortSignal) => Promise<void>;
+  readonly open?: (url: string, browser: BrowserChoice, signal?: AbortSignal) => Promise<void>;
+  /** 前面のタブの URL を読む（表示の確認）。読めなければ null。 */
+  readonly frontUrl?: (browser: BrowserChoice) => Promise<string | null>;
+  readonly sleep?: (ms: number) => Promise<void>;
 }
 
 interface Candidate {
@@ -48,6 +51,7 @@ export class BrowserOpenRuntime {
     const parsed = BrowserOpenArgs.safeParse(step.args);
     if (!parsed.success) return fail('invalid_args', '開くサイトの名前を確認できませんでした。');
     const subject = parsed.data.subject;
+    const browser: BrowserChoice = parsed.data.browser ?? 'default';
 
     let candidates: Candidate[];
     try {
@@ -93,25 +97,55 @@ export class BrowserOpenRuntime {
       title: chosen.title.slice(0, 300),
       opened: false,
       reason: pick.reason.slice(0, 400),
+      browser,
     };
     try {
       signal?.throwIfAborted();
-      await (this.#deps.open ?? openInDefaultBrowser)(chosen.url, signal);
+      await (this.#deps.open ?? openInBrowser)(chosen.url, browser, signal);
     } catch {
       return notOpened('公式サイトは見つかりましたが、ブラウザで開けませんでした。', {
         url: chosen.url,
         title: result.title,
         reason: result.reason,
+        browser,
       });
     }
-    return { ok: true, result: { ...result, opened: true } };
+    // 開く依頼が通っただけでは「表示した」と言わない。前面のタブがそのサイトになったかを読み取る。
+    const shown = await this.#confirmShown(chosen.url, browser, signal);
+    return { ok: true, result: { ...result, opened: true, ...shown } };
+  }
+
+  async #confirmShown(
+    url: string,
+    browser: BrowserChoice,
+    signal?: AbortSignal,
+  ): Promise<{ shown: boolean | null; shownUrl?: string }> {
+    const read = this.#deps.frontUrl ?? readFrontUrl;
+    const sleep = this.#deps.sleep ?? ((ms: number) => new Promise((r) => setTimeout(r, ms)));
+    let last: string | null = null;
+    for (let i = 0; i < 16 && !signal?.aborted; i++) {
+      await sleep(500);
+      last = await read(browser).catch(() => null);
+      if (last && sameSite(last, url)) return { shown: true, shownUrl: last.slice(0, 500) };
+    }
+    return last ? { shown: false, shownUrl: last.slice(0, 500) } : { shown: null };
   }
 }
 
-export async function openInDefaultBrowser(url: string, signal?: AbortSignal): Promise<void> {
+const APP: Record<Exclude<BrowserChoice, 'default'>, string> = {
+  safari: 'Safari',
+  chrome: 'Google Chrome',
+};
+
+export async function openInBrowser(
+  url: string,
+  browser: BrowserChoice,
+  signal?: AbortSignal,
+): Promise<void> {
   if (process.platform !== 'darwin') throw new Error('unsupported_platform');
   if (!/^https?:\/\//i.test(url)) throw new Error('unsupported_scheme');
-  await exec('/usr/bin/open', [url], {
+  const args = browser === 'default' ? [url] : ['-a', APP[browser], url];
+  await exec('/usr/bin/open', args, {
     ...(signal ? { signal } : {}),
     timeout: 10_000,
     maxBuffer: 4096,
@@ -154,4 +188,44 @@ export function pickOf(raw: unknown, count: number): { index: number; reason: st
 
 function reason(error: unknown): string {
   return error instanceof Error && error.message ? `（${error.message.slice(0, 120)}）` : '';
+}
+
+/** 同じサイトか（ホスト名で比べる。www. の有無は同じとみなす）。 */
+export function sameSite(shown: string, wanted: string): boolean {
+  try {
+    const host = (u: string) => new URL(u).hostname.replace(/^www\./, '').toLowerCase();
+    const a = host(shown),
+      b = host(wanted);
+    return a === b || a.endsWith(`.${b}`) || b.endsWith(`.${a}`);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * ブラウザの前面のタブの URL を読む（AppleScript。読むのは URL だけ）。
+ * 既定のブラウザのときは、動いている Safari → Chrome の順に見る。初回は macOS が「操作の許可」を聞く。
+ */
+export async function readFrontUrl(browser: BrowserChoice): Promise<string | null> {
+  const scripts: Record<Exclude<BrowserChoice, 'default'>, string> = {
+    safari:
+      'if application "Safari" is running then tell application "Safari" to if (count of windows) > 0 then return URL of current tab of front window',
+    chrome:
+      'if application "Google Chrome" is running then tell application "Google Chrome" to if (count of windows) > 0 then return URL of active tab of front window',
+  };
+  const order: Exclude<BrowserChoice, 'default'>[] =
+    browser === 'default' ? ['safari', 'chrome'] : [browser];
+  for (const b of order) {
+    try {
+      const { stdout } = await exec('/usr/bin/osascript', ['-e', scripts[b]], {
+        timeout: 4000,
+        maxBuffer: 8192,
+      });
+      const url = stdout.trim();
+      if (/^https?:\/\//i.test(url)) return url;
+    } catch {
+      /* 許可が無い・動いていない */
+    }
+  }
+  return null;
 }

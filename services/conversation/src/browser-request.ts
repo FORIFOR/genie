@@ -6,7 +6,12 @@
  */
 export interface BrowserOpenRequest {
   readonly subject: string;
+  /** 「Safari で」「Chrome で」と言われたら、そのブラウザ。 */
+  readonly browser?: 'safari' | 'chrome';
 }
+
+const SAFARI = /(?:safari|サファリ)(?:で|に|を使って)?[、,\s]*/iu;
+const CHROME = /(?:google\s*)?(?:chrome|クローム|グーグルクローム)(?:で|に|を使って)?[、,\s]*/iu;
 
 const OPEN =
   /(?:を|も)?(?:ブラウザ(?:で|に))?(?:開いて|ひらいて|開けて|表示して|見せて|出して|確認して|見て)/u;
@@ -18,7 +23,9 @@ const LEAD =
   /^(?:ジーニー|Genie)?[、,\s]*(?:ちょっと|あの|えっと)?[、,\s]*(?:ブラウザ(?:を開いて|で|に)[、,\s]*)?/iu;
 
 export function browserOpenRequest(text: string): BrowserOpenRequest | null {
-  const trimmed = text.trim();
+  const named = SAFARI.test(text) ? 'safari' : CHROME.test(text) ? 'chrome' : undefined;
+  // ブラウザの名前は取り除いてから読む（「Safari で〇〇の公式サイト」→ 対象は〇〇）。
+  const trimmed = text.replace(SAFARI, 'ブラウザで').replace(CHROME, 'ブラウザで').trim();
   if (/https?:\/\/|www\./iu.test(trimmed)) return null;
   const body = trimmed.replace(POLITE, '');
   const match = new RegExp(`^(.+?)${OPEN.source}$`, 'u').exec(body);
@@ -34,5 +41,5 @@ export function browserOpenRequest(text: string): BrowserOpenRequest | null {
   const subject = (official ? official[1]! : target).replace(/[のを]$/u, '').trim();
   if (!subject || subject.length > 60 || /^(?:これ|それ|あれ|この|その)$/u.test(subject))
     return null;
-  return { subject };
+  return named ? { subject, browser: named } : { subject };
 }

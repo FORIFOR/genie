@@ -677,6 +677,9 @@ export function planTask(kind: string, input: Record<string, unknown>): TaskPlan
       const subject = input['subject'];
       if (typeof subject !== 'string' || !subject.trim() || subject.length > 200)
         throw new UnknownTaskKindError('browser.open_official needs a subject');
+      const browser = input['browser'];
+      if (browser !== undefined && browser !== 'safari' && browser !== 'chrome')
+        throw new UnknownTaskKindError('browser.open_official: unknown browser');
       return {
         steps: [
           {
@@ -686,7 +689,7 @@ export function planTask(kind: string, input: Record<string, unknown>): TaskPlan
             risk: 'READ',
             surface: 'local',
             message: `「${subject.trim()}」の公式サイトを探しています`,
-            args: { subject: subject.trim() },
+            args: { subject: subject.trim(), ...(browser ? { browser } : {}) },
           },
         ],
         artifact: { type: 'OTHER', title: '公式サイト', mimeType: 'text/markdown' },

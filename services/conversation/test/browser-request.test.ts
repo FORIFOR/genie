@@ -22,4 +22,19 @@ describe('asking to open an official site', () => {
   ])('leaves %s to the conversation', (text) => {
     expect(browserOpenRequest(text)).toBeNull();
   });
+
+  it('remembers which browser was named', () => {
+    expect(browserOpenRequest('マクドナルドの公式サイトをSafariで開いて')).toEqual({
+      subject: 'マクドナルド',
+      browser: 'safari',
+    });
+    expect(browserOpenRequest('Chromeでユニクロの公式サイトを開いて')).toEqual({
+      subject: 'ユニクロ',
+      browser: 'chrome',
+    });
+    expect(browserOpenRequest('サファリでJRAの公式ページを開いて')).toEqual({
+      subject: 'JRA',
+      browser: 'safari',
+    });
+  });
 });
