@@ -171,6 +171,7 @@ enum UserFacingFacts {
     /// メニュー: 「ジーニー」の呼びかけで会話を始める（端末の中で聞き取る）。
     static let menuWakeWord = "「ジーニー」で呼びかける"
     static let menuTryWake = "呼びかけを試す"
+    static let menuDiagnose = "声と接続を診断"
     /// 押すと 3 秒ごとに合図音が 20 回鳴る。合図の後に「ジーニー」と言う（録音は Mac の中だけ）。
     static let menuWakeEnroll = "声を覚える（合図のあとに「ジーニー」×20）"
     /// Gemini のクレジット切れ・利用枠の上限で、標準の会話に切り替えたとき。

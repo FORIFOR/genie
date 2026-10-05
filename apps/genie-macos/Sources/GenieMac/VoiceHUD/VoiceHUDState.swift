@@ -698,6 +698,16 @@ final class VoiceHUDState: ObservableObject {
         return "\(running.count) 件の仕事を止めました（\(names)）。止める前に済んでいた部分は残っています。元に戻してはいません。"
     }
 
+    /// U109: 声と接続を診断し、原因と直し方を回答面に出す（声が出ない時のために、画面に出す）。
+    func diagnoseVoice() {
+        WindowCoordinator.shared.showVoiceHUD()
+        showAnswer("声と接続を確かめています…")
+        Task { @MainActor [weak self] in
+            let items = await VoiceDiagnosis.run()
+            self?.showAnswer(VoiceDiagnosis.summary(items))
+        }
+    }
+
     /// 回答面に一言出す（会話の外の知らせ）。
     func showAnswer(_ text: String) { answer = text; mode = .answer(text) }
 
@@ -1106,7 +1116,7 @@ final class VoiceHUDState: ObservableObject {
     static func homeIntentNeedsGateway(_ text: String, visualContext: [VisualContextArtifact]?) -> Bool {
         guard visualContext?.isEmpty != false else { return true }
         let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        return NearbyPlaceIntent.detect(text) == nil
+        return NearbyPlaceIntent.detect(text) == nil && !VoiceDiagnosis.isRequest(text)
     }
 
     /// 声/テキストの依頼を Agent に投げる。listening→thinking→answer→idle と状態を進める。
@@ -1124,6 +1134,11 @@ final class VoiceHUDState: ObservableObject {
             return false
         }
         GenieSpeechOutput.shared.stop()
+        // 「声が返ってこない」: 端末で診断する（つながっていない時こそ使うので、gateway・モデルを通さない）。
+        if visualContext?.isEmpty != false, VoiceDiagnosis.isRequest(text) {
+            diagnoseVoice()
+            return true
+        }
         // 「近くのスタバ」: 端末で現在地と Google マップを引き、地図つきのカードにする（gateway・モデルは通さない）。
         if visualContext?.isEmpty != false,
            let nearby = NearbyPlaceIntent.detect(text) {
