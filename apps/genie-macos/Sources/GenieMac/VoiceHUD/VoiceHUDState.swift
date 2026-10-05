@@ -708,6 +708,14 @@ final class VoiceHUDState: ObservableObject {
         }
     }
 
+    // MARK: - 本物の Gemini Live での通し検査（--selftest liveflow）だけが使う
+
+    /// 検査: 実マイクの代わりに音声を流し込むハブ。
+    static var liveTestInput: VoiceInputHub?
+    /// 検査: Gemini の声をスピーカーへ出さない（配信に乗せない）。字幕は受け取る。
+    static var liveTestSilent = false
+    static var liveTestTranscripts: ((String, Bool) -> Void)?
+
     /// 回答面に一言出す（会話の外の知らせ）。
     func showAnswer(_ text: String) { answer = text; mode = .answer(text) }
 
@@ -768,7 +776,11 @@ final class VoiceHUDState: ObservableObject {
                     self.answer = reason
                     self.endConversation(.providerLost)
                     self.mode = .answer(reason)
-                })
+                }, input: Self.liveTestInput ?? .shared)
+            if let gemini = provider as? GeminiLiveProvider, Self.liveTestSilent {
+                gemini.silentPlayback = true
+                gemini.transcriptObserver = Self.liveTestTranscripts
+            }
         }
         if greet, let gemini = provider as? GeminiLiveProvider { gemini.greetWhenReady = true }
         if let gemini = provider as? GeminiLiveProvider {
@@ -967,7 +979,9 @@ final class VoiceHUDState: ObservableObject {
     func delegateFromConversation(_ request: String) async -> String {
         let text = request.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return "empty_request" }
-        return ask(text) ? "accepted" : (heldUtterance == text ? "busy_with_previous_request" : "not_accepted")
+        let status = ask(text) ? "accepted" : (heldUtterance == text ? "busy_with_previous_request" : "not_accepted")
+        GenieLog.write("conversation", "delegate: \(status) — \(GenieLog.clip(text, 60))")
+        return status
     }
 
     /// 会話の 1 ターンを送る。答えは `ask` の結果から `conversationReply` で返る。
@@ -1001,7 +1015,10 @@ final class VoiceHUDState: ObservableObject {
             case .success(let card):
                 self.answer = card.text
                 reply = TaskReply(text: card.conversationText, phase: .complete, card: .places(card))
-                if !conversationListening, !self.isListeningSurface {
+                // 会話中でも地図のカードは出す（Gemini が「画面に表示しました」と言うのに出ていなかった。liveflow 2026-10-05）。
+                // 会話は続き、カードは会話中に出してよい面（dockChanged が会話を終えない）。
+                if card.hasContent, self.conversation.isActive { self.mode = .card(.places(card)) }
+                else if !conversationListening, !self.isListeningSurface {
                     self.mode = card.hasContent ? .card(.places(card)) : .answer(card.text)
                 }
             case .failure(let failure):

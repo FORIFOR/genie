@@ -139,6 +139,10 @@ final class GeminiLiveProvider: ConversationProvider {
     private var pendingOpen: (() -> Void)?
     /// つながったら挨拶を促す（呼びかけの声が無いまま始めたとき）。1 回だけ。
     var greetWhenReady = false
+    /// 検査用: Gemini の声を鳴らさない（音量 0。流し終える時間は本物と同じ）。
+    var silentPlayback = false
+    /// 検査用: 字幕（本人側 true / Gemini 側 false）を受け取る。
+    var transcriptObserver: ((String, Bool) -> Void)?
     /// 検査用: 挨拶の代わりに送る最初の依頼文。
     var openingPrompt: String?
     /// 頼まれた仕事の結果を会話に戻す（delegate_task には受付だけを返している。終わったらここで知らせる）。
@@ -298,6 +302,7 @@ final class GeminiLiveProvider: ConversationProvider {
             if !engine.isRunning { try engine.start() }
         } catch { finished(); return }
         player.scheduleBuffer(buffer, completionCallbackType: .dataPlayedBack) { _ in finished() }
+        player.volume = silentPlayback ? 0 : 1
         if !player.isPlaying { player.play() }
     }
 
@@ -481,13 +486,16 @@ final class GeminiLiveProvider: ConversationProvider {
             pendingOpen?(); pendingOpen = nil
         case .inputTranscript(let t):
             heard += t
+            transcriptObserver?(t, true)
         case .audio(let pcm, let rate):
             userTurnEnded()
             enqueue(pcm, rate: rate)
         case .outputTranscript(let t):
             userTurnEnded()
             said += t
+            transcriptObserver?(t, false)
         case .toolCall(let id, let name, let request):
+            GenieLog.write("conversation", "Gemini tool: \(name) \(GenieLog.clip(request, 60))")
             userTurnEnded()
             if name == GeminiLive.stopTool {
                 let summary = onStopWork?() ?? "止められる仕事はありませんでした。"

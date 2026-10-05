@@ -10,8 +10,9 @@ export interface BrowserOpenRequest {
   readonly browser?: 'safari' | 'chrome';
 }
 
-const SAFARI = /(?:safari|サファリ)(?:で|に|を使って)?[、,\s]*/iu;
-const CHROME = /(?:google\s*)?(?:chrome|クローム|グーグルクローム)(?:で|に|を使って)?[、,\s]*/iu;
+const SAFARI = /[\s、,]*(?:safari|サファリ)[\s]*(?:で|に|を使って)?[、,\s]*/iu;
+const CHROME =
+  /[\s、,]*(?:google\s*)?(?:chrome|クローム|グーグルクローム)[\s]*(?:で|に|を使って)?[、,\s]*/iu;
 
 const OPEN =
   /(?:を|も)?(?:ブラウザ(?:で|に))?(?:開いて|ひらいて|開けて|表示して|見せて|出して|確認して|見て)/u;
@@ -24,8 +25,9 @@ const LEAD =
 
 export function browserOpenRequest(text: string): BrowserOpenRequest | null {
   const named = SAFARI.test(text) ? 'safari' : CHROME.test(text) ? 'chrome' : undefined;
-  // ブラウザの名前は取り除いてから読む（「Safari で〇〇の公式サイト」→ 対象は〇〇）。
-  const trimmed = text.replace(SAFARI, 'ブラウザで').replace(CHROME, 'ブラウザで').trim();
+  // ブラウザの名前は取り除いてから読む（「〇〇の公式サイトを Safari で開いて」→ 対象は〇〇）。
+  // 置き換えではなく取り除く（以前は「ブラウザでで」が対象名に残り、別のものを検索していた。liveflow 2026-10-05）。
+  const trimmed = text.replace(SAFARI, '').replace(CHROME, '').trim();
   if (/https?:\/\/|www\./iu.test(trimmed)) return null;
   const body = trimmed.replace(POLITE, '');
   const match = new RegExp(`^(.+?)${OPEN.source}$`, 'u').exec(body);
@@ -35,7 +37,7 @@ export function browserOpenRequest(text: string): BrowserOpenRequest | null {
     .replace(/[をもは]$/u, '')
     .trim();
   const official = OFFICIAL.exec(target);
-  const viaBrowser = /ブラウザ/u.test(trimmed);
+  const viaBrowser = named !== undefined || /ブラウザ/u.test(trimmed);
   // 「公式サイト」等の言葉か、「ブラウザで」の言葉のどちらかが要る。「資料を見て」は拾わない。
   if (!official && !viaBrowser) return null;
   const subject = (official ? official[1]! : target).replace(/[のを]$/u, '').trim();

@@ -94,6 +94,8 @@ enum SelfTest {
         case "aecprobe": Task { @MainActor in await aecProbe() }; return true
         case "hubecho": Task { @MainActor in await hubEcho() }; return true
         case "diagnose": Task { @MainActor in await diagnose() }; return true
+        case "liveflow": Task { @MainActor in await liveFlow(args) }; return true
+        case "askprobe": Task { @MainActor in await askProbe(args) }; return true
         case "duplexlive": Task { @MainActor in await duplexLive() }; return true
         case "aecvariants": Task { @MainActor in await aecVariants(args) }; return true
         case "micrelease": Task { await micRelease() }; return true
@@ -110,6 +112,7 @@ enum SelfTest {
         case "geminiping": Task { @MainActor in await geminiPing() }; return true
         case "keychainprobe": Task { @MainActor in await keychainProbe() }; return true
         case "setgeminikey": Task { @MainActor in await setGeminiKey() }; return true
+        case "setplaceskey": Task { @MainActor in await setPlacesKey() }; return true
         case "wakehandoff": Task { await wakeHandoff() }; return true
         case "wakemodel": Task { @MainActor in await wakeModel(args) }; return true
         case "geminismoke": Task { await geminiSmoke() }; return true

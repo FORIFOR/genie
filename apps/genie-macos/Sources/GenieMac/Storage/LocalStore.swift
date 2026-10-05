@@ -48,6 +48,8 @@ final class LocalStore {
         close()
         self.path = path
         guard sqlite3_open(path, &db) == SQLITE_OK else { return false }
+        // 別の処理が書いている間は、すぐ断らずに少し待つ（同じ DB を開く検査や復旧の処理と重なっても、依頼を落とさない）。
+        sqlite3_busy_timeout(db, 2_000)
         return migrate()
     }
 

@@ -44,8 +44,11 @@ final class VoiceInputHub: @unchecked Sendable {
 
     // MARK: - 再生（同じ engine で鳴らす = エコー除去で消える）
 
-    /// このハブで鳴らせるか（実マイクがあるとき）。
-    var canPlay: Bool { mic != nil }
+    /// このハブで鳴らせるか（実マイクがあるとき。検査では鳴らしたことにできる）。
+    var canPlay: Bool { mic != nil || simulatedPlayback }
+    /// 検査: 実マイク無しでも本番と同じ全二重で動かす。鳴らす代わりに、声の長さだけ待って終わったことにする。
+    var simulatedPlayback = false
+    private var simulatedGeneration = 0
 
     /// エコー除去の切り替え。engine を開き直すので、切り替えの間（0.1〜0.3 秒）の音は落ちる。
     /// だから話し始め（Gemini が答え始めた時）と会話の終わりにだけ切り替える。
@@ -62,12 +65,28 @@ final class VoiceInputHub: @unchecked Sendable {
     }
 
     func play(_ buffer: AVAudioPCMBuffer, completion: @escaping () -> Void) {
+        if mic == nil, simulatedPlayback {
+            let generation = queue.sync { simulatedGeneration }
+            let seconds = Double(buffer.frameLength) / buffer.format.sampleRate
+            simulatedUntil = max(simulatedUntil, Date()).addingTimeInterval(seconds)
+            let due = simulatedUntil
+            DispatchQueue.main.asyncAfter(deadline: .now() + due.timeIntervalSinceNow) { [weak self] in
+                guard let self, self.queue.sync(execute: { self.simulatedGeneration }) == generation else { return }
+                completion()
+            }
+            return
+        }
         guard let player = mic?.player else { completion(); return }
         player.scheduleBuffer(buffer, completionCallbackType: .dataPlayedBack) { _ in completion() }
         if !player.isPlaying { player.play() }
     }
 
-    func stopPlayback() { mic?.player.stop() }
+    private var simulatedUntil = Date.distantPast
+    func stopPlayback() {
+        mic?.player.stop()
+        queue.sync { simulatedGeneration += 1 }
+        simulatedUntil = .distantPast
+    }
 
     init(mic: MicCapture? = MicCapture()) { self.mic = mic }
 

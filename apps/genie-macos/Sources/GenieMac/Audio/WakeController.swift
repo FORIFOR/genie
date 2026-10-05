@@ -96,6 +96,12 @@ final class WakeController {
 
     func stop() { hub.stopStandby() }
 
+    /// 検査（--selftest liveflow）: 権限や設定を見ずに、渡した検出器で待ち受ける。
+    func armForTest(detector: WakeDetector) throws {
+        self.detector = detector
+        try hub.startStandby(detector: detector) { [weak self] in self?.woke(simulated: false) }
+    }
+
     /// メニューの「呼びかけを試す」: 検出したことにして、会話への引き継ぎを確かめる。
     func simulateWake() {
         clearBillingFailure()   // 本人が試す = もう一度つないでよい

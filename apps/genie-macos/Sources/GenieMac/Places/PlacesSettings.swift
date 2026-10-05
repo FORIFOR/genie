@@ -8,7 +8,9 @@ import Foundation
 @MainActor
 final class PlacesSettings: ObservableObject {
     static let shared = PlacesSettings()
-    static let keychainKey = "googleMaps.apiKey"
+    /// 名前に版を付けた（.v2）。前の名前の項目は、作り直したアプリから読めなくなっていた（-25293）。
+    /// 前の項目は消さずに残し、新しい名前で入れ直す（2026-10-05）。
+    static let keychainKey = "googleMaps.apiKey.v2"
     private static let limitKey = "genie.places.monthlySearches"
     private static let usedKey = "genie.places.usedSearches"
     private static let monthKey = "genie.places.month"

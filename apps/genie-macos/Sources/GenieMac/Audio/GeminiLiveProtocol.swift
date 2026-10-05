@@ -48,7 +48,8 @@ enum GeminiLive {
 
     /// 話し終わりの判定（ミリ秒）。公式の推奨は 500〜800ms（100〜200ms に縮めると一つの発話が分かれる）。
     /// 言い直し（「木曜……いや、金曜」）を待てるよう、推奨の中ほどから始める。実機の日本語で詰める。
-    static let silenceDurationMs = 650
+    // 650 では「マクドナルドの、公式サイトを…」の息継ぎで切れ、続きを落とした（liveflow 2026-10-05）。推奨の上端の 800 に。
+    static let silenceDurationMs = 800
     /// 話し始めの直前も拾う（語頭の欠け防止）。
     static let prefixPaddingMs = 200
     /// 声（本人の指定、2026-09-29）。公式の prebuilt voice の名前（`speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName`）。

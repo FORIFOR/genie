@@ -18,3 +18,19 @@ extension SelfTest {
         exit(same ? 0 : 2)
     }
 }
+
+extension SelfTest {
+    /// `GENIE_PLACES_KEY` を、設定画面と同じ経路（`PlacesSettings.setKey`）で登録する（表示しない・ファイルに書かない）。
+    @MainActor static func setPlacesKey() async {
+        guard let key = ProcessInfo.processInfo.environment["GENIE_PLACES_KEY"]?
+            .trimmingCharacters(in: .whitespacesAndNewlines), !key.isEmpty else {
+            print("SELFTEST_FAIL setplaceskey: GENIE_PLACES_KEY is empty"); exit(2)
+        }
+        let settings = PlacesSettings.shared
+        await settings.refreshKeyPresence()
+        let saved = settings.setKey(key)
+        let same = saved && settings.apiKey() == key
+        print((same ? "SELFTEST_OK" : "SELFTEST_FAIL") + " setplaceskey: saved=\(same) (\(settings.keyAccessIssue ?? "ok"))")
+        exit(same ? 0 : 2)
+    }
+}

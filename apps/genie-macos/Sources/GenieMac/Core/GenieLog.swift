@@ -27,12 +27,17 @@ enum GenieLog {
     static func write(_ category: String, _ message: String) {
         os.info("\(category, privacy: .public) \(message, privacy: .private)")
         // 検査（--selftest・XCTest）の出来事は本人の記録に混ぜない。
-        if ProcessInfo.processInfo.arguments.contains("--selftest") || NSClassFromString("XCTestCase") != nil { return }
+        let args = ProcessInfo.processInfo.arguments
+        // 本物の Gemini での通し検査（liveflow）だけは、別のファイルに残す（本人の記録とは混ぜない）。
+        let target: URL
+        if args.contains("liveflow") { target = url.deletingLastPathComponent().appendingPathComponent("liveflow.log") }
+        else if args.contains("--selftest") || NSClassFromString("XCTestCase") != nil { return }
+        else { target = url }
         let line = "\(stamp.string(from: Date())) [\(category)] \(message)\n"
-        queue.async { append(line) }
+        queue.async { append(line, to: target) }
     }
 
-    private static func append(_ line: String) {
+    private static func append(_ line: String, to url: URL = GenieLog.url) {
         let fm = FileManager.default
         let dir = url.deletingLastPathComponent()
         try? fm.createDirectory(at: dir, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
