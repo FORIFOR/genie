@@ -662,11 +662,19 @@ final class VoiceHUDState: ObservableObject {
 
     /// 会話を始める。一回の音声入力（`beginListening`）とは別の入口。
     /// `greet`: 呼びかけの声が無いまま始めた（「呼びかけを試す」）。Gemini に「はい、どうされましたか？」を促す。
-    /// 会話を終えたいだけの発話か（文の一部に「終わり」があるだけのもの —「終わりの時間は？」— は含めない）。
+    /// 会話を終えたい発話か。発話全体、または**最後の一文**が終わりの言葉だけのとき
+    /// （「ありがとう。バイバイ。」は終える。「仕事が終わって」「終わりの時間は？」のように文の一部なら終えない）。
     nonisolated static func isEndRequest(_ text: String) -> Bool {
-        let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
-            .replacingOccurrences(of: "[。．.!！、,\\s]+", with: "", options: .regularExpression)
-        return t.range(of: "^(?:ジーニー)?(?:ありがとう(?:ございます)?)?(?:会話を)?(?:終了|終わり|おわり|おしまい|閉じて|終えて|終わって|終わろう|終わりにして|終わりで)(?:して|します|しよう|で|だよ|です|ね|よ)?(?:ください|ちょうだい)?$", options: .regularExpression) != nil
+        let sentences = text.components(separatedBy: CharacterSet(charactersIn: "。．.!！?？\n"))
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+        guard let last = sentences.last else { return false }
+        // 長音・波線・区切りは見ない（「バイバーイ」「ジーニー」→「バイバイ」「ジニ」）。
+        let t = last.lowercased().replacingOccurrences(of: "[、,\\s〜ー~]+", with: "", options: .regularExpression)
+        let end = "(?:会話を)?(?:終了|終わり|おわり|おしまい|閉じて|終えて|終わって|おわって|終わろう|終わりにして|終わりで)"
+            + "(?:して|します|しよう|で|だよ|です|ね|よ)?(?:ください|ちょうだい)?"
+        let bye = "(?:バイバイ|ばいばい|さようなら|さよなら|またね|また今度|じゃあね|じゃあまた|じゃね|ではまた|おやすみ(?:なさい)?|bye(?:bye)?|goodbye|byebye)"
+        return t.range(of: "^(?:ジニ|じに)?(?:ありがとう(?:ございます|ございました)?)?(?:じゃあ|では|それじゃ|じゃ)?(?:\(end)|\(bye))$",
+                       options: .regularExpression) != nil
     }
 
     /// 有料の会話（Gemini Live）: 最初の言葉を待つ長さと、途中で黙ったら終える長さ。
