@@ -21,10 +21,10 @@
 
   ],
   "product" : "Genie",
-  "startedAt" : "2026-10-03T00:39:36Z",
+  "startedAt" : "2026-10-06T22:11:29Z",
   "steps" : [
     {
-      "front" : "com.apple.finder",
+      "front" : "com.anthropic.claudefordesktop",
       "ids" : {
         "enable" : "true",
         "later" : "true",
@@ -32,7 +32,7 @@
       },
       "interactions" : 1,
       "keyWindow" : true,
-      "ms" : 1064,
+      "ms" : 1030,
       "name" : "マイクの説明",
       "surface" : {
         "h" : 189,
@@ -41,17 +41,17 @@
         "x" : 1392,
         "y" : 103
       },
-      "transitionMs" : 80,
+      "transitionMs" : 57,
       "windows" : 2
     },
     {
-      "front" : "com.apple.finder",
+      "front" : "com.anthropic.claudefordesktop",
       "ids" : {
-        "session" : "meeting-d3c0011f-5e88-4ac5-9b0a-c76afb3e7c1d"
+        "session" : "meeting-b1e6e081-fb54-429a-8f21-71a6d17fd914"
       },
       "interactions" : 1,
       "keyWindow" : true,
-      "ms" : 1167,
+      "ms" : 1157,
       "name" : "回復",
       "surface" : {
         "h" : 108,
@@ -63,14 +63,14 @@
       "windows" : 1
     },
     {
-      "front" : "com.apple.finder",
+      "front" : "com.anthropic.claudefordesktop",
       "ids" : {
         "backAfterSharing" : "true",
         "hiddenWhileSharing" : "true"
       },
       "interactions" : 0,
       "keyWindow" : false,
-      "ms" : 1492,
+      "ms" : 1488,
       "name" : "共有のあと",
       "surface" : {
         "h" : 108,
@@ -82,14 +82,14 @@
       "windows" : 1
     },
     {
-      "front" : "com.apple.finder",
+      "front" : "com.anthropic.claudefordesktop",
       "ids" : {
         "answered" : "false",
         "surfaces" : "1"
       },
       "interactions" : 1,
       "keyWindow" : false,
-      "ms" : 1283,
+      "ms" : 1266,
       "name" : "確認（やめる）",
       "surface" : {
         "h" : 108,
@@ -101,14 +101,14 @@
       "windows" : 1
     },
     {
-      "front" : "com.astra.mac",
+      "front" : "com.astra.desktop",
       "ids" : {
         "status" : "interrupted",
         "transcriptRows" : "1"
       },
       "interactions" : 1,
       "keyWindow" : false,
-      "ms" : 2298,
+      "ms" : 2272,
       "name" : "落ちて再開",
       "surface" : {
         "h" : 820,
@@ -121,6 +121,6 @@
     }
   ],
   "success" : true,
-  "totalMs" : 7318,
+  "totalMs" : 7223,
   "windowsOpened" : 0
 }

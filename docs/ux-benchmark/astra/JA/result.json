@@ -19,13 +19,13 @@
     "体感の複雑さ（層 C）: 段は 5、面は 1 枚、増えた窓 0"
   ],
   "product" : "Genie",
-  "startedAt" : "2026-10-03T00:39:18Z",
+  "startedAt" : "2026-10-06T22:11:11Z",
   "steps" : [
     {
-      "front" : "com.astra.mac",
+      "front" : "com.astra.desktop",
       "interactions" : 0,
-      "keyWindow" : false,
-      "ms" : 26,
+      "keyWindow" : true,
+      "ms" : 24,
       "name" : "Home（Dock は待機）",
       "surface" : {
         "h" : 76,
@@ -37,17 +37,17 @@
       "windows" : 2
     },
     {
-      "front" : "com.astra.mac",
+      "front" : "com.astra.desktop",
       "interactions" : 1,
-      "keyWindow" : false,
+      "keyWindow" : true,
       "keys" : {
         "esc" : "listening→idle"
       },
-      "ms" : 982,
+      "ms" : 1014,
       "name" : "Listening",
       "surface" : {
         "h" : 76,
-        "key" : false,
+        "key" : true,
         "w" : 220,
         "x" : 754,
         "y" : 1041
@@ -56,41 +56,41 @@
       "windows" : 2
     },
     {
-      "front" : "com.astra.mac",
+      "front" : "com.astra.desktop",
       "ids" : {
-        "task" : "F058D057-006C-4E4F-B27E-7D077C7764C0"
+        "task" : "16B826DA-1266-4DF4-BDFC-F9ACD94E2200"
       },
       "interactions" : 0,
-      "keyWindow" : false,
-      "ms" : 1063,
+      "keyWindow" : true,
+      "ms" : 1050,
       "name" : "Running",
       "surface" : {
         "h" : 258,
-        "key" : false,
+        "key" : true,
         "w" : 720,
         "x" : 504,
         "y" : 859
       },
-      "transitionMs" : 192,
+      "transitionMs" : 183,
       "windows" : 2
     },
     {
-      "front" : "com.astra.mac",
+      "front" : "com.astra.desktop",
       "ids" : {
-        "confirmation" : "C1C467E1-5ADA-4CFA-A9F2-6097C01DDCF7",
-        "resolved" : "C1C467E1-5ADA-4CFA-A9F2-6097C01DDCF7"
+        "confirmation" : "3E673731-1BF8-43B4-A80B-97E3DD2717E9",
+        "resolved" : "3E673731-1BF8-43B4-A80B-97E3DD2717E9"
       },
       "interactions" : 2,
-      "keyWindow" : false,
+      "keyWindow" : true,
       "keys" : {
         "cmdReturn" : "approved",
         "return" : "no-op"
       },
-      "ms" : 1832,
+      "ms" : 1803,
       "name" : "Confirmation",
       "surface" : {
         "h" : 258,
-        "key" : false,
+        "key" : true,
         "w" : 720,
         "x" : 504,
         "y" : 859
@@ -99,26 +99,26 @@
       "windows" : 2
     },
     {
-      "front" : "com.astra.mac",
+      "front" : "com.astra.desktop",
       "interactions" : 1,
-      "keyWindow" : false,
+      "keyWindow" : true,
       "keys" : {
         "esc" : "result→idle"
       },
-      "ms" : 1302,
+      "ms" : 1279,
       "name" : "Done",
       "surface" : {
         "h" : 76,
-        "key" : false,
+        "key" : true,
         "w" : 220,
         "x" : 754,
         "y" : 1041
       },
-      "transitionMs" : 187,
+      "transitionMs" : 197,
       "windows" : 2
     }
   ],
   "success" : true,
-  "totalMs" : 5209,
+  "totalMs" : 5171,
   "windowsOpened" : 0
 }
