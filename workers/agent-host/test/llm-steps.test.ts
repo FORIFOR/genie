@@ -279,7 +279,7 @@ describe('what the device asks the model', () => {
     );
   });
 
-  it('answers as the user\'s secretary named Genie, never as the underlying model', () => {
+  it("answers as the user's secretary named Genie, never as the underlying model", () => {
     const prompt = promptFor('llm.answer', { question: '自己紹介して' });
     expect(prompt).toContain('秘書「Genie（ジーニー）」');
     expect(prompt).toContain('かしこまりました');
@@ -695,5 +695,21 @@ describe('keeping a screen decision inside the freshness window', () => {
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
+  });
+});
+
+describe('search prompt for finding an official site', () => {
+  it('does not require copied page text, so the official site itself is not dropped', () => {
+    const official = promptFor('search.web', {
+      query: 'マクドナルド 公式サイト',
+      limit: 6,
+      purpose: 'official',
+    });
+    expect(official).toContain('ページを開いて写す必要はありません');
+    expect(official).toContain('運営元のサイト（公式）も必ず含めて');
+    expect(official).not.toContain('写せなかった結果は入れないでください');
+    // 調べもの（根拠に使う）は、これまでどおり原文の抜粋を求める
+    const research = promptFor('search.web', { query: '東京 天気', limit: 5 });
+    expect(research).toContain('写せなかった結果は入れないでください');
   });
 });

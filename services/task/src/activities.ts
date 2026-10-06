@@ -31,6 +31,7 @@ import type { LibraryService } from '@genie/service-library';
 import { appendEvent, type EventPublisher } from './events.js';
 import { formatCheckoutArtifact } from './checkout-artifact.js';
 import { formatOfficeArtifact } from './office-artifact.js';
+import { formatWorkPreviewArtifact } from './work-preview-artifact.js';
 import { formatBrowserArtifact } from './browser-artifact.js';
 import { formatTransactionArtifact } from './transaction-artifact.js';
 import { TransactionAuthorizationService } from './transaction-authorizations.js';
@@ -961,6 +962,7 @@ export function createTaskActivities(deps: ActivityDeps): TaskActivities {
         formatCheckoutArtifact(input.kind, input.input, results) ??
         formatOfficeArtifact(input.kind, results) ??
         formatBrowserArtifact(input.kind, results) ??
+        formatWorkPreviewArtifact(input.kind, results) ??
         transaction ??
         results
           .map((value) => (value as { artifact?: { title: string; markdown: string } })?.artifact)

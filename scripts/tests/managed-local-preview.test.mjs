@@ -1069,6 +1069,25 @@ test('service environment does not inherit paid credentials, remote infrastructu
   ])
     assert.equal(env[key], undefined);
   assert.equal(env.ASTRA_WORK_SYNC, 'off');
+  // 本人が --work-sync で起動したときだけ同期する（周りの環境変数では入らない）。
+  assert.equal(
+    serviceEnvironment(config, root, repo, source, { workSync: true }).ASTRA_WORK_SYNC,
+    'on',
+  );
+  // 同期するときだけ、運営者の接続設定の場所を渡す（トークン更新のため）。同期しないなら渡さない。
+  assert.equal(
+    serviceEnvironment(config, root, repo, source, {
+      workSync: true,
+      connectionsConfig: '/x/connections.json',
+    }).ASTRA_CONNECTIONS_CONFIG,
+    '/x/connections.json',
+  );
+  assert.equal(
+    serviceEnvironment(config, root, repo, source, { connectionsConfig: '/x/connections.json' })
+      .ASTRA_CONNECTIONS_CONFIG,
+    undefined,
+  );
+  assert.equal(env.ASTRA_CONNECTIONS_CONFIG, undefined);
   assert.equal(env.ASTRA_LLM_CLI, 'local');
   assert.equal(env.ASTRA_API_HOST, '127.0.0.1');
   assert.equal(env.ASTRA_DATA_ROOT, join(root, 'app'));

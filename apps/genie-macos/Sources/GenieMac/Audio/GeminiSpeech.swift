@@ -71,7 +71,7 @@ enum GeminiSpeech {
         let cached = cacheURL(for: text)
         if let data = try? Data(contentsOf: cached), !data.isEmpty { return data }
         guard let apiKey, !apiKey.isEmpty else { throw Failure.noKey }
-        var request = URLRequest(url: URL(string: "https://generativelanguage.googleapis.com/v1beta/interactions")!,
+        var request = URLRequest(url: GeminiLive.restBase.appendingPathComponent("interactions"),
                                  timeoutInterval: 30)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")

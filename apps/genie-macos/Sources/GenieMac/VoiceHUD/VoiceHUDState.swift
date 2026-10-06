@@ -725,7 +725,7 @@ final class VoiceHUDState: ObservableObject {
             answer = DesktopConnectionBootstrap.issueMessage; mode = .answer(answer); return
         }
         guard GenieStateStore.shared.state.confirmation == nil, !conversation.isActive else {
-            GenieLog.write("conversation", "not started: \(conversation.isActive ? "already active" : "a confirmation is open")")
+            GenieLog.write("conversation", "not started: " + (conversation.isActive ? "already active" : "a confirmation is open"))
             return
         }
         guard Permissions.microphone == .granted else {
@@ -753,7 +753,7 @@ final class VoiceHUDState: ObservableObject {
             answer = !gemini.enabled ? Facts.geminiLiveOff
                 : !gemini.hasKey ? Facts.geminiLiveNoKey
                 : (gemini.keyAccessIssue ?? Facts.geminiLiveNoKey)
-            GenieLog.write("conversation", "not started: Gemini Live unavailable (\(answer))")
+            GenieLog.write("conversation", "not started: Gemini Live unavailable (" + answer + ")")
             WindowCoordinator.shared.showVoiceHUD()
             mode = .answer(answer)
             return
@@ -770,7 +770,7 @@ final class VoiceHUDState: ObservableObject {
                 delegate: { [weak self] request in await self?.delegateFromConversation(request) ?? "not_accepted" },
                 onLost: { [weak self] reason in
                     guard let self else { return }
-                    GenieLog.write("conversation", "Gemini Live lost: \(GenieLog.clip(reason, 120))")
+                    GenieLog.write("conversation", "Gemini Live lost: " + GenieLog.clip(reason, 120))
                     if GeminiLive.isBillingUnavailable(reason) { WakeController.shared.noteBillingFailure(reason) }
                     // 支払い（クレジット切れ）でも標準の会話には切り替えない。理由を面に出して終える。
                     self.answer = reason
@@ -786,6 +786,7 @@ final class VoiceHUDState: ObservableObject {
         if let gemini = provider as? GeminiLiveProvider {
             gemini.onEndRequested = { [weak self] in self?.endConversation(.user, caller: "spoken: end_conversation") }
             gemini.onStopWork = { [weak self] in self?.stopWorkFromVoice() ?? "止められる仕事はありませんでした。" }
+            gemini.onTodayBrief = { [weak self] in self?.todayBriefForConversation() ?? "今日のまとめはまだありません。" }
         }
         startConversation(using: provider)
         WindowCoordinator.shared.focusListeningDock()
@@ -1033,6 +1034,35 @@ final class VoiceHUDState: ObservableObject {
     /// `ask` の結果を会話へ返す（会話中で、答えを待っているときだけ）。
     /// Gemini Live の会話中なら、仕事の結果を会話に戻す（受け付けただけの知らせは戻さない）。戻したら true。
     @discardableResult
+    /// 「今日どう？」（get_today_brief）。今日のまとめがあれば画面に出し、会話へは件数・時刻・状態・天気だけを返す。
+    /// 無ければ作り始め、できたら画面に出して会話へ知らせる（作るのは 1 回だけ）。
+    func todayBriefForConversation(now: Date = Date()) -> String {
+        if let card = BriefStore.shared.today(now: now) {
+            if conversation.isActive { mode = .card(.brief(card)) }
+            return Self.briefTalk(card, now: now)
+        }
+        BriefStore.shared.compose(now: now) { [weak self] card in
+            guard let self else { return }
+            guard let card else {
+                _ = self.reportToGemini(nil, failed: "今日のまとめを作れませんでした。" + (BriefStore.shared.lastFailure.map { "（" + GenieLog.clip($0, 60) + "）" } ?? ""))
+                return
+            }
+            if self.conversation.isActive { self.mode = .card(.brief(card)) }
+            if self.conversation.isActive, let gemini = self.conversationProvider as? GeminiLiveProvider {
+                gemini.report(Self.briefTalk(card, now: Date()))
+            }
+        }
+        return "今日のまとめをいま作っています。できたら画面に出してお伝えします。"
+    }
+
+    /// 会話へ渡す文。いつの時点かを添える（古いまとめを今の事実のように言わせない）。
+    nonisolated static func briefTalk(_ card: BriefCard, now: Date) -> String {
+        guard let at = card.generated else { return card.talk }
+        let minutes = Int(now.timeIntervalSince(at) / 60)
+        let when = minutes < 2 ? "いま" : minutes < 60 ? "\(minutes)分前" : "\(minutes / 60)時間前"
+        return card.talk + "（" + when + "にまとめた内容です。画面にまとめを出しています）"
+    }
+
     private func reportToGemini(_ reply: TaskReply?, draft: Bool = false, failed: String? = nil) -> Bool {
         guard conversation.isActive, let gemini = conversationProvider as? GeminiLiveProvider else { return false }
         if let failed { gemini.report("失敗: " + failed); return true }

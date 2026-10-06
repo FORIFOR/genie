@@ -16,9 +16,9 @@ final class GeminiLiveTests: XCTestCase {
         let tools = setup?["tools"] as? [[String: Any]] ?? []
         XCTAssertEqual(tools.flatMap { $0.keys }.sorted(), ["functionDeclarations", "googleSearch"], "道具は Google 検索と、仕事を渡す関数だけ")
         let functions = tools.compactMap { $0["functionDeclarations"] as? [[String: Any]] }.flatMap { $0 }
-        // 関数は、仕事を渡すものと、会話を閉じるもの（端末の中だけ・外へ何もしない）の 2 つだけ。
-        // 関数は、仕事を渡す・仕事を止める・会話を閉じるの 3 つだけ（止める・閉じるは端末の中だけで、外へ何もしない）。
-        XCTAssertEqual(functions.map { $0["name"] as? String }, ["delegate_task", "stop_work", "end_conversation"])
+        // 関数は、仕事を渡す・仕事を止める・今日のまとめを読む・会話を閉じるの 4 つだけ
+        // （止める・読む・閉じるは端末の中だけで、外へ何もしない）。
+        XCTAssertEqual(functions.map { $0["name"] as? String }, ["delegate_task", "stop_work", "get_today_brief", "end_conversation"])
     }
 
     func testQuotaAndKeyClosuresAreExplainedInsteadOfRetried() {

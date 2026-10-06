@@ -4,8 +4,14 @@ import GenieCore
 extension ConnectorState {
     static func liveDependencies() -> Dependencies {
         Dependencies(configuration: { ConnectionConfiguration.current },
-            read: { try KeychainStore.getGeneric(service: KeychainStore.connectorService($0.pluginId, $0.connectorId), account: NSUserName()) },
-            write: { try KeychainStore.setGeneric(service: KeychainStore.connectorService($0.pluginId, $0.connectorId), account: NSUserName(), value: $1) },
+            read: { source in
+                let service = KeychainStore.connectorService(source.pluginId, source.connectorId)
+                let value = try KeychainStore.getGeneric(service: service, account: NSUserName())
+                // 以前の保存は Genie のサービスが読めず、同期のたびに macOS の確認が出ていた。一度だけ保存し直す。
+                if let value { KeychainStore.shareConnectorWithService(service: service, account: NSUserName(), value: value) }
+                return value
+            },
+            write: { try KeychainStore.setConnectorSecret(service: KeychainStore.connectorService($0.pluginId, $0.connectorId), account: NSUserName(), value: $1) },
             delete: { try KeychainStore.deleteGeneric(service: KeychainStore.connectorService($0.pluginId, $0.connectorId), account: NSUserName()) },
             list: { base, token, source in
                 try await Task.detached {

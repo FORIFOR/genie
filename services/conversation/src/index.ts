@@ -8,6 +8,7 @@ export { routeLane, isDocumentRequest, type LaneDecision, type LaneInput } from 
 export { checkoutAssistanceRequest } from './checkout-request.js';
 export { officeEditRequest, type OfficeEditRequest } from './office-request.js';
 export { browserOpenRequest, type BrowserOpenRequest } from './browser-request.js';
+export { workPreviewRequest, type WorkPreviewRequest } from './work-preview-request.js';
 export { simulationOrderRequest } from './transaction-request.js';
 export {
   clarificationFor,

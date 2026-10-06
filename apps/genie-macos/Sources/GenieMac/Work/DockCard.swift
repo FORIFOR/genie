@@ -9,12 +9,15 @@ enum DockCard: Equatable {
     case info(InfoCard)
     /// 近くの店（地図と店の行）。端末で作る（`NearbyPlaces`）。成果物からは読まない。
     case places(PlacesCard)
+    /// 今日のまとめ（`genie.brief/v1`）。
+    case brief(BriefCard)
 
     /// 読み上げ・コピー・Work の記録に使う文。カードを描けないときもこれを出す。
     var text: String {
         switch self {
         case .info(let card): return card.text
         case .places(let card): return card.text
+        case .brief(let card): return card.text
         }
     }
 
@@ -23,12 +26,14 @@ enum DockCard: Equatable {
         switch self {
         case .info(let card): return card.hasContent
         case .places(let card): return card.hasContent
+        case .brief(let card): return card.hasContent
         }
     }
 
     /// 成果物の本文から読む。どの種類でもなければ nil（本文を文として出す）。
     static func decode(_ body: String) -> DockCard? {
         if let card = InfoCard.decode(body) { return .info(card) }
+        if let card = BriefCard.decode(body) { return .brief(card) }
         return nil
     }
 }

@@ -147,11 +147,15 @@ final class GeminiLiveProvider: ConversationProvider {
     var openingPrompt: String?
     /// 頼まれた仕事の結果を会話に戻す（delegate_task には受付だけを返している。終わったらここで知らせる）。
     /// Gemini はこれを受けて、利用者に短く伝える。新しい作業は始めさせない。
+    /// 仕事の結果を会話へ戻すときの前置き（Gemini への指示。画面の文言ではない）。
+    static let reportPreamble = "（Genie からの報告です。頼まれた仕事の結果を、利用者に一、二文で伝えてください。新しい作業は始めないでください）\n"
+
     func report(_ result: String) {
         guard ready else { return }
         let text = String(result.trimmingCharacters(in: .whitespacesAndNewlines).prefix(600))
         guard !text.isEmpty else { return }
-        send(GeminiLive.userText("（Genie からの報告です。頼まれた仕事の結果を、利用者に一、二文で伝えてください。新しい作業は始めないでください）\n" + text))
+        send(GeminiLive.userText(Self.reportPreamble + text))
+        reports.append(text)
         mark("reported")
     }
 
@@ -162,6 +166,8 @@ final class GeminiLiveProvider: ConversationProvider {
 
     /// 本人が仕事を止めたいと言った（stop_work）。止めた結果の短い説明を返す。
     var onStopWork: (() -> String)?
+    /// 「今日どう？」: 今日のまとめの、会話へ渡してよい文（件数・時刻・状態・天気）を返す。
+    var onTodayBrief: (() -> String)?
 
     /// 本人が会話を終えたいと言った（end_conversation）。会話の側が閉じる。
     var onEndRequested: (() -> Void)?
@@ -174,6 +180,13 @@ final class GeminiLiveProvider: ConversationProvider {
     private var onUtterance: ((String) -> Void)?
     private var onReply: ((ConversationLoop.Reply) -> Void)?
     private var heard = ""
+    /// 会話の間に聞き取ったすべて（ターンで消さない）。依頼の続きを拾うため。
+    private var heardAll = ""
+    private var recentContinuation: (text: String, at: Date)?
+    /// delegate_task の後、言いかけの続きを待つ: 最低これだけ待ち、声が止んでからこれだけ待つ、上限。
+    static var continuationMinimum: TimeInterval = 1.0
+    static var continuationQuiet: TimeInterval = 0.7
+    static var continuationLimit: TimeInterval = 6.0
     private var said = ""
     private var answered = false
     /// このターンで Gemini の声を流したか（流していなければ、読み上げは Mac の声で伝える）。
@@ -196,6 +209,8 @@ final class GeminiLiveProvider: ConversationProvider {
     static let maxReconnects = 3
     /// 検査用の足跡（時刻つき、最新 50 件）。声・文字の中身は入れない。
     private(set) var trace: [(Date, String)] = []
+    /// 会話へ戻した報告（検査で、何を伝えさせたかを確かめる）。
+    private(set) var reports: [String] = []
     private func mark(_ event: String) {
         trace.append((Date(), event))
         if trace.count > 50 { trace.removeFirst(trace.count - 50) }
@@ -442,8 +457,13 @@ final class GeminiLiveProvider: ConversationProvider {
     Genie は Mac の画面に見せることができます。「見せて」「開いて」「サイトで見たい」「商品を見たい」と頼まれたら、
     「お見せできません」とは言わずに、delegate_task に依頼文を渡してください（例:「オークリーのサングラスを公式サイトで見せて」）。
     Genie がブラウザで公式サイトや該当のページを開きます。
+    「今日どう？」「今日の予定は？」「今日のまとめ」など今日の状況を聞かれたら、get_today_brief を呼び、返った内容だけで短く答えてください。
+    予定やメールの中身を推測で言わないでください（題名は画面のカードに出ています）。
     「近くのご飯屋さん」「近くのカフェ」など近くの店や場所を聞かれたら、現在地を尋ねずに delegate_task に依頼文を渡してください。
     Genie が Mac の現在地と地図で探し、画面に地図つきのカードを出します（店名や住所はあなたには届きません）。
+    「端末を120台にしたら見積りと提案書を合わせて」など、見積り・提案書・スライドの数を変えた案を頼まれたら、
+    計算や文面を自分で作らずに、言われた数と品目をそのまま入れて delegate_task に依頼文を渡してください
+    （例:「端末を120台にしたら、提案書とスライドも合わせた案を作って」）。Genie が書類のコピーで案を作って確かめ、原本は変えません。
     実行結果が成功するまで「完了しました」「注文しました」と言わないでください。
     重要な名前・金額・日時・店舗・品目が曖昧な場合は、その部分だけ確認してください。
     """
@@ -486,6 +506,7 @@ final class GeminiLiveProvider: ConversationProvider {
             pendingOpen?(); pendingOpen = nil
         case .inputTranscript(let t):
             heard += t
+            heardAll += t
             transcriptObserver?(t, true)
         case .audio(let pcm, let rate):
             userTurnEnded()
@@ -497,6 +518,12 @@ final class GeminiLiveProvider: ConversationProvider {
         case .toolCall(let id, let name, let request):
             GenieLog.write("conversation", "Gemini tool: \(name) \(GenieLog.clip(request, 60))")
             userTurnEnded()
+            if name == GeminiLive.briefTool {
+                let summary = onTodayBrief?() ?? "今日のまとめはまだありません。"
+                mark("today-brief")
+                send(GeminiLive.toolResponse(id: id, name: name, response: ["result": summary], scheduling: "WHEN_IDLE"))
+                return
+            }
             if name == GeminiLive.stopTool {
                 let summary = onStopWork?() ?? "止められる仕事はありませんでした。"
                 mark("stop-work")
@@ -522,7 +549,28 @@ final class GeminiLiveProvider: ConversationProvider {
             }
             Task { [weak self] in
                 guard let self else { return }
-                let status = await self.delegate(request)
+                // 先に続きとして足した言葉を、Gemini がもう一度頼んできたら重ねない。
+                if let recent = self.recentContinuation, Date().timeIntervalSince(recent.at) < 15,
+                   DelegateContinuation.isPart(request, of: recent.text) {
+                    GenieLog.write("conversation", "delegate: already included — \(GenieLog.clip(request, 60))")
+                    self.send(GeminiLive.toolResponse(id: id, name: name, response: ["status": "直前の依頼に含めて受け付けました"]))
+                    return
+                }
+                // Gemini は言いかけの間（「〜にしたら、」）で区切って呼ぶことがある。続きを聞いてから頼む（言葉を捨てない）。
+                let mark = self.heardAll.count
+                let calledAt = Date()
+                while Date().timeIntervalSince(calledAt) < Self.continuationLimit {
+                    let quietFor = Date().timeIntervalSince(self.input.lastSpeechAt)
+                    if Date().timeIntervalSince(calledAt) >= Self.continuationMinimum, quietFor >= Self.continuationQuiet { break }
+                    try? await Task.sleep(nanoseconds: 100_000_000)
+                }
+                let more = String(self.heardAll.dropFirst(mark))
+                let full = DelegateContinuation.merge(request, continuation: more)
+                if full != request {
+                    self.recentContinuation = (more, Date())
+                    GenieLog.write("conversation", "delegate: continued — \(GenieLog.clip(full, 80))")
+                }
+                let status = await self.delegate(full)
                 self.send(GeminiLive.toolResponse(id: id, name: name, response: ["status": status]))
             }
         case .turnComplete:

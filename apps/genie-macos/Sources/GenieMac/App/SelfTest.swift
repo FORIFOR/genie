@@ -96,7 +96,6 @@ enum SelfTest {
         case "diagnose": Task { @MainActor in await diagnose() }; return true
         case "liveflow": Task { @MainActor in await liveFlow(args) }; return true
         case "askprobe": Task { @MainActor in await askProbe(args) }; return true
-        case "duplexlive": Task { @MainActor in await duplexLive() }; return true
         case "aecvariants": Task { @MainActor in await aecVariants(args) }; return true
         case "micrelease": Task { await micRelease() }; return true
         case "quickesc": Task { await quickEsc() }; return true
@@ -1544,6 +1543,7 @@ enum SelfTest {
         ("06e-info-weather", #"{"schema":"genie.info/v1","kind":"weather","text":"大阪の天気: 今日 雨 24℃/20℃ 降水95%、明日 くもり 25℃/19℃ 降水30%。","data":{"place":"大阪","current":null,"days":[{"date":"2026-09-27","label":"今日","code":63,"summary":"雨","high":24.0,"low":20.2,"precipitation":95},{"date":"2026-09-28","label":"明日","code":3,"summary":"くもり","high":25.1,"low":19.4,"precipitation":30},{"date":"2026-09-29","label":"明後日","code":2,"summary":"晴れ時々くもり","high":26.0,"low":18.8,"precipitation":10},{"date":"2026-09-30","label":"9/30(水)","code":0,"summary":"快晴","high":27.2,"low":18.1,"precipitation":0}]},"sources":[{"name":"Open-Meteo.com","url":"https://open-meteo.com/"}],"fetched_at":"2026-09-27T00:30:00Z"}"#),
         ("06g-info-weather-day", #"{"schema":"genie.info/v1","kind":"weather","text":"明日の東京都は雨。最高22℃、最低20℃、降水確率78%です。","data":{"place":"東京都","current":null,"days":[{"date":"2026-09-28","label":"明日","code":63,"summary":"雨","high":21.9,"low":19.5,"precipitation":78}]},"sources":[{"name":"Open-Meteo.com","url":"https://open-meteo.com/"}],"fetched_at":"2026-09-27T00:30:00Z"}"#),
         ("06f-info-news", #"{"schema":"genie.info/v1","kind":"news","text":"主なニュース（NHK）: 1. 台風26号 沖縄に接近へ","data":{"topic":null,"items":[{"title":"台風26号 沖縄に接近へ 来週も東～西日本は雨降りやすい見込み","url":"https://news.web.nhk/a","source":"NHK","published_at":null},{"title":"首相 米大統領と電話会談 米中首脳会談の内容説明受ける","url":"https://news.web.nhk/b","source":"NHK","published_at":null},{"title":"タイで大雨続き 首都バンコクでも浸水被害広がる","url":"https://news.web.nhk/c","source":"NHK","published_at":null}]},"sources":[{"name":"NHK","url":"https://news.web.nhk/"}],"fetched_at":"2026-09-27T00:30:00Z"}"#),
+        ("06l-card-brief", #"{"schema":"genie.brief/v1","date":"2026-10-06","generated_at":"2026-10-06T00:30:00.000Z","text":"今日の予定は3件、次は10:00の「設計レビュー」です。14:00の「A社訪問」の時間は雨の可能性があります（70%）。対応が要るものが2件あります。","talk":"今日の予定は3件、次は10:00からです。","highlights":["14:00「A社訪問」の時間に雨の可能性（東京都 70%）","次の予定: 10:00 設計レビュー","対応が要るもの 2件"],"sections":[{"id":"calendar","title":"予定","status":"ok","fetched_at":"2026-10-06T00:29:00Z","sources":[{"name":"このMacのカレンダー","url":""}],"lines":[{"text":"10:00–11:00 設計レビュー","time":"10:00"},{"text":"14:00–15:00 A社訪問（品川）","time":"14:00"},{"text":"17:30–18:00 週次の振り返り","time":"17:30"}]},{"id":"weather","title":"天気","status":"ok","fetched_at":"2026-10-06T00:30:00Z","sources":[{"name":"Open-Meteo.com","url":"https://open-meteo.com/"}],"lines":[{"text":"東京都 雨 22°/16° 降水80%"},{"text":"14:00「A社訪問」の時間に雨の可能性（東京都 70%）","time":"14:00"}]},{"id":"attention","title":"要対応","status":"ok","fetched_at":"2026-10-06T00:20:00Z","sources":[{"name":"Work（メール・予定の同期）","url":""}],"lines":[{"text":"見積りの数量変更（A社 田中）","ref":"work:1"},{"text":"契約書の確認（法務）","ref":"work:2"}]},{"id":"news","title":"ニュース","status":"stale","reason":"取得できませんでした","fetched_at":null,"sources":[],"lines":[]},{"id":"markets","title":"監視銘柄","status":"none","reason":"株価の取得元が未設定です","fetched_at":null,"sources":[],"lines":[]}]}"#),
     ]
 
     /// 近くの店のカードの fixture。**地図は合成**（灰色の地に白い道。本物の Google 地図ではない）。
@@ -2255,6 +2255,9 @@ enum SelfTest {
             }
             MainWindowController.shared.showSection(.home)
             WindowCoordinator.shared.showVoiceHUD(); settle(1.0)
+            // 測るのは窓と面の流れ。音声入力の欄への書き込みは dryRun（アクセシビリティ許可の有無で、測る経路を変えない）。
+            Dictation.dryRun = { _ in true }
+            defer { Dictation.dryRun = nil }
             rec.begin()
             let windows0 = NSApp.windows.filter(\.isVisible).count
             _ = rec.shot("01-home", window: dockWin())
@@ -6819,7 +6822,11 @@ enum SelfTest {
             // ---- サインイン（実 gateway）。以後すべて実経路。
             let state = RecordingWorkspaceState.shared
             if online {
-                let token = try preparedTestToken(base: base, email: "e2e-\(getpid())@astra.local")
+                // 答えを返す host と General Assistant がある利用者で通す（aiaction・voiceask・aistop と同じ）。
+                // 毎回新しく作る利用者には Assistant が無く、⑦ の答えが必ず空になっていた（2026-10-07）。
+                let configured = ProcessInfo.processInfo.environment["ASTRA_SELFTEST_AGENT_EMAIL"]
+                let email = configured?.hasSuffix("@astra.local") == true ? configured! : "e2e-\(getpid())@astra.local"
+                let token = try preparedTestToken(base: base, email: email)
                 state.configureBackend(base: base, token: token)
                 RecordingRuntime.shared.configureBackend(base: base, accessToken: token)
                 VoiceHUDState.shared.configureBackend(base: base, token: token)

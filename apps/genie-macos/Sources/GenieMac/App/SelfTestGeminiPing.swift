@@ -9,7 +9,7 @@ extension SelfTest {
         let shape = "length=\(key.count) kind=\(kind) whitespace=\(key.contains { $0.isWhitespace })"
         print("key: \(shape)")
         func call(_ method: String, _ path: String, _ body: [String: Any]? = nil) async -> (Int, String, Data) {
-            var request = URLRequest(url: URL(string: "https://generativelanguage.googleapis.com/v1beta/" + path)!, timeoutInterval: 30)
+            var request = URLRequest(url: URL(string: path, relativeTo: GeminiLive.restBase)!, timeoutInterval: 30)
             request.httpMethod = method
             request.setValue(key, forHTTPHeaderField: "x-goog-api-key")
             if let body {

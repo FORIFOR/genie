@@ -323,6 +323,9 @@ enum SurfaceMotionGate {
         let recording = RecordingWorkspaceState.shared
 
         WindowCoordinator.shared.showVoiceHUD(); settle(0.6)
+        // 測るのは面の動き。音声入力の欄への書き込みは dryRun（アクセシビリティ許可の有無で、測る経路を変えない）。
+        Dictation.dryRun = { _ in true }
+        defer { Dictation.dryRun = nil }
 
         // ⓪ Idle → Preparing → Listening: ⌥Space の直後。面は先に出て、見出しは最初の音声フレームまで
         //    「準備中…」。実マイクを開く（本番と同じ経路）。窓は 1 枚のまま、上辺は動かない。

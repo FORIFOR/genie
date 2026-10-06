@@ -30,12 +30,21 @@ enum ConnectionConfiguration {
     static var current: [String: String] {
         let env = ProcessInfo.processInfo.environment
         // Fixtures must not consume the user's real configuration.
-        let isolated = env["ASTRA_DATA_ROOT"] != nil || CommandLine.arguments.contains("--selftest")
+        // ただし普段の起動でブートストラップ自身が決めた保存先は検査の隔離ではない（2026-10-07: これで
+        // ローカルプレビューの Genie が接続設定を読めず、Gmail・カレンダーが「設定が必要」のままだった）。
+        let isolated = isolated(dataRoot: env["ASTRA_DATA_ROOT"], projected: DesktopConnectionBootstrap.projectedDataRoot,
+                                selftest: CommandLine.arguments.contains("--selftest"))
         let explicit = env["ASTRA_CONNECTIONS_CONFIG"].map { URL(fileURLWithPath: $0) }
         return merge([
             isolated ? [:] : read(Bundle.main.url(forResource: "connections", withExtension: "json")),
             read(explicit ?? (isolated ? nil : localURL)), env,
         ])
+    }
+    /// 検査（--selftest）か、外から別の保存先を渡された起動なら隔離する。
+    static func isolated(dataRoot: String?, projected: String?, selftest: Bool) -> Bool {
+        if selftest { return true }
+        guard let dataRoot else { return false }
+        return dataRoot != projected
     }
     static func clientId(provider: String, readOnly: Bool, values: [String: String]) -> String? {
         let prefix = "ASTRA_OAUTH_" + provider.uppercased()

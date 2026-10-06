@@ -24,6 +24,14 @@ export interface BrowserOpenDeps {
   /** 前面のタブの URL を読む（表示の確認）。読めなければ null。 */
   readonly frontUrl?: (browser: BrowserChoice) => Promise<string | null>;
   readonly sleep?: (ms: number) => Promise<void>;
+  /** ページを読む（公式の確かめ）。既定は fetch。 */
+  readonly fetchPage?: (url: string, signal?: AbortSignal) => Promise<FetchedPage | null>;
+}
+
+export interface FetchedPage {
+  readonly finalUrl: string;
+  readonly status: number;
+  readonly html: string;
 }
 
 interface Candidate {
@@ -56,7 +64,16 @@ export class BrowserOpenRuntime {
     let candidates: Candidate[];
     try {
       candidates = candidatesOf(
-        await this.#deps.ask('search.web', { query: `${subject} 公式サイト`, limit: 6 }, signal),
+        await this.#deps.ask(
+          'search.web',
+          {
+            query: `${subject} 公式サイト`,
+            queries: [subject, `${subject} 公式サイト`, `${subject} official site`],
+            limit: 8,
+            purpose: 'official',
+          },
+          signal,
+        ),
       );
     } catch (error) {
       return fail(
@@ -69,28 +86,41 @@ export class BrowserOpenRuntime {
       ok: true,
       result: { subject, url: null, title: '', opened: false, reason: '', problem, ...extra },
     });
-    if (candidates.length === 0)
-      return notOpened(`「${subject}」の公式サイトを検索で見つけられませんでした。`);
-
-    let pick: { index: number; reason: string };
-    try {
-      pick = pickOf(
-        await this.#deps.ask(
-          'llm.pick_official',
-          { subject, results: candidates.map((c, index) => ({ index, ...c })) },
-          signal,
-        ),
-        candidates.length,
-      );
-    } catch (error) {
-      return fail('pick_failed', `公式サイトを見極められませんでした${reason(error)}。`);
+    // 検索結果が無くても、下の「確かめた既知のアドレス」は試す。
+    let pick: { index: number; reason: string } = { index: -1, reason: '' };
+    if (candidates.length > 0)
+      try {
+        pick = pickOf(
+          await this.#deps.ask(
+            'llm.pick_official',
+            { subject, results: candidates.map((c, index) => ({ index, ...c })) },
+            signal,
+          ),
+          candidates.length,
+        );
+      } catch (error) {
+        return fail('pick_failed', `公式サイトを見極められませんでした${reason(error)}。`);
+      }
+    let chosen: Candidate;
+    if (pick.index >= 0) {
+      chosen = candidates[pick.index]!;
+    } else {
+      /*
+       * 検索の索引に公式サイトが無いことがある（実測 2026-10-06: Claude Code の WebSearch は
+       * 「マクドナルド」「マクドナルド 公式サイト」「McDonald's Japan」のどれでも mcdonalds.co.jp を返さない）。
+       * そのときだけ、モデルが知っているアドレスを聞き、**端末がそのページを読んで確かめたら**開く:
+       * https・同じサイトのまま表示され・題名かサイト名に「〇〇」が入っている。確かめられなければ開かない。
+       */
+      const known = await this.#knownOfficial(subject, signal);
+      if (!known)
+        return notOpened(
+          candidates.length === 0
+            ? `「${subject}」の公式サイトを検索で見つけられませんでした。`
+            : `検索結果の中に「${subject}」の公式サイトと確かめられるページがありませんでした。`,
+        );
+      chosen = known;
+      pick = { index: -1, reason: known.snippet };
     }
-    if (pick.index < 0)
-      return notOpened(
-        `検索結果の中に「${subject}」の公式サイトと確かめられるページがありませんでした。`,
-      );
-
-    const chosen = candidates[pick.index]!;
     const result: BrowserOpenResult = {
       subject,
       url: chosen.url,
@@ -113,6 +143,29 @@ export class BrowserOpenRuntime {
     // 開く依頼が通っただけでは「表示した」と言わない。前面のタブがそのサイトになったかを読み取る。
     const shown = await this.#confirmShown(chosen.url, browser, signal);
     return { ok: true, result: { ...result, opened: true, ...shown } };
+  }
+
+  async #knownOfficial(subject: string, signal?: AbortSignal): Promise<Candidate | null> {
+    let url: string;
+    try {
+      const raw = (await this.#deps.ask('llm.official_guess', { subject }, signal)) as {
+        url?: unknown;
+      } | null;
+      if (typeof raw?.url !== 'string') return null;
+      url = new URL(raw.url).href;
+    } catch {
+      return null;
+    }
+    if (!url.startsWith('https://')) return null;
+    const page = await (this.#deps.fetchPage ?? fetchPage)(url, signal).catch(() => null);
+    if (!page || page.status !== 200 || !sameSite(page.finalUrl, url)) return null;
+    const title = pageTitle(page.html);
+    if (!title || !mentions(title, subject)) return null;
+    return {
+      url,
+      title,
+      snippet: `検索結果には出ませんでしたが、${new URL(url).hostname} を開いて題名「${title.slice(0, 80)}」を確かめました`,
+    };
   }
 
   async #confirmShown(
@@ -150,6 +203,50 @@ export async function openInBrowser(
     timeout: 10_000,
     maxBuffer: 4096,
   });
+}
+
+/** ページを読む（最大 512KB・8 秒・転送を追う）。 */
+export async function fetchPage(url: string, signal?: AbortSignal): Promise<FetchedPage | null> {
+  const timeout = AbortSignal.timeout(8_000);
+  const response = await fetch(url, {
+    redirect: 'follow',
+    signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
+    headers: { 'user-agent': 'Mozilla/5.0 (Macintosh) Genie', 'accept-language': 'ja,en;q=0.5' },
+  });
+  const reader = response.body?.getReader();
+  let html = '';
+  if (reader) {
+    const decoder = new TextDecoder();
+    while (html.length < 512 * 1024) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      html += decoder.decode(value, { stream: true });
+    }
+    await reader.cancel().catch(() => {});
+  }
+  return { finalUrl: response.url || url, status: response.status, html };
+}
+
+/** 題名とサイト名（og:site_name）。 */
+export function pageTitle(html: string): string {
+  const title = /<title[^>]*>([^<]{1,300})<\/title>/i.exec(html)?.[1] ?? '';
+  const site =
+    /<meta[^>]+property=["']og:site_name["'][^>]+content=["']([^"']{1,200})["']/i.exec(html)?.[1] ??
+    '';
+  return [title, site]
+    .map((t) => t.replace(/\s+/g, ' ').trim())
+    .filter(Boolean)
+    .join(' / ');
+}
+
+/** 題名に名前が入っているか（全角半角・大文字小文字・空白を無視）。 */
+export function mentions(title: string, subject: string): boolean {
+  const norm = (t: string) =>
+    t
+      .normalize('NFKC')
+      .toLowerCase()
+      .replace(/[\s・'’]/g, '');
+  return norm(subject).length > 0 && norm(title).includes(norm(subject));
 }
 
 export function candidatesOf(raw: unknown): Candidate[] {

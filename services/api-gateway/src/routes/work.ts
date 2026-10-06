@@ -202,7 +202,8 @@ export function registerWorkRoutes(app: App, deps: WorkRouteDeps): void {
 
   app.post('/v1/work/artifacts', async (request, reply) => {
     const p = requirePrincipal();
-    const batch = WorkArtifactBatch.parse(request.body ?? {});
+    // 途中で切れた絵文字（片割れのサロゲート）は Postgres の json が受け付けない。保存の前に置き換える。
+    const batch = WorkArtifactBatch.parse(wellFormed(request.body ?? {}));
     const result = await deps.work.ingest(p.tenantId, p.userId, batch);
     return reply.status(202).send(result);
   });
@@ -315,4 +316,23 @@ export function registerWorkRoutes(app: App, deps: WorkRouteDeps): void {
       PersonalizationUpdate.parse(request.body ?? {}),
     );
   });
+}
+
+/**
+ * 文字列の中の片割れのサロゲート（例: 「…\ud83d」で切れた絵文字）を U+FFFD に置き換える。
+ * 2026-10-07: メールの抜粋が絵文字の途中で切れ、Gmail の取り込みが 500（22P02）で止まっていた。
+ */
+export function wellFormed(value: unknown): unknown {
+  if (typeof value === 'string') return replaceLoneSurrogates(value);
+  if (Array.isArray(value)) return value.map(wellFormed);
+  if (value && typeof value === 'object')
+    return Object.fromEntries(
+      Object.entries(value).map(([k, v]) => [replaceLoneSurrogates(k), wellFormed(v)]),
+    );
+  return value;
+}
+
+const LONE_SURROGATE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g;
+function replaceLoneSurrogates(text: string): string {
+  return text.replace(LONE_SURROGATE, '\uFFFD');
 }

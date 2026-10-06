@@ -9,6 +9,8 @@ import Foundation
 enum GeminiLive {
     static let endpoint = URL(string: "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent")!
     static let host = "generativelanguage.googleapis.com"
+    /// 声（TTS）・診断の短い呼び出しの宛先。宛先を書くのはこのファイルだけ（PRIVACY_EGRESS_GATE）。
+    static let restBase = URL(string: "https://generativelanguage.googleapis.com/v1beta/")!
     static let defaultModel = "gemini-3.8-live"
     static let inputRate = 16_000
 
@@ -19,6 +21,8 @@ enum GeminiLive {
     static let endTool = "end_conversation"
     /// 本人が動いている仕事を止めたいと言った（「止めて」「作業をやめて」）。止めた仕事と、もう済んだ部分を返す。
     static let stopTool = "stop_work"
+    /// 今日のまとめを読む（端末の中の保存を読むだけ。返すのは件数・時刻・状態・天気で、題名や件名は返さない）。
+    static let briefTool = "get_today_brief"
 
     /// サーバーが接続を閉じた理由のうち、つなぎ直しても直らないもの（本人が直す）を言葉にする。それ以外は nil。
     /// 例: 利用枠の超過は close 1011「You exceeded your current quota…」、前払いの残高切れは
@@ -105,6 +109,10 @@ enum GeminiLive {
                     ], [
                         "name": stopTool,
                         "description": "利用者が「ちょっと待って、止めて」「作業をやめて」「さっきの依頼は中止して」など、Genie が進めている仕事を止めたいと言ったときに呼ぶ。読み上げだけを止めたい（「読み上げだけ止めて」「黙って」）ときは呼ばない。止めた仕事の名前と、止める前に済んでいた部分が返るので、それを短く伝える。取り消し（元に戻す）ではない。",
+                        "parameters": ["type": "OBJECT", "properties": [String: Any]()],
+                    ], [
+                        "name": briefTool,
+                        "description": "利用者が「今日どう？」「今日の予定は？」「今日のまとめ」「今日気にすることある？」など、今日の状況を聞いたときに呼ぶ。予定の件数と次の時刻・予定に重なる雨・天気・対応が要るものの件数・取れなかった情報源が返る。予定の題名やメールの件名は返らない（画面のカードに出る）。返った内容だけで短く答え、無いことを推測で足さない。",
                         "parameters": ["type": "OBJECT", "properties": [String: Any]()],
                     ], [
                         "name": endTool,

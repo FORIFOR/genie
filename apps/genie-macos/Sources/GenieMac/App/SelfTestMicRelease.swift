@@ -42,7 +42,11 @@ extension SelfTest {
         WindowCoordinator.shared.showVoiceHUD()
         await pause(1.0)
 
-        var report: [String] = ["provider=local-pipeline"]
+        // 会話は Gemini Live だけ（標準の音声認識は使わない。2026-10-04）。この検査は本人の Gemini を使わないので、
+        // 会話のマイクは Gemini Live が使う経路（VoiceInputHub）を直接開いて閉じる。会話の終わらせ方ごと
+        // （終了・Esc・Dock・消音・差し替え）にこの経路を閉じる配線は VoiceStopTests / ConversationWiringTests で見る。
+        var report: [String] = ["provider=gemini-live-hub"]
+        let voice = VoiceInputHub.shared
         var failures: [String] = []
         /// 開いている間は回っていること（回っていなければ、閉じたかどうかを測れていない）、
         /// やめた後 1.5 秒で止まっていることを見る。
@@ -58,7 +62,7 @@ extension SelfTest {
             if during != true { failures.append("\(name)=開いている間に入力が回っていない（測れていない）") }
             if after != false { failures.append("\(name)=やめた後もマイクが回っている") }
             // 次の検査の前に必ず閉じた状態へ戻す。
-            hud.endConversation(.user); hud.cancelListening(); hud.mode = .idle
+            hud.endConversation(.user); hud.cancelListening(); voice.detach(); hud.mode = .idle
             await pause(0.8)
         }
 
@@ -66,22 +70,24 @@ extension SelfTest {
         report.append("起動直後=\(atStart.map(String.init) ?? "?")")
         if atStart != false { failures.append("起動直後からマイクが回っている") }
 
-        await check("会話→会話を終了", open: { hud.beginConversation(geminiSettings: gemini) }, close: { hud.endConversation(.user) })
-        await check("会話→Esc", open: { hud.beginConversation(geminiSettings: gemini) }, close: { hud.cancelListening() })
-        await check("会話→Dockを押す", open: { hud.beginConversation(geminiSettings: gemini) }, close: { hud.toggleQuickActions() })
+        await check("会話の入力→閉じる", open: { _ = try? voice.attach { _ in } }, close: { voice.detach() })
+        await check("会話の入力→エコー除去中に閉じる", open: { _ = try? voice.attach { _ in }; voice.setEchoCancellation(true) },
+                    close: { voice.detach() })
+        // 会話を始められない（Gemini のキーが無い）ときは、マイクを開かない。
+        hud.beginConversation(geminiSettings: gemini)
+        await pause(2.0)
+        let refused = processIsRunningInput()
+        report.append("会話を始められない(開いて=\(refused.map(String.init) ?? "?"))")
+        if refused != false { failures.append("会話を始められないのにマイクが回っている") }
+        hud.mode = .idle
         if AXIsProcessTrusted() {
             await check("音声入力→Esc", open: { hud.beginDictation() }, close: { hud.cancelListening() })
             await check("音声入力→Dockを押す", open: { hud.beginDictation() }, close: { hud.toggleQuickActions() })
         } else {
             report.append("音声入力=アクセシビリティ未許可のため測らない")
         }
-        // 面が別のところから差し替えられる（メニューの「操作を出す」・画面の質問・遅れて届いた答え）。
-        await check("会話→面の差し替え", open: { hud.beginConversation(geminiSettings: gemini) }, close: { GenieStateStore.shared.setDock(.idle) })
-        await check("会話→消音", open: { hud.beginConversation(geminiSettings: gemini) }, close: { hud.toggleListeningMute() })
         await check("会議の問い→答えの面", open: { hud.beginMeetingAsk() }, close: { hud.mode = .answer("遅れて届いた答え") })
         await check("会議の問い→Esc", open: { hud.beginMeetingAsk() }, close: { hud.cancelListening() })
-        // 考え中で Esc（会話の行はあるが、答えを待っている）。
-        await check("会話→考え中でEsc", open: { hud.beginConversation(geminiSettings: gemini) }, close: { hud.mode = .thinking; hud.leaveThinking() })
 
         // 閉じてすぐ開き直す: 新しい取り込みが生きていること（以前は前の開始の後始末が新しい方を止めた）。
         // 間を置かない（マイクの起動が終わる前に閉じて開く。起動は 47〜770ms かかる）。
@@ -97,7 +103,7 @@ extension SelfTest {
         if processIsRunningInput() != false { failures.append("開き直した後に閉じてもマイクが回っている") }
 
         // 素早く開いて閉じる（マイクの起動が終わる前にやめる）。
-        hud.beginConversation(geminiSettings: gemini); hud.endConversation(.user)
+        _ = try? voice.attach { _ in }; voice.detach()
         await pause(2.0)
         let quick = processIsRunningInput()
         report.append("会話→すぐ終了(やめて=\(quick.map(String.init) ?? "?"))")

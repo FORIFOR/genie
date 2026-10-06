@@ -24,6 +24,7 @@ import {
   checkoutAssistanceRequest,
   officeEditRequest,
   browserOpenRequest,
+  workPreviewRequest,
   clarificationFor,
   type CurrentInfoQuery,
   isDocumentRequest,
@@ -228,7 +229,7 @@ export function registerConversationRoutes(app: App, deps: ConversationRouteDeps
       // 場所の書かれた文書を直す依頼の「その下」「この段落」は、会話ではなく文書の中を指す。
       // 文書を読む端末のモデルが解くので、ここで聞き返さない。
       const clarification =
-        officeEditRequest(body.text) || browserOpenRequest(body.text)
+        officeEditRequest(body.text) || browserOpenRequest(body.text) || workPreviewRequest(body.text)
           ? null
           : clarificationFor(resolutions);
 
@@ -499,9 +500,21 @@ async function startWork(
   const simulation = lane === 'action' ? simulationOrderRequest(text) : null;
   // 場所の書かれた Word / Excel を直す依頼は、どの lane でも端末の編集に回す（原本は変えない）。
   const office = lane === 'meeting' ? null : officeEditRequest(text);
+  // 「端末を120台にしたら提案書も合わせた案を」: 案件の書類をコピーの上でそろえて変え、確かめる。
+  const preview = lane === 'meeting' || office ? null : workPreviewRequest(text);
   // 「〇〇の公式サイトを開いて」: 端末が検索し、公式と見極めたページを既定のブラウザで開く。
-  const browser = lane === 'meeting' || office ? null : browserOpenRequest(text);
-  const request = browser
+  const browser = lane === 'meeting' || office || preview ? null : browserOpenRequest(text);
+  const request = preview
+    ? {
+        kind: 'work.preview',
+        title: `書類の案（${preview.subject ?? '数'}を ${preview.to} に）`,
+        input: {
+          to: preview.to,
+          ...(preview.subject ? { subject: preview.subject } : {}),
+          ...(preview.folder ? { folder: preview.folder } : {}),
+        },
+      }
+    : browser
     ? {
         kind: 'browser.open_official',
         title: `${browser.subject} の公式サイト`,

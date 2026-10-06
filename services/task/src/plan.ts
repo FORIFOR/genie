@@ -261,6 +261,8 @@ export const KNOWN_TASK_KINDS = [
   'checkout.assist',
   'office.edit',
   'browser.open_official',
+  'work.preview',
+  'brief.today',
   'transaction.order',
   'transaction.reconcile',
 ] as const;
@@ -693,6 +695,58 @@ export function planTask(kind: string, input: Record<string, unknown>): TaskPlan
           },
         ],
         artifact: { type: 'OTHER', title: '公式サイト', mimeType: 'text/markdown' },
+      };
+    }
+    case 'brief.today': {
+      // 中身の検査は端末（BriefArgs）。ここでは形だけ見て、読み取り専用の 1 段にする。
+      if (
+        typeof input['date'] !== 'string' ||
+        typeof input['calendar'] !== 'object' ||
+        typeof input['attention'] !== 'object'
+      )
+        throw new UnknownTaskKindError('brief.today needs date, calendar and attention');
+      return {
+        steps: [
+          {
+            index: 0,
+            toolId: 'brief.compose',
+            // 読むだけ。予定・天気・ニュースをまとめ、外へは何も作用しない。
+            risk: 'READ',
+            surface: 'local',
+            message: '今日のまとめを作っています',
+            args: input,
+          },
+        ],
+        artifact: {
+          type: 'OTHER',
+          title: '今日のまとめ',
+          mimeType: 'application/vnd.genie.brief+json',
+        },
+      };
+    }
+    case 'work.preview': {
+      const to = input['to'];
+      const subject = input['subject'];
+      const folder = input['folder'];
+      if (typeof to !== 'number' || !Number.isFinite(to) || to < 0)
+        throw new UnknownTaskKindError('work.preview needs a number');
+      if (subject !== undefined && (typeof subject !== 'string' || subject.length > 40))
+        throw new UnknownTaskKindError('work.preview: bad subject');
+      if (folder !== undefined && (typeof folder !== 'string' || folder.length > 500))
+        throw new UnknownTaskKindError('work.preview: bad folder');
+      return {
+        steps: [
+          {
+            index: 0,
+            toolId: 'work.preview',
+            // 原本の隣の「Genie案」にコピーを書くだけ。消せば元どおり。
+            risk: 'REVERSIBLE_WRITE',
+            surface: 'local',
+            message: `見積り・提案書・スライドを ${to} に合わせた案を作っています（原本は変えません）`,
+            args: { to, ...(subject ? { subject } : {}), ...(folder ? { folder } : {}) },
+          },
+        ],
+        artifact: { type: 'OTHER', title: '書類の案', mimeType: 'text/markdown' },
       };
     }
     case 'checkout.assist':

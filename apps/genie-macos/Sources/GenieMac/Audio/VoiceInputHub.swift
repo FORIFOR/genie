@@ -184,6 +184,10 @@ final class VoiceInputHub: @unchecked Sendable {
     static let speechLevel: Float = 0.01
 
     /// 検出からいままでに、声らしい大きさの音がどれだけあったか（秒）と、見た長さ（秒）。
+    /// 会話の受け手へ渡している音で、最後に声らしい大きさがあった時刻（言いかけの続きを待つため）。
+    var lastSpeechAt: Date { queue.sync { lastSpeechAtValue } }
+    private var lastSpeechAtValue = Date.distantPast
+
     func speechSinceWake() -> (speech: Double, observed: Double) {
         queue.sync { (Double(afterWakeLoud) / Self.sampleRate, Double(afterWakeSamples) / Self.sampleRate) }
     }
@@ -192,7 +196,10 @@ final class VoiceInputHub: @unchecked Sendable {
         if stateValue == .holding || stateValue == .streaming {
             afterWakeSamples += frame.count
             let rms = sqrt(frame.reduce(0) { $0 + $1 * $1 } / Float(max(1, frame.count)))
-            if rms >= Self.speechLevel { afterWakeLoud += frame.count }
+            if rms >= Self.speechLevel {
+                afterWakeLoud += frame.count
+                lastSpeechAtValue = Date()
+            }
         }
         switch stateValue {
         case .off:

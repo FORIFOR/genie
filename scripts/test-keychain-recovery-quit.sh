@@ -6,6 +6,7 @@ WORK="$(mktemp -d "${TMPDIR:-/tmp}/genie-keychain-quit.XXXXXX")"
 trap 'rm -rf "$WORK"' EXIT
 swiftc -swift-version 5 -target "$(uname -m)-apple-macosx14.0" -parse-as-library \
   "$ROOT/apps/genie-macos/Sources/GenieMac/Settings/KeychainStore.swift" \
+  "$ROOT/apps/genie-macos/Sources/GenieMac/Core/GenieLog.swift" \
   "$ROOT/apps/genie-macos/Sources/GenieMac/App/TerminationDispatch.swift" \
   "$ROOT/scripts/tests/KeychainRecoveryQuitHarness.swift" -o "$WORK/quit-harness"
 python3 - "$WORK/quit-harness" <<'PY'

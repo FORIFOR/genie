@@ -169,4 +169,13 @@ final class ConnectionJourneyTests: XCTestCase {
         XCTAssertEqual(state.accounts["google"], "tester@example.invalid")
         XCTAssertEqual(state.connected, ["Gmail", "Google Calendar"])
     }
+
+    /// 普段の起動（ブートストラップが保存先を決めた）は運営者の接続設定を読む。検査や外から渡した保存先は隔離する。
+    func testOnlyFixturesAreIsolatedFromThePublisherConfiguration() {
+        let app = "/Users/u/Library/Application Support/Genie/local-preview/app"
+        XCTAssertFalse(ConnectionConfiguration.isolated(dataRoot: nil, projected: nil, selftest: false))
+        XCTAssertFalse(ConnectionConfiguration.isolated(dataRoot: app, projected: app, selftest: false), "ローカルプレビューの普段の起動")
+        XCTAssertTrue(ConnectionConfiguration.isolated(dataRoot: "/tmp/liveflow", projected: nil, selftest: false), "外から渡された保存先")
+        XCTAssertTrue(ConnectionConfiguration.isolated(dataRoot: app, projected: app, selftest: true), "検査はいつも隔離")
+    }
 }

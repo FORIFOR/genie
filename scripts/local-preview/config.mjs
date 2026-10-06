@@ -85,6 +85,7 @@ export function parseOptions(args) {
     if (arg === '--help' || arg === '-h') result.help = true;
     else if (arg === '--no-open') result.open = false;
     else if (arg === '--computer-use') result.computerUse = true;
+    else if (arg === '--work-sync') result.workSync = true;
     else if (arg === '--allow-cloud') result.allowCloud = true;
     else if (arg === '--allow-external-screen') result.allowExternalScreen = true;
     else if (arg === '--no-external-screen') result.allowExternalScreen = false;
@@ -650,7 +651,13 @@ export function serviceEnvironment(config, stateDir, repo, source = process.env,
     ASTRA_COMPUTER_VISION_EXTERNAL: externalScreenAllowed(config, options.computerUse)
       ? 'on'
       : 'off',
-    ASTRA_WORK_SYNC: 'off',
+    // つないだ Gmail・カレンダーを Work へ同期する（本人が --work-sync で起動したときだけ。周りの環境変数では入らない）。
+    ASTRA_WORK_SYNC: options.workSync === true ? 'on' : 'off',
+    // 同期するなら、切れたトークンを更新するための運営者の接続設定（クライアント ID だけ。利用者のトークンは含まない）。
+    // 保存先を分けた起動では既定で読まないので、場所を明示する（2026-10-07: 1 時間で「つなぎ直して」になっていた）。
+    ...(options.workSync === true && options.connectionsConfig
+      ? { ASTRA_CONNECTIONS_CONFIG: options.connectionsConfig }
+      : {}),
     ASTRA_WORK_SYNC_METERED_LLM: 'off',
     ASTRA_DEVICE_LABEL: config.project,
     ASTRA_DESKTOP_ID: config.identity,

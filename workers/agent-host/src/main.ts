@@ -34,6 +34,8 @@ import { visualContextDir } from './visual-context.js';
 import { NativeVisionDevice } from './computer-vision-device.js';
 import { CheckoutAssistanceRuntime } from './checkout-assistance.js';
 import { OfficeEditRuntime } from './office/runtime.js';
+import { WorkPreviewRuntime } from './workpreview/runtime.js';
+import { BriefRuntime } from './brief/runtime.js';
 import { BrowserOpenRuntime } from './browser-open.js';
 import { TransactionRuntime } from './transaction-runtime.js';
 import { SimulationOrders } from './simulation-orders.js';
@@ -391,6 +393,10 @@ async function main(): Promise<void> {
           return outcome.result;
         },
       }),
+      // 「端末を120台にしたら提案書も合わせた案を」: 案件の書類をコピーの上でそろえて変え、確かめる。
+      new WorkPreviewRuntime(),
+      // 今日のまとめ（読み取り専用。モデルは使わない）。
+      new BriefRuntime(),
       new CurrentInfoRunner(),
       llm,
     ]),

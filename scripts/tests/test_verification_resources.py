@@ -266,6 +266,10 @@ fi
                 (root / name).mkdir(parents=True)
             (root / 'package.json').write_text('{"version":"0.1.4"}')
             (root / 'apps/genie-macos/Resources/AppIcon.icns').write_text('fixture icon')
+            # 呼びかけ検出の実行部品（取得済みの状態）。取得スクリプトは通信するので、この木では走らせない。
+            wake = root / 'apps/genie-macos/Vendor/LiveKitWakeWord/Resources'; wake.mkdir(parents=True)
+            for name in ['melspectrogram.onnx', 'embedding_model.onnx']:
+                (wake / name).write_text('inert fixture model')
             binary_dir = root / 'fake-swift-output'; binary_dir.mkdir()
             (binary_dir / 'GenieMac').write_text('inert fixture executable')
             calls = root / 'calls.jsonl'

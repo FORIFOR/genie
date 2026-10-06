@@ -12,6 +12,8 @@ enum CalendarAccess {
         let startEpoch: Double
         let endEpoch: Double
         let calendar: String
+        var location: String? = nil
+        var allDay = false
     }
 
     enum Access: String {
@@ -46,6 +48,24 @@ enum CalendarAccess {
         } else {
             store.requestAccess(to: .event) { ok, _ in DispatchQueue.main.async { done(ok) } }
         }
+    }
+
+    /// 今日（0 時から翌 0 時まで）の予定。終わったものも含める（今日のまとめ用）。許可が無ければ空。
+    static func today(now: Date = Date(), calendar: Calendar = .current) -> [Event] {
+        guard status() == .granted else { return [] }
+        let start = calendar.startOfDay(for: now)
+        guard let end = calendar.date(byAdding: .day, value: 1, to: start) else { return [] }
+        let predicate = store.predicateForEvents(withStart: start, end: end, calendars: nil)
+        return store.events(matching: predicate).map { ev in
+            Event(
+                title: ev.title ?? "(無題)",
+                startEpoch: ev.startDate?.timeIntervalSince1970 ?? 0,
+                endEpoch: ev.endDate?.timeIntervalSince1970 ?? 0,
+                calendar: ev.calendar?.title ?? "",
+                location: ev.location,
+                allDay: ev.isAllDay
+            )
+        }.sorted { $0.startEpoch < $1.startEpoch }
     }
 
     /// 今から `hours` 時間先までの予定を返す。許可が無ければ空（**推測で埋めない**）。

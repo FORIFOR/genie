@@ -17,6 +17,11 @@ import SwiftUI
         let content = Self.spokenText(text)
         // 読むものが無い（コードだけの答えなど）。**知らせずに黙らない** —— 待つ側が止まる。
         guard !content.isEmpty else { onFinish?(); return }
+        // 声は読む文を Google へ送る。本人が Gemini Live をオンにし、キーと上限を置いたときだけ（PRIVACY_EGRESS_GATE）。
+        guard GeminiLiveSettings.shared.active else {
+            GenieLog.write("speech", "not spoken: Gemini Live is off")
+            onFinish?(); return
+        }
         self.owner = owner; completion = onFinish; mode = .preparing
         let key = GeminiLiveSettings.shared.apiKey()
         work = Task { [weak self] in
@@ -39,7 +44,8 @@ import SwiftUI
     /// 決まった文（呼びかけへの返事など）の音声を先に作っておく。作れなくても何もしない。
     func prepare(_ text: String) {
         let content = Self.spokenText(text)
-        guard !content.isEmpty, !FileManager.default.fileExists(atPath: GeminiSpeech.cacheURL(for: content).path) else { return }
+        guard !content.isEmpty, GeminiLiveSettings.shared.active,
+              !FileManager.default.fileExists(atPath: GeminiSpeech.cacheURL(for: content).path) else { return }
         let key = GeminiLiveSettings.shared.apiKey()
         Task.detached {
             do { _ = try await GeminiSpeech.synthesize(content, apiKey: key) }

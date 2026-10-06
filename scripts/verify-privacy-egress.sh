@@ -100,8 +100,9 @@ for path in src.rglob('*.swift'):
     if path.name.startswith('SelfTest') or rel == 'Context/ConnectorState.swift': continue
     text = re.sub(r'//[^\n]*', '', path.read_text())
     # 会話の Gemini Live の再生は AVAudioEngine の節点をつなぐだけ（OAuth ではない）。
-    # そのファイルでは `engine.connect(player` だけを除き、ほかの .connect( はここで数える。
-    if rel == 'Audio/GeminiLiveProvider.swift':
+    # 再生はマイクと同じ engine で鳴らす（エコー除去のため。2026-10-04 に MicCapture へ移した）。
+    # その 2 ファイルでは `engine.connect(player` だけを除き、ほかの .connect( はここで数える。
+    if rel in ('Audio/GeminiLiveProvider.swift', 'Audio/MicCapture.swift'):
         text = text.replace('engine.connect(player', 'engine_node_link(player')
     for call in re.findall(r'\.((?:connect|connectProvider|connectActions))\(', text):
         if allowed.get(rel) != call: raise SystemExit('unreviewed OAuth entry: ' + rel)

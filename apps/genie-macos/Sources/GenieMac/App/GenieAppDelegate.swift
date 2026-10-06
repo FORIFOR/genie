@@ -105,6 +105,8 @@ final class GenieAppDelegate: NSObject, NSApplicationDelegate {
         RecordingRuntime.shared.prewarmMic()
         // 「ジーニー」の待ち受け。マイクと音声認識が許可済みのときだけ（ここでは求めない）。
         WakeController.shared.start()
+        // 今日のまとめ（朝 7 時を過ぎて、まだ無ければ作る。黙って持っておく）。
+        if !CommandLine.arguments.contains("--selftest") { BriefStore.shared.start() }
         // 前回落ちたまま残っている録音があれば知らせる（§3 meeting recovery）。
         let recoverable = RecordingRuntime.shared.recoverableMeetings()
         if !recoverable.isEmpty {

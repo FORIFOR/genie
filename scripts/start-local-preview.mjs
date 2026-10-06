@@ -4,6 +4,7 @@ import { execFile } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, realpath, access, constants, writeFile } from 'node:fs/promises';
 import { join, dirname, resolve } from 'node:path';
+import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { createServer } from 'node:http';
 import { promisify } from 'node:util';
@@ -68,6 +69,7 @@ DB設定・マイグレーション・3サービスの起動をまとめて行�
   --docker-context <名前>  ローカルunixソケットのcontext。専用保存先に記録し、毎回検証
   --no-open           アプリを開かず起動（Linuxの統合検証でも使用）
   --computer-use      Macの画面操作を有効化。タスク承認と開始時の同意が必要
+  --work-sync         つないだ Gmail・カレンダーを 15 分ごとに Work へ同期（読み取りのみ。分類にモデルは使わない）
   --transaction-simulation  架空の注文だけを検証。--computer-use 必須、実サービスへ発注しません
   --computer-helper <path>  画面操作ヘルパーの道。既定はこのリポジトリが建てた本番版。
                       反復試験用のビルドを指すためのもので、指したものが同意を省く
@@ -477,6 +479,7 @@ export async function start(options) {
     externalModel: isExternalProvider(config?.modelProvider),
     computerUse: options.computerUse === true,
     transactionSimulation: options.transactionSimulation === true,
+    workSync: options.workSync === true,
     computerDelivery: options.computerUse ? 'background' : null,
     computerHelperUnattendedTest,
     externalScreenAllowed: externalScreenAllowed(config, options.computerUse),
@@ -799,7 +802,18 @@ export async function start(options) {
       composeEnv,
       { input: bootstrap + '\n' + passwords, timeout: 30_000 },
     );
-    const runtimeEnv = serviceEnvironment(config, stateDir, REPO, process.env, options);
+    // 同期するときだけ、この Mac の運営者の接続設定（あれば）を渡す。中身はクライアント ID だけ。
+    const connectionsConfig = join(homedir(), 'Library/Application Support/Astra/connections.json');
+    const hasConnections = options.workSync
+      ? await access(connectionsConfig, constants.R_OK).then(
+          () => true,
+          () => false,
+        )
+      : false;
+    const runtimeEnv = serviceEnvironment(config, stateDir, REPO, process.env, {
+      ...options,
+      ...(hasConnections ? { connectionsConfig } : {}),
+    });
     if (codexExecutable) runtimeEnv.ASTRA_CODEX_PATH = codexExecutable;
     if (claudeExecutable) runtimeEnv.ASTRA_CLAUDE_CODE_PATH = claudeExecutable;
     if (options.computerUse) {

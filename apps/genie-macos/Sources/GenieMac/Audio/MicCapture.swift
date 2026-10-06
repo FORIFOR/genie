@@ -40,7 +40,7 @@ final class MicCapture {
             engine.attach(player)
             engine.connect(player, to: engine.mainMixerNode, format: Self.playbackFormat)
         }
-        let input = engine.inputNode
+        var input = engine.inputNode
         if input.isVoiceProcessingEnabled != echoCancellation {
             do {
                 try input.setVoiceProcessingEnabled(echoCancellation)
@@ -56,7 +56,25 @@ final class MicCapture {
                 AVAudioVoiceProcessingOtherAudioDuckingConfiguration(enableAdvancedDucking: false, duckingLevel: .min)
         }
         // 有効にすると入力の形式が変わる。形式は切り替えの後に読む。
-        let inFormat = input.outputFormat(forBus: 0)
+        var inFormat = input.outputFormat(forBus: 0)
+        // 入力機器が engine を作った後に変わる（別のマイク・仮想の音声機器・AirPods）と、engine は古い形式を
+        // 返し、その形式で tap を付けると例外でアプリごと落ちる（2026-10-07 --selftest micrelease、
+        // 「Failed to create tap due to format mismatch」）。今の機器の形式と違えば engine を作り直す。
+        // エコー除去中は入力の形式がわざと違う（多チャンネル）ので比べない。
+        let hardware = input.inputFormat(forBus: 0)
+        if !voiceProcessingActive,
+           hardware.sampleRate != inFormat.sampleRate || hardware.channelCount != inFormat.channelCount {
+            NSLog("mic: input device changed (\(inFormat.sampleRate)Hz/\(inFormat.channelCount)ch → \(hardware.sampleRate)Hz/\(hardware.channelCount)ch); rebuilding the engine")
+            input.removeTap(onBus: 0)
+            engine.stop()
+            engine = AVAudioEngine()
+            player = AVAudioPlayerNode()
+            engine.attach(player)
+            engine.connect(player, to: engine.mainMixerNode, format: Self.playbackFormat)
+            input = engine.inputNode
+            inFormat = input.outputFormat(forBus: 0)
+        }
+        guard inFormat.sampleRate > 0, inFormat.channelCount > 0 else { throw NSError(domain: "MicCapture", code: 3) }
         guard
             let outFormat = AVAudioFormat(
                 commonFormat: .pcmFormatFloat32,

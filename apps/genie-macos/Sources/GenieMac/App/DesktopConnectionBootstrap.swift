@@ -29,6 +29,10 @@ enum DesktopConnectionBootstrap {
         "gemini_api": ("Google", "Gemini API"),
     ]
 
+    /// 普段の起動で、このブートストラップが保存先（ASTRA_DATA_ROOT）を決めたか。
+    /// 決めたのが自分なら、それは検査の隔離ではない（運営者の接続設定を読んでよい）。
+    nonisolated(unsafe) private(set) static var projectedDataRoot: String?
+
     static var isInvalid: Bool { ProcessInfo.processInfo.environment["ASTRA_RUNTIME_CONFIGURATION_ERROR"] == "1" }
 
     static func install() {
@@ -38,7 +42,9 @@ enum DesktopConnectionBootstrap {
         let projection: [String: String]
         switch selection {
         case .ignored, .absent: return
-        case .configured(let values): projection = values
+        case .configured(let values):
+            projection = values
+            projectedDataRoot = values["ASTRA_DATA_ROOT"]
         case .invalid:
             projection = ["ASTRA_RUNTIME_CONFIGURATION_ERROR": "1", "ASTRA_LLM_CLI": "unavailable",
                           "ASTRA_MODEL_DISCLOSURE": issueMessage]

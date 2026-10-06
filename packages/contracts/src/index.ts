@@ -51,4 +51,6 @@ export * from './research.js';
 export * from './office.js';
 export * from './trading-guard.js';
 export * from './browser-open.js';
+export * from './work-preview.js';
+export * from './brief.js';
 export * from './checkout-assistance.js';

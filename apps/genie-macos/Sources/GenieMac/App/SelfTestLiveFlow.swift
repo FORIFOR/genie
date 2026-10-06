@@ -61,6 +61,12 @@ extension SelfTest {
         }
         let hud = VoiceHUDState.shared
         var results: [(String, Bool)] = []
+        // 引数で場面を選べる（S1 と終了はいつも通す）。無ければすべて。
+        let only = Set((args.firstIndex(of: "liveflow").map { Array(args[($0 + 1)...]) } ?? [])
+            .map { $0.uppercased() }.filter { $0.range(of: #"^S\d+$"#, options: .regularExpression) != nil })
+        func want(_ id: String) -> Bool { only.isEmpty || only.contains(id) }
+        func reports() -> Int { (hud.conversationProvider as? GeminiLiveProvider)?.reports.count ?? 0 }
+        let failureWords = ["できません", "できませんでし", "見つけ", "申し訳"]
         try? await Task.sleep(nanoseconds: 2_500_000_000)   // 検出の窓が満ちるまで静けさ
 
         // S1 名前だけで呼ぶ
@@ -72,6 +78,7 @@ extension SelfTest {
         results.append(("S1 名前だけで呼ぶ", s1a && s1b))
 
         // S2 近くの店
+        if want("S2") {
         geminiText = ""
         await say("近くのマクドナルドを調べて")
         let s2a = await wait(25, "S2 地図のカードが出る") {
@@ -80,12 +87,13 @@ extension SelfTest {
         let s2b = await wait(25, "S2 Gemini が結果を伝える") { geminiText.contains("件") || geminiText.contains("マクドナルド") || geminiText.contains("見つ") }
         note("聞き取り: \(userText.prefix(40)) / Gemini: \(geminiText.prefix(100))")
         results.append(("S2 近くのマクドナルド", s2a && s2b))
+        }
 
         // S3 公式サイトを Safari で
+        if want("S3") {
         geminiText = ""
-        await say("マクドナルドの公式サイトをサファリで開いて")
-        func reports() -> Int { (hud.conversationProvider as? GeminiLiveProvider)?.trace.filter { $0.1 == "reported" }.count ?? 0 }
         let before = reports()
+        await say("マクドナルドの公式サイトをサファリで開いて")
         // 合格: Genie が「開いた結果」を Gemini に戻し、その後に Gemini が「開いた・表示した」と伝え、失敗の言い方が無い。
         let reported = await wait(120, "S3 仕事の結果が会話に戻る") { reports() > before }
         let mark = geminiText.count
@@ -93,9 +101,54 @@ extension SelfTest {
         let after = String(geminiText.dropFirst(mark))
         note("報告後の Gemini: \(after.prefix(120))")
         let s3 = reported && (after.contains("開き") || after.contains("表示"))
-            && !["できません", "できませんでし", "見つけ", "申し訳"].contains(where: { after.contains($0) })
+            && !failureWords.contains(where: { after.contains($0) })
         note("聞き取り: \(userText.prefix(40)) / Gemini: \(geminiText.prefix(120))")
         results.append(("S3 公式サイトを Safari で", s3))
+        }
+
+        // S5 書類の案: 見積り・提案書・スライドを 120 台に合わせる（案件は scripts/liveflow.sh が書類フォルダに用意する）
+        if want("S5") {
+        geminiText = ""
+        let before = reports()
+        await say("端末を120台にしたら、提案書とスライドも合わせた案を作って")
+        // 合格: 端末が確かめた結果（確認すべて合格）が会話へ戻り、Gemini が案を作ったと伝え、失敗の言い方が無い。
+        let reported = await wait(150, "S5 仕事の結果が会話に戻る") { reports() > before }
+        let report = (hud.conversationProvider as? GeminiLiveProvider)?.reports.last ?? ""
+        note("報告: \(report.prefix(160))")
+        let mark = geminiText.count
+        try? await Task.sleep(nanoseconds: 8_000_000_000)
+        let after = String(geminiText.dropFirst(mark))
+        note("報告後の Gemini: \(after.prefix(120))")
+        let s5 = reported && report.contains("120にした案を作りました") && report.contains("すべて合格")
+            && !report.contains("合いませんでした") && !report.contains("直していません")
+            && (after.contains("案") || after.contains("合わせ") || after.contains("作り"))
+            && !failureWords.contains(where: { after.contains($0) })
+        note("聞き取り: \(userText.prefix(50))")
+        results.append(("S5 書類の案（120台）", s5))
+        }
+
+        // S6 今日のまとめ: 「今日どう？」で get_today_brief を呼び、まとめのカードが出て、会話へは件数・状態だけが戻る
+        if want("S6") {
+        geminiText = ""
+        func briefCalls() -> Int { (hud.conversationProvider as? GeminiLiveProvider)?.trace.filter { $0.1 == "today-brief" }.count ?? 0 }
+        let calls = briefCalls()
+        await say("今日どう？")
+        let called = await wait(20, "S6 get_today_brief が呼ばれる") { briefCalls() > calls }
+        let shown = await wait(60, "S6 今日のまとめのカードが出る") {
+            if case .card(.brief) = hud.mode { return true }; return false
+        }
+        try? await Task.sleep(nanoseconds: 8_000_000_000)
+        let card = BriefStore.shared.today()
+        note("まとめ: \(card.map { $0.sections.map { "\($0.id)=\($0.status)" }.joined(separator: " ") } ?? "なし")")
+        note("Gemini: \(geminiText.prefix(160))")
+        // 会話へは題名・件名を渡していない（予定の題名が Gemini の発話に出ない）
+        let titles = card?.sections.first { $0.id == "calendar" }?.lines.map(\.text) ?? []
+        let leaked = titles.contains { line in line.split(separator: " ").dropFirst().joined(separator: " ").count >= 4 && geminiText.contains(line.split(separator: " ").dropFirst().joined(separator: " ")) }
+        let s6 = called && shown && card != nil && !leaked
+            && (geminiText.contains("予定") || geminiText.contains("天気") || geminiText.contains("まとめ"))
+            && !failureWords.contains(where: { geminiText.contains($0) })
+        results.append(("S6 今日どう？（今日のまとめ）", s6))
+        }
 
         // S4 終了
         await say("終了して")

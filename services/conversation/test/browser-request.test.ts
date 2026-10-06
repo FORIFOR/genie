@@ -38,6 +38,14 @@ describe('asking to open an official site', () => {
     });
   });
 
+  it('reads 「公式サイド」 as a mishearing of 「公式サイト」', () => {
+    // liveflow 2026-10-06: Gemini Live の字幕が「公式サイド」になり、対象名に残って公式が見つからなかった
+    expect(browserOpenRequest('マクドナルドの公式サイドを Safari で開いて。')).toEqual({
+      subject: 'マクドナルド',
+      browser: 'safari',
+    });
+  });
+
   it('reads spoken forms with spaces around the browser name', () => {
     // liveflow 2026-10-05: 字幕は「…公式サイトを Safari で開いて。」のように空白が入る
     expect(browserOpenRequest('マクドナルドの公式サイトを Safari で開いて。')).toEqual({

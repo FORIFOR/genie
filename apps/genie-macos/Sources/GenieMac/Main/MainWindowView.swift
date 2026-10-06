@@ -158,6 +158,7 @@ final class MainData: ObservableObject {
                 VoiceHUDState.shared.configureBackend(base: base, token: tokens.accessToken, renewal: renewal)
                 InitialProfileStore.shared.configureBackend(base: base, token: tokens.accessToken, renewal: renewal)
                 WorkContextStore.shared.configureBackend(base: base, token: tokens.accessToken)
+                BriefStore.shared.configureBackend(base: base, token: tokens.accessToken)
                 ConnectorState.shared.configureBackend(base: base, token: tokens.accessToken)
                 ReplyFlow.shared.configureBackend(base: base, token: tokens.accessToken)
                 RecordingRuntime.shared.configureBackend(base: base, accessToken: tokens.accessToken)

@@ -39,7 +39,12 @@ enum VoiceDiagnosis {
                           detail: keyOK ? "登録されています" : (gemini.keyAccessIssue ?? "登録されていません"),
                           fix: keyOK ? nil : "設定で Gemini の API キーを登録してください（AI Studio のコピーボタンで写すと確実です）。"))
 
-        if keyOK, let key = gemini.apiKey() {
+        // 本人が Gemini Live をオンにしていないときは、診断でも Google へ送らない。
+        if keyOK, !gemini.enabled {
+            items.append(Item(ok: false, name: "Gemini の利用", detail: "Gemini Live がオフです（確かめるための通信もしていません）",
+                              fix: "設定で Gemini Live をオンにしてください。"))
+        }
+        if keyOK, gemini.enabled, let key = gemini.apiKey() {
             let status = await (ping ?? Self.ping)(key)
             let (ok, detail, fix): (Bool, String, String?) = switch status {
             case 200: (true, "使えます", nil)
@@ -80,7 +85,7 @@ enum VoiceDiagnosis {
 
     /// Gemini の利用可否（ごく短い文章生成。モデル一覧ではクレジット切れが分からない）。HTTP 状態だけを返す。
     static func ping(_ key: String) async -> Int? {
-        var request = URLRequest(url: URL(string: "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent")!,
+        var request = URLRequest(url: GeminiLive.restBase.appendingPathComponent("models/gemini-flash-lite-latest:generateContent"),
                                  timeoutInterval: 15)
         request.httpMethod = "POST"
         request.setValue(key, forHTTPHeaderField: "x-goog-api-key")

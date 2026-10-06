@@ -142,6 +142,56 @@ enum KeychainStore {
         }
     }
 
+    /// 接続の資格情報（Gmail・カレンダー等）を保存する。Genie アプリに加えて、同じ Mac の Genie のサービス
+    /// （agent-host。`/usr/bin/security` で読む）にも読ませる。本人が Genie で「接続」した＝サービスがそれで同期することに
+    /// 同意しているので、同期のたびに macOS の確認を出さない（2026-10-07: 確認待ちで同期が 30 秒で失敗していた）。
+    /// 読める相手はこの 2 つだけ。作り直すのは、既存の項目の読める相手は後から足せないため。
+    static func setConnectorSecret(service: String, account: String, value: String) throws {
+        try interaction.perform {
+            let query = noninteractiveQuery(service: service, account: account)
+            let removed = SecItemDelete(query as CFDictionary)
+            guard removed == errSecSuccess || removed == errSecItemNotFound else { throw error(removed) }
+            var add = query
+            add[kSecValueData as String] = Data(value.utf8)
+            add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+            if let access = connectorAccess(label: service) { add[kSecAttrAccess as String] = access }
+            let status = SecItemAdd(add as CFDictionary, nil)
+            guard status == errSecSuccess else { throw error(status) }
+        }
+    }
+
+    /// 読める相手: この Genie アプリと `/usr/bin/security`（Genie のサービスが資格情報を読む経路）。
+    static let connectorReaders = ["/usr/bin/security"]
+
+    private static func connectorAccess(label: String) -> SecAccess? {
+        var trusted: [SecTrustedApplication] = []
+        var me: SecTrustedApplication?
+        guard SecTrustedApplicationCreateFromPath(nil, &me) == errSecSuccess, let me else { return nil }
+        trusted.append(me)
+        for path in connectorReaders {
+            var app: SecTrustedApplication?
+            guard SecTrustedApplicationCreateFromPath(path, &app) == errSecSuccess, let app else { return nil }
+            trusted.append(app)
+        }
+        var access: SecAccess?
+        guard SecAccessCreate(label as CFString, trusted as CFArray, &access) == errSecSuccess else { return nil }
+        return access
+    }
+
+    /// 以前に保存した接続の資格情報を、一度だけ上の読める相手で保存し直す（中身は変えない）。
+    static func shareConnectorWithService(service: String, account: String, value: String,
+                                          defaults: UserDefaults = .standard) {
+        let key = "genie.connector.shared." + service
+        guard !defaults.bool(forKey: key) else { return }
+        do {
+            try setConnectorSecret(service: service, account: account, value: value)
+            defaults.set(true, forKey: key)
+            GenieLog.write("keychain", "connector shared with the Genie service: " + service)
+        } catch {
+            GenieLog.write("keychain", "connector share failed: " + service + " " + String(describing: error))
+        }
+    }
+
     /// Attribute-only presence is enough for settings; it does not request key data.
     static func containsGeneric(service: String, account: String) throws -> Bool {
         try interaction.perform {

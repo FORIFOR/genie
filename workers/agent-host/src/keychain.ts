@@ -61,17 +61,22 @@ export class MacKeychain implements SecretStore {
   }
 
   async set(key: string, value: string): Promise<void> {
-    // `-U` で既存を更新する。付けないと、繋ぎ直すたびに項目が増える。
-    await run('security', [
-      'add-generic-password',
-      '-a',
-      this.#account,
-      '-s',
-      serviceFor(key),
-      '-w',
-      value,
-      '-U',
-    ]);
+    /*
+     * **値をコマンドの引数に置かない。**引数は他のプロセスから見え（ps）、失敗すると
+     * エラー文に丸ごと入ってログへ出る（2026-10-07: 更新したトークンが host.log に出た）。
+     * `security -i` へ標準入力で渡し、値は 16 進（-X）にして引用の崩れも避ける。
+     * `-U` で既存を更新する。付けないと、繋ぎ直すたびに項目が増える。
+     */
+    const hex = Buffer.from(value, 'utf8').toString('hex');
+    const line = `add-generic-password -U -a ${quoted(this.#account)} -s ${quoted(serviceFor(key))} -X ${hex}\n`;
+    try {
+      await runWithInput('security', ['-i'], line, 30_000);
+    } catch {
+      // 失敗の詳細（コマンド行）には値が入りうるので、文に含めない。
+      throw new KeychainUnavailable(
+        '接続情報を保存できませんでした。macOSのキーチェーン確認を許可してから、もう一度試してください。',
+      );
+    }
   }
 
   async delete(key: string): Promise<void> {
@@ -88,6 +93,31 @@ export class MacKeychain implements SecretStore {
       if (!isNotFound(error)) throw error;
     }
   }
+}
+
+/** `security -i` の 1 語。空白や引用符を含む名前でも崩れないように二重引用で囲む。 */
+function quoted(text: string): string {
+  if (/["\\\n]/.test(text))
+    throw new KeychainUnavailable('キーチェーンの項目名に使えない文字があります。');
+  return `"${text}"`;
+}
+
+/** 標準入力に `input` を渡して実行する。失敗の理由には入力を含めない。 */
+function runWithInput(
+  command: string,
+  args: string[],
+  input: string,
+  timeout: number,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const child = execFile(command, args, { timeout }, (error, _stdout, stderr) => {
+      if (error) reject(new Error(`exit ${String((error as { code?: unknown }).code ?? '?')}`));
+      else if (/error|failed|could not/i.test(stderr))
+        reject(new Error('security reported an error'));
+      else resolve();
+    });
+    child.stdin?.end(input);
+  });
 }
 
 function isNotFound(error: unknown): boolean {
