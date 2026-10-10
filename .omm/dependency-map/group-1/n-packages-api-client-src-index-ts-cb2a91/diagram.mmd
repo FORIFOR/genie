@@ -1,0 +1,12 @@
+graph TD
+    source["ソース\npackages/api-client/src/index.ts"]
+    n-client-js-35af17["./client.js\npackages/api-client/src/client.ts"]
+    source -->|"字句抽出: import／export"| n-client-js-35af17
+    n-http-js-d6393b["./http.js\npackages/api-client/src/http.ts"]
+    source -->|"字句抽出: import／export"| n-http-js-d6393b
+    n-sse-js-aaf90e["./sse.js\npackages/api-client/src/sse.ts"]
+    source -->|"字句抽出: import／export"| n-sse-js-aaf90e
+    n-errors-js-bf01ad["./errors.js\npackages/api-client/src/errors.ts"]
+    source -->|"字句抽出: import／export"| n-errors-js-bf01ad
+    n-share-js-26a1b7["./share.js\npackages/api-client/src/share.ts"]
+    source -->|"字句抽出: import／export"| n-share-js-26a1b7

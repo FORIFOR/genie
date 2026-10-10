@@ -1,0 +1,26 @@
+実在パス: `services/research`。24ファイル。
+
+- `services/research/package.json`
+- `services/research/src/anthropic.ts`
+- `services/research/src/data-sources.ts`
+- `services/research/src/executor.ts`
+- `services/research/src/factory.ts`
+- `services/research/src/general-executor.ts`
+- `services/research/src/host-model.ts`
+- `services/research/src/host-search.ts`
+- `services/research/src/index.ts`
+- `services/research/src/ledger.ts`
+- `services/research/src/providers.ts`
+- `services/research/src/quality.ts`
+- `services/research/src/search.ts`
+- `services/research/src/service.ts`
+- `services/research/test/anthropic.test.ts`
+- `services/research/test/factory.test.ts`
+- `services/research/test/general.test.ts`
+- `services/research/test/host-model.test.ts`
+- `services/research/test/host-search.test.ts`
+- `services/research/test/model-context.test.ts`
+- `services/research/test/quality.test.ts`
+- `services/research/test/report.test.ts`
+- `services/research/test/search.test.ts`
+- `services/research/tsconfig.json`

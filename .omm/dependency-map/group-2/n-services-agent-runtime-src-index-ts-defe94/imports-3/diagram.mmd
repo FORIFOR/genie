@@ -1,0 +1,6 @@
+graph TD
+    source["ソース\nservices/agent-runtime/src/index.ts"]
+    n-imagen-js-d1054e["./imagen.js\nservices/agent-runtime/src/imagen.ts"]
+    source -->|"字句抽出: import／export"| n-imagen-js-d1054e
+    n-sales-crm-executor-js-49c4d2["./sales-crm-executor.js\nservices/agent-runtime/src/sales-crm-executor.ts"]
+    source -->|"字句抽出: import／export"| n-sales-crm-executor-js-49c4d2

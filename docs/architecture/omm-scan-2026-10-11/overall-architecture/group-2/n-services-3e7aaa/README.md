@@ -1,0 +1,63 @@
+# overall-architecture/group-2/n-services-3e7aaa
+
+[解析トップへ戻る](../../../README.md)
+
+確認したパス: `services`。配下の登録ファイルは269件。
+
+- `services/agent-host/package.json`（一覧のみ）
+- `services/agent-host/src/bridge.ts`（一覧のみ）
+- `services/agent-host/src/index.ts`（内容確認済み）
+- `services/agent-host/src/service.ts`（一覧のみ）
+- `services/agent-host/src/step-executor.ts`（一覧のみ）
+- `services/agent-host/test/bridge.db.test.ts`（一覧のみ）
+- `services/agent-host/test/service.db.test.ts`（一覧のみ）
+- `services/agent-host/tsconfig.json`（一覧のみ）
+- `services/agent-runtime/package.json`（一覧のみ）
+- `services/agent-runtime/src/architecture-executor.ts`（一覧のみ）
+- `services/agent-runtime/src/architecture.ts`（一覧のみ）
+- `services/agent-runtime/src/care-executor.ts`（一覧のみ）
+- `services/agent-runtime/src/care.ts`（一覧のみ）
+- `services/agent-runtime/src/data-sources.ts`（一覧のみ）
+- `services/agent-runtime/src/definitions.ts`（一覧のみ）
+- `services/agent-runtime/src/domain.ts`（一覧のみ）
+- `services/agent-runtime/src/ehr-executor.ts`（一覧のみ）
+- `services/agent-runtime/src/ehr.ts`（一覧のみ）
+- `services/agent-runtime/src/image.ts`（一覧のみ）
+- `services/agent-runtime/src/imagen.ts`（一覧のみ）
+- `services/agent-runtime/src/index.ts`（内容確認済み）
+- `services/agent-runtime/src/media-factory.ts`（一覧のみ）
+- `services/agent-runtime/src/sales-crm-executor.ts`（一覧のみ）
+- `services/agent-runtime/src/sales-crm.ts`（一覧のみ）
+- `services/agent-runtime/src/stock-executor.ts`（一覧のみ）
+- `services/agent-runtime/src/stock.ts`（一覧のみ）
+- `services/agent-runtime/src/video-executor.ts`（一覧のみ）
+- `services/agent-runtime/src/video.ts`（一覧のみ）
+- `services/agent-runtime/test/architecture.test.ts`（一覧のみ）
+- `services/agent-runtime/test/care.test.ts`（一覧のみ）
+- `services/agent-runtime/test/domain.db.test.ts`（一覧のみ）
+- `services/agent-runtime/test/ehr.test.ts`（一覧のみ）
+- `services/agent-runtime/test/image.db.test.ts`（一覧のみ）
+- `services/agent-runtime/test/imagen.test.ts`（一覧のみ）
+- `services/agent-runtime/test/sales-crm-executor.test.ts`（一覧のみ）
+
+
+```mermaid
+graph TD
+    group-1["要素 1–8\n一覧"]
+    group-2["要素 9–15\n一覧"]
+```
+
+## 要素の説明
+
+### group-1
+
+このグループは表示用の区切りです。独立した実行モジュールではありません。
+
+[詳細な図と説明を見る](group-1/README.md)
+
+### group-2
+
+このグループは表示用の区切りです。独立した実行モジュールではありません。
+
+[詳細な図と説明を見る](group-2/README.md)
+

@@ -1,0 +1,27 @@
+実在パス: `apps/genie-macos`。214ファイル。
+
+- `apps/genie-macos/Package.swift`
+- `apps/genie-macos/README.md`
+- `apps/genie-macos/Sources/GenieCore/genie_core.swift`
+- `apps/genie-macos/Sources/GenieCoreFFI/include/genie_coreFFI.h`
+- `apps/genie-macos/Sources/GenieCoreFFI/include/module.modulemap`
+- `apps/genie-macos/Sources/GenieCoreFFI/shim.c`
+- `apps/genie-macos/Sources/GenieMac/Action/ApprovalCard.swift`
+- `apps/genie-macos/Sources/GenieMac/Action/ConfirmationCardView.swift`
+- `apps/genie-macos/Sources/GenieMac/Action/ConfirmationPresenter.swift`
+- `apps/genie-macos/Sources/GenieMac/Action/ResultActionRunner.swift`
+- `apps/genie-macos/Sources/GenieMac/Agent/ExecutionPlanner.swift`
+- `apps/genie-macos/Sources/GenieMac/Agent/TaskTimelineView.swift`
+- `apps/genie-macos/Sources/GenieMac/App/ApplicationMenu.swift`
+- `apps/genie-macos/Sources/GenieMac/App/DemoMode.swift`
+- `apps/genie-macos/Sources/GenieMac/App/GeneratedMetrics.swift`
+- `apps/genie-macos/Sources/GenieMac/App/GenieAppDelegate.swift`
+- `apps/genie-macos/Sources/GenieMac/App/InvocationGate.swift`
+- `apps/genie-macos/Sources/GenieMac/App/JourneyRecorder.swift`
+- `apps/genie-macos/Sources/GenieMac/App/SelfTest.swift`
+- `apps/genie-macos/Sources/GenieMac/App/SelfTestConsumerJourney.swift`
+- `apps/genie-macos/Sources/GenieMac/App/SelfTestHomeMeetingFocus.swift`
+- `apps/genie-macos/Sources/GenieMac/App/SelfTestInitialProfile.swift`
+- `apps/genie-macos/Sources/GenieMac/App/SelfTestLiquidOrb.swift`
+- `apps/genie-macos/Sources/GenieMac/App/SelfTestOutcomeLive.swift`
+- `apps/genie-macos/Sources/GenieMac/App/SelfTestPermissionCapabilities.swift`

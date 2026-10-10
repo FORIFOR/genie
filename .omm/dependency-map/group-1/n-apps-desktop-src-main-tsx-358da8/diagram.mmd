@@ -1,0 +1,12 @@
+graph TD
+    source["ソース\napps/desktop/src/main.tsx"]
+    n-react-6b810c["react\n外部・別名・未解決"]
+    source -->|"字句抽出: import／export"| n-react-6b810c
+    n-react-dom-client-bcbcc9["react-dom/client\n外部・別名・未解決"]
+    source -->|"字句抽出: import／export"| n-react-dom-client-bcbcc9
+    n-app-js-01bc69["./App.js\napps/desktop/src/App.tsx"]
+    source -->|"字句抽出: import／export"| n-app-js-01bc69
+    n-dock-dockapp-js-c93d24["./dock/DockApp.js\napps/desktop/src/dock/DockApp.tsx"]
+    source -->|"字句抽出: import／export"| n-dock-dockapp-js-c93d24
+    n-voice-voicehudapp-js-1402f0["./voice/VoiceHudApp.js\napps/desktop/src/voice/VoiceHudApp.tsx"]
+    source -->|"字句抽出: import／export"| n-voice-voicehudapp-js-1402f0

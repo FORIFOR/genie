@@ -1,0 +1,27 @@
+実在パス: `services/world-model`。27ファイル。
+
+- `services/world-model/package.json`
+- `services/world-model/src/brief.ts`
+- `services/world-model/src/index.ts`
+- `services/world-model/src/memory.ts`
+- `services/world-model/src/service.ts`
+- `services/world-model/src/work/business-time.ts`
+- `services/world-model/src/work/deadline.ts`
+- `services/world-model/src/work/graph.ts`
+- `services/world-model/src/work/initial-profile.ts`
+- `services/world-model/src/work/injection.ts`
+- `services/world-model/src/work/meeting-brief.ts`
+- `services/world-model/src/work/meeting-publisher.ts`
+- `services/world-model/src/work/personalization.ts`
+- `services/world-model/src/work/pressure.ts`
+- `services/world-model/src/work/reply.ts`
+- `services/world-model/src/work/semantic.ts`
+- `services/world-model/src/work/service.ts`
+- `services/world-model/test/brief.test.ts`
+- `services/world-model/test/deadline.test.ts`
+- `services/world-model/test/initial-profile.db.test.ts`
+- `services/world-model/test/meeting-loop.test.ts`
+- `services/world-model/test/memory.test.ts`
+- `services/world-model/test/reply-brief.test.ts`
+- `services/world-model/test/service.db.test.ts`
+- `services/world-model/test/work.db.test.ts`

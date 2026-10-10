@@ -1,0 +1,27 @@
+実在パス: `docs/launch`。44ファイル。
+
+- `docs/launch/2026-09-12/DEMO-ANSWER.md`
+- `docs/launch/2026-09-12/SOCIAL.md`
+- `docs/launch/2026-09-12/STRATEGY.md`
+- `docs/launch/2026-09-12/VALIDATION.json`
+- `docs/launch/2026-09-12/VIDEO.md`
+- `docs/launch/2026-09-12/v2/PROPOSAL.md`
+- `docs/launch/2026-09-12/v2/PUBLICATION.md`
+- `docs/launch/2026-09-12/v2/RESEARCH.md`
+- `docs/launch/2026-09-12/v2/media-validation.json`
+- `docs/launch/2026-09-12/v2/mobile-review.png`
+- `docs/launch/2026-09-12/v2/poster.jpg`
+- `docs/launch/2026-09-12/v2/proposal-en.vtt`
+- `docs/launch/2026-09-12/v2/proposal-ja.vtt`
+- `docs/launch/2026-09-12/v2/provenance.json`
+- `docs/launch/2026-09-12/v2/wide-review.png`
+- `docs/launch/2026-09-12/v3/PROMPT.txt`
+- `docs/launch/2026-09-12/v3/PROVENANCE.md`
+- `docs/launch/2026-09-12/v3/PUBLICATION.md`
+- `docs/launch/2026-09-12/v3/RESEARCH.md`
+- `docs/launch/2026-09-12/v3/media-validation.json`
+- `docs/launch/2026-09-12/v3/orbit-codex.html`
+- `docs/launch/2026-09-12/v3/orbit-en.srt`
+- `docs/launch/2026-09-12/v3/orbit-en.vtt`
+- `docs/launch/2026-09-12/v3/orbit-from-astra.md`
+- `docs/launch/2026-09-12/v3/orbit-ja.srt`

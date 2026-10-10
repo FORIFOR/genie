@@ -1,0 +1,63 @@
+# overall-architecture/group-1/n-packages-d8ae08
+
+[解析トップへ戻る](../../../README.md)
+
+確認したパス: `packages`。配下の登録ファイルは162件。
+
+- `packages/agent-sdk/package.json`（一覧のみ）
+- `packages/agent-sdk/src/author.ts`（内容確認済み）
+- `packages/agent-sdk/src/index.ts`（内容確認済み）
+- `packages/agent-sdk/test/author.test.ts`（一覧のみ）
+- `packages/agent-sdk/tsconfig.json`（一覧のみ）
+- `packages/api-client/package.json`（一覧のみ）
+- `packages/api-client/src/client.ts`（内容確認済み）
+- `packages/api-client/src/errors.ts`（内容確認済み）
+- `packages/api-client/src/http.ts`（内容確認済み）
+- `packages/api-client/src/index.ts`（内容確認済み）
+- `packages/api-client/src/share.ts`（内容確認済み）
+- `packages/api-client/src/sse.ts`（内容確認済み）
+- `packages/api-client/test/client.test.ts`（一覧のみ）
+- `packages/api-client/tsconfig.json`（一覧のみ）
+- `packages/audio/package.json`（一覧のみ）
+- `packages/audio/src/capture.ts`（一覧のみ）
+- `packages/audio/src/frame.ts`（一覧のみ）
+- `packages/audio/src/index.ts`（一覧のみ）
+- `packages/audio/src/mix.ts`（一覧のみ）
+- `packages/audio/test/frame.test.ts`（一覧のみ）
+- `packages/audio/tsconfig.json`（一覧のみ）
+- `packages/contracts/package.json`（一覧のみ）
+- `packages/contracts/src/agent-host.ts`（一覧のみ）
+- `packages/contracts/src/api.ts`（一覧のみ）
+- `packages/contracts/src/approval.ts`（一覧のみ）
+- `packages/contracts/src/artifact.ts`（一覧のみ）
+- `packages/contracts/src/canonical.ts`（一覧のみ）
+- `packages/contracts/src/codec.ts`（一覧のみ）
+- `packages/contracts/src/context.ts`（一覧のみ）
+- `packages/contracts/src/conversation.ts`（一覧のみ）
+- `packages/contracts/src/dashboard.ts`（一覧のみ）
+- `packages/contracts/src/domain.ts`（一覧のみ）
+- `packages/contracts/src/errors.ts`（一覧のみ）
+- `packages/contracts/src/escalation.ts`（一覧のみ）
+- `packages/contracts/src/events.ts`（一覧のみ）
+
+
+```mermaid
+graph TD
+    group-1["要素 1–8\n一覧"]
+    group-2["要素 9–13\n一覧"]
+```
+
+## 要素の説明
+
+### group-1
+
+このグループは表示用の区切りです。独立した実行モジュールではありません。
+
+[詳細な図と説明を見る](group-1/README.md)
+
+### group-2
+
+このグループは表示用の区切りです。独立した実行モジュールではありません。
+
+[詳細な図と説明を見る](group-2/README.md)
+

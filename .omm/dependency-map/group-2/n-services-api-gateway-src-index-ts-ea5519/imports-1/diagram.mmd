@@ -1,0 +1,18 @@
+graph TD
+    source["ソース\nservices/api-gateway/src/index.ts"]
+    n-app-js-ab7bbd["./app.js\nservices/api-gateway/src/app.ts"]
+    source -->|"字句抽出: import／export"| n-app-js-ab7bbd
+    n-fastify-js-6bf167["./fastify.js\nservices/api-gateway/src/fastify.ts"]
+    source -->|"字句抽出: import／export"| n-fastify-js-6bf167
+    n-config-js-d172e2["./config.js\nservices/api-gateway/src/config.ts"]
+    source -->|"字句抽出: import／export"| n-config-js-d172e2
+    n-errors-js-bf01ad["./errors.js\nservices/api-gateway/src/errors.ts"]
+    source -->|"字句抽出: import／export"| n-errors-js-bf01ad
+    n-request-context-js-f3522b["./request-context.js\nservices/api-gateway/src/request-context.ts"]
+    source -->|"字句抽出: import／export"| n-request-context-js-f3522b
+    n-plugins-request-id-js-816fbd["./plugins/request-id.js\nservices/api-gateway/src/plugins/request-id.ts"]
+    source -->|"字句抽出: import／export"| n-plugins-request-id-js-816fbd
+    n-plugins-rate-limit-js-ea288e["./plugins/rate-limit.js\nservices/api-gateway/src/plugins/rate-limit.ts"]
+    source -->|"字句抽出: import／export"| n-plugins-rate-limit-js-ea288e
+    n-rate-limit-index-js-22f2a9["./rate-limit/index.js\nservices/api-gateway/src/rate-limit/index.ts"]
+    source -->|"字句抽出: import／export"| n-rate-limit-index-js-22f2a9

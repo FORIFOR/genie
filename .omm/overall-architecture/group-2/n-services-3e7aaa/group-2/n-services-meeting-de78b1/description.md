@@ -1,0 +1,27 @@
+実在パス: `services/meeting`。28ファイル。
+
+- `services/meeting/package.json`
+- `services/meeting/src/anthropic.ts`
+- `services/meeting/src/data-sources.ts`
+- `services/meeting/src/executor.ts`
+- `services/meeting/src/factory.ts`
+- `services/meeting/src/google-grpc.ts`
+- `services/meeting/src/google-rest.ts`
+- `services/meeting/src/google-streaming.ts`
+- `services/meeting/src/google-tts.ts`
+- `services/meeting/src/google.ts`
+- `services/meeting/src/host-summarizer.ts`
+- `services/meeting/src/index.ts`
+- `services/meeting/src/providers.ts`
+- `services/meeting/src/recording.ts`
+- `services/meeting/src/service.ts`
+- `services/meeting/src/stabilize.ts`
+- `services/meeting/src/summarize.ts`
+- `services/meeting/test/anthropic.test.ts`
+- `services/meeting/test/factory.test.ts`
+- `services/meeting/test/google-rest.test.ts`
+- `services/meeting/test/google-streaming.test.ts`
+- `services/meeting/test/google-tts.test.ts`
+- `services/meeting/test/google.test.ts`
+- `services/meeting/test/service.db.test.ts`
+- `services/meeting/test/stabilize.test.ts`

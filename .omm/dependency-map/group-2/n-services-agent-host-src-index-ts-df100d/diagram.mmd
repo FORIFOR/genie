@@ -1,0 +1,8 @@
+graph TD
+    source["ソース\nservices/agent-host/src/index.ts"]
+    n-service-js-3f7e46["./service.js\nservices/agent-host/src/service.ts"]
+    source -->|"字句抽出: import／export"| n-service-js-3f7e46
+    n-bridge-js-e0aa27["./bridge.js\nservices/agent-host/src/bridge.ts"]
+    source -->|"字句抽出: import／export"| n-bridge-js-e0aa27
+    n-step-executor-js-8c838f["./step-executor.js\nservices/agent-host/src/step-executor.ts"]
+    source -->|"字句抽出: import／export"| n-step-executor-js-8c838f

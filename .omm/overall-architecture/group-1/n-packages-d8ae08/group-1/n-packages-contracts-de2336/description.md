@@ -1,0 +1,27 @@
+実在パス: `packages/contracts`。59ファイル。
+
+- `packages/contracts/package.json`
+- `packages/contracts/src/agent-host.ts`
+- `packages/contracts/src/api.ts`
+- `packages/contracts/src/approval.ts`
+- `packages/contracts/src/artifact.ts`
+- `packages/contracts/src/canonical.ts`
+- `packages/contracts/src/codec.ts`
+- `packages/contracts/src/context.ts`
+- `packages/contracts/src/conversation.ts`
+- `packages/contracts/src/dashboard.ts`
+- `packages/contracts/src/domain.ts`
+- `packages/contracts/src/errors.ts`
+- `packages/contracts/src/escalation.ts`
+- `packages/contracts/src/events.ts`
+- `packages/contracts/src/evidence.ts`
+- `packages/contracts/src/host.ts`
+- `packages/contracts/src/identity.ts`
+- `packages/contracts/src/ids.ts`
+- `packages/contracts/src/index.ts`
+- `packages/contracts/src/language-model.ts`
+- `packages/contracts/src/mcp.ts`
+- `packages/contracts/src/meeting.ts`
+- `packages/contracts/src/onboarding.ts`
+- `packages/contracts/src/plugin.ts`
+- `packages/contracts/src/policy-doc.ts`

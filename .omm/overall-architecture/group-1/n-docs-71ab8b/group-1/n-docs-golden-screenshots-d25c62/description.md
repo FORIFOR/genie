@@ -1,0 +1,27 @@
+実在パス: `docs/golden-screenshots`。486ファイル。
+
+- `docs/golden-screenshots/01-voice-hud-idle.png`
+- `docs/golden-screenshots/02-voice-hud-listening.png`
+- `docs/golden-screenshots/02b-voice-hud-preparing.png`
+- `docs/golden-screenshots/03-recording-workspace.png`
+- `docs/golden-screenshots/03b-recording-paused.png`
+- `docs/golden-screenshots/04-recording-transcript.png`
+- `docs/golden-screenshots/05-recording-rag.png`
+- `docs/golden-screenshots/06-main-home.png`
+- `docs/golden-screenshots/07-apps.png`
+- `docs/golden-screenshots/08-meeting-detail.png`
+- `docs/golden-screenshots/09-permission-denied.png`
+- `docs/golden-screenshots/09b-stt-unavailable.png`
+- `docs/golden-screenshots/10-agent-timeline.png`
+- `docs/golden-screenshots/11-meeting-canvas.png`
+- `docs/golden-screenshots/12-recording-now.png`
+- `docs/golden-screenshots/cloud-transcription/geometry.json`
+- `docs/golden-screenshots/cloud-transcription/retry-dark.png`
+- `docs/golden-screenshots/cloud-transcription/retry-light.png`
+- `docs/golden-screenshots/cloud-transcription/settings-dark.png`
+- `docs/golden-screenshots/cloud-transcription/settings-light.png`
+- `docs/golden-screenshots/connections-completion/connections-1162-dark.png`
+- `docs/golden-screenshots/connections-completion/connections-1162-light.png`
+- `docs/golden-screenshots/connections-completion/connections-940-dark.png`
+- `docs/golden-screenshots/connections-completion/connections-940-light.png`
+- `docs/golden-screenshots/connections-completion/geometry.json`

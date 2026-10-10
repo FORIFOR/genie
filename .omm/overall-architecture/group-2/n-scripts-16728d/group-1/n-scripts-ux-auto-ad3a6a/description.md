@@ -1,0 +1,22 @@
+実在パス: `scripts/ux-auto`。20ファイル。
+
+- `scripts/ux-auto/a11y.py`
+- `scripts/ux-auto/affordance-validity.py`
+- `scripts/ux-auto/aggregate.py`
+- `scripts/ux-auto/alignment.py`
+- `scripts/ux-auto/auto-gate.py`
+- `scripts/ux-auto/blind.sh`
+- `scripts/ux-auto/build-tools.sh`
+- `scripts/ux-auto/calmness.sh`
+- `scripts/ux-auto/capture.sh`
+- `scripts/ux-auto/guard.sh`
+- `scripts/ux-auto/harness-validity.sh`
+- `scripts/ux-auto/judge-validity.py`
+- `scripts/ux-auto/judge.sh`
+- `scripts/ux-auto/make-affordance-fixtures.sh`
+- `scripts/ux-auto/make-judge-fixtures.sh`
+- `scripts/ux-auto/make-submetric-fixtures.sh`
+- `scripts/ux-auto/motion.sh`
+- `scripts/ux-auto/occupation.py`
+- `scripts/ux-auto/primary.py`
+- `scripts/ux-auto/trust-compare.py`

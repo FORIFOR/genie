@@ -1,0 +1,27 @@
+実在パス: `docs/ux-benchmark`。695ファイル。
+
+- `docs/ux-benchmark/CLAIMS.md`
+- `docs/ux-benchmark/COMPETITIVE_DESIGN.md`
+- `docs/ux-benchmark/DESIGN_SCORECARD.md`
+- `docs/ux-benchmark/EVIDENCE.md`
+- `docs/ux-benchmark/PUBLIC_SOURCES.md`
+- `docs/ux-benchmark/RC-SESSION-RUNBOOK.md`
+- `docs/ux-benchmark/README.md`
+- `docs/ux-benchmark/REALITY_GATES.md`
+- `docs/ux-benchmark/a11y/2026-09-04-a11ynames-4tab.tsv`
+- `docs/ux-benchmark/a11y/2026-09-04-a11ynames.tsv`
+- `docs/ux-benchmark/a11y/README.md`
+- `docs/ux-benchmark/a11y/RUNBOOK.md`
+- `docs/ux-benchmark/astra/J01/result.json`
+- `docs/ux-benchmark/astra/J02/result.json`
+- `docs/ux-benchmark/astra/J03/result.json`
+- `docs/ux-benchmark/astra/J04/01-detected.png`
+- `docs/ux-benchmark/astra/J04/02-recording.png`
+- `docs/ux-benchmark/astra/J04/result.json`
+- `docs/ux-benchmark/astra/J05/01-start.png`
+- `docs/ux-benchmark/astra/J05/02-notes.png`
+- `docs/ux-benchmark/astra/J05/result.json`
+- `docs/ux-benchmark/astra/J06/result.json`
+- `docs/ux-benchmark/astra/J07/result.json`
+- `docs/ux-benchmark/astra/J08/result.json`
+- `docs/ux-benchmark/astra/J09/01-拾ったあと.png`
