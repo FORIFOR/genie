@@ -249,7 +249,7 @@ struct AgentTask: Identifiable, Equatable {
     var progress: Double {
         guard !steps.isEmpty else { return 0 }
         let done = steps.filter { $0.state == .success }.count
-        let running = steps.contains { $0.state == .running } ? 0.5 : 0
+        let running = requestRecord?.backendKind == "execution.run" ? 0 : (steps.contains { $0.state == .running } ? 0.5 : 0)
         return min(1, (Double(done) + running) / Double(steps.count))
     }
 

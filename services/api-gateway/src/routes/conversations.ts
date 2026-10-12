@@ -17,6 +17,7 @@ import type { ConversationService } from '@genie/service-conversation';
 import {
   clarificationFor,
   isDocumentRequest,
+  isExecutionRequest,
   remember,
   resolveReferences,
   routeLane,
@@ -374,26 +375,30 @@ async function startWork(
   replyDraft: { meta: ReplyDraftMeta; instruction: string } | null = null,
 ): Promise<{ taskId: string | null; notice: string | null }> {
   const request =
-    lane === 'chat'
-      ? {
-          kind: agentKindFor('com.astra.general', 'assistant'),
-          // 添付は id とラベルだけ。画素は端末に残り、端末のモデル呼び出しが読む。
-          // context は Work Graph から選んだ関連分だけ（無ければ付けない）。
-          input: {
-            question: text,
-            message: text,
-            // 返信案: compose の段だけを走らせる（instruction がある = compose）。送らない。
-            ...(isDocumentRequest(text) ? { instruction: text } : {}),
-            ...(replyDraft ? { instruction: replyDraft.instruction, reply: replyDraft.meta } : {}),
-            ...(attachments.length > 0 ? { attachments: [...attachments] } : {}),
-            ...(workContext ? { context: workContext } : {}),
-            // 渡した量の事実。何を知っているかではなく、何を渡したか。
-            ...(contextStats ? { context_meta: contextStats } : {}),
-          },
-        }
-      : lane === 'research'
-        ? { kind: 'research', input: { question: text } }
-        : null;
+    !replyDraft && lane !== 'meeting' && isExecutionRequest(text)
+      ? { kind: 'execution.run', input: { goal: text } }
+      : lane === 'chat'
+        ? {
+            kind: agentKindFor('com.astra.general', 'assistant'),
+            // 添付は id とラベルだけ。画素は端末に残り、端末のモデル呼び出しが読む。
+            // context は Work Graph から選んだ関連分だけ（無ければ付けない）。
+            input: {
+              question: text,
+              message: text,
+              // 返信案: compose の段だけを走らせる（instruction がある = compose）。送らない。
+              ...(isDocumentRequest(text) ? { instruction: text } : {}),
+              ...(replyDraft
+                ? { instruction: replyDraft.instruction, reply: replyDraft.meta }
+                : {}),
+              ...(attachments.length > 0 ? { attachments: [...attachments] } : {}),
+              ...(workContext ? { context: workContext } : {}),
+              // 渡した量の事実。何を知っているかではなく、何を渡したか。
+              ...(contextStats ? { context_meta: contextStats } : {}),
+            },
+          }
+        : lane === 'research'
+          ? { kind: 'research', input: { question: text } }
+          : null;
 
   if (!request) {
     return {

@@ -222,7 +222,7 @@ final class VoiceHUDState: ObservableObject {
                 await MainActor.run {
                     self?.updateRequest(task.id) { $0.backendTaskID = outcome.taskId; $0.phase = .working }
                 }
-                let reply = try Self.followUp(outcome, base: base, token: token, waitMs: 12_000)
+                let reply = try await ExecutionTaskMonitor.follow(outcome, localID: task.id, base: base, token: token, waitMs: 12_000)
                 await MainActor.run {
                     self?.applyReply(reply, to: task.id)
                     self?.answer = reply.text
@@ -237,8 +237,11 @@ final class VoiceHUDState: ObservableObject {
                     }
                 }
                 // 12 秒で終わらない仕事は、裏で待ち続けて届いたら差し替える（Dock は idle に戻す）。
-                if !reply.settled, !outcome.taskId.isEmpty {
-                    let later = try Self.followUp(outcome, base: base, token: token, waitMs: 120_000)
+                let isExecution = await MainActor.run {
+                    LocalStore.shared.loadTasks().first(where: { $0.id == task.id })?.requestRecord?.backendKind == "execution.run"
+                }
+                if !reply.settled, !outcome.taskId.isEmpty, !isExecution {
+                    let later = try await ExecutionTaskMonitor.follow(outcome, localID: task.id, base: base, token: token, waitMs: 120_000)
                     await MainActor.run {
                         self?.applyReply(later, to: task.id)
                         if later.settled {
@@ -313,13 +316,40 @@ final class VoiceHUDState: ObservableObject {
         change(&record); record.updatedAt = Date()
         task.requestRecord = record; task.status = record.phase.runState
         LocalStore.shared.save(task)
+        if record.backendKind == "execution.run" {
+            if record.phase != .working && record.phase != .submitting {
+                for i in task.steps.indices where task.steps[i].state == .running {
+                    task.steps[i].state = record.phase == .complete ? .success : .pending
+                }
+                if record.phase == .complete { for i in task.steps.indices { task.steps[i].state = .success } }
+            }
+            GenieStateStore.shared.trackExecution(task)
+        }
     }
 
     private func applyReply(_ reply: TaskReply, to id: UUID) {
         updateRequest(id) {
             $0.phase = reply.phase; $0.artifactID = reply.artifactID
+            $0.verificationLabel = reply.verificationLabel
             if reply.phase == .complete { $0.result = reply.text; $0.message = "" }
             else { $0.message = reply.text }
+        }
+    }
+
+    /// A stop is a backend cancellation, not a local failed badge. Already-applied effects are not undone.
+    func cancelExecution(_ id: UUID) {
+        guard let record = LocalStore.shared.loadTasks().first(where: { $0.id == id })?.requestRecord,
+              record.backendKind == "execution.run", !record.backendTaskID.isEmpty,
+              let base = apiBase, let token = apiToken, record.base == base else { return }
+        ExecutionTaskMonitor.shared.cancelling(id)
+        Task { [weak self] in
+            do {
+                try await ExecutionTaskMonitor.cancel(base: base, token: token, taskID: record.backendTaskID)
+                self?.updateRequest(id) { $0.message = "停止を要求しました。実行ホストの応答を確認しています。" }
+            } catch {
+                ExecutionTaskMonitor.shared.cancelFailed(id)
+                self?.updateRequest(id) { $0.message = "停止の受付を確認できません。実行先の状態を確認してください。" }
+            }
         }
     }
 
@@ -338,7 +368,7 @@ final class VoiceHUDState: ObservableObject {
         Task.detached { [weak self] in
             do {
                 let outcome = TurnOutcome(needsClarification: false, answer: "", taskId: record.backendTaskID, notice: "", replyJson: "")
-                let reply = try Self.followUp(outcome, base: base, token: token, waitMs: 12_000)
+                let reply = try await ExecutionTaskMonitor.follow(outcome, localID: id, base: base, token: token, waitMs: 12_000)
                 await MainActor.run { self?.applyReply(reply, to: id); self?.refreshingRequests.remove(id) }
             } catch {
                 await MainActor.run {

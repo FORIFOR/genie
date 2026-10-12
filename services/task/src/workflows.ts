@@ -1,3 +1,4 @@
+import { withPreparedExecution } from './execution-plan.js';
 /**
  * TaskWorkflow。正本 §16.3、実装仕様 §6.3。
  *
@@ -218,7 +219,15 @@ export async function TaskWorkflow(input: TaskWorkflowInput): Promise<TaskResult
       return finishCancelled(input, cancelRequested);
     }
 
-    const approval = await persistence.requestApprovalIfNeeded(input, step);
+    let approvedStep = step;
+    try {
+      // Only the new task kind uses the new binding; old workflow histories are unchanged.
+      if (input.kind === 'execution.run') approvedStep = withPreparedExecution(step, results);
+    } catch (error) {
+      await failWith(step.index, error);
+      throw error;
+    }
+    const approval = await persistence.requestApprovalIfNeeded(input, approvedStep);
     if (approval) {
       awaitingApprovalId = approval.approvalId;
       status = 'WAITING_APPROVAL';
@@ -262,10 +271,12 @@ export async function TaskWorkflow(input: TaskWorkflowInput): Promise<TaskResult
      */
     try {
       const effective = patched('reuse-meeting-summary-v1')
-        ? withMeetingSummary(step, plan.steps, results)
-        : step;
+        ? withMeetingSummary(approvedStep, plan.steps, results)
+        : approvedStep;
       results.push(await runStepWaitingForHost(effective));
     } catch (error) {
+      if (input.kind === 'execution.run' && cancelRequested !== null)
+        return finishCancelled(input, cancelRequested);
       await failWith(step.index, error);
       throw error;
     }

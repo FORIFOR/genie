@@ -23,7 +23,8 @@
   "dependencies": {
     "@genie/contracts": "workspace:*",
     "@genie/db": "workspace:*",
-    "@genie/telemetry": "workspace:*"
+    "@genie/telemetry": "workspace:*",
+    "kysely": "catalog:"
   },
   "devDependencies": {
     "vitest": "catalog:"

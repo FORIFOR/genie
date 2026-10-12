@@ -161,6 +161,30 @@ export class GoogleCalendarConnector {
     return toEvent(await callJson<RawEvent>(path, { method: 'GET' }, this.#deps, signal));
   }
 
+  /** Check the write account with a minimal read; write scopes also allow event readback. */
+  async probeWriteAccount(signal?: AbortSignal): Promise<void> {
+    requireScope(CALENDAR_OPERATIONS.create, this.#deps.grantedScopes);
+    await callJson(
+      `${BASE}/calendars/primary/events?maxResults=1&fields=items(id)`,
+      { method: 'GET' },
+      this.#deps,
+      signal,
+    );
+  }
+
+  async getCreatedEvent(eventId: string, signal?: AbortSignal): Promise<CalendarEvent> {
+    requireScope(CALENDAR_OPERATIONS.create, this.#deps.grantedScopes);
+    if (!eventId) throw new ConnectorError('not_found', 'Missing event ID');
+    return toEvent(
+      await callJson<RawEvent>(
+        `${BASE}/calendars/primary/events/${encodeURIComponent(eventId)}`,
+        { method: 'GET' },
+        this.#deps,
+        signal,
+      ),
+    );
+  }
+
   /**
    * 予定を作る。**人の承認が要る。**
    *

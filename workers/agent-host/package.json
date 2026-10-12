@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Local Agent Host\u3002Dock \u3068\u306f\u5225\u30d7\u30ed\u30bb\u30b9\u3067\u52d5\u304d\u3001Dock \u3092\u9589\u3058\u3066\u3082\u4ed5\u4e8b\u3092\u7d9a\u3051\u308b\u3002\u6b63\u672c \u00a74.4\u30fb\u00a716.1\u3002",
+  "description": "Local Agent Host。Dock とは別プロセスで動き、Dock を閉じても仕事を続ける。正本 §4.4・§16.1。",
   "main": "./dist/index.js",
   "scripts": {
     "build": "tsc -b",
@@ -15,7 +15,8 @@
     "@genie/contracts": "workspace:*",
     "@genie/telemetry": "workspace:*",
     "@genie/service-connectors": "workspace:*",
-    "@genie/oauth": "workspace:*"
+    "@genie/oauth": "workspace:*",
+    "@genie/mcp": "workspace:*"
   },
   "devDependencies": {
     "vitest": "catalog:"

@@ -33,6 +33,8 @@ struct TaskRequestRecord: Codable, Equatable {
     var base: String
     var conversationID = ""
     var backendTaskID = ""
+    var backendKind: String?
+    var verificationLabel: String?
     var artifactID = ""
     var phase: Phase = .submitting
     var result = ""
@@ -47,11 +49,12 @@ struct TaskReply {
     var text: String
     var phase: TaskRequestRecord.Phase
     var artifactID = ""
+    var verificationLabel: String?
     var settled: Bool { phase != .working && phase != .waiting }
 }
 
 extension AgentTask {
-    var stateTitle: String { requestRecord?.phase.title ?? status.displayTitle }
+    var stateTitle: String { requestRecord?.verificationLabel ?? requestRecord?.phase.title ?? status.displayTitle }
     var summary: String {
         guard let record = requestRecord else { return failureReason ?? startedAt.formatted(date: .abbreviated, time: .shortened) }
         guard record.hasResult else { return record.message }

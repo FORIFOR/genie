@@ -1,3 +1,4 @@
+import { planExecution, executionApprovalCard } from './execution-plan.js';
 /**
  * タスクの計画。**純粋関数のみ**。
  *
@@ -23,6 +24,7 @@ export function isMeteredStep(step: { readonly toolId: string }): boolean {
     // charge cannot be undone. An ambiguous timeout must not submit a new job.
     [
       'search.web',
+      'execution.prepare',
       'general.answer',
       'general.compose',
       'meeting.transcribe',
@@ -99,6 +101,7 @@ export const KNOWN_TASK_KINDS = [
   'mail.send',
   'computer.action',
   'computer.run',
+  'execution.run',
 ] as const;
 export type TaskKind = (typeof KNOWN_TASK_KINDS)[number];
 
@@ -412,6 +415,8 @@ export function planTask(kind: string, input: Record<string, unknown>): TaskPlan
       return planComputerAction(input);
     case 'computer.run':
       return planComputerRun(input);
+    case 'execution.run':
+      return planExecution(input);
     default:
       throw new UnknownTaskKindError(kind);
   }
@@ -436,6 +441,8 @@ export interface ApprovalCard {
  * クライアント側で組み立てられるようにサーバが影響範囲を持つ。
  */
 export function approvalSummaryFor(step: TaskStep): ApprovalCard {
+  const execution = executionApprovalCard(step);
+  if (execution) return execution;
   const external =
     step.risk === 'EXTERNAL_COMMIT' ||
     step.risk === 'DESTRUCTIVE' ||
