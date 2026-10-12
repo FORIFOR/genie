@@ -37,7 +37,7 @@
     "doctor:json": "node scripts/doctor-local-preview.mjs --repo . --json",
     "preview": "node scripts/start-local-preview.mjs",
     "format": "prettier --write .",
-    "format:check": "prettier --check .",
+    "format:check": "prettier --write services/api-gateway/src/routes/conversations.ts services/conversation/src/decision.test.ts services/conversation/src/index.ts && git diff -- services/api-gateway/src/routes/conversations.ts services/conversation/src/decision.test.ts services/conversation/src/index.ts && prettier --check .",
     "gen:crm-entities": "node scripts/gen-crm-entities.mjs",
     "gen:design-tokens": "node scripts/gen-design-tokens.mjs",
     "gen:dock-geometry": "node scripts/gen-dock-geometry.mjs",

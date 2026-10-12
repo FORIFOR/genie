@@ -23,7 +23,7 @@ import {
 } from '@genie/service-agent-runtime';
 import { AgentHostService, HostBridge, HostStepExecutor } from '@genie/service-agent-host';
 import { WorkContextService, WorldModelService } from '@genie/service-world-model';
-import { ConversationService } from '@genie/service-conversation';
+import { ConversationService, JevDecisionEngine } from '@genie/service-conversation';
 import {
   ResearchLedgerService,
   researchDataSources,
@@ -144,6 +144,20 @@ async function main(): Promise<void> {
   const world = new WorldModelService({ db });
   const work = new WorkContextService({ db, world });
   const conversations = new ConversationService({ db });
+  /*
+   * Optional System-One router. It only sees the current utterance and only
+   * refines D-48's chat fallback; deterministic routing and task risk policy
+   * remain authoritative when this service is absent, slow, or uncertain.
+   */
+  const fastDecisions = process.env['ASTRA_JEV_API_KEY']
+    ? new JevDecisionEngine({
+        apiKey: process.env['ASTRA_JEV_API_KEY'],
+        ...(process.env['ASTRA_JEV_ENDPOINT']
+          ? { endpoint: process.env['ASTRA_JEV_ENDPOINT'] }
+          : {}),
+        ...(process.env['ASTRA_JEV_MODEL'] ? { model: process.env['ASTRA_JEV_MODEL'] } : {}),
+      })
+    : undefined;
   const dataSources = composeDataSources(
     researchDataSources(db),
     meetingDataSources(db),
@@ -187,6 +201,7 @@ async function main(): Promise<void> {
     world,
     work,
     conversations,
+    ...(fastDecisions ? { fastDecisions } : {}),
     connections,
     voice: {
       ...(meetingProviders.batch.isStandIn ? {} : { transcriber: meetingProviders.batch }),

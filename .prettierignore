@@ -38,3 +38,6 @@ docs/launch/2026-09-12/v4/answer-from-astra.md
 # Pinned upstream shaders and generated uniform/shader source.
 shared/design/liquid-orb/shader-source.ts
 apps/desktop/src/voice/liquid-orb/generated.ts
+
+# JARVIS architecture note keeps diagram and protocol examples in authored layout.
+docs/JARVIS_LIVE.md

@@ -20,6 +20,7 @@ import {
   remember,
   resolveReferences,
   routeLane,
+  type FastDecisionEngine,
 } from '@genie/service-conversation';
 import { agentKindFor, type TaskService } from '@genie/service-task';
 import type { Redis } from 'ioredis';
@@ -44,6 +45,11 @@ export interface ConversationRouteDeps {
   readonly work?: WorkContextService;
   /** Genie 自身の task・会議を artifact として足す（work routes と同じもの）。 */
   readonly extraArtifacts?: (tenantId: string) => Promise<WorkArtifact[]>;
+  /**
+   * Optional fast typed judgment for the deterministic router's chat fallback.
+   * It never gets to override a lane that D-48 already classified.
+   */
+  readonly fastDecisions?: FastDecisionEngine;
 }
 
 export function registerConversationRoutes(app: App, deps: ConversationRouteDeps): void {
@@ -166,22 +172,31 @@ export function registerConversationRoutes(app: App, deps: ConversationRouteDeps
       });
       const clarification = clarificationFor(resolutions);
 
-      const decision = routeLane({
+      const baselineDecision = routeLane({
         text: body.text,
         modality: body.modality,
         meetingActive: state.active_meeting !== null,
         hasSelection: false,
         namedAgent: null,
       });
+      // Reply-in-context has its own deterministic target resolution. Do not let a
+      // generic fast classifier turn "これ返して" into an unrelated GUI task.
+      const contextIntent = classifyContextIntent(body.text);
+      const decision =
+        baselineDecision.lane === 'chat' &&
+        contextIntent !== 'email_reply' &&
+        deps.fastDecisions
+          ? await deps.fastDecisions.refine({
+              text: body.text,
+              modality: body.modality,
+              baseline: baselineDecision,
+            })
+          : baselineDecision;
 
       let replyMeta: ReplyDraftMeta | null = null;
       let replyContext = '';
       let replyInstructionText = '';
-      if (
-        deps.work &&
-        decision.lane === 'chat' &&
-        classifyContextIntent(body.text) === 'email_reply'
-      ) {
+      if (deps.work && decision.lane === 'chat' && contextIntent === 'email_reply') {
         const extra = (await deps.extraArtifacts?.(principal.tenantId).catch(() => [])) ?? [];
         const resolution = await deps.work
           .resolveReply(
@@ -272,7 +287,7 @@ export function registerConversationRoutes(app: App, deps: ConversationRouteDeps
                   question: body.text,
                   context: ctx,
                   meetingBrief:
-                    ctx.inference_enabled && classifyContextIntent(body.text) === 'meeting_prep'
+                    ctx.inference_enabled && contextIntent === 'meeting_prep'
                       ? await deps.work!.meetingBrief(principal.tenantId, principal.userId)
                       : null,
                 }),
@@ -355,8 +370,9 @@ function laneToIntent(lane: string): string {
  *
  *   chat     → General Assistant（正本 §2.2）。答えは成果物として残る
  *   research → Research Agent（§8）
+ *   action   → Computer Use。既存の task / approval / native safety boundary を通す
  *   meeting  → 仕事にしない。録音は画面側の操作（§12）
- *   action / edit / dictate / specialist-agent → まだ自動では受けられない。**そう言う**
+ *   edit / dictate / specialist-agent → まだ自動では受けられない。**そう言う**
  *
  * 作れなかった理由（plugin が入っていない等）は `notice` で返す。
  * 例外で 500 にすると、利用者には「送れなかった」としか見えない。
@@ -393,7 +409,18 @@ async function startWork(
         }
       : lane === 'research'
         ? { kind: 'research', input: { question: text } }
-        : null;
+        : lane === 'action'
+          ? {
+              kind: 'computer.run',
+              input: {
+                goal: text,
+                // Keep success criteria user-authored. The vision verifier must not
+                // invent a stronger completion condition than the request.
+                successCriteria: text,
+                title: text.slice(0, 160),
+              },
+            }
+          : null;
 
   if (!request) {
     return {
@@ -415,9 +442,11 @@ async function startWork(
     return {
       taskId: null,
       notice:
-        error instanceof Error && /install|not installed|permission|scope/i.test(error.message)
-          ? 'General Assistant が追加されていません。Apps から追加してください。'
-          : '仕事を始められませんでした。',
+        lane === 'action'
+          ? '画面操作を開始できませんでした。Computer Use の有効化・権限・端末接続を確認してください。'
+          : error instanceof Error && /install|not installed|permission|scope/i.test(error.message)
+            ? 'General Assistant が追加されていません。Apps から追加してください。'
+            : '仕事を始められませんでした。',
     };
   }
 }
