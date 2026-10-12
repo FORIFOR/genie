@@ -99,6 +99,7 @@ export const KNOWN_TASK_KINDS = [
   'mail.send',
   'computer.action',
   'computer.run',
+  'intent.execute',
 ] as const;
 export type TaskKind = (typeof KNOWN_TASK_KINDS)[number];
 
@@ -342,6 +343,34 @@ function planMailSend(input: Record<string, unknown>): TaskPlan {
   };
 }
 
+function planIntentExecute(input: Record<string, unknown>): TaskPlan {
+  const goal =
+    typeof input['goal'] === 'string'
+      ? input['goal'].trim()
+      : typeof input['message'] === 'string'
+        ? input['message'].trim()
+        : '';
+  if (!goal) throw new UnknownTaskKindError('intent.execute needs a goal');
+  return {
+    steps: [
+      {
+        index: 0,
+        toolId: 'intent.execute',
+        risk: 'EXTERNAL_COMMIT',
+        surface: 'local',
+        requiresConfirmation: true,
+        message: '依頼を確認し、最も確実な方法で進めます',
+        args: { goal },
+      },
+    ],
+    artifact: {
+      type: 'OTHER',
+      title: typeof input['title'] === 'string' ? input['title'] : goal,
+      mimeType: 'application/json',
+    },
+  };
+}
+
 function planComputerRun(input: Record<string, unknown>): TaskPlan {
   const goal = typeof input['goal'] === 'string' ? input['goal'].trim() : '';
   if (!goal) throw new UnknownTaskKindError('computer.run needs a goal');
@@ -412,6 +441,8 @@ export function planTask(kind: string, input: Record<string, unknown>): TaskPlan
       return planComputerAction(input);
     case 'computer.run':
       return planComputerRun(input);
+    case 'intent.execute':
+      return planIntentExecute(input);
     default:
       throw new UnknownTaskKindError(kind);
   }

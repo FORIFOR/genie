@@ -28,6 +28,7 @@ import { HttpLlmClient } from './http-llm.js';
 import { CompositeRunner } from './runner.js';
 import { ComputerVisionRuntime } from './computer-vision.js';
 import { NativeVisionDevice } from './computer-vision-device.js';
+import { IntentExecutionRouter } from './intent-execution-router.js';
 import { selectLanguageModel } from '@genie/contracts';
 import type { WorkSyncState, LanguageModelKind } from '@genie/contracts';
 import { DEFAULT_SYNC_INTERVAL_MS, WorkSyncLoop } from './work-sync.js';
@@ -280,9 +281,15 @@ async function main(): Promise<void> {
     device: () => new NativeVisionDevice(process.env['ASTRA_COMPUTER_VISION_HELPER'] ?? ''),
   });
 
+  const intentRouter = new IntentExecutionRouter({
+    structured: runtime,
+    computer: computerVision,
+    model: llm,
+  });
+
   const steps = new HostStepLoop({
     transport: httpStepTransport({ baseUrl, token, fetch: apiSession.fetch }),
-    runner: new CompositeRunner([runtime, computerVision, llm]),
+    runner: new CompositeRunner([intentRouter, runtime, computerVision, llm]),
     onError: (error) => logger.warn({ err: error.message }, 'a step could not be handled'),
   });
   void steps.start(id);

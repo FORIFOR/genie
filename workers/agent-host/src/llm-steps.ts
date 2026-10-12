@@ -39,6 +39,8 @@ export const LLM_TOOLS = [
   'llm.classify_email',
   'llm.plan_computer_action',
   'llm.verify_computer_action',
+  'llm.route_execution',
+  'llm.verify_execution_result',
   'search.web',
 ] as const;
 
@@ -59,6 +61,8 @@ const TOOLS_FOR: Readonly<Record<LlmTool, readonly string[]>> = {
   'llm.classify_email': [],
   'llm.plan_computer_action': [],
   'llm.verify_computer_action': [],
+  'llm.route_execution': [],
+  'llm.verify_execution_result': [],
   'search.web': ['WebSearch'],
 };
 export type LlmTool = (typeof LLM_TOOLS)[number];
@@ -206,6 +210,31 @@ export function promptFor(
     case 'llm.plan_computer_action':
     case 'llm.verify_computer_action':
       return visionPromptFor(tool, args);
+
+    case 'llm.route_execution':
+      return [
+        '利用者の目的を実行するための経路を1つだけ選んでください。',
+        '構造化されたAPI/Connectorが使える場合は必ずそれを優先し、画面操作は最後の手段です。',
+        '利用可能一覧にないtoolIdを作らないでください。必要情報が不足する場合はanswerを選び、勝手に補完しません。',
+        'メール送信・予定作成など外部変更は、利用者の依頼に明示されている場合だけstructuredを選びます。',
+        json('{"kind":"structured","toolId":"mail.send","args":{}} または {"kind":"computer","successCriteria":"…"} または {"kind":"answer","context":"…"}'),
+        '',
+        `目的: ${String(args['goal'] ?? '')}`,
+        `利用可能な構造化tool: ${JSON.stringify(args['availableStructuredTools'] ?? [])}`,
+        `画面操作: ${args['computerAvailable'] === true ? '利用可能' : '利用不可'}`,
+      ].join('\n');
+
+    case 'llm.verify_execution_result':
+      return [
+        '構造化APIの実行結果が、利用者の目的を満たした証拠になっているか判定してください。',
+        '成功を示すprovider ID・保存結果などが無い場合はverified=falseにしてください。推測しません。',
+        json('{"verified":true,"reason":"…"}'),
+        '',
+        `目的: ${String(args['goal'] ?? '')}`,
+        `実行tool: ${String(args['toolId'] ?? '')}`,
+        `要求: ${JSON.stringify(args['requested'] ?? {})}`,
+        `結果: ${JSON.stringify(args['result'] ?? {})}`,
+      ].join('\n');
 
     case 'llm.classify_email':
       return [
