@@ -14,6 +14,8 @@ import AppKit
         settings.target = self; appMenu.addItem(settings)
         let guide = NSMenuItem(title: Facts.menuGuidedSetup, action: #selector(showPermissionGuide), keyEquivalent: "")
         guide.target = self; appMenu.addItem(guide)
+        let oathra = NSMenuItem(title: "Oathraと連携…", action: #selector(showOathra), keyEquivalent: "")
+        oathra.target = self; appMenu.addItem(oathra)
         appMenu.addItem(.separator())
         appMenu.addItem(withTitle: Facts.menuQuit, action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
 
@@ -40,4 +42,5 @@ import AppKit
 
     @objc private func showSettings() { SettingsWindowController.shared.show() }
     @objc private func showPermissionGuide() { SettingsWindowController.shared.show() }
+    @objc private func showOathra() { OathraConnectionWindow.shared.show() }
 }

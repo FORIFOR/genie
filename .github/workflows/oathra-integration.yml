@@ -1,0 +1,23 @@
+name: Oathra integration
+on:
+  pull_request:
+    paths:
+      - 'apps/genie-macos/Sources/GenieMac/Integrations/Oathra*.swift'
+      - 'apps/genie-macos/Sources/GenieMac/App/ApplicationMenu.swift'
+      - 'packages/mcp/**'
+      - 'scripts/*oathra*'
+      - '.github/workflows/oathra-integration.yml'
+permissions:
+  contents: read
+jobs:
+  native-boundary:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Type-check the actual native integration against Apple frameworks
+        run: >-
+          swiftc -typecheck
+          apps/genie-macos/Sources/GenieMac/Integrations/OathraGatewayClient.swift
+          apps/genie-macos/Sources/GenieMac/Integrations/OathraConnectionWindow.swift
+      - name: Fixture-only Foundation client checks
+        run: bash scripts/check-oathra-client.sh
