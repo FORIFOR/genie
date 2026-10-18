@@ -8,7 +8,7 @@ Genieは、TaskDockを呼び出し、必要なら画面を添えて、具体的�
 
 **MacでOllamaを使う開発者のテスターを募集しています。** 下の一連の操作を、架空の画面やメモで試してください。最初につまずいたところを教えてください。セットアップで止まった報告も歓迎です。事前登録・メールアドレスの登録は不要。報告時だけGitHubアカウントを使います。
 
-**[最初の実演を見る →](https://genie-forifor.forifor.chatgpt.site/ja#demo)** · [日本語の初回起動ガイド](LOCAL_PREVIEW.ja.md) · [テスト内容を見る](TESTING.ja.md) · [Macプレビューを取得](https://github.com/FORIFOR/genie/releases/tag/v0.1.4) · [結果・つまずきを報告](https://github.com/FORIFOR/genie/issues/new?template=tester_feedback.yml)
+**[最初の実演を見る →](https://reachmade.com/products/genie/demos/#prototype)** · [日本語の初回起動ガイド](LOCAL_PREVIEW.ja.md) · [テスト内容を見る](TESTING.ja.md) · [Macプレビューを取得](https://github.com/FORIFOR/genie/releases/tag/v0.1.4) · [結果・つまずきを報告](https://github.com/FORIFOR/genie/issues/new?template=tester_feedback.yml)
 
 ## 最初に試す一つの仕事
 
@@ -23,9 +23,9 @@ Genieは、TaskDockを呼び出し、必要なら画面を添えて、具体的�
 
 | 仕事                | 実演                                                                                                                                        | 確認できること                                           |
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
-| 小さな試作をつくる  | [33秒の動画](https://genie-forifor.forifor.chatgpt.site/ja#demo)・[宇宙の試作を触る](https://genie-forifor.forifor.chatgpt.site/orbit.html) | HTMLを生成・保存し、取り出したHTMLを外部ブラウザで開く。 |
-| Webの言葉を改善する | [30秒の動画](https://genie-forifor.forifor.chatgpt.site/ja#proposal)                                                                        | ローカルモデルで、架空のWebサイトの文章改善案をつくる。  |
-| 次の一手を決める    | [42秒の動画](https://genie-forifor.forifor.chatgpt.site/ja#priorities)                                                                      | 架空のダッシュボードから次の行動を考え、結果を保存する。 |
+| 小さな試作をつくる  | [33秒の動画](https://reachmade.com/products/genie/demos/#prototype)・[宇宙の試作を触る](https://reachmade.com/media/originals/genie/orbit.html) | HTMLを生成・保存し、取り出したHTMLを外部ブラウザで開く。 |
+| Webの言葉を改善する | [30秒の動画](https://reachmade.com/products/genie/demos/#proposal)                                                                        | ローカルモデルで、架空のWebサイトの文章改善案をつくる。  |
+| 次の一手を決める    | [42秒の動画](https://reachmade.com/products/genie/demos/#priorities)                                                                      | 架空のダッシュボードから次の行動を考え、結果を保存する。 |
 
 実際のアプリを収録し、待機時間は短縮しています。回答の品質・速度はモデルによって変わります。自動デプロイやSNS投稿、ビジネス成果を保証する実演ではありません。
 
