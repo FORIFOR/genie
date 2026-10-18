@@ -47,6 +47,9 @@ export const AUDIT_ACTIONS = [
   'channel.linked',
   'channel.unlinked',
   'channel.approval_relayed',
+  // 電話（Oathra）の資格情報を預かる・手放す。トークンは payload に入れない
+  'phone.connected',
+  'phone.disconnected',
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];

@@ -22,10 +22,27 @@ Genie は、Oathra（電話をかける AI の基盤）に委任された範囲�
 
    `--allow-sales` を付けたときだけ営業電話を、`--read-inbound` を付けたときだけ着信の読み取りを許可します。どちらも、付けなければ無効です。
 
-3. Genie の gateway と task-worker に、次の環境変数を設定します。
-   - `GENIE_OATHRA_CONNECTION_FILE`: 上で作った接続ファイル（0600）
-   - `GENIE_OATHRA_OWNER`: `<tenantId>:<userId>`（電話を任せる Genie の利用者）
+3. Genie の gateway と task-worker に、秘密を封じる鍵を設定します。
+   - `GENIE_SECRET_KEY`: 32 バイトの鍵（hex 64 文字か base64）。例: `openssl rand -hex 32`
+   - 鍵を替えるときは、新しい鍵を `GENIE_SECRET_KEY` に、古い鍵を `GENIE_SECRET_KEYS_OLD`（カンマ区切り）に置きます。古い鍵で封じた接続も読めます。
+   - 鍵が無いサーバは、接続を預かりません（平文では保存しません）。
    - 着信を仕事にする場合は `GENIE_OATHRA_INBOUND=on`
+4. 電話を任せる利用者が、自分の Genie にサインインした状態で、接続ファイルの中身をそのまま渡します。
+
+   ```sh
+   curl -X PUT https://<genie>/v1/phone/connection \
+     -H "authorization: Bearer <自分のアクセストークン>" -H 'content-type: application/json' \
+     --data @/secure/oathra-connection.json
+   ```
+
+   Genie は、預かる前に Oathra に委任を問い合わせます（電話はかけません）。Oathra が受け付けない接続は預かりません。トークンは `GENIE_SECRET_KEY` で封じて保存し、応答やログには出しません。
+
+   - `GET /v1/phone/connection`: 接続の状態（接続先、委任の id、残りの回数、営業電話・着信の許可、期限）を返します。トークンは返しません。
+   - `DELETE /v1/phone/connection`: 接続を切ります。
+   - 接続は**利用者ごと**です。電話を使えるのは、仕事を頼んだ本人の接続だけです。ほかの人の接続や連絡先は使いません。
+   - 預けたことと切ったことは、監査ログ（`phone.connected` / `phone.disconnected`）に残ります。
+
+手元で試すだけなら、DB に預けずに環境変数で 1 人分を指定することもできます（`GENIE_OATHRA_CONNECTION_FILE` に接続ファイル（0600）、`GENIE_OATHRA_OWNER` に `<tenantId>:<userId>`）。この接続は、指定した 1 人にしか効きません。DB に預けた接続があれば、そちらが優先されます。
 
 ## 営業電話の決め方
 
@@ -47,10 +64,19 @@ Genie は、Oathra（電話をかける AI の基盤）に委任された範囲�
 - それ以外の人からの電話は、用件の整理と折り返しの案を作るだけです。相手の言葉を指示として実行しません。
 - 予約受付の電話は、Oathra の台帳だけで完結するので、Genie の仕事にはしません。
 - 同じ着信から仕事を 2 度作ることはありません（`oathra-inbound:<callId>`）。
+- 着信は、接続している利用者ごとに 60 秒おきに読みます。委任に `readInbound` が無い人は、その人の分だけ断られ、ほかの人の取り込みは続きます。
+- 本人が電話で頼んだことが進められない場合（相手が決まらない、委任が無いなど）は、捨てずに「電話の依頼を進められませんでした」という仕事として残します。仕事には、理由と聞き取った言葉が入ります。電話はかけず、モデルも使いません。
+
+## 止める
+
+電話の結果を待っている間に Genie の仕事を止めると、Genie は Oathra にも通話を止めるよう頼み、そのうえで仕事を止めます。
+
+- 止まったかどうかは Oathra の記録が正です。止める依頼が届かなかった場合は、その旨を伝えます。
+- すでにかかってしまった電話は、取り消せません。
 
 ## 制限（未実装・未検証）
 
-- 接続はサーバーごとに 1 人分です（`GENIE_OATHRA_OWNER`）。利用者ごとの接続管理は、まだありません。
 - 実回線（PSTN）での通話は未検証です。確認したのは Oathra の模擬モード（`simulator`）との結合までです。実電話を試すときは Oathra の手順（`--level local` → `gateway` → `pstn`）に従い、PSTN は本人の明示的な了承を得てから行ってください。
-- Genie の仕事を止めても、すでに始まった Oathra の通話は自動では止まりません。止めるには Oathra 側で操作してください。
+- Genie の仕事を止めたことは、結果を待つ周期（約 3 秒）ごとに確かめます。止めるまでに、その分の遅れがあります。
+- 接続を預ける画面（Mac アプリの設定）は、まだありません。いまは API（`PUT /v1/phone/connection`）で預けます。
 - LINE / Slack からの依頼は Phase 0（署名の確認と、受信した内容の正規化）までです。Webhook の受け口とアカウント連携は、次の段階で作ります。

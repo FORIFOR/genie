@@ -462,3 +462,20 @@ export async function currentSteps(
   }
   return out;
 }
+
+/**
+ * 仕事が止められたか（`CANCELLING` か、もう止まったか）。
+ *
+ * Genie の取り消しは workflow への signal で、走っている activity には届かない。
+ * 長く待つ step（電話の結果待ちなど）は、待つ周期ごとにこれを見て自分から止まる。
+ */
+export async function isTaskCancelRequested(
+  db: DbHandle,
+  tenantId: string,
+  taskId: string,
+): Promise<boolean> {
+  const row = await withTenant(db, tenantId, (tx) =>
+    tx.selectFrom('tasks').select('status').where('id', '=', taskId).executeTakeFirst(),
+  );
+  return row?.status === 'CANCELLING' || row?.status === 'CANCELLED';
+}

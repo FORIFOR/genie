@@ -742,6 +742,19 @@ importers:
         version: 3.2.7(@types/node@22.20.1)(happy-dom@20.11.6)(terser@5.50.0)(tsx@4.23.12)(yaml@2.9.0)
 
   services/phone:
+    dependencies:
+      '@genie/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@genie/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      '@genie/telemetry':
+        specifier: workspace:*
+        version: link:../../packages/telemetry
+      kysely:
+        specifier: 'catalog:'
+        version: 0.29.5
     devDependencies:
       vitest:
         specifier: 'catalog:'

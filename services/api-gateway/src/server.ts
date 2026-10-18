@@ -163,7 +163,7 @@ async function main(): Promise<void> {
   );
 
   // Oathra 経由の電話。設定が無ければ、電話の頼みには「繋がっていない」と答える
-  const phone = phoneFromEnv(process.env, { tasks, logger });
+  const phone = phoneFromEnv(process.env, { db, tasks, logger });
   // チャット（Slack / LINE）。設定された提供者だけ受け口が開く
   const chat: { current: GatewayChannels | null } = { current: null };
 
@@ -207,6 +207,7 @@ async function main(): Promise<void> {
       });
       return chat.current?.routes ?? null;
     },
+    phoneConnections: { store: phone.store, clientOf: phone.clientOf },
     voice: {
       ...(meetingProviders.batch.isStandIn ? {} : { transcriber: meetingProviders.batch }),
       ...(process.env['GOOGLE_CLOUD_PROJECT']

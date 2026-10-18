@@ -45,6 +45,9 @@ GRANT SELECT, UPDATE ON channel_links TO astra_identity;
 GRANT SELECT, UPDATE ON channel_link_codes TO astra_identity;
 -- 受信箱はテナントを持たない（本文も持たない）。重複の判定と古い行の掃除だけ。
 GRANT SELECT, INSERT, DELETE ON channel_inbox TO astra_identity;
+-- 着信の取り込みは、電話を繋いでいる利用者をテナントを跨いで知る必要がある。
+-- **だれが繋いでいるかの列だけ。**トークン（token_ciphertext）はこのロールから読めない。
+GRANT SELECT (tenant_id, user_id, revoked_at) ON phone_connections TO astra_identity;
 
 -- 公開 viewer 専用ロール: 共有テーブルだけ。artifact は解決後に withTenant で読む。
 GRANT USAGE ON SCHEMA public TO astra_share;

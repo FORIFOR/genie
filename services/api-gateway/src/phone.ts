@@ -1,22 +1,31 @@
 /**
  * Oathra 経由の電話を gateway に繋ぐ。正本外の拡張（Oathra 連携）。
  *
- * 接続は**1 人の利用者のもの**（`GENIE_OATHRA_OWNER`）。ほかの利用者が「電話して」と
- * 頼んでも、この人の連絡先は読まず「繋がっていない」と答える。
+ * 接続は**利用者ごと**（`phone_connections`。トークンは `GENIE_SECRET_KEY` で封じて置く）。
+ * 「電話して」と頼んだ本人の接続だけを使い、無ければ「繋がっていない」と答える。
+ * 環境変数の接続（`GENIE_OATHRA_CONNECTION_FILE` + `GENIE_OATHRA_OWNER`）は
+ * 手元で試すための 1 人分の逃がし口として残す。
  *
  * 着信の取り込みは `GENIE_OATHRA_INBOUND=on` のときだけ回す。Oathra 側の委任に
- * `readInbound` が無いと断られるので、明示して有効にする。
+ * `readInbound` が無い人は、その人だけ断られる。
  */
 import {
-  InboundPhoneSync,
+  InboundPhoneSyncs,
+  PhoneConnectionStore,
   oathraClient,
+  phoneConnections,
   phoneSetupFromEnv,
   phoneTaskFor,
+  secretBoxFromEnv,
   type InboundTaskRequest,
+  type OathraClient,
+  type OathraConnection,
+  type PhoneConnections,
   type PhoneTaskDecision,
 } from '@genie/service-phone';
 import { isDocumentRequest, routeLane } from '@genie/service-conversation';
 import { agentKindFor, type TaskService } from '@genie/service-task';
+import type { DbHandle } from '@genie/db';
 import type { Logger } from '@genie/telemetry';
 
 export interface GatewayPhone {
@@ -26,64 +35,85 @@ export interface GatewayPhone {
       text: string,
     ): Promise<PhoneTaskDecision | null>;
   };
-  readonly inbound: InboundPhoneSync | null;
+  /** 利用者ごとの接続を預かる先。route（PUT / GET / DELETE /v1/phone/connection）が使う。 */
+  readonly store: PhoneConnectionStore;
+  readonly clientOf: (connection: OathraConnection) => OathraClient;
+  readonly inbound: InboundPhoneSyncs | null;
 }
 
 const GENERAL = agentKindFor('com.astra.general', 'assistant');
 
+/**
+ * 本人が電話で頼んだこと。チャットと同じ振り分けで、同じ種類の仕事にする。
+ *
+ * 電話の頼みで進められないもの（相手が決まらない等）は、**黙って捨てない。**
+ * `phone.unresolved` として理由を仕事の一覧に残す。
+ */
+export async function ownerRequestFor(
+  client: OathraClient | null,
+  text: string,
+): Promise<InboundTaskRequest | null> {
+  const lane = routeLane({
+    text,
+    modality: 'voice',
+    meetingActive: false,
+    hasSelection: false,
+    namedAgent: null,
+  }).lane;
+  if (lane === 'action') {
+    const decision = await phoneTaskFor(text, client);
+    if (decision?.kind === 'task') return decision.request;
+    if (decision?.kind === 'notice') {
+      return {
+        kind: 'phone.unresolved',
+        title: '電話の依頼を進められませんでした',
+        input: { notice: decision.notice, words: text },
+      };
+    }
+  }
+  if (lane === 'research') {
+    return { kind: 'research', title: '電話で頼まれた調べもの', input: { question: text } };
+  }
+  return {
+    kind: GENERAL,
+    title: '電話で頼まれたこと',
+    input: {
+      question: text,
+      message: text,
+      ...(isDocumentRequest(text) ? { instruction: text } : {}),
+    },
+  };
+}
+
 export function phoneFromEnv(
   env: NodeJS.ProcessEnv,
-  deps: { readonly tasks: TaskService; readonly logger: Logger },
+  deps: {
+    readonly db: DbHandle;
+    readonly tasks: TaskService;
+    readonly logger: Logger;
+    readonly fetchImpl?: typeof fetch;
+  },
 ): GatewayPhone {
-  const setup = phoneSetupFromEnv(env);
-  const client = setup ? oathraClient(setup.connection) : null;
-  const isOwner = (p: { tenantId: string; userId: string }) =>
-    !!setup && p.tenantId === setup.owner.tenantId && p.userId === setup.owner.userId;
+  const store = new PhoneConnectionStore({ db: deps.db, secrets: secretBoxFromEnv(env) });
+  const connections: PhoneConnections = phoneConnections({
+    store,
+    fallback: phoneSetupFromEnv(env),
+  });
+  const clientOf = (connection: OathraConnection) =>
+    oathraClient(connection, deps.fetchImpl ?? fetch);
 
   const phone = {
-    taskFor: (principal: { tenantId: string; userId: string }, text: string) =>
-      phoneTaskFor(text, isOwner(principal) ? client : null),
+    taskFor: async (principal: { tenantId: string; userId: string }, text: string) => {
+      const saved = await connections.connectionFor(principal);
+      return phoneTaskFor(text, saved ? clientOf(saved) : null);
+    },
   };
 
-  if (!setup || !client || env['GENIE_OATHRA_INBOUND'] !== 'on') return { phone, inbound: null };
+  if (env['GENIE_OATHRA_INBOUND'] !== 'on') return { phone, store, clientOf, inbound: null };
 
-  /** 本人が電話で頼んだこと。チャットと同じ振り分けで、同じ種類の仕事にする。 */
-  const ownerRequest = async (text: string): Promise<InboundTaskRequest | null> => {
-    const lane = routeLane({
-      text,
-      modality: 'voice',
-      meetingActive: false,
-      hasSelection: false,
-      namedAgent: null,
-    }).lane;
-    if (lane === 'action') {
-      const decision = await phoneTaskFor(text, client);
-      if (decision?.kind === 'task') return decision.request;
-      if (decision?.kind === 'notice') {
-        // 進められない電話の頼み。Oathra 側の着信通知で本人は気づける。黙って別の仕事にしない
-        deps.logger.warn(
-          { notice: decision.notice },
-          'phone request from a call could not be started',
-        );
-        return null;
-      }
-    }
-    if (lane === 'research')
-      return { kind: 'research', title: '電話で頼まれた調べもの', input: { question: text } };
-    return {
-      kind: GENERAL,
-      title: '電話で頼まれたこと',
-      input: {
-        question: text,
-        message: text,
-        ...(isDocumentRequest(text) ? { instruction: text } : {}),
-      },
-    };
-  };
-
-  const inbound = new InboundPhoneSync({
-    client,
-    owner: setup.owner,
+  const inbound = new InboundPhoneSyncs({
+    connections,
+    clientOf,
     tasks: {
       create: async ({ tenantId, userId, request, idempotencyKey }) => {
         const { task, deduplicated } = await deps.tasks.create({
@@ -95,7 +125,7 @@ export function phoneFromEnv(
         return { task: { id: task.id }, deduplicated };
       },
     },
-    ownerRequest,
+    ownerRequest: (_owner, client, text) => ownerRequestFor(client, text),
     messageRequest: ({ instruction, context }) => ({
       kind: GENERAL,
       title: '着信の用件',
@@ -103,5 +133,5 @@ export function phoneFromEnv(
     }),
     log: (event, detail) => deps.logger.info(detail, event),
   });
-  return { phone, inbound };
+  return { phone, store, clientOf, inbound };
 }

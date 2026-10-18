@@ -95,6 +95,8 @@ export interface MakeAppOptions {
   readonly phone?: import('../src/app.js').AppDeps['phone'];
   /** チャット（Slack / LINE）。env は本番と同じ名前、外への送信は fetchImpl が受ける。 */
   readonly channels?: { readonly env: NodeJS.ProcessEnv; readonly fetchImpl: typeof fetch };
+  /** 電話の接続の預かり先。省略すると /v1/phone/connection は生えない。 */
+  readonly phoneConnections?: import('../src/app.js').AppDeps['phoneConnections'];
 }
 
 export async function makeTestApp(options: MakeAppOptions): Promise<TestApp> {
@@ -176,6 +178,9 @@ export async function makeTestApp(options: MakeAppOptions): Promise<TestApp> {
             return chat.current?.routes ?? null;
           },
         }),
+    ...(options.phoneConnections === undefined
+      ? {}
+      : { phoneConnections: options.phoneConnections }),
     meetings: {
       meetings,
       recordings,

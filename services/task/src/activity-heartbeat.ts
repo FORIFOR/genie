@@ -16,3 +16,16 @@ export async function withActivityHeartbeat<T>(
     clearInterval(timer);
   }
 }
+
+/**
+ * いま走っている activity の取り消し。activity の外（テストや単体の呼び出し）では undefined。
+ *
+ * Temporal を import しない executor に、取り消しだけを渡すための口。
+ */
+export function currentActivityCancellation(): AbortSignal | undefined {
+  try {
+    return Context.current().cancellationSignal;
+  } catch {
+    return undefined;
+  }
+}
