@@ -1,0 +1,10 @@
+graph TD
+    source["ソース\nservices/api-gateway/src/server.ts"]
+    n-config-js-d172e2["./config.js\nservices/api-gateway/src/config.ts"]
+    source -->|"字句抽出: import／export"| n-config-js-d172e2
+    n-auth-keys-js-d91270["./auth/keys.js\nservices/api-gateway/src/auth/keys.ts"]
+    source -->|"字句抽出: import／export"| n-auth-keys-js-d91270
+    n-auth-tokens-js-278b1f["./auth/tokens.js\nservices/api-gateway/src/auth/tokens.ts"]
+    source -->|"字句抽出: import／export"| n-auth-tokens-js-278b1f
+    n-rate-limit-index-js-22f2a9["./rate-limit/index.js\nservices/api-gateway/src/rate-limit/index.ts"]
+    source -->|"字句抽出: import／export"| n-rate-limit-index-js-22f2a9

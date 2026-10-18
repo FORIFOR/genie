@@ -515,6 +515,9 @@ importers:
       '@genie/service-capabilities':
         specifier: workspace:*
         version: link:../capabilities
+      '@genie/service-channels':
+        specifier: workspace:*
+        version: link:../channels
       '@genie/service-context':
         specifier: workspace:*
         version: link:../context
@@ -527,6 +530,9 @@ importers:
       '@genie/service-meeting':
         specifier: workspace:*
         version: link:../meeting
+      '@genie/service-phone':
+        specifier: workspace:*
+        version: link:../phone
       '@genie/service-plugin-registry':
         specifier: workspace:*
         version: link:../plugin-registry
@@ -599,6 +605,25 @@ importers:
         specifier: 'catalog:'
         version: 3.2.7(@types/node@22.20.1)(happy-dom@20.11.6)(terser@5.50.0)(tsx@4.23.12)(yaml@2.9.0)
 
+  services/channels:
+    dependencies:
+      '@genie/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@genie/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      '@genie/telemetry':
+        specifier: workspace:*
+        version: link:../../packages/telemetry
+      kysely:
+        specifier: 'catalog:'
+        version: 0.29.5
+    devDependencies:
+      vitest:
+        specifier: 'catalog:'
+        version: 3.2.7(@types/node@22.20.1)(happy-dom@20.11.6)(terser@5.50.0)(tsx@4.23.12)(yaml@2.9.0)
+
   services/connectors:
     dependencies:
       '@genie/contracts':
@@ -636,6 +661,9 @@ importers:
       '@genie/service-task':
         specifier: workspace:*
         version: link:../task
+      '@genie/service-world-model':
+        specifier: workspace:*
+        version: link:../world-model
       '@genie/telemetry':
         specifier: workspace:*
         version: link:../../packages/telemetry
@@ -708,6 +736,25 @@ importers:
       '@genie/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+    devDependencies:
+      vitest:
+        specifier: 'catalog:'
+        version: 3.2.7(@types/node@22.20.1)(happy-dom@20.11.6)(terser@5.50.0)(tsx@4.23.12)(yaml@2.9.0)
+
+  services/phone:
+    dependencies:
+      '@genie/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@genie/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      '@genie/telemetry':
+        specifier: workspace:*
+        version: link:../../packages/telemetry
+      kysely:
+        specifier: 'catalog:'
+        version: 0.29.5
     devDependencies:
       vitest:
         specifier: 'catalog:'
@@ -962,6 +1009,9 @@ importers:
       '@genie/service-meeting':
         specifier: workspace:*
         version: link:../../services/meeting
+      '@genie/service-phone':
+        specifier: workspace:*
+        version: link:../../services/phone
       '@genie/service-plugin-registry':
         specifier: workspace:*
         version: link:../../services/plugin-registry

@@ -1,0 +1,27 @@
+実在パス: `services/agent-runtime`。32ファイル。
+
+- `services/agent-runtime/package.json`
+- `services/agent-runtime/src/architecture-executor.ts`
+- `services/agent-runtime/src/architecture.ts`
+- `services/agent-runtime/src/care-executor.ts`
+- `services/agent-runtime/src/care.ts`
+- `services/agent-runtime/src/data-sources.ts`
+- `services/agent-runtime/src/definitions.ts`
+- `services/agent-runtime/src/domain.ts`
+- `services/agent-runtime/src/ehr-executor.ts`
+- `services/agent-runtime/src/ehr.ts`
+- `services/agent-runtime/src/image.ts`
+- `services/agent-runtime/src/imagen.ts`
+- `services/agent-runtime/src/index.ts`
+- `services/agent-runtime/src/media-factory.ts`
+- `services/agent-runtime/src/sales-crm-executor.ts`
+- `services/agent-runtime/src/sales-crm.ts`
+- `services/agent-runtime/src/stock-executor.ts`
+- `services/agent-runtime/src/stock.ts`
+- `services/agent-runtime/src/video-executor.ts`
+- `services/agent-runtime/src/video.ts`
+- `services/agent-runtime/test/architecture.test.ts`
+- `services/agent-runtime/test/care.test.ts`
+- `services/agent-runtime/test/domain.db.test.ts`
+- `services/agent-runtime/test/ehr.test.ts`
+- `services/agent-runtime/test/image.db.test.ts`

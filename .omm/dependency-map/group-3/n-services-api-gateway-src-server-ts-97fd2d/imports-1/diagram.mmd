@@ -1,0 +1,18 @@
+graph TD
+    source["ソース\nservices/api-gateway/src/server.ts"]
+    n-ioredis-ef2a20["ioredis\n外部・別名・未解決"]
+    source -->|"字句抽出: import／export"| n-ioredis-ef2a20
+    n-genie-db-6c8f01["@genie/db\n外部・別名・未解決"]
+    source -->|"字句抽出: import／export"| n-genie-db-6c8f01
+    n-genie-telemetry-3404d6["@genie/telemetry\n外部・別名・未解決"]
+    source -->|"字句抽出: import／export"| n-genie-telemetry-3404d6
+    n-genie-service-library-df8516["@genie/service-library\n外部・別名・未解決"]
+    source -->|"字句抽出: import／export"| n-genie-service-library-df8516
+    n-genie-service-task-8f74b4["@genie/service-task\n外部・別名・未解決"]
+    source -->|"字句抽出: import／export"| n-genie-service-task-8f74b4
+    n-genie-service-plugin-registry-61ff7e["@genie/service-plugin-registry\n外部・別名・未解決"]
+    source -->|"字句抽出: import／export"| n-genie-service-plugin-registry-61ff7e
+    n-genie-service-agent-runtime-dab0cd["@genie/service-agent-runtime\n外部・別名・未解決"]
+    source -->|"字句抽出: import／export"| n-genie-service-agent-runtime-dab0cd
+    n-genie-service-agent-host-834834["@genie/service-agent-host\n外部・別名・未解決"]
+    source -->|"字句抽出: import／export"| n-genie-service-agent-host-834834

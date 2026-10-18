@@ -1,0 +1,19 @@
+実在パス: `scripts/reality`。17ファイル。
+
+- `scripts/reality/run-competitors.sh`
+- `scripts/reality/run-daily-work-gate.sh`
+- `scripts/reality/run-fka.sh`
+- `scripts/reality/run-initial-profile-live.sh`
+- `scripts/reality/run-live-tcc.sh`
+- `scripts/reality/run-meeting-work-loop-gate.sh`
+- `scripts/reality/run-real-meeting.sh`
+- `scripts/reality/run-reply-brief-gate.sh`
+- `scripts/reality/run-screenshot-e2e.sh`
+- `scripts/reality/run-unattended-verify.sh`
+- `scripts/reality/run-voiceover.sh`
+- `scripts/reality/run-work-context-gate.sh`
+- `scripts/reality/run-work-context-live.sh`
+- `scripts/reality/run-work-context-release-gate.sh`
+- `scripts/reality/stop-test-process.py`
+- `scripts/reality/tcc-dialog.sh`
+- `scripts/reality/without-test-credentials.py`

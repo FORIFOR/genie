@@ -1,0 +1,27 @@
+実在パス: `apps/windows`。28ファイル。
+
+- `apps/windows/Genie.sln`
+- `apps/windows/Genie/.gitignore`
+- `apps/windows/Genie/App/App.xaml`
+- `apps/windows/Genie/App/App.xaml.cs`
+- `apps/windows/Genie/App/Program.cs`
+- `apps/windows/Genie/AppLogic/GenieSession.cs`
+- `apps/windows/Genie/AppLogic/WasapiCapture.cs`
+- `apps/windows/Genie/AppLogic/WindowsCredentialStore.cs`
+- `apps/windows/Genie/AppLogic/WindowsGlobalShortcut.cs`
+- `apps/windows/Genie/AppLogic/WindowsScreenCapture.cs`
+- `apps/windows/Genie/CoreBridge/GenieCore.cs`
+- `apps/windows/Genie/GeneratedMetrics.cs`
+- `apps/windows/Genie/Genie.csproj`
+- `apps/windows/Genie/Main/MainWindow.xaml`
+- `apps/windows/Genie/Main/MainWindow.xaml.cs`
+- `apps/windows/Genie/RecordingWorkspace/RecordingWorkspaceGeometry.cs`
+- `apps/windows/Genie/RecordingWorkspace/RecordingWorkspaceWindow.xaml`
+- `apps/windows/Genie/RecordingWorkspace/RecordingWorkspaceWindow.xaml.cs`
+- `apps/windows/Genie/VoiceHUD/VoiceHudWindow.xaml`
+- `apps/windows/Genie/VoiceHUD/VoiceHudWindow.xaml.cs`
+- `apps/windows/Genie/app.manifest`
+- `apps/windows/README.md`
+- `apps/windows/bridge-check/.gitignore`
+- `apps/windows/bridge-check/Program.cs`
+- `apps/windows/bridge-check/bridge-check.csproj`

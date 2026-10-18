@@ -1,0 +1,18 @@
+graph TD
+    source["ソース\napps/desktop/src/App.tsx"]
+    n-shell-appshell-js-ae18e1["./shell/AppShell.js\napps/desktop/src/shell/AppShell.tsx"]
+    source -->|"字句抽出: import／export"| n-shell-appshell-js-ae18e1
+    n-shell-composer-js-4dc0bb["./shell/Composer.js\napps/desktop/src/shell/Composer.tsx"]
+    source -->|"字句抽出: import／export"| n-shell-composer-js-4dc0bb
+    n-shell-taskinspector-js-0c9396["./shell/TaskInspector.js\napps/desktop/src/shell/TaskInspector.tsx"]
+    source -->|"字句抽出: import／export"| n-shell-taskinspector-js-0c9396
+    n-pages-home-js-f12d6b["./pages/Home.js\napps/desktop/src/pages/Home.tsx"]
+    source -->|"字句抽出: import／export"| n-pages-home-js-f12d6b
+    n-home-useproactive-js-1aa51a["./home/useProactive.js\napps/desktop/src/home/useProactive.ts"]
+    source -->|"字句抽出: import／export"| n-home-useproactive-js-1aa51a
+    n-pages-work-js-37b1c7["./pages/Work.js\napps/desktop/src/pages/Work.tsx"]
+    source -->|"字句抽出: import／export"| n-pages-work-js-37b1c7
+    n-pages-library-js-7fe613["./pages/Library.js\napps/desktop/src/pages/Library.tsx"]
+    source -->|"字句抽出: import／export"| n-pages-library-js-7fe613
+    n-pages-apps-js-ae8c58["./pages/Apps.js\napps/desktop/src/pages/Apps.tsx"]
+    source -->|"字句抽出: import／export"| n-pages-apps-js-ae8c58

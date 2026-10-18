@@ -1,0 +1,27 @@
+実在パス: `infra/db`。35ファイル。
+
+- `infra/db/README.md`
+- `infra/db/bootstrap.sql`
+- `infra/db/migrations/20260826010001_extensions.sql`
+- `infra/db/migrations/20260826010002_identity.sql`
+- `infra/db/migrations/20260826010003_conversations.sql`
+- `infra/db/migrations/20260826010004_tasks.sql`
+- `infra/db/migrations/20260826010005_library.sql`
+- `infra/db/migrations/20260826010006_plugins.sql`
+- `infra/db/migrations/20260826010007_audit.sql`
+- `infra/db/migrations/20260826010008_rls.sql`
+- `infra/db/migrations/20260826020001_shares.sql`
+- `infra/db/migrations/20260826020002_research.sql`
+- `infra/db/migrations/20260826030001_meetings.sql`
+- `infra/db/migrations/20260826040001_plugin_assets.sql`
+- `infra/db/migrations/20260826050001_agent_packages.sql`
+- `infra/db/migrations/20260826060001_world_model.sql`
+- `infra/db/migrations/20260827010001_conversation_state.sql`
+- `infra/db/migrations/20260827020001_onboarding.sql`
+- `infra/db/migrations/20260827030001_connections.sql`
+- `infra/db/migrations/20260827040001_workflow_assets.sql`
+- `infra/db/migrations/20260827050001_receipt_step.sql`
+- `infra/db/migrations/20260827060001_attention_feedback.sql`
+- `infra/db/migrations/20260827070001_agent_hosts.sql`
+- `infra/db/migrations/20260827090000_host_step_requests.sql`
+- `infra/db/migrations/20260827093000_host_step_request_key.sql`

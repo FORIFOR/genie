@@ -1,0 +1,20 @@
+実在パス: `services/connectors`。18ファイル。
+
+- `services/connectors/package.json`
+- `services/connectors/src/approval.ts`
+- `services/connectors/src/calendar.ts`
+- `services/connectors/src/gmail.ts`
+- `services/connectors/src/http.ts`
+- `services/connectors/src/index.ts`
+- `services/connectors/src/microsoft.ts`
+- `services/connectors/src/mime.ts`
+- `services/connectors/src/normalize.ts`
+- `services/connectors/src/scopes.ts`
+- `services/connectors/test/approval.test.ts`
+- `services/connectors/test/calendar.test.ts`
+- `services/connectors/test/gmail.test.ts`
+- `services/connectors/test/microsoft.test.ts`
+- `services/connectors/test/mime.test.ts`
+- `services/connectors/test/normalize.test.ts`
+- `services/connectors/test/scopes.test.ts`
+- `services/connectors/tsconfig.json`

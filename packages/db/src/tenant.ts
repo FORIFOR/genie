@@ -120,7 +120,8 @@ export async function withSystem<T>(
  * `users` の SELECT が membership 依存、INSERT も membership 不在で弾かれるため、
  * このスコープだけ identity テーブルに限定した BYPASSRLS ロールを使う。
  *
- * 使ってよいのは `tenants` `users` `memberships` `devices` `sessions` のみ。
+ * 使ってよいのは `tenants` `users` `memberships` `devices` `sessions` `user_identities` と、
+ * チャネル連携の照合（`channel_links` の SELECT / UPDATE）のみ。
  * ロール側の GRANT でも他テーブルは触れない（infra/db/bootstrap.sql）。
  * テナントが判明したあとの処理は必ず `withTenant` へ移すこと。
  */

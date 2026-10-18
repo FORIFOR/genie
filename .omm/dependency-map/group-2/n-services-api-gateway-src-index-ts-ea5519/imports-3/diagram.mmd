@@ -1,0 +1,8 @@
+graph TD
+    source["ソース\nservices/api-gateway/src/index.ts"]
+    n-host-routes-js-ba1ff0["./host/routes.js\nservices/api-gateway/src/host/routes.ts"]
+    source -->|"字句抽出: import／export"| n-host-routes-js-ba1ff0
+    n-routes-sse-js-4117d1["./routes/sse.js\nservices/api-gateway/src/routes/sse.ts"]
+    source -->|"字句抽出: import／export"| n-routes-sse-js-4117d1
+    n-auth-sessions-js-eb22c2["./auth/sessions.js\nservices/api-gateway/src/auth/sessions.ts"]
+    source -->|"字句抽出: import／export"| n-auth-sessions-js-eb22c2

@@ -1,0 +1,27 @@
+実在パス: `workers/agent-host`。62ファイル。
+
+- `workers/agent-host/package.json`
+- `workers/agent-host/src/api-session.ts`
+- `workers/agent-host/src/claude-code.ts`
+- `workers/agent-host/src/cloud.ts`
+- `workers/agent-host/src/codex.ts`
+- `workers/agent-host/src/compose-quality.ts`
+- `workers/agent-host/src/computer-planner.ts`
+- `workers/agent-host/src/computer-runtime.ts`
+- `workers/agent-host/src/computer-vision-device.ts`
+- `workers/agent-host/src/computer-vision-policy.ts`
+- `workers/agent-host/src/computer-vision-prompts.ts`
+- `workers/agent-host/src/computer-vision.ts`
+- `workers/agent-host/src/connection-configuration.ts`
+- `workers/agent-host/src/connector-steps.ts`
+- `workers/agent-host/src/grants.ts`
+- `workers/agent-host/src/host.ts`
+- `workers/agent-host/src/http-llm.ts`
+- `workers/agent-host/src/index.ts`
+- `workers/agent-host/src/initial-profile.ts`
+- `workers/agent-host/src/instance-lock.ts`
+- `workers/agent-host/src/keychain.ts`
+- `workers/agent-host/src/live-assert.ts`
+- `workers/agent-host/src/live-controls.ts`
+- `workers/agent-host/src/live-fault-transport.ts`
+- `workers/agent-host/src/live-fixture.ts`

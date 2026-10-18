@@ -1,0 +1,27 @@
+実在パス: `docs/evidence`。153ファイル。
+
+- `docs/evidence/api-cost-audit/RESULTS.md`
+- `docs/evidence/cloud-transcription/README.md`
+- `docs/evidence/cloud-transcription/long-japanese.json`
+- `docs/evidence/cloud-transcription/short-japanese.json`
+- `docs/evidence/codex-cli.md`
+- `docs/evidence/connections-completion/RESULTS.md`
+- `docs/evidence/connectors-and-host.md`
+- `docs/evidence/consumer-journeys/RESULTS.md`
+- `docs/evidence/consumer-journeys/itinerary-fixture.md`
+- `docs/evidence/density-baseline.json`
+- `docs/evidence/final-e2e.md`
+- `docs/evidence/language-model-byok.md`
+- `docs/evidence/live-translation/RESULTS.md`
+- `docs/evidence/live-translation/llama3.2-comparison.json`
+- `docs/evidence/live-translation/quality.json`
+- `docs/evidence/live-translation/result.json`
+- `docs/evidence/live-translation/validation-summary.txt`
+- `docs/evidence/managed-local-preview.md`
+- `docs/evidence/oauth.md`
+- `docs/evidence/outcome-workspace/RESULTS.md`
+- `docs/evidence/outcome-workspace/announcement-result.md`
+- `docs/evidence/outcome-workspace/geometry-check.log`
+- `docs/evidence/outcome-workspace/host-tests.log`
+- `docs/evidence/outcome-workspace/live7.log`
+- `docs/evidence/outcome-workspace/local-model-draft.md`

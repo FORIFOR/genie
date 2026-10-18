@@ -1,0 +1,27 @@
+実在パス: `docs/release-evidence`。30ファイル。
+
+- `docs/release-evidence/2026-09-08/ui-taste-review.json`
+- `docs/release-evidence/2026-09-08/ui-taste-review.md`
+- `docs/release-evidence/2026-09-09/initial-profile.md`
+- `docs/release-evidence/2026-09-09/live-service-validation.md`
+- `docs/release-evidence/2026-09-10/gateway-smoke.json`
+- `docs/release-evidence/2026-09-10/gateway-smoke.md`
+- `docs/release-evidence/2026-09-10/normal-launch.md`
+- `docs/release-evidence/2026-09-10/recording-keyboard.md`
+- `docs/release-evidence/2026-09-10/review-fixes.md`
+- `docs/release-evidence/2026-09-13-genie/journeys/JA/01-home.png`
+- `docs/release-evidence/2026-09-13-genie/journeys/JA/03-running.png`
+- `docs/release-evidence/2026-09-13-genie/journeys/JA/result.json`
+- `docs/release-evidence/2026-09-13-genie/journeys/JB-motion/result.json`
+- `docs/release-evidence/2026-09-13-genie/journeys/JB/01-meeting.png`
+- `docs/release-evidence/2026-09-13-genie/journeys/JB/02-notes.png`
+- `docs/release-evidence/2026-09-13-genie/journeys/JB/03-workspace.png`
+- `docs/release-evidence/2026-09-13-genie/journeys/JB/04-ended.png`
+- `docs/release-evidence/2026-09-13-genie/journeys/JB/05-library.png`
+- `docs/release-evidence/2026-09-13-genie/journeys/JB/06-source.png`
+- `docs/release-evidence/2026-09-13-genie/journeys/JB/07-reopened.png`
+- `docs/release-evidence/2026-09-13-genie/journeys/JB/result.json`
+- `docs/release-evidence/2026-09-13-genie/journeys/JC/01-denied.png`
+- `docs/release-evidence/2026-09-13-genie/journeys/JC/02-recovered.png`
+- `docs/release-evidence/2026-09-13-genie/journeys/JC/03-after-sharing.png`
+- `docs/release-evidence/2026-09-13-genie/journeys/JC/04-confirm.png`

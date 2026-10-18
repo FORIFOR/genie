@@ -1,0 +1,110 @@
+{
+  "repo": "FORIFOR/genie",
+  "branch": "main",
+  "tree_sha": "28f89f2636a3b780e813ea902e07d2e4900a6e3f",
+  "tree_files": 3911,
+  "read_files": [
+    {
+      "path": "AGENTS.md",
+      "sha": "127dc1a326a62ef6984dec64372d1359bfa18e3a"
+    },
+    {
+      "path": "README.md",
+      "sha": "6192e3ea5687755bf86fe6a98b9b175d87e17d58"
+    },
+    {
+      "path": "package.json",
+      "sha": "ccd2a980bb295b99d281e005b3e19a7c9a982a37"
+    },
+    {
+      "path": "apps/desktop/package.json",
+      "sha": "e1b9a266512b692760a1b470f93a57767038b805"
+    },
+    {
+      "path": "apps/share-web/package.json",
+      "sha": "e1c8b621328704cc79fb65fe1aa9fc1a3caf2109"
+    },
+    {
+      "path": "apps/windows/Genie/Genie.csproj",
+      "sha": "b625ac41bacd36c9132961a828b5565843f58eee"
+    },
+    {
+      "path": "apps/windows/bridge-check/bridge-check.csproj",
+      "sha": "bb71bac659463231e6faac63eb2561afc5cacaa5"
+    },
+    {
+      "path": "apps/windows/logic-check/logic-check.csproj",
+      "sha": "76e98e1c19c9dcb4df68570822e71279061ec3a1"
+    },
+    {
+      "path": "apps/desktop/src/main.tsx",
+      "sha": "2bbb781b67fa278fc4d0f7224427840b2223a5ae"
+    },
+    {
+      "path": "packages/agent-sdk/src/index.ts",
+      "sha": "73dbde046da0829302ec575a70b78e62efeeb646"
+    },
+    {
+      "path": "packages/api-client/src/index.ts",
+      "sha": "8fa1f067c72b28a94be4ca3114bd2616f5305eb8"
+    },
+    {
+      "path": "scripts/start-local-host.mjs",
+      "sha": "2156685b179b93981f7bd166420bac8c3ac8e46a"
+    },
+    {
+      "path": "apps/desktop/src/App.tsx",
+      "sha": "57514cc8df051d9f9afdcbdca2b1cbff447df8cc"
+    },
+    {
+      "path": "apps/desktop/src/dock/DockApp.tsx",
+      "sha": "0c660893396f3c5c139d359c5fca156834b57ca8"
+    },
+    {
+      "path": "apps/desktop/src/voice/VoiceHudApp.tsx",
+      "sha": "f2ff920efd2847e9c8179693b1d12a85b90f4bf3"
+    },
+    {
+      "path": "packages/agent-sdk/src/author.ts",
+      "sha": "78163e952a3c21fe0bfb2239111bd5ba46075965"
+    },
+    {
+      "path": "packages/api-client/src/client.ts",
+      "sha": "5c483db529c7d4e518af0ced1f9675e00a0a1001"
+    },
+    {
+      "path": "packages/api-client/src/http.ts",
+      "sha": "1dc12dd35d8662a7700385e726ee416a19492b22"
+    },
+    {
+      "path": "packages/api-client/src/sse.ts",
+      "sha": "fbc036e3762a6a129dfc52ba85bada887f7cda4f"
+    },
+    {
+      "path": "packages/api-client/src/errors.ts",
+      "sha": "a3a256dfa09542710211a29f6027749870a381b2"
+    },
+    {
+      "path": "packages/api-client/src/share.ts",
+      "sha": "7b60428fcde344f6d5e5de55ee90af9b6ac225a9"
+    },
+    {
+      "path": "services/agent-host/src/index.ts",
+      "sha": "7331cd1ee82a1a18f25d61400d0e1e13aea97fec"
+    },
+    {
+      "path": "services/agent-runtime/src/index.ts",
+      "sha": "f17bc331bc4d8baa93c2f7e3a6f4908934d39256"
+    },
+    {
+      "path": "services/api-gateway/src/index.ts",
+      "sha": "a3e6a4aa0a52b9795ff3fa1e65edd6e4568d816c"
+    },
+    {
+      "path": "services/api-gateway/src/server.ts",
+      "sha": "08bdbc7919b4dc64a0fd8ebaed1742be22d5ceec"
+    }
+  ],
+  "not_read_count": 3886,
+  "scope": "initial entry-point and direct-import analysis; not exhaustive semantic scan"
+}

@@ -27,14 +27,39 @@ export const User = z.object({
 });
 export type User = z.infer<typeof User>;
 
+/** 利用者が持つ端末の種類。サインインで名乗れるのはこれだけ。 */
 export const Platform = z.enum(['macos', 'windows', 'linux', 'web']);
 export type Platform = z.infer<typeof Platform>;
+
+/**
+ * チャットの提供者（Slack / LINE）。チャネル連携（channel_links）の区分。
+ *
+ * 電話（Oathra）はここに入れない。電話は会話の入口であって、本人の端末ではない。
+ */
+export const ChannelProvider = z.enum(['slack', 'line']);
+export type ChannelProvider = z.infer<typeof ChannelProvider>;
+
+/**
+ * devices 行の種類。端末（`Platform`）か、チャネル連携の**仮の端末**。
+ *
+ * チャネルから来た依頼にも `deviceId` が要る（`requirePrincipal`、監査の記録）。
+ * 連携 1 件につき仮の端末を 1 つ登録し、連携を切るときに revoke する。
+ * こうすると認証の作りを緩めずに済み、記録に「どこから来た依頼か」が残る。
+ *
+ * **サインインの要求（`DevTokenRequest` / `IdpSignInRequest`）は `Platform` のまま。**
+ * クライアントがチャネルを名乗って端末を作れないようにする。
+ */
+export const DevicePlatform = z.enum([...Platform.options, ...ChannelProvider.options]);
+export type DevicePlatform = z.infer<typeof DevicePlatform>;
+
+export const isChannelDevice = (platform: DevicePlatform): platform is ChannelProvider =>
+  (ChannelProvider.options as readonly string[]).includes(platform);
 
 export const Device = z.object({
   id: DeviceId,
   tenant_id: TenantId,
   user_id: UserId,
-  platform: Platform,
+  platform: DevicePlatform,
   name: z.string().max(200),
   app_version: Semver,
   last_seen_at: Timestamp.nullable(),

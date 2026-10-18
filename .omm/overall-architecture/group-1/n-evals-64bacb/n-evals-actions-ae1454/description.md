@@ -1,0 +1,27 @@
+実在パス: `evals/actions`。44ファイル。
+
+- `evals/actions/agent-host/acceptance.test.ts`
+- `evals/actions/agent-host/meta.yaml`
+- `evals/actions/care/acceptance.test.ts`
+- `evals/actions/care/meta.yaml`
+- `evals/actions/connectors/acceptance.test.ts`
+- `evals/actions/connectors/bridge.test.ts`
+- `evals/actions/connectors/meta.yaml`
+- `evals/actions/connectors/oauth-e2e.test.ts`
+- `evals/actions/connectors/tool-coverage.test.ts`
+- `evals/actions/conversation/long.test.ts`
+- `evals/actions/conversation/meta.yaml`
+- `evals/actions/domain-agents/acceptance.test.ts`
+- `evals/actions/domain-agents/meta.yaml`
+- `evals/actions/ehr/acceptance.test.ts`
+- `evals/actions/ehr/meta.yaml`
+- `evals/actions/final/approval-expiry.test.ts`
+- `evals/actions/final/background-work.test.ts`
+- `evals/actions/final/calendar-gmail-chain.test.ts`
+- `evals/actions/final/chaos.test.ts`
+- `evals/actions/final/e2e.test.ts`
+- `evals/actions/final/meta.yaml`
+- `evals/actions/phase0/acceptance.test.ts`
+- `evals/actions/phase0/meta.yaml`
+- `evals/actions/phase2/acceptance.test.ts`
+- `evals/actions/phase2/meta.yaml`

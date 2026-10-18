@@ -1,0 +1,27 @@
+実在パス: `services/api-gateway`。57ファイル。
+
+- `services/api-gateway/package.json`
+- `services/api-gateway/src/app.ts`
+- `services/api-gateway/src/auth/idp-routes.ts`
+- `services/api-gateway/src/auth/idp.ts`
+- `services/api-gateway/src/auth/keys.ts`
+- `services/api-gateway/src/auth/middleware.ts`
+- `services/api-gateway/src/auth/routes.ts`
+- `services/api-gateway/src/auth/sessions.ts`
+- `services/api-gateway/src/auth/tokens.ts`
+- `services/api-gateway/src/config.ts`
+- `services/api-gateway/src/errors.ts`
+- `services/api-gateway/src/fastify.ts`
+- `services/api-gateway/src/host/bridge.ts`
+- `services/api-gateway/src/host/routes.ts`
+- `services/api-gateway/src/index.ts`
+- `services/api-gateway/src/plugins/rate-limit.ts`
+- `services/api-gateway/src/plugins/request-id.ts`
+- `services/api-gateway/src/rate-limit/index.ts`
+- `services/api-gateway/src/rate-limit/memory.ts`
+- `services/api-gateway/src/rate-limit/redis.ts`
+- `services/api-gateway/src/rate-limit/types.ts`
+- `services/api-gateway/src/request-context.ts`
+- `services/api-gateway/src/routes/agent-host.ts`
+- `services/api-gateway/src/routes/artifacts.ts`
+- `services/api-gateway/src/routes/brief.ts`

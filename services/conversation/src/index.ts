@@ -29,3 +29,14 @@ export {
   type CurrentInfoQuery,
   type CurrentInfoWhen,
 } from './current-info.js';
+export {
+  handleTurn,
+  laneToIntent,
+  taskRequestForLane,
+  type HandleTurnInput,
+  type HandleTurnResult,
+  type LaneTaskInput,
+  type LaneTaskRequest,
+  type TurnDeps,
+  type TurnLogger,
+} from './turn.js';

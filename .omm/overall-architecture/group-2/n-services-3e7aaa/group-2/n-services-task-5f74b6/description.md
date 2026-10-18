@@ -1,0 +1,27 @@
+実在パス: `services/task`。27ファイル。
+
+- `services/task/package.json`
+- `services/task/src/activities.ts`
+- `services/task/src/activity-heartbeat.ts`
+- `services/task/src/activity-types.ts`
+- `services/task/src/agent-plan.ts`
+- `services/task/src/events.ts`
+- `services/task/src/index.ts`
+- `services/task/src/plan.ts`
+- `services/task/src/runtime/fake.ts`
+- `services/task/src/runtime/index.ts`
+- `services/task/src/runtime/temporal.ts`
+- `services/task/src/runtime/types.ts`
+- `services/task/src/service.ts`
+- `services/task/src/task-title.ts`
+- `services/task/src/worker.ts`
+- `services/task/src/workflows.ts`
+- `services/task/test/activity-heartbeat.test.ts`
+- `services/task/test/agent-plan.test.ts`
+- `services/task/test/computer-plan.test.ts`
+- `services/task/test/host-wait.test.ts`
+- `services/task/test/mail-plan.test.ts`
+- `services/task/test/metered-workflow.test.ts`
+- `services/task/test/policy-context.test.ts`
+- `services/task/test/queues.test.ts`
+- `services/task/test/task-title.test.ts`
