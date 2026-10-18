@@ -88,7 +88,27 @@ export interface OathraInboundPage {
   readonly next: number;
 }
 
+/** 委任の今の状態（`GET /v1/agent/phone/grants/<grantId>`）。電話はかけない。 */
+export interface OathraGrantStatus {
+  readonly grant: {
+    readonly id: string;
+    readonly phones: readonly string[];
+    readonly maxCalls: number;
+    readonly maxSeconds: number;
+    readonly expiresAt: number | string;
+    readonly allowReservation?: boolean;
+    readonly allowSales?: boolean;
+    readonly readInbound?: boolean;
+    readonly status: string;
+  };
+  readonly remainingCalls: number;
+  readonly remainingUsd: number;
+  readonly ready: boolean;
+  readonly nextAction: string;
+}
+
 export interface OathraClient {
+  connection(): Promise<OathraGrantStatus>;
   call(request: OathraPhoneRequest, operationKey: string): Promise<OathraCallResult>;
   sales(request: OathraSalesRequest, operationKey: string): Promise<OathraCallResult>;
   status(operationKey: string): Promise<OathraCallResult>;
@@ -168,6 +188,7 @@ export function oathraClient(
 
   const key = (value: string) => encodeURIComponent(value);
   return {
+    connection: () => request(`/agent/phone/grants/${grantId}`),
     call: (input, operationKey) =>
       request(
         '/agent/phone/calls',

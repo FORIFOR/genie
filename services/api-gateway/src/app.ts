@@ -33,6 +33,7 @@ import { registerShareRoutes } from './routes/shares.js';
 import { registerDomainRoutes, type DomainRouteDeps } from './routes/domain.js';
 import { registerBriefRoutes } from './routes/brief.js';
 import { registerConversationRoutes, type ConversationRouteDeps } from './routes/conversations.js';
+import { registerPhoneRoutes, type PhoneRouteDeps } from './routes/phone.js';
 import { registerOnboardingRoutes } from './routes/onboarding.js';
 import { registerVoiceRoutes, type VoiceRouteDeps } from './routes/voice.js';
 import type { ConversationService } from '@genie/service-conversation';
@@ -79,6 +80,8 @@ export interface AppDeps {
   readonly conversations?: ConversationService;
   /** 「電話して」を Oathra 経由の仕事にする。無ければ電話の頼みは受けない。 */
   readonly phone?: ConversationRouteDeps['phone'];
+  /** 利用者ごとの電話の接続（PUT / GET / DELETE /v1/phone/connection）。 */
+  readonly phoneConnections?: PhoneRouteDeps;
   /** connector の接続状態（正本 §2.4・§21）。 */
   readonly connections?: ConnectionService;
   /** Voice OS の Google STT / TTS。未設定でも route は明示的に 503 を返す。 */
@@ -167,6 +170,7 @@ export function buildApp(deps: AppDeps): App {
     ...(deps.dataSources === undefined ? {} : { dataSources: deps.dataSources }),
   });
   if (deps.domain) registerDomainRoutes(app, deps.domain);
+  if (deps.phoneConnections) registerPhoneRoutes(app, deps.phoneConnections);
   if (deps.conversations) {
     registerConversationRoutes(app, {
       conversations: deps.conversations,

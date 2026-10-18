@@ -71,3 +71,22 @@ describe('phone.call plan', () => {
     expect(() => planTask('phone.call', { phone: '090-1234-5678' })).toThrow();
   });
 });
+
+describe('phone.unresolved plan', () => {
+  it('is one READ step with the reason, and needs one', () => {
+    const plan = planTask('phone.unresolved', {
+      notice: '相手が見つかりません',
+      words: '高橋さんに営業電話して',
+    });
+    expect(plan.steps).toEqual([
+      expect.objectContaining({
+        toolId: 'phone.unresolved',
+        risk: 'READ',
+        surface: 'cloud',
+        args: { notice: '相手が見つかりません', words: '高橋さんに営業電話して' },
+      }),
+    ]);
+    expect(plan.steps[0]!.requiresConfirmation).toBeUndefined();
+    expect(() => planTask('phone.unresolved', { words: 'x' })).toThrow();
+  });
+});

@@ -101,6 +101,7 @@ export const KNOWN_TASK_KINDS = [
   'computer.run',
   'phone.call',
   'phone.sales',
+  'phone.unresolved',
 ] as const;
 export type TaskKind = (typeof KNOWN_TASK_KINDS)[number];
 
@@ -431,6 +432,33 @@ function planPhoneSales(input: Record<string, unknown>): TaskPlan {
   };
 }
 
+/**
+ * 電話で頼まれたが進められなかったこと（相手が決まらない、委任が無い等）。
+ * 外へは何もしない。理由と聞き取った言葉を成果物にして、仕事の一覧に残す。
+ */
+function planPhoneUnresolved(input: Record<string, unknown>): TaskPlan {
+  const notice = typeof input['notice'] === 'string' ? input['notice'] : '';
+  const words = typeof input['words'] === 'string' ? input['words'] : '';
+  if (!notice) throw new UnknownTaskKindError('phone.unresolved needs a notice');
+  return {
+    steps: [
+      {
+        index: 0,
+        toolId: 'phone.unresolved',
+        risk: 'READ',
+        surface: 'cloud',
+        message: '電話で頼まれたことを確かめています',
+        args: { notice, words },
+      },
+    ],
+    artifact: {
+      type: 'DOCUMENT',
+      title: '電話の依頼を進められませんでした',
+      mimeType: 'text/markdown',
+    },
+  };
+}
+
 function planComputerRun(input: Record<string, unknown>): TaskPlan {
   const goal = typeof input['goal'] === 'string' ? input['goal'].trim() : '';
   if (!goal) throw new UnknownTaskKindError('computer.run needs a goal');
@@ -505,6 +533,8 @@ export function planTask(kind: string, input: Record<string, unknown>): TaskPlan
       return planPhoneCall(input);
     case 'phone.sales':
       return planPhoneSales(input);
+    case 'phone.unresolved':
+      return planPhoneUnresolved(input);
     default:
       throw new UnknownTaskKindError(kind);
   }

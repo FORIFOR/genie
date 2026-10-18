@@ -8,6 +8,7 @@
  *   - **かけ直さない。**同じ step は同じ operation key。応答が失われても新しい電話にならない
  *   - **会話上の合意を成約と書かない。**Oathra の `succeeded` は、会話で条件を確かめたことまで
  *   - **相手の言葉は記録であって指示ではない。**成果物に引用するだけで、次の操作に使わない
+ *   - **止められたら止める。**待っている間に Genie の仕事が止められたら、Oathra の通話も止める
  */
 import type {
   OathraCallResult,
@@ -38,8 +39,18 @@ export interface PhoneExecutorResult {
 type Executor = { execute(input: TaskLike, step: StepLike): Promise<PhoneExecutorResult> };
 
 export interface PhoneExecutorDeps {
-  readonly client: OathraClient;
-  readonly owner: PhoneOwner;
+  /** その利用者の Oathra。繋いでいなければ null（電話は「繋がっていない」で止まる）。 */
+  readonly clientFor: (owner: PhoneOwner) => Promise<OathraClient | null>;
+  /**
+   * 実行基盤からの取り消し（Temporal の activity なら `Context.current().cancellationSignal`）。
+   * ここが Temporal を import しないための差し込み口。
+   */
+  readonly signal?: () => AbortSignal | undefined;
+  /**
+   * 仕事が止められたか（task が CANCELLING か）。Genie の取り消しは workflow への signal なので、
+   * 走っている activity には届かない。状態を読み直す周期ごとにこちらも見る。
+   */
+  readonly isCancelled?: (task: TaskLike) => Promise<boolean>;
   /** 状態を読み直す間隔。 */
   readonly pollMs?: number;
   /** ここまで待って終わらなければ、結果を待たずに止める（かけ直しはしない）。 */
@@ -56,6 +67,14 @@ export class PhoneUnavailableError extends Error {
   }
 }
 
+/** 待っている間に止められた。Oathra の通話も止めるよう頼んだあと。 */
+export class PhoneCancelledError extends Error {
+  constructor(message = '電話を止めました。') {
+    super(message);
+    this.name = 'PhoneCancelledError';
+  }
+}
+
 /** step ごとに 1 つ。**同じ step を何度走らせても、Oathra では同じ 1 件になる。** */
 export function operationKeyFor(input: TaskLike, step: StepLike): string {
   return `genie-${input.taskId}-${String(step.index)}`;
@@ -69,31 +88,54 @@ const SALES_HEADLINE: Readonly<Record<string, string>> = {
 
 export function phoneExecutors(
   deps: PhoneExecutorDeps,
-): Record<'phone.call' | 'phone.sales', Executor> {
+): Record<'phone.call' | 'phone.sales' | 'phone.unresolved', Executor> {
   const pollMs = deps.pollMs ?? 3_000;
   // 1 通話は Oathra 側で最長 5 分。activity の上限（5 分）より手前で止める
   const deadlineMs = deps.deadlineMs ?? 270_000;
   const sleep = deps.sleep ?? ((ms: number) => new Promise((r) => setTimeout(r, ms)));
   const now = deps.now ?? Date.now;
 
-  function ownerOnly(input: TaskLike): void {
-    // 接続は 1 人のもの。ほかの利用者の task から、この人の電話を使わせない
-    if (input.tenantId !== deps.owner.tenantId || input.userId !== deps.owner.userId) {
+  /** 接続は利用者ごと。task を作った本人の接続だけを使い、無ければ止まる。 */
+  async function clientOf(input: TaskLike): Promise<OathraClient> {
+    const client = await deps.clientFor({ tenantId: input.tenantId, userId: input.userId });
+    if (!client)
       throw new PhoneUnavailableError('この利用者には Oathra の電話が繋がっていません。');
-    }
+    return client;
   }
 
-  async function settle(key: string, first: OathraCallResult): Promise<OathraCallResult> {
+  async function cancelled(input: TaskLike): Promise<boolean> {
+    if (deps.signal?.()?.aborted) return true;
+    return deps.isCancelled ? deps.isCancelled(input).catch(() => false) : false;
+  }
+
+  async function settle(
+    client: OathraClient,
+    input: TaskLike,
+    key: string,
+    first: OathraCallResult,
+  ): Promise<OathraCallResult> {
     const until = now() + deadlineMs;
     let current = first;
     while (!current.terminal && current.outcome === 'pending') {
+      if (await cancelled(input)) {
+        /*
+         * 止めるよう頼むだけ。かかってしまった電話は取り消せないし、止まったかどうかは
+         * Oathra の記録が正。頼むのに失敗しても、Genie の側は止める。
+         */
+        const stopped = await client.cancel(key).catch(() => null);
+        throw new PhoneCancelledError(
+          stopped?.terminal
+            ? '電話を止めました。'
+            : '電話を止めるよう Oathra に頼みました。止まったかは Oathra の記録で確かめてください。',
+        );
+      }
       if (now() >= until) {
         throw new PhoneUnavailableError(
           '通話の結果がまだ出ていません。Oathra の記録で確かめてください。Genie からかけ直すことはしません。',
         );
       }
       await sleep(pollMs);
-      current = await deps.client.status(key);
+      current = await client.status(key);
     }
     return current;
   }
@@ -127,7 +169,7 @@ export function phoneExecutors(
   return {
     'phone.call': {
       async execute(input, step) {
-        ownerOnly(input);
+        const client = await clientOf(input);
         const call = step.args['call'] as
           { phone?: unknown; name?: unknown; instruction?: unknown } | undefined;
         if (typeof call?.phone !== 'string' || typeof call.instruction !== 'string') {
@@ -135,17 +177,17 @@ export function phoneExecutors(
         }
         const name = typeof call.name === 'string' && call.name ? call.name : '相手';
         const key = operationKeyFor(input, step);
-        const first = await deps.client.call(
+        const first = await client.call(
           { phone: call.phone, name, instruction: call.instruction, conversationMode: 'message' },
           key,
         );
-        const outcome = await settle(key, first);
+        const outcome = await settle(client, input, key, first);
         return finished(`電話: ${name}`, outcome, '用件をお伝えしました。');
       },
     },
     'phone.sales': {
       async execute(input, step) {
-        ownerOnly(input);
+        const client = await clientOf(input);
         const sales = step.args['sales'] as Partial<OathraSalesRequest> | undefined;
         const shownName = step.args['相手'];
         if (!sales?.contactId || !sales.request || typeof shownName !== 'string') {
@@ -155,7 +197,7 @@ export function phoneExecutors(
          * 承認カードに出た相手と、実際にかける相手が同じかを、かける直前に確かめる。
          * task の入力は作った人が書けるので、名前だけ違う id が紛れ込みうる。
          */
-        const context = await deps.client.salesContext();
+        const context = await client.salesContext();
         const contact = context.contacts.find((c) => c.id === sales.contactId);
         if (!contact || (contact.name || contact.company) !== shownName) {
           throw new PhoneUnavailableError(
@@ -168,7 +210,7 @@ export function phoneExecutors(
           );
         }
         const key = operationKeyFor(input, step);
-        const first = await deps.client.sales(
+        const first = await client.sales(
           {
             contactId: sales.contactId,
             request: sales.request,
@@ -177,12 +219,40 @@ export function phoneExecutors(
           },
           key,
         );
-        const outcome = await settle(key, first);
+        const outcome = await settle(client, input, key, first);
         return finished(
           `営業電話: ${shownName}`,
           outcome,
           SALES_HEADLINE[sales.goal ?? 'introduce']!,
         );
+      },
+    },
+    /*
+     * 電話で頼まれたが、進められなかったこと。Oathra もモデルも呼ばない。
+     * 黙って捨てると、頼んだ本人は「伝わった」と思ったままになる。
+     */
+    'phone.unresolved': {
+      async execute(_input, step) {
+        const notice = typeof step.args['notice'] === 'string' ? step.args['notice'] : '';
+        const words = typeof step.args['words'] === 'string' ? step.args['words'] : '';
+        const lines = [
+          '# 電話で頼まれたことを進められませんでした',
+          '',
+          notice ? oneLine(notice) : '理由が分かりません。',
+          '',
+          '## 電話で聞き取ったこと',
+          '',
+          ...(words
+            ? words.split('\n').map((line) => `- ${oneLine(line)}`)
+            : ['- （記録がありません）']),
+          '',
+          '直したうえで、Genie にもう一度頼んでください。電話はかけていません。',
+        ];
+        return {
+          result: { unresolved: true },
+          detail: '進められませんでした',
+          artifact: { title: '電話の依頼を進められませんでした', markdown: lines.join('\n') },
+        };
       },
     },
   };

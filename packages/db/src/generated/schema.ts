@@ -423,6 +423,17 @@ export interface OnboardingStates {
   user_id: string;
 }
 
+export interface PhoneConnections {
+  base_url: string;
+  created_at: Generated<Timestamp>;
+  grant_id: string;
+  id: string;
+  revoked_at: Timestamp | null;
+  tenant_id: string;
+  token_ciphertext: string;
+  user_id: string;
+}
+
 export interface PluginAssets {
   content: Buffer;
   created_at: Generated<Timestamp>;
@@ -768,6 +779,7 @@ export interface DB {
   meetings: Meetings;
   memberships: Memberships;
   onboarding_states: OnboardingStates;
+  phone_connections: PhoneConnections;
   plugin_assets: PluginAssets;
   plugin_installs: PluginInstalls;
   plugin_permissions: PluginPermissions;

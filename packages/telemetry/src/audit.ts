@@ -43,6 +43,9 @@ export const AUDIT_ACTIONS = [
   'artifact.share_revoked',
   'artifact.share_accessed',
   'host.capability_denied',
+  // 電話（Oathra）の資格情報を預かる・手放す。トークンは payload に入れない
+  'phone.connected',
+  'phone.disconnected',
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];

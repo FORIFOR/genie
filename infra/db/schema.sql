@@ -723,6 +723,27 @@ ALTER TABLE ONLY public.onboarding_states FORCE ROW LEVEL SECURITY;
 
 
 --
+-- Name: phone_connections; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.phone_connections (
+    id uuid NOT NULL,
+    tenant_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    base_url text NOT NULL,
+    grant_id text NOT NULL,
+    token_ciphertext text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    revoked_at timestamp with time zone,
+    CONSTRAINT phone_connections_base_url_check CHECK (((length(base_url) >= 1) AND (length(base_url) <= 512))),
+    CONSTRAINT phone_connections_grant_id_check CHECK (((length(grant_id) >= 1) AND (length(grant_id) <= 128))),
+    CONSTRAINT phone_connections_token_ciphertext_check CHECK (((length(token_ciphertext) >= 1) AND (length(token_ciphertext) <= 4096)))
+);
+
+ALTER TABLE ONLY public.phone_connections FORCE ROW LEVEL SECURITY;
+
+
+--
 -- Name: plugin_assets; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1472,6 +1493,14 @@ ALTER TABLE ONLY public.onboarding_states
 
 
 --
+-- Name: phone_connections phone_connections_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.phone_connections
+    ADD CONSTRAINT phone_connections_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: plugin_assets plugin_assets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1978,6 +2007,13 @@ CREATE INDEX meetings_live ON public.meetings USING btree (tenant_id) WHERE (sta
 --
 
 CREATE INDEX meetings_recent ON public.meetings USING btree (tenant_id, started_at DESC);
+
+
+--
+-- Name: phone_connections_active_user; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX phone_connections_active_user ON public.phone_connections USING btree (tenant_id, user_id) WHERE (revoked_at IS NULL);
 
 
 --
@@ -2902,6 +2938,22 @@ ALTER TABLE ONLY public.onboarding_states
 
 
 --
+-- Name: phone_connections phone_connections_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.phone_connections
+    ADD CONSTRAINT phone_connections_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: phone_connections phone_connections_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.phone_connections
+    ADD CONSTRAINT phone_connections_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
 -- Name: plugin_assets plugin_assets_plugin_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3671,6 +3723,19 @@ CREATE POLICY onboarding_states_tenant_isolation ON public.onboarding_states USI
 
 
 --
+-- Name: phone_connections; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.phone_connections ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: phone_connections phone_connections_tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY phone_connections_tenant_isolation ON public.phone_connections USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
+
+
+--
 -- Name: plugin_installs; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -3972,3 +4037,4 @@ INSERT INTO schema_migrations (version) VALUES ('20260907170000');
 INSERT INTO schema_migrations (version) VALUES ('20260909120000');
 INSERT INTO schema_migrations (version) VALUES ('20260910003000');
 INSERT INTO schema_migrations (version) VALUES ('20261018090000');
+INSERT INTO schema_migrations (version) VALUES ('20261018120000');

@@ -3,7 +3,12 @@
  * **かけ直さない・成約と書かない・承認した相手と違えばかけない**を確かめる。
  */
 import { describe, expect, it, vi } from 'vitest';
-import { PhoneUnavailableError, operationKeyFor, phoneExecutors } from '../src/executor.js';
+import {
+  PhoneCancelledError,
+  PhoneUnavailableError,
+  operationKeyFor,
+  phoneExecutors,
+} from '../src/executor.js';
 import type { OathraCallResult, OathraClient } from '../src/oathra.js';
 
 const owner = { tenantId: 't-1', userId: 'u-1' };
@@ -37,7 +42,8 @@ function fakeClient(
     call: vi.fn(async () => result({ record: { transcript: [] } })),
     sales: vi.fn(async () => result()),
     status: vi.fn(async () => queue.shift() ?? result()),
-    cancel: vi.fn(),
+    cancel: vi.fn(async (_key: string) => result()),
+    connection: vi.fn(),
     salesContext: vi.fn(async () => ({ products: [], contacts })),
     inbound: vi.fn(),
   } satisfies OathraClient;
@@ -53,9 +59,10 @@ const salesStep = (over: Record<string, unknown> = {}) => ({
   },
 });
 
+// 接続は利用者ごと。この owner にだけ返す
 const deps = (client: OathraClient, extra = {}) => ({
-  client,
-  owner,
+  clientFor: async (who: { tenantId: string; userId: string }) =>
+    who.tenantId === owner.tenantId && who.userId === owner.userId ? client : null,
   pollMs: 1,
   sleep: async () => {},
   ...extra,
@@ -157,5 +164,70 @@ describe('phone.call', () => {
       `genie-${task.taskId}-0`,
     );
     expect(out.detail).toBe('会話で確認済み');
+  });
+});
+
+describe('cancellation', () => {
+  it('Genie の仕事が止められたら、Oathra の通話も止めるよう頼んでから止まる', async () => {
+    const client = fakeClient(Array.from({ length: 5 }, () => result({ state: 'ACTIVE' })));
+    client.cancel.mockResolvedValue(
+      result({ state: 'CANCELLED', terminal: true, outcome: 'cancelled' }),
+    );
+    let checks = 0;
+    const run = phoneExecutors(deps(client, { isCancelled: async () => (checks += 1) >= 2 }))[
+      'phone.sales'
+    ].execute(task, salesStep());
+    await expect(run).rejects.toThrow(PhoneCancelledError);
+    expect(client.cancel).toHaveBeenCalledWith(operationKeyFor(task, salesStep()));
+    expect(client.sales).toHaveBeenCalledTimes(1);
+  });
+
+  it('実行基盤の取り消し（AbortSignal）でも止まり、止める依頼が失敗しても Genie 側は止まる', async () => {
+    const client = fakeClient([result({ state: 'ACTIVE' })]);
+    client.cancel.mockRejectedValue(new Error('network'));
+    const controller = new AbortController();
+    controller.abort();
+    await expect(
+      phoneExecutors(deps(client, { signal: () => controller.signal }))['phone.call'].execute(
+        task,
+        {
+          index: 0,
+          toolId: 'phone.call',
+          args: { call: { phone: '090-1234-5678', name: '相手', instruction: '伝える' } },
+        },
+      ),
+    ).rejects.toThrow(/止まったかは Oathra の記録で確かめてください/);
+    expect(client.cancel).toHaveBeenCalledTimes(1);
+  });
+
+  it('取り消しの確認が失敗しても、通話は待ち続ける（止めたと思い込まない）', async () => {
+    const client = fakeClient([
+      result({ terminal: true, outcome: 'succeeded', state: 'COMPLETED' }),
+    ]);
+    const out = await phoneExecutors(
+      deps(client, { isCancelled: async () => Promise.reject(new Error('db down')) }),
+    )['phone.sales'].execute(task, salesStep());
+    expect(out.detail).toBe('会話で確認済み');
+    expect(client.cancel).not.toHaveBeenCalled();
+  });
+});
+
+describe('phone.unresolved', () => {
+  it('理由と聞き取った言葉を成果物にし、Oathra には触れない', async () => {
+    const client = fakeClient([]);
+    const clientFor = vi.fn(async () => client);
+    const out = await phoneExecutors({ clientFor })['phone.unresolved'].execute(task, {
+      index: 0,
+      toolId: 'phone.unresolved',
+      args: {
+        notice: '電話する相手が見つかりませんでした。',
+        words: '高橋さんに営業電話して\n[ここ](https://x)',
+      },
+    });
+    expect(clientFor).not.toHaveBeenCalled();
+    expect(out.artifact?.markdown).toContain('電話する相手が見つかりませんでした。');
+    expect(out.artifact?.markdown).toContain('- 高橋さんに営業電話して');
+    expect(out.artifact?.markdown).toContain('\\[ここ\\](https://x)');
+    expect(out.artifact?.markdown).toContain('電話はかけていません');
   });
 });

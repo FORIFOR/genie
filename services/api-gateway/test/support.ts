@@ -90,6 +90,8 @@ export interface MakeAppOptions {
   readonly dataSources?: DataSourceResolver;
   /** 電話（Oathra）の代役。省略すると電話の頼みは受けない。 */
   readonly phone?: import('../src/app.js').AppDeps['phone'];
+  /** 電話の接続の預かり先。省略すると /v1/phone/connection は生えない。 */
+  readonly phoneConnections?: import('../src/app.js').AppDeps['phoneConnections'];
 }
 
 export async function makeTestApp(options: MakeAppOptions): Promise<TestApp> {
@@ -154,6 +156,9 @@ export async function makeTestApp(options: MakeAppOptions): Promise<TestApp> {
     hostBridge: new HostStepBridge({ db }),
     ...(options.dataSources === undefined ? {} : { dataSources: options.dataSources }),
     ...(options.phone === undefined ? {} : { phone: options.phone }),
+    ...(options.phoneConnections === undefined
+      ? {}
+      : { phoneConnections: options.phoneConnections }),
     meetings: {
       meetings,
       recordings,
