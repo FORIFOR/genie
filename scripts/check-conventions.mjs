@@ -54,6 +54,13 @@ const TABLE_OWNERS = {
     'plugin_publishers',
   ],
   'services/agent-runtime': ['agent_profiles', 'agent_runs', 'domain_entities', 'domain_links'],
+  'services/channels': [
+    'channel_links',
+    'channel_threads',
+    'channel_inbox',
+    'channel_outbox',
+    'channel_link_codes',
+  ],
   'services/notification': [],
   'services/context': [],
   // 横断・追記のみ。監査は telemetry が一手に引き受ける。

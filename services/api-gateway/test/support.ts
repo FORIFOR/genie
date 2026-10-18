@@ -23,6 +23,7 @@ import {
   type ScriptLine,
 } from '@genie/service-meeting';
 import { buildApp } from '../src/app.js';
+import { channelsFromEnv } from '../src/channels.js';
 import type { HostBridge } from '../src/host/bridge.js';
 import { MemoryRateLimiter } from '../src/rate-limit/memory.js';
 import { loadSigningKeys } from '../src/auth/keys.js';
@@ -68,6 +69,8 @@ export interface TestApp {
   readonly shares: ShareService;
   readonly meetings: MeetingService;
   readonly recordings: MemoryRecordingStore;
+  /** チャットの見回り（pump）を手で回すため。channels を渡したときだけ。 */
+  readonly channels: import('../src/channels.js').GatewayChannels | null;
   close(): Promise<void>;
 }
 
@@ -90,6 +93,8 @@ export interface MakeAppOptions {
   readonly dataSources?: DataSourceResolver;
   /** 電話（Oathra）の代役。省略すると電話の頼みは受けない。 */
   readonly phone?: import('../src/app.js').AppDeps['phone'];
+  /** チャット（Slack / LINE）。env は本番と同じ名前、外への送信は fetchImpl が受ける。 */
+  readonly channels?: { readonly env: NodeJS.ProcessEnv; readonly fetchImpl: typeof fetch };
 }
 
 export async function makeTestApp(options: MakeAppOptions): Promise<TestApp> {
@@ -133,6 +138,7 @@ export async function makeTestApp(options: MakeAppOptions): Promise<TestApp> {
     idp: { google: null, apple: null, line: null, publicUrl: null },
   };
 
+  const chat: { current: import('../src/channels.js').GatewayChannels | null } = { current: null };
   const app = buildApp({
     config,
     db,
@@ -154,6 +160,22 @@ export async function makeTestApp(options: MakeAppOptions): Promise<TestApp> {
     hostBridge: new HostStepBridge({ db }),
     ...(options.dataSources === undefined ? {} : { dataSources: options.dataSources }),
     ...(options.phone === undefined ? {} : { phone: options.phone }),
+    ...(options.channels === undefined
+      ? {}
+      : {
+          channels: (turnDeps: import('@genie/service-conversation').TurnDeps) => {
+            chat.current = channelsFromEnv(options.channels!.env, {
+              db,
+              tasks,
+              conversations,
+              library,
+              turnDeps,
+              logger: createLogger({ service: 'test', level: 'silent' }),
+              fetchImpl: options.channels!.fetchImpl,
+            });
+            return chat.current?.routes ?? null;
+          },
+        }),
     meetings: {
       meetings,
       recordings,
@@ -178,6 +200,7 @@ export async function makeTestApp(options: MakeAppOptions): Promise<TestApp> {
     shares,
     meetings,
     recordings,
+    channels: chat.current,
     async close() {
       await app.close();
       if (owned) await db.close();

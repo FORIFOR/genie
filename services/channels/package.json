@@ -21,7 +21,10 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@genie/contracts": "workspace:*"
+    "@genie/contracts": "workspace:*",
+    "@genie/db": "workspace:*",
+    "@genie/telemetry": "workspace:*",
+    "kysely": "catalog:"
   },
   "devDependencies": {
     "vitest": "catalog:"

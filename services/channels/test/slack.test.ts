@@ -159,7 +159,7 @@ describe('normalizeSlackEvent', () => {
       kind: 'ignored',
       reason: 'unsupported_event',
     });
-    expect(normalizeSlackEvent(dm({ type: 'app_mention' }))).toEqual({
+    expect(normalizeSlackEvent(dm({ type: 'reaction_added' }))).toEqual({
       kind: 'ignored',
       reason: 'unsupported_event',
     });

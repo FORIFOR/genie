@@ -43,6 +43,10 @@ export const AUDIT_ACTIONS = [
   'artifact.share_revoked',
   'artifact.share_accessed',
   'host.capability_denied',
+  // チャネル連携（Slack / LINE）。外のアカウントと本人を結ぶ・切る、チャットからの承認
+  'channel.linked',
+  'channel.unlinked',
+  'channel.approval_relayed',
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];

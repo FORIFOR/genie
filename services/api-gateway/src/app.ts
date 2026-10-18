@@ -33,6 +33,8 @@ import { registerShareRoutes } from './routes/shares.js';
 import { registerDomainRoutes, type DomainRouteDeps } from './routes/domain.js';
 import { registerBriefRoutes } from './routes/brief.js';
 import { registerConversationRoutes, type ConversationRouteDeps } from './routes/conversations.js';
+import { registerChannelRoutes, type ChannelRouteDeps } from './routes/channels.js';
+import type { TurnDeps } from '@genie/service-conversation';
 import { registerOnboardingRoutes } from './routes/onboarding.js';
 import { registerVoiceRoutes, type VoiceRouteDeps } from './routes/voice.js';
 import type { ConversationService } from '@genie/service-conversation';
@@ -79,6 +81,11 @@ export interface AppDeps {
   readonly conversations?: ConversationService;
   /** 「電話して」を Oathra 経由の仕事にする。無ければ電話の頼みは受けない。 */
   readonly phone?: ConversationRouteDeps['phone'];
+  /**
+   * チャット（Slack / LINE）。発話の入口は Task Dock と同じ handleTurn なので、
+   * ここで組んだ TurnDeps を受け取って受け口の依存を返す。null なら受け口を開かない。
+   */
+  readonly channels?: (turnDeps: TurnDeps) => ChannelRouteDeps | null;
   /** connector の接続状態（正本 §2.4・§21）。 */
   readonly connections?: ConnectionService;
   /** Voice OS の Google STT / TTS。未設定でも route は明示的に 503 を返す。 */
@@ -168,10 +175,13 @@ export function buildApp(deps: AppDeps): App {
   });
   if (deps.domain) registerDomainRoutes(app, deps.domain);
   if (deps.conversations) {
-    registerConversationRoutes(app, {
+    /*
+     * 発話から仕事へ（handleTurn）の依存。Task Dock（HTTP）とチャットで**同じものを使う。**
+     * 別々に組むと、片方だけ電話や Work Context が効かない、ということが起きる。
+     */
+    const turnDeps: TurnDeps = {
       conversations: deps.conversations,
       tasks: deps.tasks,
-      redis: deps.redis,
       ...(deps.phone ? { phone: deps.phone } : {}),
       ...(deps.work
         ? {
@@ -187,10 +197,17 @@ export function buildApp(deps: AppDeps): App {
               ),
           }
         : {}),
+    };
+    registerConversationRoutes(app, {
+      ...turnDeps,
+      conversations: deps.conversations,
+      redis: deps.redis,
       ...(deps.ssePollIntervalMs === undefined
         ? {}
         : { ssePollIntervalMs: deps.ssePollIntervalMs }),
     });
+    const channels = deps.channels?.(turnDeps) ?? null;
+    if (channels) registerChannelRoutes(app, channels);
   }
   if (deps.work) {
     registerWorkRoutes(app, {

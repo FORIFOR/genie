@@ -142,6 +142,16 @@ export interface ChannelInbox {
   received_at: Generated<Timestamp>;
 }
 
+export interface ChannelLinkCodes {
+  code_hash: string;
+  created_at: Generated<Timestamp>;
+  expires_at: Timestamp;
+  provider: string;
+  tenant_id: string;
+  used_at: Timestamp | null;
+  user_id: string;
+}
+
 export interface ChannelLinks {
   created_at: Generated<Timestamp>;
   device_id: string;
@@ -747,6 +757,7 @@ export interface DB {
   audit_events: AuditEvents;
   audit_sequences: AuditSequences;
   channel_inbox: ChannelInbox;
+  channel_link_codes: ChannelLinkCodes;
   channel_links: ChannelLinks;
   channel_outbox: ChannelOutbox;
   channel_threads: ChannelThreads;

@@ -6,7 +6,7 @@
  * 他人の発言を指示として扱わないための線引き。
  */
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import type { IgnoredReason, InboundChannelMessage } from './message.js';
+import type { IgnoredReason, InboundChannelAction, InboundChannelMessage } from './message.js';
 
 /** Slack が勧める許容幅。これより古い（新しい）署名は再送攻撃とみなす。 */
 export const SLACK_SIGNATURE_WINDOW_MS = 5 * 60 * 1000;
@@ -63,6 +63,7 @@ export function normalizeSlackEvent(payload: unknown): SlackInbound {
   if (!isObject(event) || typeof team !== 'string' || typeof eventId !== 'string') {
     return { kind: 'ignored', reason: 'malformed' };
   }
+  if (event['type'] === 'app_mention') return mentionOf(event, team, eventId, eventTime);
   if (event['type'] !== 'message') return { kind: 'ignored', reason: 'unsupported_event' };
   // Bot（自分の返事を含む）を拾うと、自分の発言に自分で答え続ける
   if (event['bot_id'] !== undefined || event['bot_profile'] !== undefined) {
@@ -95,6 +96,100 @@ export function normalizeSlackEvent(payload: unknown): SlackInbound {
       threadKey: threadTs ?? ts,
       text,
       sentAt: typeof eventTime === 'number' ? eventTime * 1000 : Math.round(Number(ts) * 1000),
+      replyToken: null,
+    },
+  };
+}
+
+/**
+ * チャンネルでのメンション（Phase 3）。発話は本人のものだけ受け、`<@U…>` は取り除く。
+ * 返す先（DM）は連携を照合してから決めるので、ここでは `mention` に元の場所を残す。
+ */
+function mentionOf(
+  event: Record<string, unknown>,
+  team: string,
+  eventId: string,
+  eventTime: unknown,
+): SlackInbound {
+  if (event['bot_id'] !== undefined || event['bot_profile'] !== undefined) {
+    return { kind: 'ignored', reason: 'bot_message' };
+  }
+  const user = event['user'];
+  const channel = event['channel'];
+  const ts = event['ts'];
+  const raw = event['text'];
+  if (typeof user !== 'string' || typeof channel !== 'string' || typeof ts !== 'string') {
+    return { kind: 'ignored', reason: 'malformed' };
+  }
+  if (typeof raw !== 'string') return { kind: 'ignored', reason: 'not_text' };
+  const text = raw
+    .replace(/<@[A-Z0-9]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!text) return { kind: 'ignored', reason: 'empty_text' };
+  const threadTs = typeof event['thread_ts'] === 'string' ? event['thread_ts'] : ts;
+  return {
+    kind: 'message',
+    message: {
+      provider: 'slack',
+      eventId,
+      workspaceId: team,
+      subject: user,
+      // 仮の返す先。連携を照合したあと、本人との DM に置き換える
+      destination: channel,
+      threadKey: `mention:${channel}:${threadTs}`,
+      text,
+      sentAt: typeof eventTime === 'number' ? eventTime * 1000 : Math.round(Number(ts) * 1000),
+      replyToken: null,
+      mention: { channel, ts: threadTs },
+    },
+  };
+}
+
+export type SlackActionInbound =
+  | { readonly kind: 'action'; readonly action: InboundChannelAction }
+  | { readonly kind: 'ignored'; readonly reason: IgnoredReason };
+
+/**
+ * Interactivity の `payload`（block_actions）を読む。**署名を確かめてから呼ぶ。**
+ * 受けるのは DM の中のボタンだけ。
+ */
+export function normalizeSlackAction(payload: unknown): SlackActionInbound {
+  if (!isObject(payload) || payload['type'] !== 'block_actions') {
+    return { kind: 'ignored', reason: 'unsupported_event' };
+  }
+  const user = payload['user'];
+  const team = payload['team'];
+  const channel = payload['channel'];
+  const actions = payload['actions'];
+  const trigger = payload['trigger_id'];
+  if (
+    !isObject(user) ||
+    !isObject(channel) ||
+    !Array.isArray(actions) ||
+    typeof trigger !== 'string'
+  ) {
+    return { kind: 'ignored', reason: 'malformed' };
+  }
+  const userId = user['id'];
+  const teamId = isObject(team) ? team['id'] : user['team_id'];
+  const channelId = channel['id'];
+  const first: unknown = actions[0];
+  const value = isObject(first) ? first['value'] : undefined;
+  if (typeof userId !== 'string' || typeof teamId !== 'string' || typeof channelId !== 'string') {
+    return { kind: 'ignored', reason: 'malformed' };
+  }
+  if (!channelId.startsWith('D')) return { kind: 'ignored', reason: 'not_direct_message' };
+  if (typeof value !== 'string' || !value) return { kind: 'ignored', reason: 'malformed' };
+  return {
+    kind: 'action',
+    action: {
+      provider: 'slack',
+      eventId: `action:${trigger}`,
+      workspaceId: teamId,
+      subject: userId,
+      destination: channelId,
+      value,
       replyToken: null,
     },
   };

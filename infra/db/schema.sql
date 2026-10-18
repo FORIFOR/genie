@@ -249,6 +249,25 @@ CREATE TABLE public.channel_inbox (
 
 
 --
+-- Name: channel_link_codes; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.channel_link_codes (
+    code_hash text NOT NULL,
+    tenant_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    provider text NOT NULL,
+    expires_at timestamp with time zone NOT NULL,
+    used_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT channel_link_codes_code_hash_check CHECK ((length(code_hash) = 64)),
+    CONSTRAINT channel_link_codes_provider_check CHECK ((provider = ANY (ARRAY['slack'::text, 'line'::text])))
+);
+
+ALTER TABLE ONLY public.channel_link_codes FORCE ROW LEVEL SECURITY;
+
+
+--
 -- Name: channel_links; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1304,6 +1323,14 @@ ALTER TABLE ONLY public.channel_inbox
 
 
 --
+-- Name: channel_link_codes channel_link_codes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.channel_link_codes
+    ADD CONSTRAINT channel_link_codes_pkey PRIMARY KEY (code_hash);
+
+
+--
 -- Name: channel_links channel_links_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1803,6 +1830,13 @@ CREATE UNIQUE INDEX audit_events_prev ON public.audit_events USING btree (tenant
 --
 
 CREATE INDEX channel_inbox_by_age ON public.channel_inbox USING btree (received_at);
+
+
+--
+-- Name: channel_link_codes_by_user; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX channel_link_codes_by_user ON public.channel_link_codes USING btree (tenant_id, user_id);
 
 
 --
@@ -2411,6 +2445,22 @@ ALTER TABLE ONLY public.audit_events
 
 ALTER TABLE ONLY public.audit_sequences
     ADD CONSTRAINT audit_sequences_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: channel_link_codes channel_link_codes_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.channel_link_codes
+    ADD CONSTRAINT channel_link_codes_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: channel_link_codes channel_link_codes_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.channel_link_codes
+    ADD CONSTRAINT channel_link_codes_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
 
 
 --
@@ -3398,6 +3448,19 @@ CREATE POLICY audit_sequences_tenant_isolation ON public.audit_sequences USING (
 
 
 --
+-- Name: channel_link_codes; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.channel_link_codes ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: channel_link_codes channel_link_codes_tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY channel_link_codes_tenant_isolation ON public.channel_link_codes USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
+
+
+--
 -- Name: channel_links; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -3972,3 +4035,4 @@ INSERT INTO schema_migrations (version) VALUES ('20260907170000');
 INSERT INTO schema_migrations (version) VALUES ('20260909120000');
 INSERT INTO schema_migrations (version) VALUES ('20260910003000');
 INSERT INTO schema_migrations (version) VALUES ('20261018090000');
+INSERT INTO schema_migrations (version) VALUES ('20261018100000');

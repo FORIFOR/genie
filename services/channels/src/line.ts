@@ -6,7 +6,7 @@
  */
 import { createHmac } from 'node:crypto';
 import { constantTimeEqual } from './slack.js';
-import type { IgnoredReason, InboundChannelMessage } from './message.js';
+import type { IgnoredReason, InboundChannelAction, InboundChannelMessage } from './message.js';
 
 export interface LineSignatureInput {
   readonly channelSecret: string;
@@ -26,6 +26,8 @@ export function verifyLineSignature(input: LineSignatureInput): boolean {
 
 export interface LineInbound {
   readonly messages: readonly InboundChannelMessage[];
+  /** ボタン（postback）。値は Genie が署名して載せたもの。押した人の照合は別に行う。 */
+  readonly actions: readonly InboundChannelAction[];
   /** 受けなかったイベントと理由。黙って捨てない。 */
   readonly ignored: readonly { readonly eventId: string | null; readonly reason: IgnoredReason }[];
 }
@@ -37,32 +39,38 @@ export interface LineInbound {
  */
 export function normalizeLineWebhook(payload: unknown): LineInbound {
   if (!isObject(payload) || !Array.isArray(payload['events'])) {
-    return { messages: [], ignored: [{ eventId: null, reason: 'malformed' }] };
+    return { messages: [], actions: [], ignored: [{ eventId: null, reason: 'malformed' }] };
   }
   const destination = payload['destination'];
   if (typeof destination !== 'string') {
-    return { messages: [], ignored: [{ eventId: null, reason: 'malformed' }] };
+    return { messages: [], actions: [], ignored: [{ eventId: null, reason: 'malformed' }] };
   }
 
   const messages: InboundChannelMessage[] = [];
+  const actions: InboundChannelAction[] = [];
   const ignored: { eventId: string | null; reason: IgnoredReason }[] = [];
   for (const event of payload['events'] as unknown[]) {
     const result = normalizeEvent(destination, event);
     if ('message' in result) messages.push(result.message);
+    else if ('action' in result) actions.push(result.action);
     else ignored.push(result);
   }
-  return { messages, ignored };
+  return { messages, actions, ignored };
 }
 
 function normalizeEvent(
   destination: string,
   event: unknown,
-): { message: InboundChannelMessage } | { eventId: string | null; reason: IgnoredReason } {
+):
+  | { message: InboundChannelMessage }
+  | { action: InboundChannelAction }
+  | { eventId: string | null; reason: IgnoredReason } {
   if (!isObject(event)) return { eventId: null, reason: 'malformed' };
   const eventId = typeof event['webhookEventId'] === 'string' ? event['webhookEventId'] : null;
   if (!eventId) return { eventId: null, reason: 'malformed' };
   // 別のチャネル（モジュール）が応答を持っている間は、こちらは答えない
   if (event['mode'] === 'standby') return { eventId, reason: 'standby_mode' };
+  if (event['type'] === 'postback') return postbackOf(destination, eventId, event);
   if (event['type'] !== 'message') return { eventId, reason: 'unsupported_event' };
 
   const source = event['source'];
@@ -91,6 +99,35 @@ function normalizeEvent(
       threadKey: userId,
       text,
       sentAt: typeof timestamp === 'number' ? timestamp : 0,
+      replyToken: typeof replyToken === 'string' ? replyToken : null,
+    },
+  };
+}
+
+/** 1:1 トークのボタン（postback）。グループの中のボタンは受けない。 */
+function postbackOf(
+  destination: string,
+  eventId: string,
+  event: Record<string, unknown>,
+): { action: InboundChannelAction } | { eventId: string; reason: IgnoredReason } {
+  const source = event['source'];
+  if (!isObject(source) || source['type'] !== 'user')
+    return { eventId, reason: 'not_direct_message' };
+  const userId = source['userId'];
+  const postback = event['postback'];
+  const data = isObject(postback) ? postback['data'] : undefined;
+  if (typeof userId !== 'string' || typeof data !== 'string' || !data) {
+    return { eventId, reason: 'malformed' };
+  }
+  const replyToken = event['replyToken'];
+  return {
+    action: {
+      provider: 'line',
+      eventId,
+      workspaceId: destination,
+      subject: userId,
+      destination: userId,
+      value: data,
       replyToken: typeof replyToken === 'string' ? replyToken : null,
     },
   };

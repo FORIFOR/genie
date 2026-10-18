@@ -30,6 +30,28 @@ export interface InboundChannelMessage {
   readonly sentAt: number;
   /** LINE の reply token。すぐ期限が切れるので「受け付けました」にだけ使う。Slack には無い。 */
   readonly replyToken: string | null;
+  /**
+   * Slack のチャンネルでのメンション（Phase 3）。**結果はそこに書かず、本人の DM に返す。**
+   * チャンネルには「DM でお返しします」とだけ答える。DM・LINE では無い。
+   */
+  readonly mention?: { readonly channel: string; readonly ts: string };
+}
+
+/**
+ * ボタンを押した（Slack の block_actions、LINE の postback）。
+ *
+ * 値（`value`）は Genie が署名して載せたもの。**押した人が連携の本人かは、別に照合する。**
+ */
+export interface InboundChannelAction {
+  readonly provider: ChannelProvider;
+  /** 重複排除の鍵。Slack は trigger_id、LINE は webhookEventId。 */
+  readonly eventId: string;
+  readonly workspaceId: string;
+  readonly subject: string;
+  /** 返す先（Slack の DM channel、LINE の userId）。 */
+  readonly destination: string;
+  readonly value: string;
+  readonly replyToken: string | null;
 }
 
 /** 受けなかった理由。黙って捨てずに、記録できる形で返す。 */

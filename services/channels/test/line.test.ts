@@ -65,12 +65,13 @@ describe('normalizeLineWebhook', () => {
           replyToken: 'reply-token-1',
         },
       ],
+      actions: [],
       ignored: [],
     });
   });
 
   it('accepts the empty verification delivery without taking anything', () => {
-    expect(normalizeLineWebhook(webhook([]))).toEqual({ messages: [], ignored: [] });
+    expect(normalizeLineWebhook(webhook([]))).toEqual({ messages: [], actions: [], ignored: [] });
   });
 
   it('keeps the messages it can take and says why it skipped the others', () => {

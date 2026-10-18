@@ -515,6 +515,9 @@ importers:
       '@genie/service-capabilities':
         specifier: workspace:*
         version: link:../capabilities
+      '@genie/service-channels':
+        specifier: workspace:*
+        version: link:../channels
       '@genie/service-context':
         specifier: workspace:*
         version: link:../context
@@ -607,6 +610,15 @@ importers:
       '@genie/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@genie/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      '@genie/telemetry':
+        specifier: workspace:*
+        version: link:../../packages/telemetry
+      kysely:
+        specifier: 'catalog:'
+        version: 0.29.5
     devDependencies:
       vitest:
         specifier: 'catalog:'
