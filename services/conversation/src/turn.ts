@@ -39,6 +39,21 @@ export interface TurnDeps {
   readonly work?: WorkContextService;
   /** Genie 自身の task・会議を artifact として足す（work routes と同じもの）。 */
   readonly extraArtifacts?: (tenantId: string) => Promise<WorkArtifact[]>;
+  /**
+   * 「電話して」を Oathra 経由の仕事にする（service-phone の `phoneTaskFor`）。
+   * action lane のときだけ聞く。電話の頼みでなければ null を返し、ほかの振り分けに任せる。
+   * 進められない電話の頼みは notice（直し方）を返す。
+   */
+  readonly phone?: {
+    taskFor(
+      principal: { tenantId: string; userId: string },
+      text: string,
+    ): Promise<
+      | { readonly kind: 'task'; readonly request: LaneTaskRequest & { readonly title?: string } }
+      | { readonly kind: 'notice'; readonly notice: string }
+      | null
+    >;
+  };
 }
 
 export interface HandleTurnInput {
@@ -283,6 +298,8 @@ export interface LaneTaskRequest {
  *   action / edit / dictate / specialist-agent → まだ自動では受けられない（null）
  *
  * 新しい種類の仕事はここに足す。入口（HTTP・チャネル）には足さない。
+ * 外部への問い合わせが要るもの（電話の相手を Oathra の連絡先から決める）だけは
+ * `startWork` で `deps.phone` に聞く。
  */
 export function taskRequestForLane(input: LaneTaskInput): LaneTaskRequest | null {
   const { text, lane } = input;
@@ -325,7 +342,11 @@ async function startWork(
   turnId: string,
   input: LaneTaskInput,
 ): Promise<{ taskId: string | null; notice: string | null }> {
-  const request = taskRequestForLane(input);
+  // 電話の頼み（営業・伝言）。承認カードを通る仕事になるか、直し方の notice になる
+  const phone =
+    input.lane === 'action' && deps.phone ? await deps.phone.taskFor(principal, input.text) : null;
+  if (phone?.kind === 'notice') return { taskId: null, notice: phone.notice };
+  const request = phone?.kind === 'task' ? phone.request : taskRequestForLane(input);
 
   if (!request) {
     return {

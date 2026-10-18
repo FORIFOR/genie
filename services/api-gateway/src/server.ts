@@ -41,6 +41,7 @@ import {
 import { assertReadyForProduction } from '@genie/contracts';
 import { capabilityReport, capabilitySummary } from '@genie/service-capabilities';
 import { buildApp } from './app.js';
+import { phoneFromEnv } from './phone.js';
 import { assertPathsExist, gatewayConfigFromEnv } from './config.js';
 import { keyConfigFromEnv, loadSigningKeys } from './auth/keys.js';
 import { JwtTokens } from './auth/tokens.js';
@@ -160,6 +161,9 @@ async function main(): Promise<void> {
     stockDataSources(domain),
   );
 
+  // Oathra 経由の電話。設定が無ければ、電話の頼みには「繋がっていない」と答える
+  const phone = phoneFromEnv(process.env, { tasks, logger });
+
   const app = buildApp({
     config,
     db,
@@ -188,6 +192,7 @@ async function main(): Promise<void> {
     work,
     conversations,
     connections,
+    phone: phone.phone,
     voice: {
       ...(meetingProviders.batch.isStandIn ? {} : { transcriber: meetingProviders.batch }),
       ...(process.env['GOOGLE_CLOUD_PROJECT']
@@ -198,6 +203,7 @@ async function main(): Promise<void> {
 
   const shutdown = async (signal: string): Promise<void> => {
     logger.info({ signal }, 'shutting down');
+    phone.inbound?.stop();
     await app.close();
     await rateLimiter.close();
     await runtime.close();
@@ -208,6 +214,8 @@ async function main(): Promise<void> {
   process.on('SIGINT', () => void shutdown('SIGINT'));
 
   await app.listen({ port: config.port, host: config.host });
+  // 受けた電話を仕事にする。60 秒ごと（Oathra の着信は数分単位なので十分）
+  phone.inbound?.start(60_000);
   logger.info(
     {
       port: config.port,

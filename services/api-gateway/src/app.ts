@@ -32,7 +32,7 @@ import { registerPluginRoutes } from './routes/plugins.js';
 import { registerShareRoutes } from './routes/shares.js';
 import { registerDomainRoutes, type DomainRouteDeps } from './routes/domain.js';
 import { registerBriefRoutes } from './routes/brief.js';
-import { registerConversationRoutes } from './routes/conversations.js';
+import { registerConversationRoutes, type ConversationRouteDeps } from './routes/conversations.js';
 import { registerOnboardingRoutes } from './routes/onboarding.js';
 import { registerVoiceRoutes, type VoiceRouteDeps } from './routes/voice.js';
 import type { ConversationService } from '@genie/service-conversation';
@@ -77,6 +77,8 @@ export interface AppDeps {
   readonly work?: WorkContextService;
   /** Conversation Engine。Task Dock の入口（Phase 7 §3）。 */
   readonly conversations?: ConversationService;
+  /** 「電話して」を Oathra 経由の仕事にする。無ければ電話の頼みは受けない。 */
+  readonly phone?: ConversationRouteDeps['phone'];
   /** connector の接続状態（正本 §2.4・§21）。 */
   readonly connections?: ConnectionService;
   /** Voice OS の Google STT / TTS。未設定でも route は明示的に 503 を返す。 */
@@ -170,6 +172,7 @@ export function buildApp(deps: AppDeps): App {
       conversations: deps.conversations,
       tasks: deps.tasks,
       redis: deps.redis,
+      ...(deps.phone ? { phone: deps.phone } : {}),
       ...(deps.work
         ? {
             work: deps.work,

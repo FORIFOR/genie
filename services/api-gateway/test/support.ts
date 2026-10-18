@@ -88,6 +88,8 @@ export interface MakeAppOptions {
   readonly script?: readonly ScriptLine[];
   /** dashboard の bind を解決する先。 */
   readonly dataSources?: DataSourceResolver;
+  /** 電話（Oathra）の代役。省略すると電話の頼みは受けない。 */
+  readonly phone?: import('../src/app.js').AppDeps['phone'];
 }
 
 export async function makeTestApp(options: MakeAppOptions): Promise<TestApp> {
@@ -151,6 +153,7 @@ export async function makeTestApp(options: MakeAppOptions): Promise<TestApp> {
     // 受け渡しも繋ぐ。繋がない harness だと、経路の欠落を試験が見逃す。
     hostBridge: new HostStepBridge({ db }),
     ...(options.dataSources === undefined ? {} : { dataSources: options.dataSources }),
+    ...(options.phone === undefined ? {} : { phone: options.phone }),
     meetings: {
       meetings,
       recordings,
