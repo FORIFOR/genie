@@ -1,0 +1,47 @@
+{
+  "status": "verified_assets_with_publication_records",
+  "verified_on": "2026-09-13",
+  "assets": [
+    {
+      "file": "astra-orbit-social.mp4",
+      "sha256": "43a5ef8733bd46041272dbd6837f2fac0321c901ca54326697f5c6e88fcd5478",
+      "width": 1080,
+      "height": 1920,
+      "duration_seconds": 33.0,
+      "matches_recorded_validation": true,
+      "publications": [
+        {
+          "platform": "TikTok",
+          "publisher": "foriforapps",
+          "url": "https://www.tiktok.com/@foriforapps/video/7684737308754529557",
+          "visibility": "everyone"
+        },
+        {
+          "platform": "Facebook",
+          "publisher": "foriforapps",
+          "profile_id": "61593966556275",
+          "url": "https://www.facebook.com/reel/1490966733064509",
+          "visibility": "public"
+        }
+      ]
+    },
+    {
+      "file": "astra-web-proposal-social.mp4",
+      "sha256": "e31204462a016ce5737814ba20db0edce1f6a3c2892b739a651ad2db1288e419",
+      "width": 1080,
+      "height": 1920,
+      "duration_seconds": 30.0,
+      "matches_recorded_validation": true,
+      "publications": []
+    },
+    {
+      "file": "astra-product-film-social.mp4",
+      "sha256": "59ddde5816bc4fa754a5e1accd71bc0eb05aaa5b88a59ea349afd6ac3e392551",
+      "width": 1080,
+      "height": 1920,
+      "duration_seconds": 42.0,
+      "matches_recorded_validation": true,
+      "publications": []
+    }
+  ]
+}
