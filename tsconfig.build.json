@@ -59,6 +59,9 @@
       "path": "./services/context"
     },
     {
+      "path": "./services/channels"
+    },
+    {
       "path": "./services/conversation"
     },
     {
