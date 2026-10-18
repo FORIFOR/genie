@@ -37,6 +37,7 @@ import { capabilityReport, capabilitySummary } from '@genie/service-capabilities
 import { ConnectionService } from '@genie/service-plugin-registry';
 import { createTaskWorker, TASK_QUEUE, NoopPublisher } from '@genie/service-task';
 import { HostBridge, HostStepExecutor, type ApprovalProof } from '@genie/service-agent-host';
+import { oathraClient, phoneExecutors, phoneSetupFromEnv } from '@genie/service-phone';
 import {
   DomainService,
   architectureExecutors,
@@ -137,6 +138,13 @@ async function main(): Promise<void> {
   const recordingRoot = path.resolve(process.env['ASTRA_RECORDING_ROOT'] ?? './.data/recordings');
   const meetings = new MeetingService({ db, publisher: NoopPublisher });
 
+  /*
+   * Oathra 経由の電話。**接続は 1 人の利用者のもの**で、ほかの人の task では動かない。
+   * 設定が無ければ executor を置かない（電話の step は「繋がっていない」で止まる）。
+   */
+  const phoneSetup = phoneSetupFromEnv(process.env);
+  logger.info({ phone: phoneSetup ? 'oathra' : 'not_connected' }, 'phone calls');
+
   const connection = await NativeConnection.connect({ address });
   const worker = await createTaskWorker(
     {
@@ -173,6 +181,13 @@ async function main(): Promise<void> {
          * 繋いでいないので、外から取ってきたふりはしない。
          */
         ...salesCrmExecutors(new DomainService({ db })),
+        /*
+         * 電話（伝言・営業）。承認カードを通った step だけがここに来る。
+         * 上限と相手は Oathra 側の委任が決め、Genie はその中でしか動かない。
+         */
+        ...(phoneSetup
+          ? phoneExecutors({ client: oathraClient(phoneSetup.connection), owner: phoneSetup.owner })
+          : {}),
         ...meetingExecutors({
           meetings,
           library,

@@ -527,6 +527,9 @@ importers:
       '@genie/service-meeting':
         specifier: workspace:*
         version: link:../meeting
+      '@genie/service-phone':
+        specifier: workspace:*
+        version: link:../phone
       '@genie/service-plugin-registry':
         specifier: workspace:*
         version: link:../plugin-registry
@@ -721,6 +724,12 @@ importers:
       '@genie/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+    devDependencies:
+      vitest:
+        specifier: 'catalog:'
+        version: 3.2.7(@types/node@22.20.1)(happy-dom@20.11.6)(terser@5.50.0)(tsx@4.23.12)(yaml@2.9.0)
+
+  services/phone:
     devDependencies:
       vitest:
         specifier: 'catalog:'
@@ -975,6 +984,9 @@ importers:
       '@genie/service-meeting':
         specifier: workspace:*
         version: link:../../services/meeting
+      '@genie/service-phone':
+        specifier: workspace:*
+        version: link:../../services/phone
       '@genie/service-plugin-registry':
         specifier: workspace:*
         version: link:../../services/plugin-registry
