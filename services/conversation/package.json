@@ -24,6 +24,7 @@
     "@genie/contracts": "workspace:*",
     "@genie/db": "workspace:*",
     "@genie/service-task": "workspace:*",
+    "@genie/service-world-model": "workspace:*",
     "@genie/telemetry": "workspace:*",
     "kysely": "catalog:"
   },

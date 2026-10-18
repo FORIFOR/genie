@@ -636,6 +636,9 @@ importers:
       '@genie/service-task':
         specifier: workspace:*
         version: link:../task
+      '@genie/service-world-model':
+        specifier: workspace:*
+        version: link:../world-model
       '@genie/telemetry':
         specifier: workspace:*
         version: link:../../packages/telemetry

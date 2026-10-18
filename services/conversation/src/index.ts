@@ -13,3 +13,14 @@ export {
   type ResolutionContext,
 } from './reference.js';
 export { ConversationService, type AppendTurnInput, type ConversationDeps } from './service.js';
+export {
+  handleTurn,
+  laneToIntent,
+  taskRequestForLane,
+  type HandleTurnInput,
+  type HandleTurnResult,
+  type LaneTaskInput,
+  type LaneTaskRequest,
+  type TurnDeps,
+  type TurnLogger,
+} from './turn.js';
