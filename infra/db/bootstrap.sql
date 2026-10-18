@@ -38,6 +38,9 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public
 GRANT USAGE ON SCHEMA public TO astra_identity;
 GRANT SELECT, INSERT, UPDATE ON tenants, users, memberships, devices, sessions, user_identities
   TO astra_identity;
+-- チャネル連携の照合も、受信した時点ではテナントが分からない。引くのと last_seen_at の更新だけ。
+-- 連携を作る・切るのは本人の操作（テナント確定後、genie_app）で行う。
+GRANT SELECT, UPDATE ON channel_links TO astra_identity;
 
 -- 公開 viewer 専用ロール: 共有テーブルだけ。artifact は解決後に withTenant で読む。
 GRANT USAGE ON SCHEMA public TO astra_share;

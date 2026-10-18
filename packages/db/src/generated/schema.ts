@@ -136,6 +136,54 @@ export interface AuditSequences {
   tenant_id: string;
 }
 
+export interface ChannelInbox {
+  event_id: string;
+  provider: string;
+  received_at: Generated<Timestamp>;
+}
+
+export interface ChannelLinks {
+  created_at: Generated<Timestamp>;
+  device_id: string;
+  id: string;
+  last_seen_at: Timestamp | null;
+  posting_policy: Generated<string>;
+  provider: string;
+  revoked_at: Timestamp | null;
+  subject: string;
+  tenant_id: string;
+  user_id: string;
+  workspace_id: string;
+}
+
+export interface ChannelOutbox {
+  attempts: Generated<number>;
+  body: Json;
+  created_at: Generated<Timestamp>;
+  destination: string;
+  event_sequence: Int8 | null;
+  id: string;
+  kind: string;
+  last_error: string | null;
+  link_id: string;
+  provider_message_id: string | null;
+  sent_at: Timestamp | null;
+  status: Generated<string>;
+  task_id: string | null;
+  tenant_id: string;
+  thread_key: string;
+}
+
+export interface ChannelThreads {
+  conversation_id: string;
+  created_at: Generated<Timestamp>;
+  destination: string;
+  last_message_at: Generated<Timestamp>;
+  link_id: string;
+  tenant_id: string;
+  thread_key: string;
+}
+
 export interface ConnectorConnections {
   account_label: string | null;
   connected_at: Generated<Timestamp>;
@@ -698,6 +746,10 @@ export interface DB {
   attention_feedback: AttentionFeedback;
   audit_events: AuditEvents;
   audit_sequences: AuditSequences;
+  channel_inbox: ChannelInbox;
+  channel_links: ChannelLinks;
+  channel_outbox: ChannelOutbox;
+  channel_threads: ChannelThreads;
   connector_connections: ConnectorConnections;
   conversation_states: ConversationStates;
   conversation_summaries: ConversationSummaries;
