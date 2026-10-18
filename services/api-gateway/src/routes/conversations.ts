@@ -7,6 +7,8 @@
 import {
   SendTurnRequest,
   CHECKOUT_HANDOFF_NOTICE,
+  CHECKOUT_PREPARATION_NOTICE,
+  ACCOUNT_REGISTRATION_NOTICE,
   GenieError,
   ConversationId,
   StartConversationRequest,
@@ -22,6 +24,7 @@ import type { ConversationService } from '@genie/service-conversation';
 import {
   classifyCurrentInfo,
   checkoutAssistanceRequest,
+  accountRegistrationRequest,
   officeEditRequest,
   browserOpenRequest,
   workPreviewRequest,
@@ -229,7 +232,9 @@ export function registerConversationRoutes(app: App, deps: ConversationRouteDeps
       // 場所の書かれた文書を直す依頼の「その下」「この段落」は、会話ではなく文書の中を指す。
       // 文書を読む端末のモデルが解くので、ここで聞き返さない。
       const clarification =
-        officeEditRequest(body.text) || browserOpenRequest(body.text) || workPreviewRequest(body.text)
+        officeEditRequest(body.text) ||
+        browserOpenRequest(body.text) ||
+        workPreviewRequest(body.text)
           ? null
           : clarificationFor(resolutions);
 
@@ -240,6 +245,92 @@ export function registerConversationRoutes(app: App, deps: ConversationRouteDeps
         hasSelection: false,
         namedAgent: null,
       });
+
+      // Slot answers can be ordinary chat. Keep them with the durable order rather than
+      // sending each answer to an unrelated assistant or screen-automation task.
+      const order =
+        decision.lane === 'meeting' || decision.lane === 'specialist-agent'
+          ? null
+          : await deps.conversations.advanceCheckoutOrder(
+              principal.tenantId,
+              principal.userId,
+              id,
+              turn.id,
+              body.text,
+            );
+      if (order) {
+        if (!order.prepare && !order.taskId) {
+          const answer = await deps.conversations.append({
+            tenantId: principal.tenantId,
+            conversationId: id,
+            role: 'assistant',
+            modality: state.response_mode,
+            text: order.message,
+          });
+          return respond(200, {
+            turn,
+            answer,
+            needs_clarification: order.draft.status === 'collecting',
+          });
+        }
+        const prepared = {
+          turn,
+          needs_clarification: false,
+          intent: 'doing',
+          task_id: null,
+          notice: order.message || CHECKOUT_PREPARATION_NOTICE,
+        };
+        if (body.request_id)
+          await deps.conversations.prepareRequest(
+            principal.tenantId,
+            principal.userId,
+            id,
+            body.request_id,
+            prepared,
+            order.draft.dispatchTurnId ?? undefined,
+          );
+        let taskId = order.taskId;
+        if (order.prepare) {
+          const dispatchTurnId = order.draft.dispatchTurnId!;
+          try {
+            const created = await deps.tasks.create({
+              tenantId: principal.tenantId,
+              userId: principal.userId,
+              request: {
+                kind: 'checkout.prepare',
+                title: 'カートの準備（未注文）',
+                input: order.prepare,
+                conversation_id: id as never,
+              },
+              idempotencyKey: `turn:${dispatchTurnId}`,
+            });
+            taskId = created.task.id;
+          } catch {
+            // The task row may have committed before its acknowledgement was lost.
+            taskId = await deps.tasks.findByConversationTurn(
+              principal.tenantId,
+              principal.userId,
+              id,
+              dispatchTurnId,
+            );
+          }
+          if (taskId)
+            await deps.conversations.markCheckoutDispatched(
+              principal.tenantId,
+              principal.userId,
+              id,
+              order.draft.orderKey,
+              taskId,
+            );
+        }
+        return respond(202, {
+          ...prepared,
+          task_id: taskId,
+          notice: taskId
+            ? prepared.notice
+            : '注文条件は保存しましたが、カートの準備を始められませんでした。「注文を再開して」で再試行できます。注文は確定していません。',
+        });
+      }
 
       let replyMeta: ReplyDraftMeta | null = null;
       let replyContext = '';
@@ -317,7 +408,7 @@ export function registerConversationRoutes(app: App, deps: ConversationRouteDeps
       /*
        * いまの情報（天気・ニュース・株価）。規則で拾い、端末の取得に回す。
        * モデルに当てさせると「分かりません」か、それらしい作り話になる。
-       * 株価はまだ正式な取得元が無い。**そう言う**（それらしい数字を出さない）。
+       * 株価は取得元（公開の chart、参考値）の値だけを出す。銘柄が分からなければそう言う（数字を作らない）。
        */
       const info: CurrentInfoQuery | null =
         (decision.lane === 'chat' || decision.lane === 'research') &&
@@ -325,17 +416,6 @@ export function registerConversationRoutes(app: App, deps: ConversationRouteDeps
         !isDocumentRequest(body.text)
           ? classifyCurrentInfo(body.text)
           : null;
-      if (info?.kind === 'quote') {
-        const answer = await deps.conversations.append({
-          tenantId: principal.tenantId,
-          conversationId: id,
-          role: 'assistant',
-          modality: state.response_mode,
-          text: '株価はまだ取得できません。正式な配信元をつなぐまで、推測の数字は出しません。',
-        });
-        return respond(200, { turn, answer, needs_clarification: false });
-      }
-
       /*
        * ここで**仕事を始める。**
        *
@@ -376,9 +456,11 @@ export function registerConversationRoutes(app: App, deps: ConversationRouteDeps
         task_id: null,
         // Lost task-dispatch responses must retain the same no-order disclosure.
         notice:
-          decision.lane === 'action' && checkoutAssistanceRequest(body.text)
-            ? CHECKOUT_HANDOFF_NOTICE
-            : null,
+          decision.lane === 'action' && accountRegistrationRequest(body.text)
+            ? ACCOUNT_REGISTRATION_NOTICE
+            : decision.lane === 'action' && checkoutAssistanceRequest(body.text)
+              ? CHECKOUT_HANDOFF_NOTICE
+              : null,
         ...(replyMeta ? { reply: replyMeta } : {}),
       };
       if (body.request_id)
@@ -496,6 +578,7 @@ async function startWork(
   replyDraft: { meta: ReplyDraftMeta; instruction: string } | null = null,
   info: CurrentInfoQuery | null = null,
 ): Promise<{ taskId: string | null; notice: string | null }> {
+  const registration = lane === 'action' ? accountRegistrationRequest(text) : null;
   const checkout = lane === 'action' ? checkoutAssistanceRequest(text) : null;
   const simulation = lane === 'action' ? simulationOrderRequest(text) : null;
   // 場所の書かれた Word / Excel を直す依頼は、どの lane でも端末の編集に回す（原本は変えない）。
@@ -503,78 +586,85 @@ async function startWork(
   // 「端末を120台にしたら提案書も合わせた案を」: 案件の書類をコピーの上でそろえて変え、確かめる。
   const preview = lane === 'meeting' || office ? null : workPreviewRequest(text);
   // 「〇〇の公式サイトを開いて」: 端末が検索し、公式と見極めたページを既定のブラウザで開く。
-  const browser = lane === 'meeting' || office || preview ? null : browserOpenRequest(text);
-  const request = preview
+  const browser =
+    lane === 'meeting' || office || preview || checkout ? null : browserOpenRequest(text);
+  const request = registration
     ? {
-        kind: 'work.preview',
-        title: `書類の案（${preview.subject ?? '数'}を ${preview.to} に）`,
-        input: {
-          to: preview.to,
-          ...(preview.subject ? { subject: preview.subject } : {}),
-          ...(preview.folder ? { folder: preview.folder } : {}),
-        },
+        kind: 'account.registration.prepare',
+        title: '会員登録の準備（未登録）',
+        input: { service: registration },
       }
-    : browser
-    ? {
-        kind: 'browser.open_official',
-        title: `${browser.subject} の公式サイト`,
-        input: {
-          subject: browser.subject,
-          ...(browser.browser ? { browser: browser.browser } : {}),
-        },
-      }
-    : office
+    : preview
       ? {
-          kind: 'office.edit',
-          title: text.length > 30 ? `${text.slice(0, 30)}…` : text,
-          input: { path: office.path, instruction: office.instruction },
+          kind: 'work.preview',
+          title: `書類の案（${preview.subject ?? '数'}を ${preview.to} に）`,
+          input: {
+            to: preview.to,
+            ...(preview.subject ? { subject: preview.subject } : {}),
+            ...(preview.folder ? { folder: preview.folder } : {}),
+          },
         }
-      : simulation
+      : browser
         ? {
-            kind: 'transaction.order',
-            title: '模擬注文（課金なし）',
-            input: { intent: simulationOrderIntent(simulation, `turn:${turnId}`) },
+            kind: 'browser.open_official',
+            title: `${browser.subject} の公式サイト`,
+            input: {
+              subject: browser.subject,
+              ...(browser.browser ? { browser: browser.browser } : {}),
+            },
           }
-        : checkout
+        : office
           ? {
-              kind: 'checkout.assist',
-              title: '注文画面への引き継ぎ（未注文）',
-              input: { service: checkout },
+              kind: 'office.edit',
+              title: text.length > 30 ? `${text.slice(0, 30)}…` : text,
+              input: { path: office.path, instruction: office.instruction },
             }
-          : info && info.kind !== 'quote'
-            ? // 端末が取りに行く。場所・話題だけを渡し、会話の文脈や Work Context は渡さない。
-              { kind: 'info.lookup', input: { question: text, ...info } }
-            : lane === 'chat'
+          : simulation
+            ? {
+                kind: 'transaction.order',
+                title: '模擬注文（課金なし）',
+                input: { intent: simulationOrderIntent(simulation, `turn:${turnId}`) },
+              }
+            : checkout
               ? {
-                  kind: agentKindFor('com.astra.general', 'assistant'),
-                  // 添付は id とラベルだけ。画素は端末に残り、端末のモデル呼び出しが読む。
-                  // context は Work Graph から選んだ関連分だけ（無ければ付けない）。
-                  input: {
-                    question: text,
-                    message: text,
-                    // 返信案: compose の段だけを走らせる（instruction がある = compose）。送らない。
-                    ...(isDocumentRequest(text) ? { instruction: text } : {}),
-                    ...(replyDraft
-                      ? { instruction: replyDraft.instruction, reply: replyDraft.meta }
-                      : {}),
-                    ...(attachments.length > 0 ? { attachments: [...attachments] } : {}),
-                    ...(workContext ? { context: workContext } : {}),
-                    // 渡した量の事実。何を知っているかではなく、何を渡したか。
-                    ...(contextStats ? { context_meta: contextStats } : {}),
-                  },
+                  kind: 'checkout.assist',
+                  title: '注文画面への引き継ぎ（未注文）',
+                  input: { service: checkout },
                 }
-              : lane === 'research'
-                ? { kind: 'research', input: { question: text } }
-                : lane === 'action'
+              : info
+                ? // 端末が取りに行く。場所・話題・銘柄だけを渡し、会話の文脈や Work Context は渡さない。
+                  { kind: 'info.lookup', input: { question: text, ...info } }
+                : lane === 'chat'
                   ? {
-                      kind: 'computer.run',
+                      kind: agentKindFor('com.astra.general', 'assistant'),
+                      // 添付は id とラベルだけ。画素は端末に残り、端末のモデル呼び出しが読む。
+                      // context は Work Graph から選んだ関連分だけ（無ければ付けない）。
                       input: {
-                        goal: text,
-                        title: text.length > 30 ? `${text.slice(0, 30)}…` : text,
+                        question: text,
+                        message: text,
+                        // 返信案: compose の段だけを走らせる（instruction がある = compose）。送らない。
+                        ...(isDocumentRequest(text) ? { instruction: text } : {}),
+                        ...(replyDraft
+                          ? { instruction: replyDraft.instruction, reply: replyDraft.meta }
+                          : {}),
                         ...(attachments.length > 0 ? { attachments: [...attachments] } : {}),
+                        ...(workContext ? { context: workContext } : {}),
+                        // 渡した量の事実。何を知っているかではなく、何を渡したか。
+                        ...(contextStats ? { context_meta: contextStats } : {}),
                       },
                     }
-                  : null;
+                  : lane === 'research'
+                    ? { kind: 'research', input: { question: text } }
+                    : lane === 'action'
+                      ? {
+                          kind: 'computer.run',
+                          input: {
+                            goal: text,
+                            title: text.length > 30 ? `${text.slice(0, 30)}…` : text,
+                            ...(attachments.length > 0 ? { attachments: [...attachments] } : {}),
+                          },
+                        }
+                      : null;
 
   if (!request) {
     return {
@@ -591,7 +681,14 @@ async function startWork(
       // 同じ発話を二度仕事にしない
       idempotencyKey: `turn:${turnId}`,
     });
-    return { taskId: task.id, notice: checkout ? CHECKOUT_HANDOFF_NOTICE : null };
+    return {
+      taskId: task.id,
+      notice: registration
+        ? ACCOUNT_REGISTRATION_NOTICE
+        : checkout
+          ? CHECKOUT_HANDOFF_NOTICE
+          : null,
+    };
   } catch (error) {
     return {
       taskId: null,

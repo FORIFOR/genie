@@ -1,22 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { checkoutAssistanceRequest } from '../src/checkout-request.js';
+import { checkoutAssistanceRequest, accountRegistrationRequest } from '../src/checkout-request.js';
 import { routeLane } from '../src/lane.js';
 
 describe('official checkout handoff requests', () => {
   it.each([
-    ['マックデリバリーを注文して', 'mcdelivery_jp'],
-    ['マクドナルドで注文してください。', 'mcdelivery_jp'],
     ['マックの注文画面を開いて', 'mcdelivery_jp'],
     ['マクドナルドの注文画面を開いて', 'mcdelivery_jp'],
     ['マクドナルドの注文サイトを開いてください', 'mcdelivery_jp'],
-    ['ドミノ・ピザを注文して！', 'dominos_jp'],
-    ['ドミノでピザを注文してください', 'dominos_jp'],
     ["Domino'sの注文画面を開いて", 'dominos_jp'],
-    // 話し言葉（2026-10-04 実機の発話）
-    ['マクドナルドの注文したいんだけど', 'mcdelivery_jp'],
-    ['マックで注文したいです', 'mcdelivery_jp'],
     ['マックデリバリーのメニューを見せて', 'mcdelivery_jp'],
-    ['ドミノでピザを頼みたいんですけど', 'dominos_jp'],
   ])('routes %s to a handoff, without inventing terms', (text, service) => {
     expect(checkoutAssistanceRequest(text)).toBe(service);
     expect(routeLane({ text, modality: 'text' })).toMatchObject({
@@ -62,5 +54,48 @@ describe('official checkout handoff requests', () => {
     expect(
       routeLane({ text: 'ドミノを注文して', modality: 'text', namedAgent: 'other' }).lane,
     ).toBe('specialist-agent');
+  });
+});
+
+describe('explicit McDelivery registration preparation', () => {
+  it.each([
+    'マックデリバリーに会員登録して',
+    'マクドナルドの会員登録を手伝って',
+    'マックで会員登録してください。',
+    'マックデリバリーの新規会員登録を準備して',
+  ])('routes %s without collecting account fields', (text) => {
+    expect(accountRegistrationRequest(text)).toBe('mcdelivery_jp');
+    expect(checkoutAssistanceRequest(text)).toBeNull();
+    expect(routeLane({ text, modality: 'text' })).toMatchObject({
+      lane: 'action',
+      reason: 'prepare a supported registration form, not create an account',
+    });
+  });
+  it.each([
+    '「マックデリバリーに会員登録して」',
+    'マクドナルドの会員登録を手伝ってという文を書いて',
+    'マックデリバリーに会員登録してはいけない',
+    'マックデリバリーに会員登録しないで',
+    'マクドナルドの会員登録はできますか？',
+    'マックデリバリーに会員登録する方法を教えて',
+    'マックデリバリーに会員登録して？',
+  ])('does not automate an example, question or negative: %s', (text) => {
+    expect(accountRegistrationRequest(text)).toBeNull();
+    expect(routeLane({ text, modality: 'text' }).lane).toBe('chat');
+  });
+  it.each([
+    'Googleアカウントを作成して',
+    'ドミノに会員登録して',
+    'マックデリバリーに会員登録して、メールアドレスはtest@example.com',
+    'マックデリバリーに会員登録して https://evil.example',
+  ])('does not expand supported services or extract account details from %s', (text) => {
+    expect(accountRegistrationRequest(text)).toBeNull();
+  });
+  it('preserves stronger meeting and named-agent choices', () => {
+    const text = 'マックデリバリーに会員登録して';
+    expect(routeLane({ text, modality: 'text', meetingActive: true }).lane).toBe('meeting');
+    expect(routeLane({ text, modality: 'text', namedAgent: 'other' }).lane).toBe(
+      'specialist-agent',
+    );
   });
 });

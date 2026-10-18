@@ -1,0 +1,1570 @@
+[
+  {
+    "height" : 672,
+    "name" : "ready-940-light",
+    "requestedHeight" : 620,
+    "requestedWidth" : 940,
+    "scale" : "comfortable",
+    "sections" : {
+      "mail" : {
+        "height" : 136,
+        "width" : 304,
+        "x" : 284,
+        "y" : 227
+      },
+      "markets" : {
+        "height" : 182,
+        "width" : 304,
+        "x" : 284,
+        "y" : 437.5
+      },
+      "news" : {
+        "height" : 174,
+        "width" : 304,
+        "x" : 612,
+        "y" : 227
+      },
+      "weather" : {
+        "height" : 90,
+        "width" : 304,
+        "x" : 612,
+        "y" : 437.5
+      }
+    },
+    "synthetic" : true,
+    "width" : 940
+  },
+  {
+    "height" : 672,
+    "name" : "partial-940-light",
+    "requestedHeight" : 620,
+    "requestedWidth" : 940,
+    "scale" : "comfortable",
+    "sections" : {
+      "mail" : {
+        "height" : 186,
+        "width" : 304,
+        "x" : 284,
+        "y" : 227
+      },
+      "markets" : {
+        "height" : 140,
+        "width" : 304,
+        "x" : 284,
+        "y" : 449.5
+      },
+      "news" : {
+        "height" : 174,
+        "width" : 304,
+        "x" : 612,
+        "y" : 227
+      },
+      "weather" : {
+        "height" : 90,
+        "width" : 304,
+        "x" : 612,
+        "y" : 449.5
+      }
+    },
+    "synthetic" : true,
+    "width" : 940
+  },
+  {
+    "height" : 672,
+    "name" : "empty-940-light",
+    "requestedHeight" : 620,
+    "requestedWidth" : 940,
+    "scale" : "comfortable",
+    "sections" : {
+      "mail" : {
+        "height" : 98,
+        "width" : 304,
+        "x" : 284,
+        "y" : 227
+      },
+      "markets" : {
+        "height" : 98,
+        "width" : 304,
+        "x" : 284,
+        "y" : 361.5
+      },
+      "news" : {
+        "height" : 71,
+        "width" : 304,
+        "x" : 612,
+        "y" : 227
+      },
+      "weather" : {
+        "height" : 90,
+        "width" : 304,
+        "x" : 612,
+        "y" : 361.5
+      }
+    },
+    "synthetic" : true,
+    "width" : 940
+  },
+  {
+    "height" : 672,
+    "name" : "loading-940-light",
+    "requestedHeight" : 620,
+    "requestedWidth" : 940,
+    "scale" : "comfortable",
+    "sections" : {
+      "mail" : {
+        "height" : 48,
+        "width" : 304,
+        "x" : 284,
+        "y" : 206
+      },
+      "markets" : {
+        "height" : 48,
+        "width" : 304,
+        "x" : 284,
+        "y" : 290.5
+      },
+      "news" : {
+        "height" : 48,
+        "width" : 304,
+        "x" : 612,
+        "y" : 206
+      },
+      "weather" : {
+        "height" : 48,
+        "width" : 304,
+        "x" : 612,
+        "y" : 290.5
+      }
+    },
+    "synthetic" : true,
+    "width" : 940
+  },
+  {
+    "height" : 672,
+    "name" : "failed-940-light",
+    "requestedHeight" : 620,
+    "requestedWidth" : 940,
+    "scale" : "comfortable",
+    "sections" : {
+      "mail" : {
+        "height" : 136,
+        "width" : 304,
+        "x" : 284,
+        "y" : 206.033935546875
+      },
+      "markets" : {
+        "height" : 182,
+        "width" : 304,
+        "x" : 284,
+        "y" : 416.533935546875
+      },
+      "news" : {
+        "height" : 174,
+        "width" : 304,
+        "x" : 612,
+        "y" : 206.033935546875
+      },
+      "weather" : {
+        "height" : 90,
+        "width" : 304,
+        "x" : 612,
+        "y" : 416.533935546875
+      }
+    },
+    "synthetic" : true,
+    "width" : 940
+  },
+  {
+    "height" : 672,
+    "name" : "previous-940-light",
+    "requestedHeight" : 620,
+    "requestedWidth" : 940,
+    "scale" : "comfortable",
+    "sections" : {
+      "mail" : {
+        "height" : 136,
+        "width" : 304,
+        "x" : 284,
+        "y" : 206
+      },
+      "markets" : {
+        "height" : 182,
+        "width" : 304,
+        "x" : 284,
+        "y" : 416.5
+      },
+      "news" : {
+        "height" : 174,
+        "width" : 304,
+        "x" : 612,
+        "y" : 206
+      },
+      "weather" : {
+        "height" : 90,
+        "width" : 304,
+        "x" : 612,
+        "y" : 416.5
+      }
+    },
+    "synthetic" : true,
+    "width" : 940
+  },
+  {
+    "height" : 672,
+    "name" : "long-940-light",
+    "requestedHeight" : 620,
+    "requestedWidth" : 940,
+    "scale" : "comfortable",
+    "sections" : {
+      "mail" : {
+        "height" : 136,
+        "width" : 304,
+        "x" : 284,
+        "y" : 246
+      },
+      "markets" : {
+        "height" : 182,
+        "width" : 304,
+        "x" : 284,
+        "y" : 418.5
+      },
+      "news" : {
+        "height" : 117,
+        "width" : 304,
+        "x" : 612,
+        "y" : 246
+      },
+      "weather" : {
+        "height" : 90,
+        "width" : 304,
+        "x" : 612,
+        "y" : 418.5
+      }
+    },
+    "synthetic" : true,
+    "width" : 940
+  },
+  {
+    "height" : 672,
+    "name" : "location-940-light",
+    "requestedHeight" : 620,
+    "requestedWidth" : 940,
+    "scale" : "comfortable",
+    "sections" : {
+      "mail" : {
+        "height" : 136,
+        "width" : 304,
+        "x" : 284,
+        "y" : 227
+      },
+      "markets" : {
+        "height" : 182,
+        "width" : 304,
+        "x" : 284,
+        "y" : 437.5
+      },
+      "news" : {
+        "height" : 174,
+        "width" : 304,
+        "x" : 612,
+        "y" : 227
+      },
+      "weather" : {
+        "height" : 140,
+        "width" : 304,
+        "x" : 612,
+        "y" : 437.5
+      }
+    },
+    "synthetic" : true,
+    "width" : 940
+  },
+  {
+    "height" : 672,
+    "name" : "location-denied-940-light",
+    "requestedHeight" : 620,
+    "requestedWidth" : 940,
+    "scale" : "comfortable",
+    "sections" : {
+      "mail" : {
+        "height" : 136,
+        "width" : 304,
+        "x" : 284,
+        "y" : 227
+      },
+      "markets" : {
+        "height" : 182,
+        "width" : 304,
+        "x" : 284,
+        "y" : 437.5
+      },
+      "news" : {
+        "height" : 174,
+        "width" : 304,
+        "x" : 612,
+        "y" : 227
+      },
+      "weather" : {
+        "height" : 123,
+        "width" : 304,
+        "x" : 612,
+        "y" : 437.5
+      }
+    },
+    "synthetic" : true,
+    "width" : 940
+  },
+  {
+    "height" : 672,
+    "name" : "location-updating-940-light",
+    "requestedHeight" : 620,
+    "requestedWidth" : 940,
+    "scale" : "comfortable",
+    "sections" : {
+      "mail" : {
+        "height" : 136,
+        "width" : 304,
+        "x" : 284,
+        "y" : 206
+      },
+      "markets" : {
+        "height" : 182,
+        "width" : 304,
+        "x" : 284,
+        "y" : 416.5
+      },
+      "news" : {
+        "height" : 174,
+        "width" : 304,
+        "x" : 612,
+        "y" : 206
+      },
+      "weather" : {
+        "height" : 140,
+        "width" : 304,
+        "x" : 612,
+        "y" : 416.5
+      }
+    },
+    "synthetic" : true,
+    "width" : 940
+  },
+  {
+    "height" : 672,
+    "name" : "profile-return-940-light",
+    "requestedHeight" : 620,
+    "requestedWidth" : 940,
+    "scale" : "comfortable",
+    "sections" : {
+      "mail" : {
+        "height" : 136,
+        "width" : 304,
+        "x" : 284,
+        "y" : 227
+      },
+      "markets" : {
+        "height" : 182,
+        "width" : 304,
+        "x" : 284,
+        "y" : 437.5
+      },
+      "news" : {
+        "height" : 174,
+        "width" : 304,
+        "x" : 612,
+        "y" : 227
+      },
+      "weather" : {
+        "height" : 90,
+        "width" : 304,
+        "x" : 612,
+        "y" : 437.5
+      }
+    },
+    "synthetic" : true,
+    "width" : 940
+  },
+  {
+    "height" : 820,
+    "name" : "ready-1280-light",
+    "requestedHeight" : 820,
+    "requestedWidth" : 1280,
+    "scale" : "comfortable",
+    "sections" : {
+      "mail" : {
+        "height" : 136,
+        "width" : 344,
+        "x" : 414,
+        "y" : 227
+      },
+      "markets" : {
+        "height" : 182,
+        "width" : 344,
+        "x" : 414,
+        "y" : 399.5
+      },
+      "news" : {
+        "height" : 136,
+        "width" : 344,
+        "x" : 782,
+        "y" : 227
+      },
+      "weather" : {
+        "height" : 71,
+        "width" : 344,
+        "x" : 782,
+        "y" : 399.5
+      }
+    },
+    "synthetic" : true,
+    "width" : 1280
+  },
+  {
+    "height" : 820,
+    "name" : "partial-1280-light",
+    "requestedHeight" : 820,
+    "requestedWidth" : 1280,
+    "scale" : "comfortable",
+    "sections" : {
+      "mail" : {
+        "height" : 186,
+        "width" : 344,
+        "x" : 414,
+        "y" : 227
+      },
+      "markets" : {
+        "height" : 140,
+        "width" : 344,
+        "x" : 414,
+        "y" : 449.5
+      },
+      "news" : {
+        "height" : 136,
+        "width" : 344,
+        "x" : 782,
+        "y" : 227
+      },
+      "weather" : {
+        "height" : 71,
+        "width" : 344,
+        "x" : 782,
+        "y" : 449.5
+      }
+    },
+    "synthetic" : true,
+    "width" : 1280
+  },
+  {
+    "height" : 820,
+    "name" : "empty-1280-light",
+    "requestedHeight" : 820,
+    "requestedWidth" : 1280,
+    "scale" : "comfortable",
+    "sections" : {
+      "mail" : {
+        "height" : 98,
+        "width" : 344,
+        "x" : 414,
+        "y" : 227
+      },
+      "markets" : {
+        "height" : 98,
+        "width" : 344,
+        "x" : 414,
+        "y" : 361.5
+      },
+      "news" : {
+        "height" : 71,
+        "width" : 344,
+        "x" : 782,
+        "y" : 227
+      },
+      "weather" : {
+        "height" : 71,
+        "width" : 344,
+        "x" : 782,
+        "y" : 361.5
+      }
+    },
+    "synthetic" : true,
+    "width" : 1280
+  },
+  {
+    "height" : 820,
+    "name" : "loading-1280-light",
+    "requestedHeight" : 820,
+    "requestedWidth" : 1280,
+    "scale" : "comfortable",
+    "sections" : {
+      "mail" : {
+        "height" : 48,
+        "width" : 344,
+        "x" : 414,
+        "y" : 206
+      },
+      "markets" : {
+        "height" : 48,
+        "width" : 344,
+        "x" : 414,
+        "y" : 290.5
+      },
+      "news" : {
+        "height" : 48,
+        "width" : 344,
+        "x" : 782,
+        "y" : 206
+      },
+      "weather" : {
+        "height" : 48,
+        "width" : 344,
+        "x" : 782,
+        "y" : 290.5
+      }
+    },
+    "synthetic" : true,
+    "width" : 1280
+  },
+  {
+    "height" : 820,
+    "name" : "failed-1280-light",
+    "requestedHeight" : 820,
+    "requestedWidth" : 1280,
+    "scale" : "comfortable",
+    "sections" : {
+      "mail" : {
+        "height" : 136,
+        "width" : 344,
+        "x" : 414,
+        "y" : 206.033935546875
+      },
+      "markets" : {
+        "height" : 182,
+        "width" : 344,
+        "x" : 414,
+        "y" : 378.533935546875
+      },
+      "news" : {
+        "height" : 136,
+        "width" : 344,
+        "x" : 782,
+        "y" : 206.033935546875
+      },
+      "weather" : {
+        "height" : 71,
+        "width" : 344,
+        "x" : 782,
+        "y" : 378.533935546875
+      }
+    },
+    "synthetic" : true,
+    "width" : 1280
+  },
+  {
+    "height" : 820,
+    "name" : "previous-1280-light",
+    "requestedHeight" : 820,
+    "requestedWidth" : 1280,
+    "scale" : "comfortable",
+    "sections" : {
+      "mail" : {
+        "height" : 136,
+        "width" : 344,
+        "x" : 414,
+        "y" : 206
+      },
+      "markets" : {
+        "height" : 182,
+        "width" : 344,
+        "x" : 414,
+        "y" : 378.5
+      },
+      "news" : {
+        "height" : 136,
+        "width" : 344,
+        "x" : 782,
+        "y" : 206
+      },
+      "weather" : {
+        "height" : 71,
+        "width" : 344,
+        "x" : 782,
+        "y" : 378.5
+      }
+    },
+    "synthetic" : true,
+    "width" : 1280
+  },
+  {
+    "height" : 820,
+    "name" : "long-1280-light",
+    "requestedHeight" : 820,
+    "requestedWidth" : 1280,
+    "scale" : "comfortable",
+    "sections" : {
+      "mail" : {
+        "height" : 136,
+        "width" : 344,
+        "x" : 414,
+        "y" : 246
+      },
+      "markets" : {
+        "height" : 182,
+        "width" : 344,
+        "x" : 414,
+        "y" : 418.5
+      },
+      "news" : {
+        "height" : 117,
+        "width" : 344,
+        "x" : 782,
+        "y" : 246
+      },
+      "weather" : {
+        "height" : 71,
+        "width" : 344,
+        "x" : 782,
+        "y" : 418.5
+      }
+    },
+    "synthetic" : true,
+    "width" : 1280
+  },
+  {
+    "height" : 820,
+    "name" : "location-1280-light",
+    "requestedHeight" : 820,
+    "requestedWidth" : 1280,
+    "scale" : "comfortable",
+    "sections" : {
+      "mail" : {
+        "height" : 136,
+        "width" : 344,
+        "x" : 414,
+        "y" : 227
+      },
+      "markets" : {
+        "height" : 182,
+        "width" : 344,
+        "x" : 414,
+        "y" : 399.5
+      },
+      "news" : {
+        "height" : 136,
+        "width" : 344,
+        "x" : 782,
+        "y" : 227
+      },
+      "weather" : {
+        "height" : 123,
+        "width" : 344,
+        "x" : 782,
+        "y" : 399.5
+      }
+    },
+    "synthetic" : true,
+    "width" : 1280
+  },
+  {
+    "height" : 820,
+    "name" : "location-denied-1280-light",
+    "requestedHeight" : 820,
+    "requestedWidth" : 1280,
+    "scale" : "comfortable",
+    "sections" : {
+      "mail" : {
+        "height" : 136,
+        "width" : 344,
+        "x" : 414,
+        "y" : 227
+      },
+      "markets" : {
+        "height" : 182,
+        "width" : 344,
+        "x" : 414,
+        "y" : 399.5
+      },
+      "news" : {
+        "height" : 136,
+        "width" : 344,
+        "x" : 782,
+        "y" : 227
+      },
+      "weather" : {
+        "height" : 123,
+        "width" : 344,
+        "x" : 782,
+        "y" : 399.5
+      }
+    },
+    "synthetic" : true,
+    "width" : 1280
+  },
+  {
+    "height" : 820,
+    "name" : "location-updating-1280-light",
+    "requestedHeight" : 820,
+    "requestedWidth" : 1280,
+    "scale" : "comfortable",
+    "sections" : {
+      "mail" : {
+        "height" : 136,
+        "width" : 344,
+        "x" : 414,
+        "y" : 206
+      },
+      "markets" : {
+        "height" : 182,
+        "width" : 344,
+        "x" : 414,
+        "y" : 378.5
+      },
+      "news" : {
+        "height" : 136,
+        "width" : 344,
+        "x" : 782,
+        "y" : 206
+      },
+      "weather" : {
+        "height" : 123,
+        "width" : 344,
+        "x" : 782,
+        "y" : 378.5
+      }
+    },
+    "synthetic" : true,
+    "width" : 1280
+  },
+  {
+    "height" : 560,
+    "name" : "settings-1280-light",
+    "scale" : "comfortable",
+    "synthetic" : true,
+    "width" : 500
+  },
+  {
+    "height" : 480,
+    "name" : "mail-detail-1280-light",
+    "scale" : "comfortable",
+    "synthetic" : true,
+    "width" : 560
+  },
+  {
+    "height" : 820,
+    "name" : "profile-return-1280-light",
+    "requestedHeight" : 820,
+    "requestedWidth" : 1280,
+    "scale" : "comfortable",
+    "sections" : {
+      "mail" : {
+        "height" : 136,
+        "width" : 344,
+        "x" : 414,
+        "y" : 227
+      },
+      "markets" : {
+        "height" : 182,
+        "width" : 344,
+        "x" : 414,
+        "y" : 399.5
+      },
+      "news" : {
+        "height" : 136,
+        "width" : 344,
+        "x" : 782,
+        "y" : 227
+      },
+      "weather" : {
+        "height" : 71,
+        "width" : 344,
+        "x" : 782,
+        "y" : 399.5
+      }
+    },
+    "synthetic" : true,
+    "width" : 1280
+  },
+  {
+    "height" : 672,
+    "name" : "ready-940-dark",
+    "requestedHeight" : 620,
+    "requestedWidth" : 940,
+    "scale" : "comfortable",
+    "sections" : {
+      "mail" : {
+        "height" : 136,
+        "width" : 304,
+        "x" : 284,
+        "y" : 227
+      },
+      "markets" : {
+        "height" : 182,
+        "width" : 304,
+        "x" : 284,
+        "y" : 437.5
+      },
+      "news" : {
+        "height" : 174,
+        "width" : 304,
+        "x" : 612,
+        "y" : 227
+      },
+      "weather" : {
+        "height" : 90,
+        "width" : 304,
+        "x" : 612,
+        "y" : 437.5
+      }
+    },
+    "synthetic" : true,
+    "width" : 940
+  },
+  {
+    "height" : 672,
+    "name" : "partial-940-dark",
+    "requestedHeight" : 620,
+    "requestedWidth" : 940,
+    "scale" : "comfortable",
+    "sections" : {
+      "mail" : {
+        "height" : 186,
+        "width" : 304,
+        "x" : 284,
+        "y" : 227
+      },
+      "markets" : {
+        "height" : 140,
+        "width" : 304,
+        "x" : 284,
+        "y" : 449.5
+      },
+      "news" : {
+        "height" : 174,
+        "width" : 304,
+        "x" : 612,
+        "y" : 227
+      },
+      "weather" : {
+        "height" : 90,
+        "width" : 304,
+        "x" : 612,
+        "y" : 449.5
+      }
+    },
+    "synthetic" : true,
+    "width" : 940
+  },
+  {
+    "height" : 672,
+    "name" : "empty-940-dark",
+    "requestedHeight" : 620,
+    "requestedWidth" : 940,
+    "scale" : "comfortable",
+    "sections" : {
+      "mail" : {
+        "height" : 98,
+        "width" : 304,
+        "x" : 284,
+        "y" : 227
+      },
+      "markets" : {
+        "height" : 98,
+        "width" : 304,
+        "x" : 284,
+        "y" : 361.5
+      },
+      "news" : {
+        "height" : 71,
+        "width" : 304,
+        "x" : 612,
+        "y" : 227
+      },
+      "weather" : {
+        "height" : 90,
+        "width" : 304,
+        "x" : 612,
+        "y" : 361.5
+      }
+    },
+    "synthetic" : true,
+    "width" : 940
+  },
+  {
+    "height" : 672,
+    "name" : "loading-940-dark",
+    "requestedHeight" : 620,
+    "requestedWidth" : 940,
+    "scale" : "comfortable",
+    "sections" : {
+      "mail" : {
+        "height" : 48,
+        "width" : 304,
+        "x" : 284,
+        "y" : 206
+      },
+      "markets" : {
+        "height" : 48,
+        "width" : 304,
+        "x" : 284,
+        "y" : 290.5
+      },
+      "news" : {
+        "height" : 48,
+        "width" : 304,
+        "x" : 612,
+        "y" : 206
+      },
+      "weather" : {
+        "height" : 48,
+        "width" : 304,
+        "x" : 612,
+        "y" : 290.5
+      }
+    },
+    "synthetic" : true,
+    "width" : 940
+  },
+  {
+    "height" : 672,
+    "name" : "failed-940-dark",
+    "requestedHeight" : 620,
+    "requestedWidth" : 940,
+    "scale" : "comfortable",
+    "sections" : {
+      "mail" : {
+        "height" : 136,
+        "width" : 304,
+        "x" : 284,
+        "y" : 206.033935546875
+      },
+      "markets" : {
+        "height" : 182,
+        "width" : 304,
+        "x" : 284,
+        "y" : 416.533935546875
+      },
+      "news" : {
+        "height" : 174,
+        "width" : 304,
+        "x" : 612,
+        "y" : 206.033935546875
+      },
+      "weather" : {
+        "height" : 90,
+        "width" : 304,
+        "x" : 612,
+        "y" : 416.533935546875
+      }
+    },
+    "synthetic" : true,
+    "width" : 940
+  },
+  {
+    "height" : 672,
+    "name" : "previous-940-dark",
+    "requestedHeight" : 620,
+    "requestedWidth" : 940,
+    "scale" : "comfortable",
+    "sections" : {
+      "mail" : {
+        "height" : 136,
+        "width" : 304,
+        "x" : 284,
+        "y" : 206
+      },
+      "markets" : {
+        "height" : 182,
+        "width" : 304,
+        "x" : 284,
+        "y" : 416.5
+      },
+      "news" : {
+        "height" : 174,
+        "width" : 304,
+        "x" : 612,
+        "y" : 206
+      },
+      "weather" : {
+        "height" : 90,
+        "width" : 304,
+        "x" : 612,
+        "y" : 416.5
+      }
+    },
+    "synthetic" : true,
+    "width" : 940
+  },
+  {
+    "height" : 672,
+    "name" : "long-940-dark",
+    "requestedHeight" : 620,
+    "requestedWidth" : 940,
+    "scale" : "comfortable",
+    "sections" : {
+      "mail" : {
+        "height" : 136,
+        "width" : 304,
+        "x" : 284,
+        "y" : 246
+      },
+      "markets" : {
+        "height" : 182,
+        "width" : 304,
+        "x" : 284,
+        "y" : 418.5
+      },
+      "news" : {
+        "height" : 117,
+        "width" : 304,
+        "x" : 612,
+        "y" : 246
+      },
+      "weather" : {
+        "height" : 90,
+        "width" : 304,
+        "x" : 612,
+        "y" : 418.5
+      }
+    },
+    "synthetic" : true,
+    "width" : 940
+  },
+  {
+    "height" : 672,
+    "name" : "location-940-dark",
+    "requestedHeight" : 620,
+    "requestedWidth" : 940,
+    "scale" : "comfortable",
+    "sections" : {
+      "mail" : {
+        "height" : 136,
+        "width" : 304,
+        "x" : 284,
+        "y" : 227
+      },
+      "markets" : {
+        "height" : 182,
+        "width" : 304,
+        "x" : 284,
+        "y" : 437.5
+      },
+      "news" : {
+        "height" : 174,
+        "width" : 304,
+        "x" : 612,
+        "y" : 227
+      },
+      "weather" : {
+        "height" : 140,
+        "width" : 304,
+        "x" : 612,
+        "y" : 437.5
+      }
+    },
+    "synthetic" : true,
+    "width" : 940
+  },
+  {
+    "height" : 672,
+    "name" : "location-denied-940-dark",
+    "requestedHeight" : 620,
+    "requestedWidth" : 940,
+    "scale" : "comfortable",
+    "sections" : {
+      "mail" : {
+        "height" : 136,
+        "width" : 304,
+        "x" : 284,
+        "y" : 227
+      },
+      "markets" : {
+        "height" : 182,
+        "width" : 304,
+        "x" : 284,
+        "y" : 437.5
+      },
+      "news" : {
+        "height" : 174,
+        "width" : 304,
+        "x" : 612,
+        "y" : 227
+      },
+      "weather" : {
+        "height" : 123,
+        "width" : 304,
+        "x" : 612,
+        "y" : 437.5
+      }
+    },
+    "synthetic" : true,
+    "width" : 940
+  },
+  {
+    "height" : 672,
+    "name" : "location-updating-940-dark",
+    "requestedHeight" : 620,
+    "requestedWidth" : 940,
+    "scale" : "comfortable",
+    "sections" : {
+      "mail" : {
+        "height" : 136,
+        "width" : 304,
+        "x" : 284,
+        "y" : 206
+      },
+      "markets" : {
+        "height" : 182,
+        "width" : 304,
+        "x" : 284,
+        "y" : 416.5
+      },
+      "news" : {
+        "height" : 174,
+        "width" : 304,
+        "x" : 612,
+        "y" : 206
+      },
+      "weather" : {
+        "height" : 140,
+        "width" : 304,
+        "x" : 612,
+        "y" : 416.5
+      }
+    },
+    "synthetic" : true,
+    "width" : 940
+  },
+  {
+    "height" : 672,
+    "name" : "profile-return-940-dark",
+    "requestedHeight" : 620,
+    "requestedWidth" : 940,
+    "scale" : "comfortable",
+    "sections" : {
+      "mail" : {
+        "height" : 136,
+        "width" : 304,
+        "x" : 284,
+        "y" : 227
+      },
+      "markets" : {
+        "height" : 182,
+        "width" : 304,
+        "x" : 284,
+        "y" : 437.5
+      },
+      "news" : {
+        "height" : 174,
+        "width" : 304,
+        "x" : 612,
+        "y" : 227
+      },
+      "weather" : {
+        "height" : 90,
+        "width" : 304,
+        "x" : 612,
+        "y" : 437.5
+      }
+    },
+    "synthetic" : true,
+    "width" : 940
+  },
+  {
+    "height" : 820,
+    "name" : "ready-1280-dark",
+    "requestedHeight" : 820,
+    "requestedWidth" : 1280,
+    "scale" : "comfortable",
+    "sections" : {
+      "mail" : {
+        "height" : 136,
+        "width" : 344,
+        "x" : 414,
+        "y" : 227
+      },
+      "markets" : {
+        "height" : 182,
+        "width" : 344,
+        "x" : 414,
+        "y" : 399.5
+      },
+      "news" : {
+        "height" : 136,
+        "width" : 344,
+        "x" : 782,
+        "y" : 227
+      },
+      "weather" : {
+        "height" : 71,
+        "width" : 344,
+        "x" : 782,
+        "y" : 399.5
+      }
+    },
+    "synthetic" : true,
+    "width" : 1280
+  },
+  {
+    "height" : 820,
+    "name" : "partial-1280-dark",
+    "requestedHeight" : 820,
+    "requestedWidth" : 1280,
+    "scale" : "comfortable",
+    "sections" : {
+      "mail" : {
+        "height" : 186,
+        "width" : 344,
+        "x" : 414,
+        "y" : 227
+      },
+      "markets" : {
+        "height" : 140,
+        "width" : 344,
+        "x" : 414,
+        "y" : 449.5
+      },
+      "news" : {
+        "height" : 136,
+        "width" : 344,
+        "x" : 782,
+        "y" : 227
+      },
+      "weather" : {
+        "height" : 71,
+        "width" : 344,
+        "x" : 782,
+        "y" : 449.5
+      }
+    },
+    "synthetic" : true,
+    "width" : 1280
+  },
+  {
+    "height" : 820,
+    "name" : "empty-1280-dark",
+    "requestedHeight" : 820,
+    "requestedWidth" : 1280,
+    "scale" : "comfortable",
+    "sections" : {
+      "mail" : {
+        "height" : 98,
+        "width" : 344,
+        "x" : 414,
+        "y" : 227
+      },
+      "markets" : {
+        "height" : 98,
+        "width" : 344,
+        "x" : 414,
+        "y" : 361.5
+      },
+      "news" : {
+        "height" : 71,
+        "width" : 344,
+        "x" : 782,
+        "y" : 227
+      },
+      "weather" : {
+        "height" : 71,
+        "width" : 344,
+        "x" : 782,
+        "y" : 361.5
+      }
+    },
+    "synthetic" : true,
+    "width" : 1280
+  },
+  {
+    "height" : 820,
+    "name" : "loading-1280-dark",
+    "requestedHeight" : 820,
+    "requestedWidth" : 1280,
+    "scale" : "comfortable",
+    "sections" : {
+      "mail" : {
+        "height" : 48,
+        "width" : 344,
+        "x" : 414,
+        "y" : 206
+      },
+      "markets" : {
+        "height" : 48,
+        "width" : 344,
+        "x" : 414,
+        "y" : 290.5
+      },
+      "news" : {
+        "height" : 48,
+        "width" : 344,
+        "x" : 782,
+        "y" : 206
+      },
+      "weather" : {
+        "height" : 48,
+        "width" : 344,
+        "x" : 782,
+        "y" : 290.5
+      }
+    },
+    "synthetic" : true,
+    "width" : 1280
+  },
+  {
+    "height" : 820,
+    "name" : "failed-1280-dark",
+    "requestedHeight" : 820,
+    "requestedWidth" : 1280,
+    "scale" : "comfortable",
+    "sections" : {
+      "mail" : {
+        "height" : 136,
+        "width" : 344,
+        "x" : 414,
+        "y" : 206.033935546875
+      },
+      "markets" : {
+        "height" : 182,
+        "width" : 344,
+        "x" : 414,
+        "y" : 378.533935546875
+      },
+      "news" : {
+        "height" : 136,
+        "width" : 344,
+        "x" : 782,
+        "y" : 206.033935546875
+      },
+      "weather" : {
+        "height" : 71,
+        "width" : 344,
+        "x" : 782,
+        "y" : 378.533935546875
+      }
+    },
+    "synthetic" : true,
+    "width" : 1280
+  },
+  {
+    "height" : 820,
+    "name" : "previous-1280-dark",
+    "requestedHeight" : 820,
+    "requestedWidth" : 1280,
+    "scale" : "comfortable",
+    "sections" : {
+      "mail" : {
+        "height" : 136,
+        "width" : 344,
+        "x" : 414,
+        "y" : 206
+      },
+      "markets" : {
+        "height" : 182,
+        "width" : 344,
+        "x" : 414,
+        "y" : 378.5
+      },
+      "news" : {
+        "height" : 136,
+        "width" : 344,
+        "x" : 782,
+        "y" : 206
+      },
+      "weather" : {
+        "height" : 71,
+        "width" : 344,
+        "x" : 782,
+        "y" : 378.5
+      }
+    },
+    "synthetic" : true,
+    "width" : 1280
+  },
+  {
+    "height" : 820,
+    "name" : "long-1280-dark",
+    "requestedHeight" : 820,
+    "requestedWidth" : 1280,
+    "scale" : "comfortable",
+    "sections" : {
+      "mail" : {
+        "height" : 136,
+        "width" : 344,
+        "x" : 414,
+        "y" : 246
+      },
+      "markets" : {
+        "height" : 182,
+        "width" : 344,
+        "x" : 414,
+        "y" : 418.5
+      },
+      "news" : {
+        "height" : 117,
+        "width" : 344,
+        "x" : 782,
+        "y" : 246
+      },
+      "weather" : {
+        "height" : 71,
+        "width" : 344,
+        "x" : 782,
+        "y" : 418.5
+      }
+    },
+    "synthetic" : true,
+    "width" : 1280
+  },
+  {
+    "height" : 820,
+    "name" : "location-1280-dark",
+    "requestedHeight" : 820,
+    "requestedWidth" : 1280,
+    "scale" : "comfortable",
+    "sections" : {
+      "mail" : {
+        "height" : 136,
+        "width" : 344,
+        "x" : 414,
+        "y" : 227
+      },
+      "markets" : {
+        "height" : 182,
+        "width" : 344,
+        "x" : 414,
+        "y" : 399.5
+      },
+      "news" : {
+        "height" : 136,
+        "width" : 344,
+        "x" : 782,
+        "y" : 227
+      },
+      "weather" : {
+        "height" : 123,
+        "width" : 344,
+        "x" : 782,
+        "y" : 399.5
+      }
+    },
+    "synthetic" : true,
+    "width" : 1280
+  },
+  {
+    "height" : 820,
+    "name" : "location-denied-1280-dark",
+    "requestedHeight" : 820,
+    "requestedWidth" : 1280,
+    "scale" : "comfortable",
+    "sections" : {
+      "mail" : {
+        "height" : 136,
+        "width" : 344,
+        "x" : 414,
+        "y" : 227
+      },
+      "markets" : {
+        "height" : 182,
+        "width" : 344,
+        "x" : 414,
+        "y" : 399.5
+      },
+      "news" : {
+        "height" : 136,
+        "width" : 344,
+        "x" : 782,
+        "y" : 227
+      },
+      "weather" : {
+        "height" : 123,
+        "width" : 344,
+        "x" : 782,
+        "y" : 399.5
+      }
+    },
+    "synthetic" : true,
+    "width" : 1280
+  },
+  {
+    "height" : 820,
+    "name" : "location-updating-1280-dark",
+    "requestedHeight" : 820,
+    "requestedWidth" : 1280,
+    "scale" : "comfortable",
+    "sections" : {
+      "mail" : {
+        "height" : 136,
+        "width" : 344,
+        "x" : 414,
+        "y" : 206
+      },
+      "markets" : {
+        "height" : 182,
+        "width" : 344,
+        "x" : 414,
+        "y" : 378.5
+      },
+      "news" : {
+        "height" : 136,
+        "width" : 344,
+        "x" : 782,
+        "y" : 206
+      },
+      "weather" : {
+        "height" : 123,
+        "width" : 344,
+        "x" : 782,
+        "y" : 378.5
+      }
+    },
+    "synthetic" : true,
+    "width" : 1280
+  },
+  {
+    "height" : 560,
+    "name" : "settings-1280-dark",
+    "scale" : "comfortable",
+    "synthetic" : true,
+    "width" : 500
+  },
+  {
+    "height" : 480,
+    "name" : "mail-detail-1280-dark",
+    "scale" : "comfortable",
+    "synthetic" : true,
+    "width" : 560
+  },
+  {
+    "height" : 820,
+    "name" : "profile-return-1280-dark",
+    "requestedHeight" : 820,
+    "requestedWidth" : 1280,
+    "scale" : "comfortable",
+    "sections" : {
+      "mail" : {
+        "height" : 136,
+        "width" : 344,
+        "x" : 414,
+        "y" : 227
+      },
+      "markets" : {
+        "height" : 182,
+        "width" : 344,
+        "x" : 414,
+        "y" : 399.5
+      },
+      "news" : {
+        "height" : 136,
+        "width" : 344,
+        "x" : 782,
+        "y" : 227
+      },
+      "weather" : {
+        "height" : 71,
+        "width" : 344,
+        "x" : 782,
+        "y" : 399.5
+      }
+    },
+    "synthetic" : true,
+    "width" : 1280
+  }
+]

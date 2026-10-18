@@ -53,6 +53,39 @@ const rawMessage = {
 };
 
 describe('OutlookMailConnector', () => {
+  it('can sample inbox selection headers while keeping full bodies out', async () => {
+    const { fetch, calls } = fakeFetch(() => ({
+      body: {
+        value: [
+          {
+            ...rawMessage,
+            importance: 'high',
+            internetMessageHeaders: [
+              { name: 'Auto-Submitted', value: 'auto-generated' },
+              { name: 'List-Unsubscribe', value: '<mailto:remove@example.invalid>' },
+            ],
+          },
+        ],
+      },
+    }));
+    const mail = new OutlookMailConnector({ token, fetch, grantedScopes: READ });
+    const messages = await mail.list({
+      folder: 'inbox',
+      selectionMetadata: true,
+      since: '2026-09-01T00:00:00.000Z',
+      maxResults: 80,
+    });
+    const url = new URL(calls[0]!.url);
+    expect(url.pathname).toBe('/v1.0/me/mailFolders/inbox/messages');
+    expect(url.searchParams.get('$select')!.split(',')).toContain('internetMessageHeaders');
+    expect(url.searchParams.get('$select')!.split(',')).not.toContain('body');
+    expect(messages[0]).toMatchObject({
+      importance: 'high',
+      autoSubmitted: 'auto-generated',
+      listUnsubscribe: true,
+      folder: 'inbox',
+    });
+  });
   it('lists the inbox without fetching bodies', async () => {
     const { fetch, calls } = fakeFetch(() => ({ body: { value: [rawMessage] } }));
     const mail = new OutlookMailConnector({ token, fetch, grantedScopes: READ });

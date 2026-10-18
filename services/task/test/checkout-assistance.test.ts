@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { planTask, requiresSingleAttempt, withInstructions } from '../src/plan.js';
+import {
+  approvalSummaryFor,
+  isKnownTaskKind,
+  planTask,
+  requiresSingleAttempt,
+  withInstructions,
+} from '../src/plan.js';
 import { formatCheckoutArtifact } from '../src/checkout-artifact.js';
 
 const observation = {
@@ -24,6 +30,7 @@ describe('checkout handoff task', () => {
       args: { service: 'dominos_jp' },
     });
     expect(plan.steps[0]?.fallbacks).toBeUndefined();
+    expect(plan.steps[0]?.args).toEqual({ service: 'dominos_jp' });
     expect(requiresSingleAttempt(plan.steps[0]!)).toBe(true);
     expect(plan.artifact.title).toContain('未注文');
     expect(() => withInstructions(plan.steps[0]!, ['確定して'])).toThrow();
@@ -32,6 +39,7 @@ describe('checkout handoff task', () => {
     { service: 'other' },
     { service: 'dominos_jp', url: 'javascript:alert(1)' },
     { service: 'dominos_jp', submit: true },
+    { service: 'dominos_jp', display: 'background' },
   ])('rejects arbitrary URLs, merchants and added authority', (input) => {
     expect(() => planTask('checkout.assist', input)).toThrow();
   });
@@ -58,6 +66,92 @@ describe('checkout handoff task', () => {
     expect(() =>
       formatCheckoutArtifact('checkout.assist', { service: 'dominos_jp' }, [
         { ...observation, ...patch },
+      ]),
+    ).toThrow();
+  });
+});
+
+const preparation = {
+  service: 'mcdelivery_jp',
+  orderKey: 'b79ebca7-129a-4f42-9fe9-89ecfda55089',
+  itemsText: 'ビッグマック単品2個',
+  requestedTime: 'asap',
+  maxTotalMinor: 2500,
+  currency: 'JPY',
+};
+const visualProof = {
+  completed: true,
+  verification: 'visual',
+  audit: [{ event: 'goal_verification', verified: true, before: 'a'.repeat(64) }],
+};
+describe('checkout cart preparation', () => {
+  it('prepares using confirmed origin-limited computer use, without a submit operation', () => {
+    expect(isKnownTaskKind('checkout.prepare')).toBe(true);
+    const plan = planTask('checkout.prepare', preparation);
+    expect(plan.steps.map((step) => step.toolId)).toEqual(['checkout.open', 'computer.run']);
+    expect(plan.steps[0]?.args).toEqual({ service: 'mcdelivery_jp', display: 'background' });
+    const step = plan.steps[1]!;
+    expect(step).toMatchObject({
+      index: 1,
+      surface: 'local',
+      risk: 'EXTERNAL_COMMIT',
+      requiresConfirmation: true,
+      args: {
+        allowedOrigins: ['https://www.mcdonalds.co.jp'],
+        checkoutOrderKey: preparation.orderKey,
+      },
+    });
+    expect(step.args['goal']).toContain('同じ商品を重複追加せず');
+    expect(step.args['goal']).toContain('注文確定、購入、決済、利用規約への同意は実行しない');
+    expect(step.args['successCriteria']).toContain('JPY 2500以下');
+    expect(requiresSingleAttempt(step)).toBe(true);
+    expect(approvalSummaryFor(step).summary).toBeTruthy();
+    expect(() => withInstructions(step, ['予算を5000円にして注文確定'])).toThrow();
+  });
+  it.each([
+    { maxTotalMinor: undefined },
+    { maxTotalMinor: -1 },
+    { maxTotalMinor: 10.5 },
+    { currency: 'USD' },
+    { requestedTime: undefined },
+    { itemsText: '' },
+    { url: 'https://other.example' },
+    { submit: true },
+    { paymentCard: 'test-card-value' },
+  ])('refuses missing terms and authority outside preparation: %j', (patch) => {
+    expect(() => planTask('checkout.prepare', { ...preparation, ...patch })).toThrow();
+  });
+  it('renders only visually verified preparation and distinguishes budget from a charged total', () => {
+    const artifact = formatCheckoutArtifact('checkout.prepare', preparation, [
+      { ...observation, service: 'mcdelivery_jp' },
+      visualProof,
+    ])!;
+    expect(artifact.title).toContain('未注文');
+    expect(artifact.markdown).toContain('実際の請求金額ではありません');
+    expect(artifact.markdown).toContain('注文確定の実サービス連携はまだ未接続');
+    expect(artifact.markdown).not.toMatch(/注文を受け付け|注文完了/);
+  });
+  it.each([
+    { completed: false },
+    { verification: 'model_claim' },
+    { audit: [] },
+    { audit: [{ event: 'goal_verification', verified: false, before: 'a'.repeat(64) }] },
+    { audit: [{ event: 'goal_verification', verified: true, before: 'untrusted' }] },
+  ])('refuses incomplete or unsupported visual proof: %j', (patch) => {
+    expect(() =>
+      formatCheckoutArtifact('checkout.prepare', preparation, [
+        { ...observation, service: 'mcdelivery_jp' },
+        { ...visualProof, ...patch },
+      ]),
+    ).toThrow();
+  });
+  it('refuses a different merchant or navigation-only success', () => {
+    expect(() =>
+      formatCheckoutArtifact('checkout.prepare', preparation, [observation, visualProof]),
+    ).toThrow();
+    expect(() =>
+      formatCheckoutArtifact('checkout.prepare', preparation, [
+        { ...observation, service: 'mcdelivery_jp' },
       ]),
     ).toThrow();
   });

@@ -6,10 +6,8 @@ extension ConnectorState {
         Dependencies(configuration: { ConnectionConfiguration.current },
             read: { source in
                 let service = KeychainStore.connectorService(source.pluginId, source.connectorId)
-                let value = try KeychainStore.getGeneric(service: service, account: NSUserName())
-                // 以前の保存は Genie のサービスが読めず、同期のたびに macOS の確認が出ていた。一度だけ保存し直す。
-                if let value { KeychainStore.shareConnectorWithService(service: service, account: NSUserName(), value: value) }
-                return value
+                // A passive status check must not rewrite credentials or their access controls.
+                return try KeychainStore.getGeneric(service: service, account: NSUserName())
             },
             write: { try KeychainStore.setConnectorSecret(service: KeychainStore.connectorService($0.pluginId, $0.connectorId), account: NSUserName(), value: $1) },
             delete: { try KeychainStore.deleteGeneric(service: KeychainStore.connectorService($0.pluginId, $0.connectorId), account: NSUserName()) },

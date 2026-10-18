@@ -5,6 +5,7 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { type Task, type TokenResponse, uuidv7 } from '@genie/contracts';
 import { withTenant } from '@genie/db';
+import { ConversationService } from '@genie/service-conversation';
 import { makeTestApp, makeTokens, testDbConfig, type TestApp } from './support.js';
 
 const url = process.env['TEST_DATABASE_URL'];
@@ -70,9 +71,258 @@ describe.skipIf(!url)(
       await h?.close();
     });
 
+    it.each(['マックデリバリーに会員登録して', 'マクドナルドの会員登録を手伝って'])(
+      'accepts only native registration preparation for %s, without email/password arguments',
+      async (text) => {
+        const conversation = await start();
+        const request_id = uuidv7();
+        const response = await post(conversation, { text, request_id });
+        expect(response.statusCode).toBe(202);
+        expect(response.json().notice).toContain('アカウントはまだ作成していません');
+        expect(response.json().notice).toContain('規約への同意・本人確認');
+        const task = await getTask(response.json().task_id);
+        expect(task).toMatchObject({
+          kind: 'account.registration.prepare',
+          title: '会員登録の準備（未登録）',
+          input: { service: 'mcdelivery_jp' },
+          status: 'PENDING',
+          result_artifact_id: null,
+        });
+        expect(Object.keys(task.input)).toEqual(['service']);
+        expect((await post(conversation, { text, request_id })).json()).toEqual(response.json());
+        expect(await counts(conversation)).toEqual({ turns: 1, tasks: 1 });
+        expect(h.runtime.signals).toEqual([]);
+      },
+    );
+
+    it('retains the incomplete-registration disclosure after a lost dispatch acknowledgement', async () => {
+      const conversation = await start();
+      const original = h.tasks.create.bind(h.tasks);
+      const spy = vi.spyOn(h.tasks, 'create').mockImplementationOnce(async (input) => {
+        await original(input);
+        throw new Error('lost registration acknowledgement');
+      });
+      try {
+        const payload = { text: 'マックデリバリーに会員登録して', request_id: uuidv7() };
+        const response = await post(conversation, payload);
+        expect(response.statusCode).toBe(202);
+        expect(response.json().notice).toContain('アカウントはまだ作成していません');
+        expect((await getTask(response.json().task_id)).kind).toBe('account.registration.prepare');
+        expect((await post(conversation, payload)).json()).toEqual(response.json());
+        expect(await counts(conversation)).toEqual({ turns: 1, tasks: 1 });
+      } finally {
+        spy.mockRestore();
+      }
+    });
+
+    it.each([
+      '「マックデリバリーに会員登録して」',
+      'マクドナルドの会員登録を手伝ってという文を書いて',
+      'マックデリバリーに会員登録してはいけない',
+      'マックデリバリーに会員登録できますか？',
+    ])('does not dispatch registration or computer automation for %s', async (text) => {
+      const conversation = await start();
+      const response = await post(conversation, { text, request_id: uuidv7() });
+      expect(response.statusCode).toBe(202);
+      expect(response.json().intent).toBe('talking');
+      expect(response.json().task_id).toBeNull();
+      expect(await counts(conversation)).toEqual({ turns: 1, tasks: 0 });
+    });
+
+    const orderState = async (id: string) =>
+      (await h.app.inject({ method: 'GET', url: `/v1/conversations/${id}`, headers: auth })).json()
+        .state.checkout_draft;
+    const collectOrder = async (conversation: string) => {
+      const request_id = uuidv7();
+      const first = await post(conversation, { text: 'マックデリバリーを注文して', request_id });
+      expect(first.statusCode).toBe(200);
+      expect(first.json().answer.text).toContain('商品名と数量');
+      expect(
+        (await post(conversation, { text: 'マックデリバリーを注文して', request_id })).json(),
+      ).toEqual(first.json());
+      expect(await counts(conversation)).toEqual({ turns: 2, tasks: 0 });
+      expect(
+        (
+          await post(conversation, { text: 'ビッグマック2個、ポテトM1個', request_id: uuidv7() })
+        ).json().answer.text,
+      ).toContain('いつ');
+      expect(
+        (await post(conversation, { text: 'できるだけ早く', request_id: uuidv7() })).json().answer
+          .text,
+      ).toContain('合計の上限');
+      expect((await counts(conversation)).tasks).toBe(0);
+    };
+
+    it('collects real order terms, keeps them across pause/resume, and dispatches one unsubmitted cart task', async () => {
+      const conversation = await start();
+      await collectOrder(conversation);
+      const initial = await orderState(conversation);
+      expect((await post(conversation, { text: '注文を中断して' })).json().answer.text).toContain(
+        '中断',
+      );
+      await post(conversation, { text: '今日の天気は？' });
+      expect(await orderState(conversation)).toEqual({ ...initial, status: 'paused' });
+      expect((await post(conversation, { text: '注文を再開して' })).json().answer.text).toContain(
+        '合計の上限',
+      );
+      const request_id = uuidv7();
+      const ready = await post(conversation, { text: '上限2000円', request_id });
+      expect(ready.statusCode).toBe(202);
+      expect(ready.json().notice).toContain('注文・支払いは確定しません');
+      const task = await getTask(ready.json().task_id);
+      expect(task).toMatchObject({
+        kind: 'checkout.prepare',
+        status: 'PENDING',
+        title: 'カートの準備（未注文）',
+        result_artifact_id: null,
+      });
+      expect(task.input).toEqual({
+        service: 'mcdelivery_jp',
+        orderKey: initial.orderKey,
+        itemsText: 'ビッグマック2個、ポテトM1個',
+        requestedTime: 'asap',
+        maxTotalMinor: 2000,
+        currency: 'JPY',
+      });
+      expect(await orderState(conversation)).toMatchObject({
+        status: 'dispatched',
+        taskId: task.id,
+        orderKey: initial.orderKey,
+      });
+      expect((await post(conversation, { text: '上限2000円', request_id })).json()).toEqual(
+        ready.json(),
+      );
+      const repeated = await post(conversation, {
+        text: 'マックデリバリーを注文して',
+        request_id: uuidv7(),
+      });
+      expect(repeated.json().task_id).toBe(task.id);
+      const tasks = await withTenant(h.db, tenantId, (tx) =>
+        tx
+          .selectFrom('tasks')
+          .select('id')
+          .where('conversation_id', '=', conversation)
+          .where('kind', '=', 'checkout.prepare')
+          .execute(),
+      );
+      expect(tasks).toHaveLength(1);
+      expect(h.runtime.signals).toEqual([]);
+    });
+
+    it('keeps uncertain prices and unrelated or private answers out of order terms', async () => {
+      const conversation = await start();
+      await collectOrder(conversation);
+      const initial = await orderState(conversation);
+      for (const text of [
+        'ポテト2個で500円',
+        '2000円くらい',
+        '資料を2枚印刷して',
+        '住所は架空市架空町',
+      ]) {
+        await post(conversation, { text, request_id: uuidv7() });
+        expect(await orderState(conversation)).toEqual(initial);
+      }
+      expect(initial.maxTotalMinor).toBeNull();
+    });
+
+    it('recovers a lost checkout task acknowledgement without changing terms or task identity', async () => {
+      const conversation = await start();
+      await collectOrder(conversation);
+      const original = h.tasks.create.bind(h.tasks);
+      const spy = vi.spyOn(h.tasks, 'create').mockImplementationOnce(async (input) => {
+        await original(input);
+        throw new Error('injected lost checkout acknowledgement');
+      });
+      try {
+        const payload = { text: '上限2000円', request_id: uuidv7() };
+        const response = await post(conversation, payload);
+        expect(response.json().task_id).toBeTruthy();
+        expect((await getTask(response.json().task_id)).kind).toBe('checkout.prepare');
+        expect((await post(conversation, payload)).json()).toEqual(response.json());
+        expect((await counts(conversation)).tasks).toBe(1);
+      } finally {
+        spy.mockRestore();
+      }
+    });
+
+    it('resumes failed dispatch using the original completion turn and immutable terms', async () => {
+      const conversation = await start();
+      await collectOrder(conversation);
+      const spy = vi
+        .spyOn(h.tasks, 'create')
+        .mockRejectedValueOnce(new Error('injected before durable insertion'));
+      const failed = await post(conversation, { text: '上限2000円', request_id: uuidv7() });
+      spy.mockRestore();
+      expect(failed.json().task_id).toBeNull();
+      expect(failed.json().notice).toContain('始められません');
+      const before = await orderState(conversation);
+      const resumed = await post(conversation, { text: '注文を再開して', request_id: uuidv7() });
+      expect(resumed.json().task_id).toBeTruthy();
+      expect((await getTask(resumed.json().task_id)).input).toMatchObject({
+        orderKey: before.orderKey,
+        maxTotalMinor: 2000,
+      });
+      expect((await orderState(conversation)).dispatchTurnId).toBe(before.dispatchTurnId);
+      expect((await counts(conversation)).tasks).toBe(1);
+    });
+
+    it('reconciles a resumed request after the response write fails, without exposing internal receipt metadata', async () => {
+      const conversation = await start();
+      await collectOrder(conversation);
+      const failedCreate = vi
+        .spyOn(h.tasks, 'create')
+        .mockRejectedValueOnce(new Error('before durable insertion'));
+      await post(conversation, { text: '上限2000円', request_id: uuidv7() });
+      failedCreate.mockRestore();
+      const request_id = uuidv7();
+      const failedResponse = vi
+        .spyOn(ConversationService.prototype, 'finishRequest')
+        .mockRejectedValueOnce(new Error('after task accepted'));
+      try {
+        expect((await post(conversation, { text: '注文を再開して', request_id })).statusCode).toBe(
+          500,
+        );
+      } finally {
+        failedResponse.mockRestore();
+      }
+      const receipt = await h.app.inject({
+        method: 'GET',
+        url: `/v1/conversations/${conversation}/requests/${request_id}`,
+        headers: auth,
+      });
+      expect(receipt.statusCode).toBe(200);
+      expect(receipt.json().status).toBe('resolved');
+      expect(receipt.json().response.task_id).toBeTruthy();
+      expect(receipt.json().response.notice).toContain('確定しません');
+      expect(receipt.json().response.__dispatch_turn_id).toBeUndefined();
+      expect((await counts(conversation)).tasks).toBe(1);
+      expect((await post(conversation, { text: '注文を再開して', request_id })).json()).toEqual(
+        receipt.json().response,
+      );
+    });
+
+    it('dispatches only one task when completing turns arrive concurrently', async () => {
+      const conversation = await start();
+      await collectOrder(conversation);
+      const responses = await Promise.all([
+        post(conversation, { text: '上限2000円', request_id: uuidv7() }),
+        post(conversation, { text: '上限2500円', request_id: uuidv7() }),
+      ]);
+      expect(responses.every((r) => r.statusCode === 202)).toBe(true);
+      expect(responses[0]!.json().task_id).toBeTruthy();
+      expect(responses[0]!.json().task_id).toBe(responses[1]!.json().task_id);
+      expect((await counts(conversation)).tasks).toBe(1);
+      const stored = await orderState(conversation);
+      const task = await getTask(responses[0]!.json().task_id);
+      expect(task.input).toMatchObject({
+        maxTotalMinor: stored.maxTotalMinor,
+        orderKey: stored.orderKey,
+      });
+    });
+
     it.each([
       ['マクドナルドの注文画面を開いて', 'mcdelivery_jp'],
-      ['ドミノでピザを注文して', 'dominos_jp'],
+      ['ドミノの注文サイトを開いて', 'dominos_jp'],
     ])('keeps real merchant %s as an explicit unsubmitted site handoff', async (text, service) => {
       const conversation = await start();
       const request_id = uuidv7();

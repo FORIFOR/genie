@@ -153,7 +153,7 @@ else
   bad "transcription egress guide" "FAIL" "docs/guide/build.py: Google STT の説明が無い / 「相手の声のために」が残っている / 出ない理由の行が無い"
 fi
 
-# 7. いまの情報（天気・ニュース）は、一覧の相手にだけ出る。
+# 7. いまの情報（天気・ニュース・株価）は、一覧の相手にだけ出る。
 #    - current-info/ の https URL は CURRENT_INFO_HOSTS の中だけ
 #    - 生の fetch( は hosts.ts の infoFetch だけ
 #    - 一覧はこのゲート・hosts.ts・docs/privacy-egress.md で同じ
@@ -161,7 +161,7 @@ info_check=$(python3 - "$ROOT" <<'CHECK'
 import pathlib, re, sys
 root = pathlib.Path(sys.argv[1])
 d = root / 'workers/agent-host/src/current-info'
-expected = ['api.open-meteo.com', 'geocoding-api.open-meteo.com', 'news.web.nhk', 'news.google.com']
+expected = ['api.open-meteo.com', 'geocoding-api.open-meteo.com', 'news.web.nhk', 'news.google.com', 'query1.finance.yahoo.com']
 hosts_ts = (d / 'hosts.ts').read_text()
 listed = re.findall(r"^\s*'([a-z0-9.-]+)',", hosts_ts.split('CURRENT_INFO_HOSTS')[1].split('] as const')[0], re.M)
 problems = []
@@ -170,7 +170,8 @@ if listed != expected:
 for f in sorted(d.glob('*.ts')):
     text = f.read_text()
     for host in re.findall(r'https://([a-z0-9.-]+)', text):
-        if host not in expected and host != 'open-meteo.com':
+        # Attribution/view links are not fetch destinations.
+        if host not in expected and host not in ['open-meteo.com', 'finance.yahoo.com']:
             problems.append(f'{f.name}: {host}')
     if f.name != 'hosts.ts' and re.search(r'(?<![A-Za-z])fetch\(', text.replace('this.#fetch(', '')):
         problems.append(f'{f.name}: raw fetch(')
@@ -183,7 +184,7 @@ sys.exit(1 if problems else 0)
 CHECK
 )
 if [ "$?" -eq 0 ]; then
-  row "current-info egress allowlist" "PASS (4 hosts)"
+  row "current-info egress allowlist" "PASS (5 hosts)"
 else
   bad "current-info egress allowlist" "FAIL" "$info_check"
 fi

@@ -9,7 +9,13 @@
  * 規則で決まらないものだけ chat に落とす。
  */
 import type { Lane, Modality } from '@genie/contracts';
-import { checkoutAssistanceRequest, isCheckoutAssistanceQuotation } from './checkout-request.js';
+import {
+  checkoutAssistanceRequest,
+  isCheckoutAssistanceQuotation,
+  accountRegistrationRequest,
+  isAccountRegistrationQuotation,
+} from './checkout-request.js';
+import { checkoutOrderRequest, isCheckoutOrderQuotation } from './checkout-order.js';
 import { simulationOrderRequest } from './transaction-request.js';
 
 export interface LaneInput {
@@ -155,6 +161,17 @@ export function routeLane(input: LaneInput): LaneDecision {
   if (checkoutAssistanceRequest(text)) {
     return { lane: 'action', reason: 'official checkout site handoff, not an order' };
   }
+  if (accountRegistrationRequest(text))
+    return {
+      lane: 'action',
+      reason: 'prepare a supported registration form, not create an account',
+    };
+  if (isAccountRegistrationQuotation(text))
+    return { lane: 'chat', reason: 'quoted or explanatory registration request' };
+  if (checkoutOrderRequest(text))
+    return { lane: 'action', reason: 'collect explicit order terms before preparing a cart' };
+  if (isCheckoutOrderQuotation(text))
+    return { lane: 'chat', reason: 'quoted or explanatory order request' };
   if (isCheckoutAssistanceQuotation(text)) {
     return { lane: 'chat', reason: 'quoted checkout request, not a request to open a site' };
   }

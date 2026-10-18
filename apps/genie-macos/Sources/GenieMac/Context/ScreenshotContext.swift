@@ -242,6 +242,11 @@ enum ScreenshotClassifier {
 @MainActor
 final class VisualContextStore: ObservableObject {
     static let shared = VisualContextStore()
+    private let privacyObservation: () throws -> RegistrationPrivacyGuard.Observation
+
+    init(privacyObservation: @escaping () throws -> RegistrationPrivacyGuard.Observation = { try RegistrationPrivacyGuard.observe() }) {
+        self.privacyObservation = privacyObservation
+    }
 
     /// 新しい順。UI と resolver が読む。
     @Published private(set) var recent: [VisualContextArtifact] = []
@@ -249,7 +254,8 @@ final class VisualContextStore: ObservableObject {
     @Published var justCaptured: VisualContextArtifact?
     @Published private(set) var offeredCaptureID: UUID?
     var offeredCapture: VisualContextArtifact? {
-        recent.first { $0.id == offeredCaptureID }
+        guard let privacy = try? privacyObservation(), !privacy.blocked else { return nil }
+        return recent.first { $0.id == offeredCaptureID }
     }
 
     func dismissOffer() {
@@ -341,13 +347,15 @@ final class VisualContextStore: ObservableObject {
     @discardableResult
     func ingest(url: URL, kind: VisualKind, confidence: Double, pixelSize: CGSize,
                 capturedAt: Date, app: String?, window: String?, now: Date = Date()) -> VisualContextArtifact? {
+        guard let privacy = try? privacyObservation(), !privacy.blocked else { return nil }
         let key = "\(url.standardizedFileURL.path)#\(Int(pixelSize.width))x\(Int(pixelSize.height))"
         guard !ingestedKeys.contains(key) else { return nil }   // 同じ画像を 2 回拾わない
-        ingestedKeys.insert(key)
         var art = VisualContextArtifact(
             id: UUID(), conversationID: conversationID, imageURL: url, capturedAt: capturedAt,
             sourceApp: app, sourceWindow: window, pixelSize: pixelSize, confidence: confidence,
             kind: kind, state: .available)
+        guard (try? RegistrationPrivacyGuard.validate(privacy, observe: privacyObservation)) != nil else { return nil }
+        ingestedKeys.insert(key)
         purgeExpired(now: now)
         recent.insert(art, at: 0)
         offeredCaptureID = art.id
@@ -397,6 +405,7 @@ final class VisualContextStore: ObservableObject {
     /// 質問に添える。**ここが端末内で画像が動く唯一の瞬間**: `visual-context/<id>.png` へ写し、
     /// API へ渡す id とラベルを返す。撮っただけでは呼ばれない。写せなかった枚は添えない（見たふりをさせない）。
     func attach(_ arts: [VisualContextArtifact], now: Date = Date()) -> [TurnAttachment] {
+        guard let privacy = try? privacyObservation(), !privacy.blocked else { return [] }
         purgeExpired(now: now)
         // **store が知っていて、この会話のものだけ。** 外から持ち込まれた artifact や、別の会話の画像は添えない。
         let trusted = arts.filter { art in
@@ -411,6 +420,11 @@ final class VisualContextStore: ObservableObject {
                   Self.writePNG(from: art.imageURL, to: dst) else { continue }
             out.append(TurnAttachment(id: art.id.uuidString.lowercased(), kind: art.apiKind,
                                       label: Self.attachmentLabel(art, position: i)))
+        }
+        guard (try? RegistrationPrivacyGuard.validate(privacy, observe: privacyObservation)) != nil else {
+            // Remove only this store's owned handover copies; original screenshots stay untouched.
+            for art in newestFirst { try? FileManager.default.removeItem(at: handoverURL(art.id)) }
+            return []
         }
         if !out.isEmpty {
             attachCount += 1

@@ -184,6 +184,7 @@ export interface ConversationStates {
   active_project: string | null;
   active_task: string | null;
   active_topic: string | null;
+  checkout_draft: Json | null;
   conversation_id: string;
   pending_approvals: Generated<string[]>;
   referents: Generated<Json>;

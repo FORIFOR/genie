@@ -15,6 +15,10 @@
     "./research": {
       "types": "./dist/research.d.ts",
       "default": "./dist/research.js"
+    },
+    "./checkout-assistance": {
+      "types": "./dist/checkout-assistance.d.ts",
+      "default": "./dist/checkout-assistance.js"
     }
   },
   "files": [

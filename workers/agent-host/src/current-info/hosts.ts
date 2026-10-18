@@ -13,6 +13,8 @@ export const CURRENT_INFO_HOSTS = [
   'news.web.nhk',
   // 話題つきのニュース: 話題の語だけ
   'news.google.com',
+  // 株価・指数: 公開の銘柄コードだけ（認証・保有情報なし、個人用experimental adapter）
+  'query1.finance.yahoo.com',
 ] as const;
 
 export type InfoFetch = (url: string) => Promise<string>;
@@ -30,7 +32,10 @@ export class InfoFetchError extends Error {
 export function infoFetch(fetchImpl: typeof fetch = fetch, timeoutMs = 5_000): InfoFetch {
   return async (raw) => {
     const url = new URL(raw);
-    if (url.protocol !== 'https:' || !(CURRENT_INFO_HOSTS as readonly string[]).includes(url.hostname))
+    if (
+      url.protocol !== 'https:' ||
+      !(CURRENT_INFO_HOSTS as readonly string[]).includes(url.hostname)
+    )
       throw new InfoFetchError(`not an allowed information source: ${url.hostname}`);
     const response = await fetchImpl(url, {
       redirect: 'error',

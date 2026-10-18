@@ -14,6 +14,16 @@ final class ConnectorFlow {
     private var startupTimeout: Task<Void, Never>?
     private var startup: CheckedContinuation<UInt16, Error>?
     private var generation = UUID()
+    // Match the five-minute authorization window in genie-core and packages/oauth.
+    private static let authorizationTimeout: Duration = .seconds(5 * 60)
+    private let openAuthorizationURL: (URL) -> Bool
+    private let waitForAuthorization: (Duration) async throws -> Void
+
+    init(openAuthorizationURL: @escaping (URL) -> Bool = { NSWorkspace.shared.open($0) },
+         waitForAuthorization: @escaping (Duration) async throws -> Void = { try await Task.sleep(for: $0) }) {
+        self.openAuthorizationURL = openAuthorizationURL
+        self.waitForAuthorization = waitForAuthorization
+    }
 
     static func randomVerifier() -> String {
         var bytes = [UInt8](repeating: 0, count: 64)
@@ -134,11 +144,13 @@ final class ConnectorFlow {
         pending = Pending(verifier: verifier, state: state, redirectUri: redirect, port: port)
         guard let text = GenieCoreBridge.authorizeUrl(provider: provider, clientId: clientId, redirectUri: redirect,
                 scopes: scopes, state: state, codeChallenge: GenieCoreBridge.pkceChallenge(verifier)),
-              let url = URL(string: text), NSWorkspace.shared.open(url) else { stopLoopback(); return false }
+              let url = URL(string: text), openAuthorizationURL(url) else { stopLoopback(); return false }
+        let attempt = generation
+        let wait = waitForAuthorization
         timeout = Task { [weak self] in
-            try? await Task.sleep(for: .seconds(180))
-            guard !Task.isCancelled else { return }
-            self?.stopLoopback(); onTimeout()
+            do { try await wait(Self.authorizationTimeout) } catch { return }
+            guard !Task.isCancelled, let self, self.generation == attempt else { return }
+            self.stopLoopback(); onTimeout()
         }
         return true
     }

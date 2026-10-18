@@ -1,7 +1,7 @@
 //  非公開 SPI への依存を、このファイルだけに閉じ込める。
 //
 //  ここが唯一の非公開 API 接点。他のファイルは `PrivateSPI.available` と
-//  ここが公開する 3 つの操作しか知らない。Mac App Store 向けビルドは
+//  ここが公開する入力操作と読取専用の窓 ID しか知らない。Mac App Store 向けビルドは
 //  `GENIE_PRIVATE_SPI` を定義せずにこのファイルを外す（審査条件 2.5.1 は
 //  公開 API のみを求めるため、このビルドは直接配布専用）。
 //
@@ -10,10 +10,24 @@
 //  実測（macOS 26.6.2 / SIP 有効）で必要と分かった刻印だけを持ち込み、
 //  認証メッセージ経路は **今回不要だったので持ち込まない**。
 import AppKit
+import ApplicationServices
 import CoreGraphics
 
 enum PrivateSPI {
 #if GENIE_PRIVATE_SPI
+    private typealias AXWindowIDFn = @convention(c) (AXUIElement, UnsafeMutablePointer<CGWindowID>) -> AXError
+    private static let axWindowID: AXWindowIDFn? = {
+        _ = dlopen("/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices", RTLD_LAZY)
+        return dlsym(UnsafeMutableRawPointer(bitPattern: -2), "_AXUIElementGetWindow")
+            .map { unsafeBitCast($0, to: AXWindowIDFn.self) }
+    }()
+    /// Read-only identity binding, separate from event delivery availability.
+    static var windowIdentityAvailable: Bool { axWindowID != nil }
+    static func windowID(_ element: AXUIElement) -> CGWindowID? {
+        guard let function = axWindowID else { return nil }
+        var window: CGWindowID = 0
+        return function(element, &window) == .success && window > 0 ? window : nil
+    }
     private typealias PostToPidFn   = @convention(c) (pid_t, UnsafeMutableRawPointer?) -> Void
     private typealias SetIntFieldFn = @convention(c) (UnsafeMutableRawPointer?, UInt32, Int64) -> Void
     private typealias SetWinLocFn   = @convention(c) (UnsafeMutableRawPointer?, Double, Double) -> Void
@@ -108,6 +122,8 @@ enum PrivateSPI {
         s.post(pid, raw)
     }
 #else
+    static var windowIdentityAvailable: Bool { false }
+    static func windowID(_ element: AXUIElement) -> CGWindowID? { nil }
     static var available: Bool { false }
     static func focusWithoutRaise(pid: pid_t, window: UInt32) -> Bool { false }
     static func postMouse(_ event: CGEvent, pid: pid_t, window: UInt32,

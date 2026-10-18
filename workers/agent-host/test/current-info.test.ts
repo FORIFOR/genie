@@ -143,7 +143,7 @@ describe('information sources', () => {
     await expect(fetch('https://example.com/')).rejects.toThrow(/not an allowed/);
     await expect(fetch('http://api.open-meteo.com/v1/forecast')).rejects.toThrow(/not an allowed/);
     await expect(fetch('https://api.open-meteo.com/v1/forecast')).resolves.toBe('ok');
-    expect(CURRENT_INFO_HOSTS).toEqual(['api.open-meteo.com', 'geocoding-api.open-meteo.com', 'news.web.nhk', 'news.google.com']);
+    expect(CURRENT_INFO_HOSTS).toEqual(['api.open-meteo.com', 'geocoding-api.open-meteo.com', 'news.web.nhk', 'news.google.com', 'query1.finance.yahoo.com']);
   });
 
   it('does not follow redirects', async () => {

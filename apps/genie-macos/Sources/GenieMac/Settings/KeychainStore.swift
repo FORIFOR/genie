@@ -145,20 +145,39 @@ enum KeychainStore {
     /// 接続の資格情報（Gmail・カレンダー等）を保存する。Genie アプリに加えて、同じ Mac の Genie のサービス
     /// （agent-host。`/usr/bin/security` で読む）にも読ませる。本人が Genie で「接続」した＝サービスがそれで同期することに
     /// 同意しているので、同期のたびに macOS の確認を出さない（2026-10-07: 確認待ちで同期が 30 秒で失敗していた）。
-    /// 読める相手はこの 2 つだけ。作り直すのは、既存の項目の読める相手は後から足せないため。
+    /// 既存項目は値だけの更新を要求し、削除・再作成しない。新規項目だけ読める相手を設定する。
     static func setConnectorSecret(service: String, account: String, value: String) throws {
         try interaction.perform {
-            let query = noninteractiveQuery(service: service, account: account)
-            let removed = SecItemDelete(query as CFDictionary)
-            guard removed == errSecSuccess || removed == errSecItemNotFound else { throw error(removed) }
-            var add = query
-            add[kSecValueData as String] = Data(value.utf8)
-            add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-            if let access = connectorAccess(label: service) { add[kSecAttrAccess as String] = access }
-            let status = SecItemAdd(add as CFDictionary, nil)
-            guard status == errSecSuccess else { throw error(status) }
+            try connectorWriter.save(service: service, account: account, value: value)
         }
     }
+
+    /// Injectable Security calls keep the persistence contract testable without opening a Keychain.
+    /// This writer deliberately has no delete operation: denied updates must preserve the item.
+    struct ConnectorSecretWriter {
+        let update: ([String: Any], [String: Any]) -> OSStatus
+        let add: ([String: Any]) -> OSStatus
+        let access: (String) -> SecAccess?
+
+        func save(service: String, account: String, value: String) throws {
+            let query = KeychainStore.noninteractiveQuery(service: service, account: account)
+            let data = Data(value.utf8)
+            let updated = update(query, [kSecValueData as String: data])
+            if updated == errSecSuccess { return }
+            guard updated == errSecItemNotFound else { throw KeychainStore.error(updated) }
+            var add = query
+            add[kSecValueData as String] = data
+            add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+            if let access = access(service) { add[kSecAttrAccess as String] = access }
+            let status = self.add(add)
+            guard status == errSecSuccess else { throw KeychainStore.error(status) }
+        }
+    }
+
+    private static let connectorWriter = ConnectorSecretWriter(
+        update: { SecItemUpdate($0 as CFDictionary, $1 as CFDictionary) },
+        add: { SecItemAdd($0 as CFDictionary, nil) },
+        access: { connectorAccess(label: $0) })
 
     /// 読める相手: この Genie アプリと `/usr/bin/security`（Genie のサービスが資格情報を読む経路）。
     static let connectorReaders = ["/usr/bin/security"]
@@ -176,20 +195,6 @@ enum KeychainStore {
         var access: SecAccess?
         guard SecAccessCreate(label as CFString, trusted as CFArray, &access) == errSecSuccess else { return nil }
         return access
-    }
-
-    /// 以前に保存した接続の資格情報を、一度だけ上の読める相手で保存し直す（中身は変えない）。
-    static func shareConnectorWithService(service: String, account: String, value: String,
-                                          defaults: UserDefaults = .standard) {
-        let key = "genie.connector.shared." + service
-        guard !defaults.bool(forKey: key) else { return }
-        do {
-            try setConnectorSecret(service: service, account: account, value: value)
-            defaults.set(true, forKey: key)
-            GenieLog.write("keychain", "connector shared with the Genie service: " + service)
-        } catch {
-            GenieLog.write("keychain", "connector share failed: " + service + " " + String(describing: error))
-        }
     }
 
     /// Attribute-only presence is enough for settings; it does not request key data.

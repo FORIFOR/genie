@@ -13,7 +13,7 @@ enum AccessibilityContext {
 
     /// 前面で選択中のテキスト。許可が無い / 選択が無ければ nil。
     static func selectedText() -> String? {
-        guard isTrusted else { return nil }
+        guard let privacy = try? RegistrationPrivacyGuard.observe(), !privacy.blocked, isTrusted else { return nil }
         let system = AXUIElementCreateSystemWide()
         var focused: CFTypeRef?
         guard AXUIElementCopyAttributeValue(
@@ -27,12 +27,13 @@ enum AccessibilityContext {
                 axElement, kAXSelectedTextAttribute as CFString, &value) == .success,
               let text = value as? String, !text.isEmpty
         else { return nil }
+        guard (try? RegistrationPrivacyGuard.validate(privacy)) != nil else { return nil }
         return text
     }
 
     /// 前面アプリの窓のタイトル。許可が無ければ nil（推測で埋めない）。
     static func frontmostWindowTitle() -> String? {
-        guard isTrusted, let pid = NSWorkspace.shared.frontmostApplication?.processIdentifier else { return nil }
+        guard let privacy = try? RegistrationPrivacyGuard.observe(), !privacy.blocked, isTrusted, let pid = NSWorkspace.shared.frontmostApplication?.processIdentifier else { return nil }
         let app = AXUIElementCreateApplication(pid)
         var window: CFTypeRef?
         guard AXUIElementCopyAttributeValue(app, kAXFocusedWindowAttribute as CFString, &window) == .success,
@@ -41,28 +42,31 @@ enum AccessibilityContext {
         guard AXUIElementCopyAttributeValue(w as! AXUIElement, kAXTitleAttribute as CFString, &title) == .success,
               let text = title as? String, !text.isEmpty
         else { return nil }
+        guard (try? RegistrationPrivacyGuard.validate(privacy)) != nil else { return nil }
         return text
     }
 
     /// §8 の AXContext。取れたものだけ入れる（取れないものは nil のまま）。
     static func snapshot() -> AXContext? {
-        guard let app = NSWorkspace.shared.frontmostApplication else { return nil }
+        guard let privacy = try? RegistrationPrivacyGuard.observe(), !privacy.blocked, let app = NSWorkspace.shared.frontmostApplication else { return nil }
         // 自分自身は文脈ではない。Genie が前面のときに「Genie を見ています」と出すと、
         // Context Strip が何も言っていないのと同じになる（実機で出た）。
         if app.bundleIdentifier == Bundle.main.bundleIdentifier { return nil }
         if app.localizedName == "Genie" { return nil }
-        return AXContext(
+        let context = AXContext(
             appName: app.localizedName ?? app.bundleIdentifier ?? "?",
             bundleId: app.bundleIdentifier,
             windowTitle: frontmostWindowTitle(),
             focusedRole: focusedRole(),
             selectedText: selectedText()
         )
+        guard (try? RegistrationPrivacyGuard.validate(privacy)) != nil else { return nil }
+        return context
     }
 
     /// focus している要素の role（AXTextField など）。
     static func focusedRole() -> String? {
-        guard isTrusted else { return nil }
+        guard let privacy = try? RegistrationPrivacyGuard.observe(), !privacy.blocked, isTrusted else { return nil }
         let system = AXUIElementCreateSystemWide()
         var focused: CFTypeRef?
         guard AXUIElementCopyAttributeValue(system, kAXFocusedUIElementAttribute as CFString, &focused) == .success,
@@ -70,6 +74,7 @@ enum AccessibilityContext {
         var role: CFTypeRef?
         guard AXUIElementCopyAttributeValue(element as! AXUIElement, kAXRoleAttribute as CFString, &role) == .success
         else { return nil }
+        guard (try? RegistrationPrivacyGuard.validate(privacy)) != nil else { return nil }
         return role as? String
     }
 

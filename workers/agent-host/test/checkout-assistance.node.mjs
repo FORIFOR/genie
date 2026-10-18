@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { CHECKOUT_SERVICES, CheckoutHandoffResult } from '@genie/contracts';
+import { CHECKOUT_SERVICES, CheckoutHandoffResult, CheckoutOpenArgs } from '@genie/contracts';
 import { CheckoutAssistanceRuntime, nativeCheckoutOpener } from '../dist/checkout-assistance.js';
 import { checkoutAssistanceRequest } from '../../../services/conversation/dist/checkout-request.js';
 import { planTask } from '../../../services/task/dist/plan.js';
@@ -36,6 +36,67 @@ test('both official services request foreground navigation using fixed executabl
     assert.equal(result.result.browserOpened, undefined);
   }
 });
+test('display is a strict optional enum with foreground compatibility', () => {
+  assert.deepEqual(CheckoutOpenArgs.parse({ service: 'mcdelivery_jp' }), {
+    service: 'mcdelivery_jp',
+    display: 'foreground',
+  });
+  for (const display of ['foreground', 'background']) {
+    assert.equal(CheckoutOpenArgs.parse({ service: 'mcdelivery_jp', display }).display, display);
+  }
+  for (const display of [null, false, [], {}, '', 'BACKGROUND', '-g', 'background --args']) {
+    assert.equal(CheckoutOpenArgs.safeParse({ service: 'mcdelivery_jp', display }).success, false);
+  }
+});
+test('explicit foreground keeps the legacy flags and invalid native modes never reach OS', async () => {
+  const calls = [];
+  const opener = nativeCheckoutOpener('darwin', async (...args) => {
+    calls.push(args);
+    return { stdout: '', stderr: '' };
+  });
+  await opener.request('mcdelivery_jp', undefined, 'foreground');
+  assert.deepEqual(calls[0].slice(0, 2), [
+    '/usr/bin/open',
+    ['-u', CHECKOUT_SERVICES.mcdelivery_jp.url],
+  ]);
+  await assert.rejects(opener.request('mcdelivery_jp', undefined, '-g --args'));
+  assert.equal(calls.length, 1);
+});
+test('cart and registration preparation plans request background navigation without claiming a loaded page', async () => {
+  const order = {
+    service: 'mcdelivery_jp',
+    orderKey: 'background-order',
+    itemsText: 'ビッグマック1個',
+    requestedTime: 'asap',
+    maxTotalMinor: 2000,
+    currency: 'JPY',
+  };
+  for (const [kind, input] of [
+    ['checkout.prepare', order],
+    ['checkout.prepare', { ...order, service: 'dominos_jp' }],
+    ['account.registration.prepare', { service: 'mcdelivery_jp' }],
+  ]) {
+    const calls = [];
+    const opener = nativeCheckoutOpener('darwin', async (...args) => {
+      calls.push(args);
+      return { stdout: '', stderr: '' };
+    });
+    const plan = planTask(kind, input);
+    const result = await new CheckoutAssistanceRuntime(opener).run({
+      ...plan.steps[0],
+      id: 'prepare',
+      approval: null,
+    });
+    assert.deepEqual(calls[0].slice(0, 2), [
+      '/usr/bin/open',
+      ['-g', '-u', CHECKOUT_SERVICES[input.service].url],
+    ]);
+    assert.equal(CheckoutHandoffResult.parse(result.result).navigation, 'requested');
+    assert.equal(result.result.prepared, false);
+    assert.equal(result.result.orderStatus, 'not_submitted');
+    assert.equal(result.result.browserOpened, undefined);
+  }
+});
 test('caller URLs, schemes, provider spoofing and submit instructions never reach OS', async () => {
   let calls = 0;
   const runtime = new CheckoutAssistanceRuntime({
@@ -49,6 +110,8 @@ test('caller URLs, schemes, provider spoofing and submit instructions never reac
     { service: 'dominos_jp', url: 'file:///tmp/example' },
     { service: 'https://internetorder.dominos.jp/delivery' },
     { service: 'mcdelivery_jp', submit: true },
+    { service: 'mcdelivery_jp', display: '-g' },
+    { service: 'mcdelivery_jp', display: 'background', url: 'https://evil.example' },
     { service: 'stock_paper' },
   ])
     assert.equal(
@@ -122,7 +185,7 @@ test('task re-use remains a site handoff and cannot upgrade to a paid order', as
   assert.equal(calls, 2); // Only navigation may repeat. No order API or generic computer runner exists here.
 });
 test('recognized request reaches task plan, host and truthful artifact without any checkout driver', async () => {
-  const service = checkoutAssistanceRequest('ドミノでピザを注文して');
+  const service = checkoutAssistanceRequest('ドミノの注文サイトを開いて');
   assert.equal(service, 'dominos_jp');
   const plan = planTask('checkout.assist', { service });
   const calls = [];

@@ -93,6 +93,7 @@ describe('live fixture and expectations', () => {
           counts: { gmail: 2 },
           factors: [],
           sources: [src],
+          confirmed: false,
         },
       ],
       waiting_on: [],

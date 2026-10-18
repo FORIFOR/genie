@@ -24,6 +24,7 @@ swiftc -D GENIE_BACKGROUND_TEST $SPI_FLAG -parse-as-library \
   "$ROOT/tools/computer-use/BackgroundScroll.swift" \
   "$ROOT/tools/computer-use/BackgroundWebLink.swift" \
   "$ROOT/tools/computer-use/TargetPreview.swift" \
+  "$ROOT/tools/computer-use/RegistrationVault.swift" "$ROOT/tools/computer-use/RegistrationAssist.swift" \
   "$ROOT/tools/computer-use/BackgroundAX.swift" \
   "$ROOT/tools/computer-use/BackgroundAXTests.swift" -o "$WORK/Verify" > "$WORK/build.log" 2>&1
 for role in target sentinel; do

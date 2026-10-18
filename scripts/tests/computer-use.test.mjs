@@ -113,6 +113,24 @@ test('check uses the actual running helper and explicit screen recipient', () =>
   assert.deepEqual(result.permissions, control.computerHelper.status);
   assert.equal(result.recipient, control.recipient);
 });
+
+test('check reports the independent local vision recipient while retaining the conversation identity check', () => {
+  const config = { ...configuration, modelProvider: 'claude_code', model: 'claude-sonnet-5-5' };
+  const control = {
+    ...runningComputer(),
+    ...config,
+    computerVisionProvider: 'local',
+    computerVisionModel: 'qwen3.5:9b',
+    computerVisionRecipient: 'このMac (qwen3.5:9b)',
+    externalScreenAllowed: false,
+  };
+  const result = readiness(control, config);
+  assert.equal(result.ready, true);
+  assert.equal(result.modelProvider, 'local');
+  assert.equal(result.model, 'qwen3.5:9b');
+  assert.equal(result.recipient, control.computerVisionRecipient);
+  assert.equal(readiness(control, { ...config, model: 'different' }).ready, false);
+});
 test('conversation cloud permission alone is not screen readiness', () => {
   const control = runningComputer();
   control.externalScreenAllowed = false;
@@ -132,11 +150,37 @@ test('check refuses stale, wrong, test-only or unavailable helper status', () =>
     { computerHelperUnattendedTest: true },
     { computerHelperUnattendedTest: null },
     { computerHelper: null },
-    { computerHelper: { path: '/owned/helper', error: 'timeout', status: runningComputer().computerHelper.status } },
-    { computerHelper: { path: '/owned/helper', status: { ready: true, deliveryMode: 'foreground', unattendedTest: false } } },
-    { computerHelper: { path: '/owned/helper', status: { ready: true, deliveryMode: 'background' } } },
-    { computerHelper: { path: '/owned/helper', status: { ready: 'true', deliveryMode: 'background', unattendedTest: false } } },
+    {
+      computerHelper: {
+        path: '/owned/helper',
+        error: 'timeout',
+        status: runningComputer().computerHelper.status,
+      },
+    },
+    {
+      computerHelper: {
+        path: '/owned/helper',
+        status: { ready: true, deliveryMode: 'foreground', unattendedTest: false },
+      },
+    },
+    {
+      computerHelper: {
+        path: '/owned/helper',
+        status: { ready: true, deliveryMode: 'background' },
+      },
+    },
+    {
+      computerHelper: {
+        path: '/owned/helper',
+        status: { ready: 'true', deliveryMode: 'background', unattendedTest: false },
+      },
+    },
   ];
-  for (const patch of invalid) assert.equal(readiness({ ...runningComputer(), ...patch }, configuration).ready, false, JSON.stringify(patch));
+  for (const patch of invalid)
+    assert.equal(
+      readiness({ ...runningComputer(), ...patch }, configuration).ready,
+      false,
+      JSON.stringify(patch),
+    );
   assert.equal(readiness(null, configuration).ready, false);
 });

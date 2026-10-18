@@ -60,6 +60,11 @@ extension SelfTest {
             note("✗ \(label)"); return false
         }
         let hud = VoiceHUDState.shared
+        var maxLevel: Float = 0
+        let levelWatch = Task { @MainActor in
+            while !Task.isCancelled { maxLevel = max(maxLevel, hud.inputLevel); try? await Task.sleep(nanoseconds: 50_000_000) }
+        }
+        defer { levelWatch.cancel() }
         var results: [(String, Bool)] = []
         // 引数で場面を選べる（S1 と終了はいつも通す）。無ければすべて。
         let only = Set((args.firstIndex(of: "liveflow").map { Array(args[($0 + 1)...]) } ?? [])
@@ -149,6 +154,91 @@ extension SelfTest {
             && !failureWords.contains(where: { geminiText.contains($0) })
         results.append(("S6 今日どう？（今日のまとめ）", s6))
         }
+
+        // S7〜S10 いまの情報: show_info が呼ばれ、専用カード（info）が出て、Google 検索の声だけで済ませない。
+        func infoCalls() -> Int { (hud.conversationProvider as? GeminiLiveProvider)?.trace.filter { $0.1 == "info" }.count ?? 0 }
+        func infoCard(_ kind: InfoCard.Kind) -> InfoCard? {
+            if case .card(.info(let card)) = hud.mode, card.kind == kind { return card }; return nil
+        }
+        func infoScene(_ id: String, _ name: String, _ phrase: String, _ kind: InfoCard.Kind,
+                       check: (InfoCard) -> Bool) async {
+            guard want(id) else { return }
+            geminiText = ""
+            let calls = infoCalls()
+            await say(phrase)
+            let called = await wait(25, "\(id) show_info が呼ばれる") { infoCalls() > calls }
+            let shown = await wait(30, "\(id) \(kind.rawValue) のカードが出る") { infoCard(kind) != nil }
+            try? await Task.sleep(nanoseconds: 6_000_000_000)
+            let card = infoCard(kind)
+            note("カード: \(card?.text.prefix(140) ?? "なし")")
+            note("聞き取り: \(userText.prefix(40)) / Gemini: \(geminiText.prefix(140))")
+            let ok = called && shown && card.map(check) == true
+                && !geminiText.contains("どちらの") && !failureWords.contains(where: { geminiText.contains($0) })
+            results.append(("\(id) \(name)", ok))
+        }
+        await infoScene("S7", "今日のニュース", "今日のニュースを教えて", .news) { ($0.news?.items.count ?? 0) >= 3 }
+        await infoScene("S8", "日経平均", "日経平均はいくら？", .markets) {
+            $0.markets?.quotes.contains { $0.symbol == "^N225" } == true
+        }
+        await infoScene("S9", "トヨタの株価", "トヨタの株価を教えて", .markets) {
+            $0.markets?.quotes.contains { $0.symbol == "7203.T" } == true
+        }
+        // 場所を言わない → 端末の現在地（または設定の地域）。場所を聞き返さない。
+        await infoScene("S10", "今日の天気（場所を言わない）", "今日の天気は？", .weather) {
+            $0.weather?.days.isEmpty == false
+        }
+
+        // S11 「近くのマック」→ マクドナルドの店舗（事務所でない）
+        if want("S11") {
+        geminiText = ""
+        await say("近くのマックを探して")
+        let shown = await wait(30, "S11 地図のカードが出る") {
+            if case .card(.places) = hud.mode { return true }; return false
+        }
+        var names: [String] = []
+        if case .card(.places(let card)) = hud.mode { names = card.places.map(\.name) }
+        note("店: \(names.prefix(5).joined(separator: " / "))")
+        let s11 = shown && !names.isEmpty && names.allSatisfy { $0.contains("マクドナルド") || $0.contains("McDonald") }
+            && !names.contains { $0.contains("本社") || $0.contains("事務所") || $0.contains("営業所") }
+        results.append(("S11 近くのマック", s11))
+        }
+
+        // S12 注文の続き（2026-10-16 の失敗の再現）: 商品 → 数量 → 時刻 の順に進み、「手段がない」と言わない。
+        // 準備（公式サイトを開く）の手前で止め、下書きは「やめて」で片づける。
+        if want("S12") {
+        try? await Task.sleep(nanoseconds: 8_000_000_000)   // 前の場面の Gemini の発話が終わるまで待つ
+        geminiText = ""
+        func lastReport() -> String { (hud.conversationProvider as? GeminiLiveProvider)?.reports.last ?? "" }
+        var steps: [Bool] = []
+        // 言い方は 2026-10-16 朝に本人が実際に言ったもの（「マクドナルドで注文したい」は合成音声だと「で注文」が欠けた）。
+        for (phrase, expect) in [("マクドナルド注文して", "商品名と数量"),
+                                 ("チーズバーガーのMセットを注文して", "数量を教えて"),
+                                 ("ひとつ", "いつ届けたいですか")] {
+            let before = reports()
+            await say(phrase)
+            // 黙って待ちすぎると会話が「無言」で閉じる（約 45 秒）。答えはふつう 15 秒以内に戻る。
+            let got = await wait(30, "S12 「\(phrase)」に Genie が答える") { reports() > before }
+            note("報告: \(lastReport().prefix(120)) / 聞き取り: \(userText.prefix(40))")
+            let marks = (hud.conversationProvider as? GeminiLiveProvider)?.trace.suffix(8).map(\.1).joined(separator: ",") ?? ""
+            note("足跡: \(marks)")
+            if let g = hud.conversationProvider as? GeminiLiveProvider {
+                note("送った音 \(g.lane.sentFrames) / 送らなかった音 \(g.lane.droppedFrames) / 会話の段 \(hud.conversation.phase)")
+            }
+            steps.append(got && lastReport().contains(expect))
+            try? await Task.sleep(nanoseconds: 5_000_000_000)
+        }
+        note("Gemini: \(geminiText.suffix(200))")
+        let s12 = steps.allSatisfy { $0 } && !geminiText.contains("手段がない") && !geminiText.contains("手段はない")
+        let before = reports()
+        await say("注文をやめて")
+        _ = await wait(30, "S12 下書きを片づける") { reports() > before }
+        note("報告: \(lastReport().prefix(120))")
+        results.append(("S12 マクドナルドの注文（商品→数量→時刻）", s12))
+        }
+
+        // S13 声が届いていることが画面で分かる（会話中のマイクの音量が波形へ届いた）
+        note(String(format: "入力の波形: 最大 %.2f", maxLevel))
+        results.append(("S13 声の大きさが会話の波形に届く", maxLevel > 0.1))
 
         // S4 終了
         await say("終了して")

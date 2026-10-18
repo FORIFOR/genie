@@ -14,8 +14,21 @@ final class WindowCoordinator {
     private let dockLayout = DockScreenLayout()
     var dockTopInset: CGFloat { dockLayout.topInset }
     private var screenObserver: NSObjectProtocol?
+    private var dockInputMonitor: Any?
 
     private init() {
+        dockInputMonitor = NSEvent.addLocalMonitorForEvents(
+            matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown, .keyDown]
+        ) { [weak self] event in
+            // Input in Home or another app must not keep the expanded Dock open.
+            // Key events sent to a nonactivating panel can omit its window.
+            // The key-window owner still identifies the input destination.
+            if let panel = self?.hudPanel,
+               event.window === panel || (event.type == .keyDown && event.window == nil && panel.isVisible && panel.isKeyWindow) {
+                GenieStateStore.shared.noteQuickActionsInteraction()
+            }
+            return event
+        }
         screenObserver = NotificationCenter.default.addObserver(
             forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main
         ) { [weak self] _ in

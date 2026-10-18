@@ -27,13 +27,13 @@ final class BriefTests: XCTestCase {
         XCTAssertEqual(BriefCard.decode(saved), card)
     }
 
-    func testMakesOneBriefPerDayAfterSevenAndNeverBackfills() throws {
+    func testMakesOneBriefPerDayAfterEightAndNeverBackfills() throws {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: "Asia/Tokyo")!
         func at(_ day: Int, _ hour: Int) -> Date { calendar.date(from: DateComponents(year: 2026, month: 10, day: day, hour: hour))! }
         let today = try XCTUnwrap(BriefCard.decode(body))
-        XCTAssertFalse(BriefStore.isDue(latest: nil, now: at(6, 6), calendar: calendar), "7 時前は作らない")
-        XCTAssertTrue(BriefStore.isDue(latest: nil, now: at(6, 7), calendar: calendar))
+        XCTAssertFalse(BriefStore.isDue(latest: nil, now: at(6, 7), calendar: calendar), "8 時前は作らない")
+        XCTAssertTrue(BriefStore.isDue(latest: nil, now: at(6, 8), calendar: calendar))
         XCTAssertFalse(BriefStore.isDue(latest: today, now: at(6, 22), calendar: calendar), "今日の分はもうある")
         XCTAssertTrue(BriefStore.isDue(latest: today, now: at(9, 8), calendar: calendar), "3 日止まっていても作るのは今日の 1 枚")
         XCTAssertEqual(BriefStore.day(at(9, 8), calendar: calendar), "2026-10-09")

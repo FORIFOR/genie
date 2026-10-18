@@ -26,8 +26,10 @@ import {
   availablePort,
   composeConfig,
   serviceEnvironment,
+  usesNativeConnectionConfig,
   selectModel,
   modelConfiguration,
+  computerVisionConfiguration,
   modelAppEnvironment,
   assertLocalModel,
   externalScreenAllowed,
@@ -69,6 +71,7 @@ DB設定・マイグレーション・3サービスの起動をまとめて行�
   --docker-context <名前>  ローカルunixソケットのcontext。専用保存先に記録し、毎回検証
   --no-open           アプリを開かず起動（Linuxの統合検証でも使用）
   --computer-use      Macの画面操作を有効化。タスク承認と開始時の同意が必要
+  --computer-vision-model <名前>  画面操作だけ導入済みローカルOllama画像モデルを使う（会話設定を保持）
   --work-sync         つないだ Gmail・カレンダーを 15 分ごとに Work へ同期（読み取りのみ。分類にモデルは使わない）
   --transaction-simulation  架空の注文だけを検証。--computer-use 必須、実サービスへ発注しません
   --computer-helper <path>  画面操作ヘルパーの道。既定はこのリポジトリが建てた本番版。
@@ -223,10 +226,14 @@ export function readyMessage(config, stateDir) {
   return `準備できました。${model}で依頼できます。\n保存先: ${stateDir}\nCtrl+Cでサービスを停止します。結果と設定は次回も使えます。`;
 }
 
-export async function verifyLocalOllamaModel(config, request = jsonRequest) {
+export async function verifyLocalOllamaModel(
+  config,
+  request = jsonRequest,
+  { requireVision = false } = {},
+) {
   assertLocalModel(config.model);
   const url = new URL(config.modelURL);
-  if (url.port !== '11434' || url.pathname.replace(/\/$/, '') !== '/v1') return;
+  if (!requireVision && (url.port !== '11434' || url.pathname.replace(/\/$/, '') !== '/v1')) return;
   // A renamed Ollama cloud alias need not contain "cloud". Inspect the server's
   // actual selected-model metadata instead of treating loopback as proof of locality.
   const metadata = await request(`${url.origin}/api/show`, {
@@ -239,6 +246,15 @@ export async function verifyLocalOllamaModel(config, request = jsonRequest) {
     throw new Error(
       '選んだOllamaモデルが端末内で動くことを確認できません。外部接続を明示して起動してください。',
     );
+  if (requireVision) {
+    if (!Array.isArray(metadata.capabilities) || !metadata.capabilities.includes('vision'))
+      throw new Error('選んだローカルモデルの画像対応を確認できません。');
+    const installed = await request(`${url.origin}/v1/models`);
+    selectModel(
+      (installed.data ?? []).map((item) => item.id),
+      config.model,
+    );
+  }
 }
 
 export async function transactionSimulationEnvironment(options, repo = REPO) {
@@ -478,11 +494,21 @@ export async function start(options) {
     modelProvider: config?.modelProvider ?? 'local',
     externalModel: isExternalProvider(config?.modelProvider),
     computerUse: options.computerUse === true,
+    computerVisionModel: config ? computerVisionConfiguration(config, options).model : null,
+    computerVisionProvider: config
+      ? (computerVisionConfiguration(config, options).modelProvider ?? 'local')
+      : null,
+    computerVisionRecipient: config
+      ? modelRecipient(computerVisionConfiguration(config, options))
+      : null,
     transactionSimulation: options.transactionSimulation === true,
     workSync: options.workSync === true,
     computerDelivery: options.computerUse ? 'background' : null,
     computerHelperUnattendedTest,
-    externalScreenAllowed: externalScreenAllowed(config, options.computerUse),
+    externalScreenAllowed: externalScreenAllowed(
+      config ? computerVisionConfiguration(config, options) : config,
+      options.computerUse,
+    ),
     externalScreenAuthorization: config?.externalScreenAuthorization ?? null,
     recipient: config ? modelRecipient(config) : null,
     appPID: appIdentity?.pid ?? null,
@@ -645,6 +671,10 @@ export async function start(options) {
       config.model = assertLocalModel(selectModel(names, selected));
       await verifyLocalOllamaModel(config);
     }
+    if (options.computerVisionModel !== undefined)
+      await verifyLocalOllamaModel(computerVisionConfiguration(config, options), undefined, {
+        requireVision: true,
+      });
     await invalidateDesktopConnection(config, stateDir);
     await privateJSON(join(stateDir, 'runtime.json'), config);
     const logs = join(stateDir, 'logs');
@@ -802,9 +832,10 @@ export async function start(options) {
       composeEnv,
       { input: bootstrap + '\n' + passwords, timeout: 30_000 },
     );
-    // 同期するときだけ、この Mac の運営者の接続設定（あれば）を渡す。中身はクライアント ID だけ。
+    // Native と同じ固定の OAuth 設定を渡す。明示した読取にもトークン更新は必要で、
+    // バックグラウンド同期の許可とは別。利用者のトークンは Keychain に置いたまま。
     const connectionsConfig = join(homedir(), 'Library/Application Support/Astra/connections.json');
-    const hasConnections = options.workSync
+    const hasConnections = usesNativeConnectionConfig(stateDir, options)
       ? await access(connectionsConfig, constants.R_OK).then(
           () => true,
           () => false,

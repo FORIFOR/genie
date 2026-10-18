@@ -29,7 +29,7 @@ private struct BriefBody: View {
     private var dark: Bool { scheme == .dark }
     let card: BriefCard
     /// 段ごとに出す行の上限（カードの高さの上限 `dockCardMaxHeight` に収める）。
-    private static let maxLines = ["calendar": 2, "weather": 1, "attention": 2, "news": 2, "markets": 0]
+    private static let maxLines = ["calendar": 2, "weather": 1, "attention": 2, "mail": 2, "news": 2, "markets": 2]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -63,11 +63,12 @@ private struct BriefBody: View {
                         .font(.system(size: S.type(Metrics.dockLabelSize)))
                         .foregroundStyle(Palette.muted(dark))
                         .lineLimit(1)
-                } else if section.lines.isEmpty {
+                }
+                if section.lines.isEmpty && section.status == "ok" {
                     Text(section.id == "calendar" ? "今日の予定はありません" : "ありません")
                         .font(.system(size: S.type(Metrics.dockLabelSize)))
                         .foregroundStyle(Palette.muted(dark))
-                } else {
+                } else if !section.lines.isEmpty {
                     let limit = Self.maxLines[section.id] ?? 2
                     ForEach(Array(section.lines.prefix(limit).enumerated()), id: \.offset) { _, line in
                         lineView(line)

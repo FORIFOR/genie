@@ -6,6 +6,7 @@
 import { createHash } from 'node:crypto';
 import {
   GenieError,
+  CheckoutOrderDraft,
   COMPACTION_BATCH,
   RECENT_TURN_WINDOW,
   uuidv7,
@@ -17,6 +18,7 @@ import {
 } from '@genie/contracts';
 import { withTenant, type DbHandle } from '@genie/db';
 import { readEventsAfter } from '@genie/service-task';
+import { advanceCheckoutOrder, type CheckoutOrderTransition } from './checkout-order.js';
 
 export interface ConversationDeps {
   readonly db: DbHandle;
@@ -113,11 +115,17 @@ export class ConversationService {
     conversationId: string,
     requestId: string,
     response: Record<string, unknown>,
+    dispatchTurnId?: string,
   ): Promise<void> {
     await withTenant(this.#db, tenantId, (tx) =>
       tx
         .updateTable('conversation_requests')
-        .set({ prepared_response: JSON.stringify(response) })
+        .set({
+          prepared_response: JSON.stringify({
+            ...response,
+            ...(dispatchTurnId ? { __dispatch_turn_id: dispatchTurnId } : {}),
+          }),
+        })
         .where('tenant_id', '=', tenantId)
         .where('user_id', '=', userId)
         .where('conversation_id', '=', conversationId)
@@ -170,18 +178,96 @@ export class ConversationService {
       // Task insertion is durable before the response is finalized. Its ID is safe
       // to recover; queued/running is NOT a claim that execution has completed.
       if (row.prepared_response) {
-        const task = await this.#findAcceptedTask?.(tenantId, userId, conversationId, row.turn_id);
+        const { __dispatch_turn_id: dispatchTurnId, ...prepared } = row.prepared_response as Record<
+          string,
+          unknown
+        >;
+        const task = await this.#findAcceptedTask?.(
+          tenantId,
+          userId,
+          conversationId,
+          typeof dispatchTurnId === 'string' ? dispatchTurnId : row.turn_id,
+        );
         if (task)
           return {
             status: 'resolved',
             response: {
-              ...(row.prepared_response as Record<string, unknown>),
+              ...prepared,
               task_id: task,
               // Keep prepared capability limits/disclosures when dispatch acknowledgement is lost.
             },
           };
       }
       return { status: 'pending' };
+    });
+  }
+
+  /** Serialize slot updates so concurrent answers cannot replace one another. */
+  async advanceCheckoutOrder(
+    tenantId: string,
+    userId: string,
+    conversationId: string,
+    turnId: string,
+    text: string,
+  ): Promise<CheckoutOrderTransition | null> {
+    return withTenant(this.#db, tenantId, async (tx) => {
+      const owned = await tx
+        .selectFrom('conversations')
+        .select('id')
+        .where('id', '=', conversationId)
+        .where('created_by', '=', userId)
+        .executeTakeFirst();
+      if (!owned) throw new GenieError('common.not_found', 'conversation not found');
+      const row = await tx
+        .selectFrom('conversation_states')
+        .select('checkout_draft')
+        .where('conversation_id', '=', conversationId)
+        .forUpdate()
+        .executeTakeFirstOrThrow();
+      const draft =
+        row.checkout_draft === null ? null : CheckoutOrderDraft.parse(row.checkout_draft);
+      const next = advanceCheckoutOrder(draft, text, turnId);
+      if (next)
+        await tx
+          .updateTable('conversation_states')
+          .set({ checkout_draft: JSON.stringify(next.draft), updated_at: this.#now() })
+          .where('conversation_id', '=', conversationId)
+          .execute();
+      return next;
+    });
+  }
+
+  /** Acceptance is not cart completion. Keep its identity for repeat requests. */
+  async markCheckoutDispatched(
+    tenantId: string,
+    userId: string,
+    conversationId: string,
+    orderKey: string,
+    taskId: string,
+  ): Promise<void> {
+    await withTenant(this.#db, tenantId, async (tx) => {
+      const owned = await tx
+        .selectFrom('conversations')
+        .select('id')
+        .where('id', '=', conversationId)
+        .where('created_by', '=', userId)
+        .executeTakeFirst();
+      if (!owned) throw new GenieError('common.not_found', 'conversation not found');
+      const row = await tx
+        .selectFrom('conversation_states')
+        .select('checkout_draft')
+        .where('conversation_id', '=', conversationId)
+        .forUpdate()
+        .executeTakeFirstOrThrow();
+      if (row.checkout_draft === null) return;
+      const draft = CheckoutOrderDraft.parse(row.checkout_draft);
+      if (draft.orderKey !== orderKey) return;
+      const accepted = CheckoutOrderDraft.parse({ ...draft, taskId, status: 'dispatched' });
+      await tx
+        .updateTable('conversation_states')
+        .set({ checkout_draft: JSON.stringify(accepted), updated_at: this.#now() })
+        .where('conversation_id', '=', conversationId)
+        .execute();
     });
   }
 
@@ -431,6 +517,7 @@ function toState(row: Record<string, unknown>): ConversationState {
     active_meeting: row['active_meeting'] ?? null,
     referents: row['referents'] ?? [],
     pending_approvals: row['pending_approvals'] ?? [],
+    checkout_draft: row['checkout_draft'] ?? null,
     response_mode: row['response_mode'],
     updated_at:
       row['updated_at'] instanceof Date ? row['updated_at'].toISOString() : row['updated_at'],

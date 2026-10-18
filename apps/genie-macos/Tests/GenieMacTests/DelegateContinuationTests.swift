@@ -22,3 +22,21 @@ final class DelegateContinuationTests: XCTestCase {
         XCTAssertFalse(DelegateContinuation.isPart("はい", of: "はい"), "短すぎる言葉では同じ話と決めない")
     }
 }
+
+final class DelegateSubjectTests: XCTestCase {
+    /// liveflow 2026-10-16: 「マクドナル」「したい。」の 2 ターンに分かれ、Gemini は「注文したい」だけを渡した。
+    func testBareOrderGetsTheEarlierWords() {
+        XCTAssertEqual(DelegateContinuation.withSubject("注文したい", heardBefore: "マクドナル したい。"), "マクドナルで注文したい")
+        XCTAssertEqual(DelegateContinuation.withSubject("注文したい", heardBefore: "マクドナルドで"), "マクドナルドで注文したい")
+    }
+
+    func testRequestsWithASubjectStayAsTheyAre() {
+        XCTAssertEqual(DelegateContinuation.withSubject("チーズバーガーを1つ注文して", heardBefore: "マクドナル"), "チーズバーガーを1つ注文して")
+        XCTAssertEqual(DelegateContinuation.withSubject("近くのカフェを探して", heardBefore: "えっと"), "近くのカフェを探して")
+    }
+
+    func testLongOrEmptyEarlierTalkIsNotAdded() {
+        XCTAssertEqual(DelegateContinuation.withSubject("注文したい", heardBefore: ""), "注文したい")
+        XCTAssertEqual(DelegateContinuation.withSubject("注文したい", heardBefore: "昨日の会議の資料をまとめてから来週の予定を確認して"), "注文したい")
+    }
+}

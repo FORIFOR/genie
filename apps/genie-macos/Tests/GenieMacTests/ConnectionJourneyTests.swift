@@ -141,6 +141,89 @@ final class ConnectionJourneyTests: XCTestCase {
         let (_, good) = try await URLSession.shared.data(from: URL(string: base + "/callback?code=fixture&state=expected")!)
         XCTAssertEqual((good as? HTTPURLResponse)?.statusCode, 200); XCTAssertEqual(callbacks, 1)
     }
+    /// Advance the authorization timer without waiting five real minutes or opening a browser.
+    final class AuthorizationClock {
+        var elapsed: Duration = .zero
+        var deadline: Duration?
+        var sleeper: CheckedContinuation<Void, Error>?
+        func sleep(for duration: Duration) async throws {
+            deadline = elapsed + duration
+            try await withCheckedThrowingContinuation { sleeper = $0 }
+        }
+        func advance(by duration: Duration) {
+            elapsed += duration
+            if let deadline, elapsed >= deadline {
+                let pending = sleeper; sleeper = nil; self.deadline = nil
+                pending?.resume()
+            }
+        }
+    }
+    func callbackURL(_ authorization: URL) throws -> URL {
+        let items = try XCTUnwrap(URLComponents(url: authorization, resolvingAgainstBaseURL: false)?.queryItems)
+        let redirect = try XCTUnwrap(items.first { $0.name == "redirect_uri" }?.value)
+        let state = try XCTUnwrap(items.first { $0.name == "state" }?.value)
+        var callback = try XCTUnwrap(URLComponents(string: redirect))
+        callback.queryItems = [.init(name: "code", value: "fixture"), .init(name: "state", value: state)]
+        return try XCTUnwrap(callback.url)
+    }
+    func testAuthorizationStillAcceptsCallbackAfterThreeMinutesAndCancelsExpiry() async throws {
+        let clock = AuthorizationClock(); var authorization: URL?; var callbacks = 0; var expirations = 0
+        let flow = ConnectorFlow(openAuthorizationURL: { authorization = $0; return true }, waitForAuthorization: { try await clock.sleep(for: $0) })
+        defer { flow.stopLoopback(); clock.advance(by: .seconds(300)) }
+        let started = try await flow.begin(provider: "google", clientId: "fixture", scopes: ["openid"],
+            onTimeout: { expirations += 1 }) { _, _ in callbacks += 1 }
+        XCTAssertTrue(started)
+        for _ in 0..<100 where clock.sleeper == nil { await Task.yield() }
+        XCTAssertNotNil(clock.sleeper)
+        clock.advance(by: .seconds(231)) // Observed account-selection/consent duration.
+        await Task.yield()
+        let callback = try callbackURL(XCTUnwrap(authorization))
+        let (_, response) = try await URLSession.shared.data(from: callback)
+        XCTAssertEqual((response as? HTTPURLResponse)?.statusCode, 200)
+        XCTAssertEqual(callbacks, 1); XCTAssertEqual(expirations, 0)
+        clock.advance(by: .seconds(69))
+        await Task.yield()
+        XCTAssertEqual(expirations, 0)
+        do {
+            _ = try await URLSession.shared.data(from: callback)
+            XCTFail("A consumed callback must not remain available")
+        } catch { XCTAssertEqual(callbacks, 1) }
+    }
+    func testAuthorizationExpiresOnceAtFiveMinutes() async throws {
+        let clock = AuthorizationClock(); var authorization: URL?; var callbacks = 0; var expirations = 0
+        let flow = ConnectorFlow(openAuthorizationURL: { authorization = $0; return true }, waitForAuthorization: { try await clock.sleep(for: $0) })
+        defer { flow.stopLoopback(); clock.advance(by: .seconds(300)) }
+        _ = try await flow.begin(provider: "google", clientId: "fixture", scopes: ["openid"],
+            onTimeout: { expirations += 1 }) { _, _ in callbacks += 1 }
+        for _ in 0..<100 where clock.sleeper == nil { await Task.yield() }
+        XCTAssertNotNil(clock.sleeper)
+        clock.advance(by: .seconds(299)); await Task.yield()
+        XCTAssertEqual(expirations, 0)
+        clock.advance(by: .seconds(1))
+        for _ in 0..<100 where expirations == 0 { await Task.yield() }
+        XCTAssertEqual(expirations, 1)
+        do {
+            _ = try await URLSession.shared.data(from: callbackURL(XCTUnwrap(authorization)))
+            XCTFail("Expired authorization must close its callback listener")
+        } catch { XCTAssertEqual(callbacks, 0) }
+        clock.advance(by: .seconds(300)); await Task.yield()
+        XCTAssertEqual(expirations, 1)
+    }
+    func testCancelledAuthorizationTimerCannotStopNewListener() async throws {
+        let clock = AuthorizationClock(); var expirations = 0; var callbacks = 0
+        let flow = ConnectorFlow(openAuthorizationURL: { _ in true }, waitForAuthorization: { try await clock.sleep(for: $0) })
+        defer { flow.stopLoopback(); clock.advance(by: .seconds(300)) }
+        _ = try await flow.begin(provider: "google", clientId: "fixture", scopes: ["openid"],
+            onTimeout: { expirations += 1 }) { _, _ in XCTFail("Cancelled authorization callback") }
+        for _ in 0..<100 where clock.sleeper == nil { await Task.yield() }
+        XCTAssertNotNil(clock.sleeper)
+        flow.stopLoopback()
+        let port = try await flow.startLoopback(expectedState: "new") { _ in callbacks += 1 }
+        clock.advance(by: .seconds(300)); await Task.yield()
+        let (_, response) = try await URLSession.shared.data(from: URL(string: "http://127.0.0.1:\(port)/callback?code=fixture&state=new")!)
+        XCTAssertEqual((response as? HTTPURLResponse)?.statusCode, 200)
+        XCTAssertEqual(callbacks, 1); XCTAssertEqual(expirations, 0)
+    }
     func testConfigurationAllowlistAndDedicatedClientPrecedence() {
         let values = ConnectionConfiguration.merge([["ASTRA_OAUTH_GOOGLE_CLIENT_ID": "legacy", "access_token": "not-configuration"],
             ["ASTRA_OAUTH_GOOGLE_READ_CLIENT_ID": " read ", "ASTRA_OAUTH_GOOGLE_WRITE_CLIENT_ID": "write"]])

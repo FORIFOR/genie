@@ -21,10 +21,10 @@
 
   ],
   "product" : "Genie",
-  "startedAt" : "2026-10-06T22:11:29Z",
+  "startedAt" : "2026-10-18T18:16:48Z",
   "steps" : [
     {
-      "front" : "com.anthropic.claudefordesktop",
+      "front" : "com.apple.finder",
       "ids" : {
         "enable" : "true",
         "later" : "true",
@@ -32,26 +32,26 @@
       },
       "interactions" : 1,
       "keyWindow" : true,
-      "ms" : 1030,
+      "ms" : 1033,
       "name" : "マイクの説明",
       "surface" : {
         "h" : 189,
         "key" : true,
         "w" : 312,
         "x" : 1392,
-        "y" : 103
+        "y" : 94
       },
-      "transitionMs" : 57,
+      "transitionMs" : 60,
       "windows" : 2
     },
     {
-      "front" : "com.anthropic.claudefordesktop",
+      "front" : "com.apple.finder",
       "ids" : {
-        "session" : "meeting-b1e6e081-fb54-429a-8f21-71a6d17fd914"
+        "session" : "meeting-32ad9690-0658-4ada-a5a4-1dae56f73882"
       },
       "interactions" : 1,
       "keyWindow" : true,
-      "ms" : 1157,
+      "ms" : 1165,
       "name" : "回復",
       "surface" : {
         "h" : 108,
@@ -63,14 +63,14 @@
       "windows" : 1
     },
     {
-      "front" : "com.anthropic.claudefordesktop",
+      "front" : "com.apple.finder",
       "ids" : {
         "backAfterSharing" : "true",
         "hiddenWhileSharing" : "true"
       },
       "interactions" : 0,
       "keyWindow" : false,
-      "ms" : 1488,
+      "ms" : 1494,
       "name" : "共有のあと",
       "surface" : {
         "h" : 108,
@@ -82,14 +82,14 @@
       "windows" : 1
     },
     {
-      "front" : "com.anthropic.claudefordesktop",
+      "front" : "com.apple.finder",
       "ids" : {
         "answered" : "false",
         "surfaces" : "1"
       },
       "interactions" : 1,
       "keyWindow" : false,
-      "ms" : 1266,
+      "ms" : 1265,
       "name" : "確認（やめる）",
       "surface" : {
         "h" : 108,
@@ -108,19 +108,19 @@
       },
       "interactions" : 1,
       "keyWindow" : false,
-      "ms" : 2272,
+      "ms" : 2300,
       "name" : "落ちて再開",
       "surface" : {
         "h" : 820,
         "key" : false,
         "w" : 1240,
         "x" : 244,
-        "y" : 217
+        "y" : 215
       },
       "windows" : 2
     }
   ],
   "success" : true,
-  "totalMs" : 7223,
+  "totalMs" : 7268,
   "windowsOpened" : 0
 }

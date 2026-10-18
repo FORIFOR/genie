@@ -322,6 +322,7 @@ CREATE TABLE public.conversation_states (
     pending_approvals uuid[] DEFAULT '{}'::uuid[] NOT NULL,
     response_mode text DEFAULT 'text'::text NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    checkout_draft jsonb,
     CONSTRAINT conversation_states_response_mode_check CHECK ((response_mode = ANY (ARRAY['text'::text, 'voice'::text, 'mixed'::text])))
 );
 
@@ -1133,7 +1134,7 @@ CREATE TABLE public.work_corrections (
     action text NOT NULL,
     note text,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT work_corrections_action_check CHECK ((action = ANY (ARRAY['dismiss'::text, 'not_priority'::text, 'done'::text, 'wrong_project'::text])))
+    CONSTRAINT work_corrections_action_check CHECK ((action = ANY (ARRAY['dismiss'::text, 'not_priority'::text, 'done'::text, 'wrong_project'::text, 'confirm'::text])))
 );
 
 ALTER TABLE ONLY public.work_corrections FORCE ROW LEVEL SECURITY;
@@ -4089,3 +4090,5 @@ INSERT INTO schema_migrations (version) VALUES ('20260910003000');
 INSERT INTO schema_migrations (version) VALUES ('20260919090000');
 INSERT INTO schema_migrations (version) VALUES ('20260927100000');
 INSERT INTO schema_migrations (version) VALUES ('20261002020000');
+INSERT INTO schema_migrations (version) VALUES ('20261010020000');
+INSERT INTO schema_migrations (version) VALUES ('20261012010000');

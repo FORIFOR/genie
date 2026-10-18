@@ -16,9 +16,10 @@ final class GeminiLiveTests: XCTestCase {
         let tools = setup?["tools"] as? [[String: Any]] ?? []
         XCTAssertEqual(tools.flatMap { $0.keys }.sorted(), ["functionDeclarations", "googleSearch"], "道具は Google 検索と、仕事を渡す関数だけ")
         let functions = tools.compactMap { $0["functionDeclarations"] as? [[String: Any]] }.flatMap { $0 }
-        // 関数は、仕事を渡す・仕事を止める・今日のまとめを読む・会話を閉じるの 4 つだけ
-        // （止める・読む・閉じるは端末の中だけで、外へ何もしない）。
-        XCTAssertEqual(functions.map { $0["name"] as? String }, ["delegate_task", "stop_work", "get_today_brief", "end_conversation"])
+        // 関数は、仕事を渡す・仕事を止める・今日のまとめを読む・天気/ニュース/株価を出す・会話を閉じるの 5 つだけ
+        // （止める・読む・閉じるは端末の中だけ。show_info は公開情報の取得元だけを読み、外へ何も作用しない）。
+        XCTAssertEqual(functions.map { $0["name"] as? String },
+                       ["delegate_task", "stop_work", "get_today_brief", "show_info", "end_conversation"])
     }
 
     func testQuotaAndKeyClosuresAreExplainedInsteadOfRetried() {
@@ -51,6 +52,12 @@ final class GeminiLiveTests: XCTestCase {
         XCTAssertEqual(GeminiLive.parse(#"{"setupComplete":{}}"#), [.setupComplete])
         XCTAssertEqual(GeminiLive.parse(#"{"toolCall":{"functionCalls":[{"id":"c1","name":"delegate_task","args":{"request":"資料を直して"}}]}}"#),
                        [.toolCall(id: "c1", name: "delegate_task", request: "資料を直して")])
+        // show_info は引数を JSON のまま渡す（種類・地名・銘柄を受け手が読む）
+        guard case .toolCall(_, "show_info", let infoArgs)? = GeminiLive.parse(#"{"toolCall":{"functionCalls":[{"id":"c2","name":"show_info","args":{"kind":"markets","request":"トヨタの株価","symbols":"7203.T"}}]}}"#).first,
+              let decoded = try? JSONSerialization.jsonObject(with: Data(infoArgs.utf8)) as? [String: String] else {
+            return XCTFail("show_info の引数を読めない")
+        }
+        XCTAssertEqual(decoded, ["kind": "markets", "request": "トヨタの株価", "symbols": "7203.T"])
         XCTAssertEqual(GeminiLive.parse(#"{"goAway":{"timeLeft":"5s"}}"#), [.goAway(timeLeft: "5s")])
         XCTAssertEqual(GeminiLive.parse(#"{"sessionResumptionUpdate":{"newHandle":"h1","resumable":true}}"#),
                        [.resumption(handle: "h1", resumable: true)])
@@ -139,5 +146,28 @@ final class GeminiLiveTests: XCTestCase {
             settings.setEnabled(false)
             XCTAssertFalse(settings.active, "本人がオンにしていなければ使わない")
         }
+    }
+
+    @MainActor
+    func testSupportsModelSelectionAndDefaultsToGeminiLive() {
+        let suite = "genie.model.test.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let settings = GeminiLiveSettings(defaults: defaults)
+        XCTAssertEqual(settings.selectedModel, GeminiLive.defaultModel)
+        settings.setSelectedModel(GeminiLive.elevenLabsTurboModel)
+        XCTAssertEqual(settings.selectedModel, "elevenlabs-v4-turbo")
+        // 未知のモデルは無視
+        settings.setSelectedModel("unknown-model")
+        XCTAssertEqual(settings.selectedModel, "elevenlabs-v4-turbo")
+    }
+
+    func testBriefToolDescriptionIncludesMorningGreeting() {
+        let tools = object(GeminiLive.json(GeminiLive.setup(instruction: "テスト")))["setup"] as? [String: Any]
+        let toolList = tools?["tools"] as? [[String: Any]] ?? []
+        let functions = toolList.compactMap { $0["functionDeclarations"] as? [[String: Any]] }.flatMap { $0 }
+        let brief = functions.first(where: { $0["name"] as? String == "get_today_brief" })
+        let description = brief?["description"] as? String ?? ""
+        XCTAssertTrue(description.contains("おはよう"), "「おはよう」で呼べる")
     }
 }

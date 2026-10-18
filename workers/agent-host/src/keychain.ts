@@ -39,6 +39,8 @@ function serviceFor(key: string): string {
  */
 export class MacKeychain implements SecretStore {
   readonly #account: string;
+  /** 同じ項目への書き込みは 1 本ずつ（`security` の更新が並ぶと片方が「既に存在」で落ちる）。 */
+  static readonly #writes = new Map<string, Promise<void>>();
 
   constructor(account: string) {
     this.#account = account;
@@ -69,13 +71,25 @@ export class MacKeychain implements SecretStore {
      */
     const hex = Buffer.from(value, 'utf8').toString('hex');
     const line = `add-generic-password -U -a ${quoted(this.#account)} -s ${quoted(serviceFor(key))} -X ${hex}\n`;
+    const slot = `${this.#account}\u0000${serviceFor(key)}`;
+    const previous = MacKeychain.#writes.get(slot) ?? Promise.resolve();
+    const write = previous
+      .catch(() => undefined)
+      .then(() => runWithInput('security', ['-i'], line, 30_000));
+    MacKeychain.#writes.set(slot, write);
     try {
-      await runWithInput('security', ['-i'], line, 30_000);
-    } catch {
-      // 失敗の詳細（コマンド行）には値が入りうるので、文に含めない。
+      await write;
+    } catch (error) {
+      // 失敗の詳細（コマンド行）には値が入りうるので、文に含めない。原因を追えるよう、
+      // 16 進の連なりと引用部分を伏せた終了コードと stderr だけを 1 行残す（2026-10-12）。
+      process.stderr.write(
+        `${JSON.stringify({ level: 'warn', time: new Date().toISOString(), service: 'agent-host', msg: 'keychain write failed', detail: error instanceof Error ? error.message : 'unknown' })}\n`,
+      );
       throw new KeychainUnavailable(
         '接続情報を保存できませんでした。macOSのキーチェーン確認を許可してから、もう一度試してください。',
       );
+    } finally {
+      if (MacKeychain.#writes.get(slot) === write) MacKeychain.#writes.delete(slot);
     }
   }
 
@@ -111,13 +125,36 @@ function runWithInput(
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     const child = execFile(command, args, { timeout }, (error, _stdout, stderr) => {
-      if (error) reject(new Error(`exit ${String((error as { code?: unknown }).code ?? '?')}`));
+      const said = redactSecurityOutput(stderr);
+      if (error)
+        reject(
+          new Error(
+            `exit ${String((error as { code?: unknown }).code ?? '?')}${said ? `; ${said}` : ''}`,
+          ),
+        );
       else if (/error|failed|could not/i.test(stderr))
-        reject(new Error('security reported an error'));
+        reject(new Error(`security reported an error; ${said}`));
       else resolve();
     });
     child.stdin?.end(input);
   });
+}
+
+/**
+ * `security` の出力から値になりうる部分を伏せる: 引用された語、数字や記号を含む 4 字以上の連なり。
+ * 残るのは「何が起きたか」の語と終了コードだけ（200 字まで）。
+ */
+export function redactSecurityOutput(text: string): string {
+  return text
+    .replace(/"[^"]*"/g, '"…"')
+    .replace(/'[^']*'/g, "'…'")
+    .replace(/[A-Za-z0-9+/=_.-]{4,}/g, (word) => {
+      const plain = word.replace(/\.$/, '');
+      return /^[A-Za-z]+$/.test(plain) && plain.length <= 40 ? word : '…';
+    })
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 200);
 }
 
 function isNotFound(error: unknown): boolean {

@@ -11,13 +11,14 @@ struct InfoDock: View {
     let card: InfoCard
 
     var body: some View {
-        DockCardScaffold(symbol: card.kind == .weather ? "cloud.sun" : "newspaper",
+        DockCardScaffold(symbol: card.kind == .weather ? "cloud.sun" : card.kind == .markets ? "chart.line.uptrend.xyaxis" : "newspaper",
                          title: title, copyText: card.text,
                          sources: card.sources.map(\.name), fetchedAt: card.fetchedAt,
                          identifier: "info") {
             switch card.kind {
             case .weather: if let weather = card.weather { WeatherBody(weather: weather) }
             case .news: if let news = card.news { NewsBody(news: news) }
+            case .markets: if let markets = card.markets { MarketsBody(markets: markets) }
             }
         }
     }
@@ -31,6 +32,9 @@ struct InfoDock: View {
         case .news:
             if let topic = card.news?.topic { return "「\(topic)」のニュース" }
             return "主なニュース"
+        case .markets:
+            let quotes = card.markets?.quotes ?? []
+            return quotes.count == 1 ? quotes[0].name : "株価・指数"
         }
     }
 }
@@ -167,6 +171,73 @@ private struct NewsBody: View {
     /// 取得元の RSS が返した https のリンクだけを開く。
     private func open(_ item: InfoCard.News.Item) {
         guard let url = URL(string: item.url), url.scheme == "https" else { return }
+        NSWorkspace.shared.open(url)
+    }
+}
+
+/// 銘柄ごとに「名前・値・騰落」と「いつの値か・観測時刻」の 2 段。数字は取得元の値だけ。押すと出所を開く。
+private struct MarketsBody: View {
+    @Environment(\.colorScheme) private var scheme
+    private var dark: Bool { scheme == .dark }
+    let markets: InfoCard.Markets
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(Array(markets.quotes.enumerated()), id: \.offset) { index, quote in
+                if index > 0 { Rectangle().fill(Color.hairline(dark)).frame(height: 0.5) }
+                row(quote)
+            }
+        }
+        .accessibilityIdentifier("infoMarketsQuotes")
+    }
+
+    private func row(_ quote: InfoCard.Markets.Quote) -> some View {
+        Button { open(quote) } label: {
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(quote.name)
+                        .font(.system(size: S.type(Metrics.dockRowSize)))
+                        .foregroundStyle(Palette.text(dark))
+                        .lineLimit(1)
+                    Spacer(minLength: 8)
+                    Text(Self.number(quote.price) + (quote.isIndex ? " pt" : " " + quote.currency))
+                        .font(.system(size: S.type(Metrics.dockSpeechSize), weight: .semibold))
+                        .foregroundStyle(Palette.text(dark))
+                        .monospacedDigit()
+                    if let percent = quote.changePercent {
+                        Text(Self.number(percent, sign: true) + "%")
+                            .font(.system(size: S.type(Metrics.dockRowSize)))
+                            .foregroundStyle(percent < 0 ? Palette.warning(dark) : Palette.text(dark))
+                            .monospacedDigit()
+                    }
+                }
+                Text([quote.change.map { "前日比 " + Self.number($0, sign: true) }, quote.session, "観測 " + quote.observed]
+                        .compactMap { $0 }.joined(separator: " · "))
+                    .font(.system(size: S.type(Metrics.dockLabelSize)))
+                    .foregroundStyle(Palette.muted(dark))
+                    .lineLimit(1)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, 6)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help(quote.url)
+        .accessibilityElement(children: .combine)
+    }
+
+    static func number(_ value: Double, sign: Bool = false) -> String {
+        let f = NumberFormatter()
+        f.numberStyle = .decimal
+        f.maximumFractionDigits = 2
+        f.locale = Locale(identifier: "ja_JP")
+        if sign { f.positivePrefix = "+" }
+        return f.string(from: NSNumber(value: value)) ?? String(value)
+    }
+
+    /// 取得元の https のリンクだけを開く。
+    private func open(_ quote: InfoCard.Markets.Quote) {
+        guard let url = URL(string: quote.url), url.scheme == "https" else { return }
         NSWorkspace.shared.open(url)
     }
 }

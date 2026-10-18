@@ -138,9 +138,81 @@ final class PlacesTests: XCTestCase {
     }
 
     func testAnyShopNameNearbyIsSearchedByName() {
-        XCTAssertEqual(NearbyPlaceIntent.detect("近くのマクドナルドを調べて")?.query, "マクドナルド")
-        XCTAssertEqual(NearbyPlaceIntent.detect("近くのマクドナルドを調べて")?.nameMustContain, ["マクドナルド"])
         XCTAssertEqual(NearbyPlaceIntent.detect("最寄りのユニクロはどこ")?.query, "ユニクロ")
+        XCTAssertEqual(NearbyPlaceIntent.detect("最寄りのユニクロはどこ")?.nameMustContain, ["ユニクロ"])
+        XCTAssertEqual(NearbyPlaceIntent.detect("最寄りのユニクロはどこ")?.expectedTypes, [], "何の店か分からないので種類では選ばない")
         XCTAssertNil(NearbyPlaceIntent.detect("近くのお店を教えて"), "too vague to search by name")
+    }
+
+    // MARK: 略して呼ぶチェーン（実機 2026-10-16: 「近くのマック」で「㈱マック 東京営業所」だけが出た）
+
+    func testMcDonaldsAliasesSearchTheOfficialName() {
+        for text in ["近くのマック", "近くのマックを探して", "近くのマクド教えて", "近くのマクドナルドを調べて",
+                     "mcdonald's near me", "nearest mcdonalds"] {
+            let intent = NearbyPlaceIntent.detect(text)
+            XCTAssertEqual(intent?.display, "マクドナルド", text)
+            XCTAssertEqual(intent?.query, "マクドナルド", text)
+            XCTAssertEqual(intent?.nameMustContain, ["マクドナルド", "mcdonald"], text)
+            XCTAssertTrue(intent?.expectedTypes.contains("fast_food_restaurant") == true, text)
+        }
+        // 「マック」を含む別物は拾わない。
+        XCTAssertNotEqual(NearbyPlaceIntent.detect("近くのマックスバリュ")?.display, "マクドナルド")
+        XCTAssertNil(NearbyPlaceIntent.detect("近くのマックでデリバリーを注文して"))
+    }
+
+    func testOtherChainAliases() {
+        XCTAssertEqual(NearbyPlaceIntent.detect("近くのファミマ")?.query, "ファミリーマート")
+        XCTAssertEqual(NearbyPlaceIntent.detect("近くのセブン")?.query, "セブン-イレブン")
+        XCTAssertEqual(NearbyPlaceIntent.detect("近くのローソン")?.expectedTypes.contains("convenience_store"), true)
+        XCTAssertEqual(NearbyPlaceIntent.detect("近くのケンタ")?.display, "ケンタッキー")
+        XCTAssertEqual(NearbyPlaceIntent.detect("近くのモス")?.display, "モスバーガー")
+        XCTAssertNotEqual(NearbyPlaceIntent.detect("近くのモスク")?.display, "モスバーガー")
+        XCTAssertEqual(NearbyPlaceIntent.detect("近くのドトール")?.query, "ドトールコーヒー")
+        XCTAssertEqual(NearbyPlaceIntent.detect("近くのスタバ")?.query, "スターバックス")
+    }
+
+    func testFieldMaskAsksForTypesAndStatusButSendsNothingNew() throws {
+        let fields = Set(PlacesClient.fieldMask.split(separator: ",").map(String.init))
+        XCTAssertTrue(fields.isSuperset(of: ["places.types", "places.businessStatus"]))
+        let request = PlacesClient.searchRequest(query: "マクドナルド", near: here.coordinate, apiKey: "SECRET")
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: request.httpBody!) as? [String: Any])
+        XCTAssertEqual(json["textQuery"] as? String, "マクドナルド")
+        XCTAssertEqual(Set(json.keys), ["textQuery", "languageCode", "regionCode", "rankPreference", "maxResultCount", "locationBias"])
+    }
+
+    private let mcResponse = #"""
+    {"places":[
+      {"id":"office","displayName":{"text":"㈱マック 東京営業所"},"location":{"latitude":35.6596,"longitude":139.7006},"types":["corporate_office","point_of_interest","establishment"],"businessStatus":"OPERATIONAL"},
+      {"id":"mc","displayName":{"text":"マクドナルド 渋谷道玄坂店"},"location":{"latitude":35.6600,"longitude":139.6990},"types":["fast_food_restaurant","hamburger_restaurant","restaurant","food","point_of_interest","establishment"],"businessStatus":"OPERATIONAL"},
+      {"id":"closed","displayName":{"text":"マクドナルド 渋谷センター街店"},"location":{"latitude":35.6597,"longitude":139.7004},"types":["fast_food_restaurant","restaurant"],"businessStatus":"CLOSED_PERMANENTLY"}
+    ]}
+    """#
+
+    func testOfficeAndClosedShopsAreDroppedForAChain() throws {
+        let intent = try XCTUnwrap(NearbyPlaceIntent.detect("近くのマック"))
+        let places = try PlacesClient.places(from: Data(mcResponse.utf8), near: here, mustContain: intent.nameMustContain,
+                                             expectedTypes: intent.expectedTypes, limit: 3)
+        XCTAssertEqual(places.map(\.id), ["mc"])
+        // 名前で絞らなくても（「マック」と同じ語を含む会社でも）、店の種類で事務所を外す。
+        XCTAssertEqual(try PlacesClient.places(from: Data(mcResponse.utf8), near: here, mustContain: ["マック", "マクドナルド"],
+                                               expectedTypes: intent.expectedTypes, limit: 3).map(\.id), ["mc"])
+        // 種類を見ない検索でも、閉店した店は出さない。
+        XCTAssertEqual(try PlacesClient.places(from: Data(mcResponse.utf8), near: here, mustContain: [], limit: 3).map(\.id),
+                       ["office", "mc"])
+    }
+
+    func testSparseTypesDoNotEmptyTheList() throws {
+        let sparse = #"""
+        {"places":[
+          {"id":"a","displayName":{"text":"マクドナルド 渋谷店"},"location":{"latitude":35.6598,"longitude":139.7008},"types":["point_of_interest","establishment"]},
+          {"id":"b","displayName":{"text":"マクドナルド 原宿店"},"location":{"latitude":35.6700,"longitude":139.7020}}
+        ]}
+        """#
+        XCTAssertEqual(try PlacesClient.places(from: Data(sparse.utf8), near: here, mustContain: ["マクドナルド"],
+                                               expectedTypes: NearbyPlaceIntent.foodTypes, limit: 3).map(\.id), ["a", "b"])
+        let onlyOffice = #"{"places":[{"id":"o","displayName":{"text":"マクドナルド 本社"},"location":{"latitude":35.66,"longitude":139.70},"types":["corporate_office"]}]}"#
+        XCTAssertEqual(try PlacesClient.places(from: Data(onlyOffice.utf8), near: here, mustContain: ["マクドナルド"],
+                                               expectedTypes: NearbyPlaceIntent.foodTypes, limit: 3).map(\.id), ["o"],
+                       "事務所しか無いときは、名前で絞った一覧へ戻す")
     }
 }

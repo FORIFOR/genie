@@ -71,6 +71,7 @@ export function parseOptions(args) {
     '--model': 'model',
     '--model-provider': 'modelProvider',
     '--model-url': 'modelURL',
+    '--computer-vision-model': 'computerVisionModel',
     '--app': 'app',
     '--docker-context': 'dockerContext',
     /*
@@ -98,6 +99,14 @@ export function parseOptions(args) {
   if (result.computerHelper !== undefined) result.computerHelper = resolve(result.computerHelper);
   if (result.port !== undefined) result.port = portNumber(result.port);
   if (result.model !== undefined) validateModel(result.model);
+  if (result.computerVisionModel !== undefined) {
+    validateModel(result.computerVisionModel);
+    assertLocalModel(result.computerVisionModel);
+    if (!result.computerUse)
+      throw new Error('--computer-vision-model には --computer-use が必要です。');
+    if (result.allowExternalScreen === true)
+      throw new Error('ローカル画面モデルには --allow-external-screen を指定しません。');
+  }
   if (result.modelProvider !== undefined) validateModelProvider(result.modelProvider);
   if (isExternalProvider(result.modelProvider) && result.modelURL !== undefined)
     throw new Error('外部モデルの接続では --model-url を指定しません。');
@@ -225,6 +234,18 @@ export function modelEnvironment(config) {
     ASTRA_LOCAL_LLM_MODEL: config.model,
     ASTRA_LOCAL_LLM_REASONING_EFFORT: 'none',
   };
+}
+
+/** A per-start local vision override; does not alter the saved conversation model. */
+export function computerVisionConfiguration(config, options = {}) {
+  if (options.computerVisionModel === undefined) return config;
+  if (options.computerUse !== true)
+    throw new Error('--computer-vision-model には --computer-use が必要です。');
+  const model = assertLocalModel(validateModel(options.computerVisionModel));
+  const modelURL = localEndpoint(config.modelURL);
+  if (new URL(modelURL).pathname.replace(/\/$/, '') !== '/v1')
+    throw new Error('ローカル画面モデルには Ollama の /v1 接続先が必要です。');
+  return { modelProvider: 'local', model, modelURL };
 }
 
 export function externalScreenAllowed(config, computerUse = false) {
@@ -620,8 +641,17 @@ export function composeConfig(config, repo) {
   };
 }
 
+/** 普段の Native 起動と同じ設定だけを共有する。別保存先は明示した同期以外では隔離する。 */
+export function usesNativeConnectionConfig(
+  stateDir,
+  { workSync = false, platform = process.platform } = {},
+) {
+  return platform === 'darwin' && (workSync || resolve(stateDir) === resolve(DEFAULT_STATE));
+}
+
 export function serviceEnvironment(config, stateDir, repo, source = process.env, options = {}) {
   const env = systemEnvironment(source);
+  const vision = computerVisionConfiguration(config, options);
   const database = (role) =>
     `postgres://${role}:${config.appPassword}@127.0.0.1:${config.postgresPort}/genie_preview?sslmode=disable`;
   return {
@@ -648,16 +678,17 @@ export function serviceEnvironment(config, stateDir, repo, source = process.env,
     ASTRA_RECORDING_ROOT: join(stateDir, 'recordings'),
     ASTRA_BUILTIN_PLUGINS_DIR: join(repo, 'plugins/builtin'),
     ...modelEnvironment(config),
-    ASTRA_COMPUTER_VISION_EXTERNAL: externalScreenAllowed(config, options.computerUse)
+    ...(options.computerVisionModel === undefined
+      ? {}
+      : { ASTRA_COMPUTER_VISION_MODEL: vision.model, ASTRA_COMPUTER_VISION_URL: vision.modelURL }),
+    ASTRA_COMPUTER_VISION_EXTERNAL: externalScreenAllowed(vision, options.computerUse)
       ? 'on'
       : 'off',
     // つないだ Gmail・カレンダーを Work へ同期する（本人が --work-sync で起動したときだけ。周りの環境変数では入らない）。
     ASTRA_WORK_SYNC: options.workSync === true ? 'on' : 'off',
-    // 同期するなら、切れたトークンを更新するための運営者の接続設定（クライアント ID だけ。利用者のトークンは含まない）。
-    // 保存先を分けた起動では既定で読まないので、場所を明示する（2026-10-07: 1 時間で「つなぎ直して」になっていた）。
-    ...(options.workSync === true && options.connectionsConfig
-      ? { ASTRA_CONNECTIONS_CONFIG: options.connectionsConfig }
-      : {}),
+    // 明示した読取でも期限更新が必要。起動側が確かめた Native の OAuth 設定を渡す。
+    // 保存先を分けた host の隔離既定は維持し、周りの環境変数からは取り込まない。
+    ...(options.connectionsConfig ? { ASTRA_CONNECTIONS_CONFIG: options.connectionsConfig } : {}),
     ASTRA_WORK_SYNC_METERED_LLM: 'off',
     ASTRA_DEVICE_LABEL: config.project,
     ASTRA_DESKTOP_ID: config.identity,

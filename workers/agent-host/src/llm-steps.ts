@@ -1,5 +1,6 @@
 import { compositionIssues } from './compose-quality.js';
 import { visionPromptFor } from './computer-vision-prompts.js';
+import { assertRegistrationScreenshotPrivacy } from './registration-privacy.js';
 import { createHash } from 'node:crypto';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -588,6 +589,7 @@ export class LlmRuntime {
     try {
       const tool = step.toolId as LlmTool;
       const images = locateImages(imageRefsOf(step.args['images']));
+      if (images.length) assertRegistrationScreenshotPrivacy();
       if (vision) {
         const expected =
           tool === 'llm.plan_computer_action' ||
@@ -621,6 +623,7 @@ export class LlmRuntime {
                   '依頼の条件を満たさない文章が含まれていました。自動では再生成しません。依頼やモデルを確認してお試しください。',
               },
             };
+          if (images.length) assertRegistrationScreenshotPrivacy();
           raw = await ask(
             [
               prompt,

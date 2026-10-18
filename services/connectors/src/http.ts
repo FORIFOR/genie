@@ -51,9 +51,26 @@ export interface CallConfig {
 const DEFAULT_TIMEOUT_MS = 15_000;
 
 /** HTTP の状態を、扱える種類へ写す。 */
-export function failureFor(status: number, message: string): ConnectorFailure {
+export function failureFor(
+  status: number,
+  message: string,
+  providerReasons: readonly string[] = [],
+): ConnectorFailure {
   if (status === 401) return 'token_expired';
   if (status === 403) {
+    // Google uses 403 for these transient limits too. Prefer its explicit reason;
+    // only fall back to standard limit phrases when no reason was supplied.
+    // A mention of quota settings or rate-limit permissions is not a retry signal.
+    if (
+      providerReasons.some(
+        (reason) => reason === 'rateLimitExceeded' || reason === 'userRateLimitExceeded',
+      ) ||
+      (providerReasons.length === 0 &&
+        /^(?:too many requests:\s*)?(?:too many concurrent requests\b|(?:user[ -])?rate[ -]limit exceeded\b|quota exceeded\b)/i.test(
+          message.trim(),
+        ))
+    )
+      return 'rate_limited';
     // 権限が無いのと、許可の範囲が足りないのを分ける。直し方が違う。
     return /scope|insufficient/i.test(message) ? 'insufficient_scope' : 'permission_denied';
   }
@@ -112,9 +129,17 @@ export async function callJson<T>(
   }
 
   if (!response.ok) {
+    const error = (body as { error?: { message?: unknown; errors?: unknown } } | null)?.error;
     const message =
-      (body as { error?: { message?: string } })?.error?.message ?? `status ${response.status}`;
-    throw new ConnectorError(failureFor(response.status, message), message);
+      typeof error?.message === 'string' ? error.message : `status ${response.status}`;
+    const reasons = Array.isArray(error?.errors)
+      ? error.errors.flatMap((entry: unknown) => {
+          if (entry === null || typeof entry !== 'object') return [];
+          const reason = (entry as { reason?: unknown }).reason;
+          return typeof reason === 'string' && reason ? [reason] : [];
+        })
+      : [];
+    throw new ConnectorError(failureFor(response.status, message, reasons), message);
   }
   return body as T;
 }

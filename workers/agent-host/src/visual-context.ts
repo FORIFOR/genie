@@ -25,6 +25,7 @@ import {
 import { HttpLlmError, type HttpLlmImage } from './http-llm.js';
 import { homedir } from 'node:os';
 import { join, resolve, sep } from 'node:path';
+import { assertRegistrationScreenshotPrivacy } from './registration-privacy.js';
 
 /** cloud から来る 1 枚ぶん。形が違えば捨てる（id はファイル名になる）。 */
 export interface ImageRef {
@@ -108,8 +109,9 @@ export function locateImages(
 /** Recheck the handover boundary at read time; never silently answer without requested pixels. */
 export function readVisualImages(images: readonly LocatedImage[]): HttpLlmImage[] {
   if (images.length > 4) throw new HttpLlmError('image_unavailable', 'Too many images');
+  const privacyStamp = images.length ? assertRegistrationScreenshotPrivacy() : '';
   let bytes = 0;
-  return images.map((image) => {
+  const loaded: HttpLlmImage[] = images.map((image) => {
     let fd: number | undefined;
     try {
       if (!image.present || canonicalImagePath(image.id, visualContextDir()) !== image.path)
@@ -137,4 +139,10 @@ export function readVisualImages(images: readonly LocatedImage[]): HttpLlmImage[
       if (fd !== undefined) closeSync(fd);
     }
   });
+  if (images.length && assertRegistrationScreenshotPrivacy() !== privacyStamp)
+    throw new HttpLlmError(
+      'image_unavailable',
+      '登録情報の保護状態が変わったため、画像の読み取りを中止しました。',
+    );
+  return loaded;
 }

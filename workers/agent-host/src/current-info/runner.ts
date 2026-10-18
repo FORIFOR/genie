@@ -8,6 +8,7 @@ import type { HostStep, StepOutcome } from '../connector-steps.js';
 import type { StepRunner } from '../step-loop.js';
 import type { InfoEnvelope } from './envelope.js';
 import { infoFetch, type InfoFetch } from './hosts.js';
+import { lookupQuotes } from './markets.js';
 import { lookupNews } from './news.js';
 import { defaultRegion } from './preferences.js';
 import { lookupWeather } from './weather.js';
@@ -43,27 +44,59 @@ export class CurrentInfoRunner implements StepRunner {
     let envelope: InfoEnvelope;
     try {
       if (kind === 'weather') {
+        // 地名が無く、Mac が現在地を渡したときはその座標で（会話の「今日の天気は？」）。
+        const latitude = step.args['latitude'];
+        const longitude = step.args['longitude'];
+        const place = text(step.args, 'place');
+        const coordinates =
+          !place && typeof latitude === 'number' && typeof longitude === 'number'
+            ? { latitude, longitude }
+            : undefined;
         envelope = await lookupWeather(
-          { when: text(step.args, 'when') ?? 'today', place: text(step.args, 'place') },
+          {
+            when: text(step.args, 'when') ?? 'today',
+            place,
+            ...(coordinates ? { coordinates } : {}),
+          },
           this.#fetch,
           this.#region(),
           this.#now,
         );
       } else if (kind === 'news') {
         envelope = await lookupNews({ topic: text(step.args, 'topic') }, this.#fetch, this.#now);
+      } else if (kind === 'markets') {
+        const symbols = text(step.args, 'symbols');
+        envelope = await lookupQuotes(
+          {
+            subject: text(step.args, 'subject') ?? text(step.args, 'question'),
+            ...(symbols ? { symbols: symbols.split(/[,、\s]+/u).filter(Boolean) } : {}),
+          },
+          this.#fetch,
+          this.#now,
+        );
       } else {
-        return { ok: false, error: { code: 'info.unsupported', message: 'この情報はまだ取得できません。' } };
+        return {
+          ok: false,
+          error: { code: 'info.unsupported', message: 'この情報はまだ取得できません。' },
+        };
       }
     } catch {
       return {
         ok: false,
         error: {
           code: 'info.unavailable',
-          message: kind === 'weather' ? '天気予報を取得できませんでした。' : 'ニュースを取得できませんでした。',
+          message:
+            kind === 'weather'
+              ? '天気予報を取得できませんでした。'
+              : kind === 'markets'
+                ? '株価を取得できませんでした。'
+                : 'ニュースを取得できませんでした。',
         },
       };
     }
-    const title = text(step.args, 'question') ?? (kind === 'weather' ? '天気' : 'ニュース');
+    const title =
+      text(step.args, 'question') ??
+      (kind === 'weather' ? '天気' : kind === 'markets' ? '株価' : 'ニュース');
     return {
       ok: true,
       result: { kind: envelope.kind, artifact: { title, markdown: JSON.stringify(envelope) } },

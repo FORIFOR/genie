@@ -9,6 +9,7 @@
 import { z } from 'zod';
 import { ArtifactId, ConversationId, MeetingId, TaskId, TenantId, UserId } from './ids.js';
 import { Timestamp } from './primitives.js';
+import { CheckoutOrderDraft } from './checkout-assistance.js';
 
 /** 正本 §7.4 の内部 Lane。**画面には出さない。** */
 export const LANES = [
@@ -58,6 +59,7 @@ export const ConversationState = z.object({
   /** 直近で触れたもの。0 が最新。 */
   referents: z.array(Referent).max(20),
   pending_approvals: z.array(z.uuid()),
+  checkout_draft: CheckoutOrderDraft.nullable().optional(),
   response_mode: Modality,
   updated_at: Timestamp,
 });

@@ -359,6 +359,104 @@ describe('running a connector step on the device', () => {
   });
 });
 
+describe('native Google credentials after host refresh', () => {
+  const key = 'com.astra.gmail/gmail';
+  const grantedScope = 'https://www.googleapis.com/auth/gmail.readonly';
+  const nativeCredential = {
+    clientId: 'google-read-client',
+    accessToken: 'old-access',
+    refreshToken: 'existing-refresh',
+    expiresAt: '2020-01-01T00:00:00.000Z',
+    grantedScopes: [grantedScope, 'openid'],
+    tokenType: 'Bearer',
+    accountLabel: 'tester@example.invalid',
+  };
+
+  function refreshing(over: Record<string, unknown> = {}, rejected = false) {
+    const secrets = memoryStore({ [key]: JSON.stringify({ ...nativeCredential, ...over }) });
+    const fetch = vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes('/token')) {
+        expect(new URLSearchParams(String(init?.body)).get('client_id')).toBe('google-read-client');
+        return new Response(
+          JSON.stringify(
+            rejected
+              ? { error: 'invalid_grant' }
+              : { access_token: 'renewed-access', expires_in: 3600, scope: grantedScope },
+          ),
+          { status: rejected ? 400 : 200 },
+        );
+      }
+      return new Response(JSON.stringify({ messages: [] }));
+    });
+    const runtime = new ConnectorRuntime({
+      secrets,
+      credentialRefFor: (p, c) => `keychain:${p}/${c}`,
+      grantedScopes: () => ['email.read'],
+      refreshConfig: (provider, connectorId, scopes) => {
+        if (provider !== 'google') return null;
+        const config = connectorProviderConfig(provider, connectorId, scopes, {
+          ASTRA_OAUTH_GOOGLE_READ_CLIENT_ID: 'google-read-client',
+        });
+        return config ? { ...config, redirectUri: 'http://127.0.0.1:1234' } : null;
+      },
+      fetch: fetch as unknown as typeof globalThis.fetch,
+      now: () => new Date('2026-08-27T00:00:00.000Z'),
+    });
+    return { runtime, secrets, fetch };
+  }
+
+  it.each(['google-read-client', undefined, 'stale-client'])(
+    'stores the successful refresh client and native account metadata (previous client: %s)',
+    async (clientId) => {
+      const { runtime, secrets, fetch } = refreshing({ clientId });
+      expect(await runtime.run(step({ toolId: 'mail.search', args: {} }))).toMatchObject({
+        ok: true,
+      });
+      // Parse the actual saved JSON and require every field the Swift Credential decoder uses.
+      expect(JSON.parse(secrets.values[key]!)).toEqual({
+        ...nativeCredential,
+        accessToken: 'renewed-access',
+        grantedScopes: [grantedScope],
+        expiresAt: '2026-08-27T01:00:00.000Z',
+        idToken: null,
+      });
+      expect(fetch).toHaveBeenCalledTimes(2);
+    },
+  );
+
+  it('refreshes once when several calls need a new token at the same time', async () => {
+    const { runtime, secrets, fetch } = refreshing({ clientId: 'google-read-client' });
+    const save = vi.spyOn(secrets, 'set');
+    const results = await Promise.all(
+      [1, 2, 3].map(() => runtime.run(step({ toolId: 'mail.search', args: {} }))),
+    );
+    expect(results.every((r) => r.ok)).toBe(true);
+    const tokenCalls = fetch.mock.calls.filter(([url]) => String(url).includes('/token'));
+    expect(tokenCalls).toHaveLength(1);
+    expect(save).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(secrets.values[key]!).accessToken).toBe('renewed-access');
+  });
+
+  it('does not assign a client to legacy credentials before a successful refresh', async () => {
+    const { runtime, secrets, fetch } = refreshing({ clientId: undefined }, true);
+    const before = secrets.values[key];
+    expect((await runtime.run(step({ toolId: 'mail.search', args: {} }))).ok).toBe(false);
+    expect(secrets.values[key]).toBe(before);
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not rewrite unexpired credentials from configuration alone', async () => {
+    const { runtime, secrets, fetch } = refreshing({
+      clientId: undefined,
+      expiresAt: '2099-01-01T00:00:00.000Z',
+    });
+    const before = secrets.values[key];
+    expect((await runtime.run(step({ toolId: 'mail.search', args: {} }))).ok).toBe(true);
+    expect(secrets.values[key]).toBe(before);
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('Microsoft client and scope isolation at execution', () => {
   const env = {
     ASTRA_OAUTH_MICROSOFT_READ_CLIENT_ID: 'read-client',

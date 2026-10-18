@@ -2,6 +2,41 @@ import { describe, expect, it, vi } from 'vitest';
 import { HttpLlmClient } from '../src/http-llm.js';
 
 describe('HTTP/local LLM adapter', () => {
+  it('sends an optional strict schema only for that structured call and preserves the default format', async () => {
+    const bodies: Record<string, unknown>[] = [];
+    const fetch = vi.fn<typeof globalThis.fetch>(async (_input, init) => {
+      bodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+      return Response.json({ choices: [{ message: { content: '{"answer":"ok"}' } }] });
+    });
+    const client = new HttpLlmClient({
+      kind: 'local',
+      endpoint: 'http://127.0.0.1:11434/v1',
+      model: 'test',
+      fetch,
+    });
+    const schema = {
+      type: 'object',
+      properties: { answer: { type: 'string' } },
+      required: ['answer'],
+      additionalProperties: false,
+    };
+    const signal = new AbortController().signal;
+    await expect(client.ask('question', [], signal, 'none', schema)).resolves.toEqual({
+      answer: 'ok',
+    });
+    expect(bodies[0]).toMatchObject({
+      response_format: {
+        type: 'json_schema',
+        json_schema: { name: 'genie_response', strict: true, schema },
+      },
+      reasoning_effort: 'none',
+    });
+    await client.ask('question');
+    expect(bodies[1]?.['response_format']).toEqual({ type: 'json_object' });
+    await client.askText('question');
+    expect(bodies[2]?.['response_format']).toBeUndefined();
+    expect(fetch).toHaveBeenCalledTimes(3);
+  });
   it('sends image bytes as multimodal content in one bounded request', async () => {
     const data = Buffer.from('89504e470d0a1a0a', 'hex');
     const fetch = vi.fn<typeof globalThis.fetch>(async (_url, init) => {

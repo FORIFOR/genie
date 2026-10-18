@@ -13,10 +13,12 @@ final class GeminiLiveSettings: ObservableObject {
     private static let minutesKey = "genie.geminiLive.monthlyMinutes"
     private static let usedKey = "genie.geminiLive.usedSeconds"
     private static let monthKey = "genie.geminiLive.month"
+    static let modelKey = "genie.voice.selectedModel"
 
     @Published private(set) var enabled: Bool
     @Published private(set) var budget: GeminiLiveBudget
     @Published private(set) var hasKey: Bool
+    @Published private(set) var selectedModel: String
 
     private let defaults: UserDefaults
     @Published private(set) var checkingKey = false
@@ -34,6 +36,8 @@ final class GeminiLiveSettings: ObservableObject {
         budget = GeminiLiveBudget(monthlyMinutes: defaults.integer(forKey: Self.minutesKey),
                                   usedSeconds: defaults.double(forKey: Self.usedKey),
                                   month: defaults.string(forKey: Self.monthKey) ?? "")
+        let storedModel = defaults.string(forKey: Self.modelKey) ?? GeminiLive.defaultModel
+        selectedModel = GeminiLive.supportedModels.contains(storedModel) ? storedModel : GeminiLive.defaultModel
         hasKey = initialHasKey ?? false
         let key = Self.keychainKey
         self.presenceReader = initialHasKey != nil && presenceReader == nil ? nil
@@ -75,6 +79,12 @@ final class GeminiLiveSettings: ObservableObject {
     func setMonthlyMinutes(_ minutes: Int) {
         budget.monthlyMinutes = max(0, min(minutes, 6_000))
         defaults.set(budget.monthlyMinutes, forKey: Self.minutesKey)
+    }
+
+    func setSelectedModel(_ model: String) {
+        guard GeminiLive.supportedModels.contains(model) else { return }
+        selectedModel = model
+        defaults.set(model, forKey: Self.modelKey)
     }
 
     /// キーを置く・消す（空で消す）。成否だけ返す。キーそのものは返さない。
@@ -133,7 +143,7 @@ final class GeminiLiveProvider: ConversationProvider {
     private let settings: GeminiLiveSettings
 
     private var socket: URLSessionWebSocketTask? { didSet { lane.attach(socket) } }
-    private let lane = AudioSendLane()
+    let lane = AudioSendLane()
     private var ready = false
     private var connectedAt: Date?
     private var pendingOpen: (() -> Void)?
@@ -168,6 +178,10 @@ final class GeminiLiveProvider: ConversationProvider {
     var onStopWork: (() -> String)?
     /// 「今日どう？」: 今日のまとめの、会話へ渡してよい文（件数・時刻・状態・天気）を返す。
     var onTodayBrief: (() -> String)?
+    /// show_info（天気・ニュース・株価）。引数の JSON を渡し、会話へ返す短い文を受け取る。
+    var onInfo: ((String) async -> String)?
+    /// マイクに届いている音量（0〜1、約 0.1 秒ごと）。声が届いているかを画面で見せるため。
+    var onInputLevel: ((Float) -> Void)?
 
     /// 本人が会話を終えたいと言った（end_conversation）。会話の側が閉じる。
     var onEndRequested: (() -> Void)?
@@ -182,6 +196,8 @@ final class GeminiLiveProvider: ConversationProvider {
     private var heard = ""
     /// 会話の間に聞き取ったすべて（ターンで消さない）。依頼の続きを拾うため。
     private var heardAll = ""
+    /// 前の delegate_task のときまでに聞き取った長さ（その後の言葉が、いまの依頼の前半）。
+    private var heardAtLastDelegate = 0
     private var recentContinuation: (text: String, at: Date)?
     /// delegate_task の後、言いかけの続きを待つ: 最低これだけ待ち、声が止んでからこれだけ待つ、上限。
     static var continuationMinimum: TimeInterval = 1.0
@@ -449,15 +465,23 @@ final class GeminiLiveProvider: ConversationProvider {
 
     【正確さと実行】
     分からない事実を推測で断定しないでください。数字や予定を作らないでください。
-    天気・ニュース・営業時間・一般的な事実など、公開されている情報を聞かれたら、Google 検索で調べて、その結果を声で要点だけお伝えしてください。
+    天気・ニュース・株価（指数・個別株・為替）を聞かれたら、Google 検索ではなく必ず show_info を呼んでください。
+    Genie が取得元から取り、画面に専用のカードを出します。返った文の数字だけで短く答えてください。
+    天気で場所を言われなければ、場所を聞き返さずに place を空にして呼んでください（Genie が Mac の現在地を使います）。
+    営業時間・一般的な事実など、それ以外の公開情報は Google 検索で調べて、その結果を声で要点だけお伝えしてください。
     調べられなかった場合は、推測で答えずにそう伝えてください。
     Mac での作業・アプリの操作・送信・注文や予約（モバイルオーダー・デリバリーを含む）を頼まれたら、断らずに、
     自分で済ませたふりもせず、必ず delegate_task に依頼文を渡し、受け付けたかどうかだけを伝えてください。
     支払い・注文の確定・送信の前には Genie が画面で本人に確認を求めるので、あなたが代わりに断ったり止めたりする必要はありません。
+    注文の途中で Genie から質問（商品名と数量・届ける時刻・合計の上限など）が返ったら、その質問をそのまま伝え、
+    利用者の答えを言葉のまま delegate_task に渡してください。Genie が聞いていないこと（サイドメニュー・ドリンクなど）を足して聞かないでください。
+    商品名は聞こえたとおりに渡し、言葉を足したり変えたりしないでください（「チーズバーガー」を「ダブルチーズバーガー」にしない）。
+    注文の途中で「注文をやめて」「キャンセルして」と言われたら、stop_work ではなく、その言葉のまま delegate_task に渡してください（注文の下書きを Genie が片づけます）。
+    「注文する手段がない」とは言わないでください。Genie が公式サイトでカートを準備し、確定は画面で本人がします。
     Genie は Mac の画面に見せることができます。「見せて」「開いて」「サイトで見たい」「商品を見たい」と頼まれたら、
     「お見せできません」とは言わずに、delegate_task に依頼文を渡してください（例:「オークリーのサングラスを公式サイトで見せて」）。
     Genie がブラウザで公式サイトや該当のページを開きます。
-    「今日どう？」「今日の予定は？」「今日のまとめ」など今日の状況を聞かれたら、get_today_brief を呼び、返った内容だけで短く答えてください。
+    「おはよう」「おはようございます」「朝のまとめ」「今日どう？」「今日の予定は？」「今日のまとめ」など、朝の挨拶や今日の状況を聞かれたら、get_today_brief を呼び、返った内容（日付・予定・天気・対応事項・ニュース・株価など）を短くまとめて教えてください。
     予定やメールの中身を推測で言わないでください（題名は画面のカードに出ています）。
     「近くのご飯屋さん」「近くのカフェ」など近くの店や場所を聞かれたら、現在地を尋ねずに delegate_task に依頼文を渡してください。
     Genie が Mac の現在地と地図で探し、画面に地図つきのカードを出します（店名や住所はあなたには届きません）。
@@ -505,6 +529,7 @@ final class GeminiLiveProvider: ConversationProvider {
             }
             pendingOpen?(); pendingOpen = nil
         case .inputTranscript(let t):
+            if heard.isEmpty { mark("in-transcript") }
             heard += t
             heardAll += t
             transcriptObserver?(t, true)
@@ -522,6 +547,15 @@ final class GeminiLiveProvider: ConversationProvider {
                 let summary = onTodayBrief?() ?? "今日のまとめはまだありません。"
                 mark("today-brief")
                 send(GeminiLive.toolResponse(id: id, name: name, response: ["result": summary], scheduling: "WHEN_IDLE"))
+                return
+            }
+            if name == GeminiLive.infoTool {
+                mark("info")
+                Task { [weak self] in
+                    guard let self else { return }
+                    let result = await self.onInfo?(request) ?? "いまは取得できません。"
+                    self.send(GeminiLive.toolResponse(id: id, name: name, response: ["result": result]))
+                }
                 return
             }
             if name == GeminiLive.stopTool {
@@ -565,7 +599,12 @@ final class GeminiLiveProvider: ConversationProvider {
                     try? await Task.sleep(nanoseconds: 100_000_000)
                 }
                 let more = String(self.heardAll.dropFirst(mark))
-                let full = DelegateContinuation.merge(request, continuation: more)
+                // 「注文したい」だけが渡されたら、前の依頼の後に聞き取った前半（「マクドナルド」）を前に足す。
+                let earlier = String(self.heardAll.prefix(mark).dropFirst(self.heardAtLastDelegate))
+                let subject = DelegateContinuation.withSubject(request, heardBefore: earlier)
+                if subject != request { GenieLog.write("conversation", "delegate: with the earlier words — \(GenieLog.clip(subject, 60))") }
+                self.heardAtLastDelegate = self.heardAll.count
+                let full = DelegateContinuation.merge(subject, continuation: more)
                 if full != request {
                     self.recentContinuation = (more, Date())
                     GenieLog.write("conversation", "delegate: continued — \(GenieLog.clip(full, 80))")
@@ -606,11 +645,23 @@ final class GeminiLiveProvider: ConversationProvider {
         lane.setOpen(ready)
         let lane = self.lane
         var first = true
+        // 音量は約 0.1 秒ぶんの peak をまとめて渡す（毎フレーム画面を書き換えない）。
+        let level = onInputLevel
+        var peak: Float = 0, samples = 0
         do {
             // 預かっていた声（呼びかけの前後・接続を待つ間）を先に、以降の声を順に送る。
             // ここに来るのは setupComplete の後（それより前の音声は受け付けられない）。
             // 送るのは共有マイクの直列の列から、1 本の流れで（順番を仕組みで守る）。
             let flushed = try input.attach { [weak self] frame in
+                if let level {
+                    for v in frame { peak = max(peak, abs(v)) }
+                    samples += frame.count
+                    if samples >= 1600 {
+                        let value = min(1, peak * 1.6)
+                        peak = 0; samples = 0
+                        Task { @MainActor in level(value) }
+                    }
+                }
                 guard lane.send(frame), first else { return }
                 first = false
                 Task { @MainActor in self?.onFirstFrame?() }
@@ -663,11 +714,15 @@ final class AudioSendLane: @unchecked Sendable {
 
     func attach(_ socket: URLSessionWebSocketTask?) { lock.lock(); self.socket = socket; lock.unlock() }
     func setOpen(_ on: Bool) { lock.lock(); open = on; lock.unlock() }
+    /// 検査用: 送った音の小片の数・閉じていて送らなかった数。
+    private(set) var sentFrames = 0, droppedFrames = 0
 
     /// 送れたら true（閉じている間の声は送らない）。
     @discardableResult
     func send(_ frame: [Float]) -> Bool {
-        lock.lock(); let target = open ? socket : nil; lock.unlock()
+        lock.lock(); let target = open ? socket : nil
+        if target == nil { droppedFrames += 1 } else { sentFrames += 1 }
+        lock.unlock()
         guard let target else { return false }
         target.send(.string(GeminiLive.json(GeminiLive.audioChunk(frame)))) { _ in }
         return true

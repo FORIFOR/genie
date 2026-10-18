@@ -13,6 +13,10 @@ import { acquireHostInstance } from './instance-lock.js';
 import { homedir } from 'node:os';
 import { resolve, join } from 'node:path';
 import { runInitialProfile } from './initial-profile.js';
+import {
+  initialProfileLocalConfig,
+  localInitialProfileAnalyzer,
+} from './initial-profile-analysis.js';
 import { createLogger } from '@genie/telemetry';
 import { credentialRef, connectorProviderConfig, type OauthProvider } from '@genie/oauth';
 import { LocalAgentHost } from './host.js';
@@ -25,6 +29,7 @@ import { httpStepTransport } from './step-transport.js';
 import { CodexCli } from './codex.js';
 import { ClaudeCodeCli } from './claude-code.js';
 import { LlmRuntime } from './llm-steps.js';
+import { localVisionRuntime } from './local-vision-model.js';
 import { HttpLlmClient } from './http-llm.js';
 import { CurrentInfoRunner } from './current-info/runner.js';
 import { CompositeRunner } from './runner.js';
@@ -326,11 +331,20 @@ async function main(): Promise<void> {
     throw new Error(
       'ASTRA_CLOUD_VISION_TIER=paid requires ASTRA_CLOUD_VISION_MONTH_CALLS or ASTRA_CLOUD_VISION_MONTH_USD',
     );
+  const visionModel = process.env['ASTRA_COMPUTER_VISION_MODEL'];
+  const visionLlm =
+    visionModel !== undefined
+      ? await localVisionRuntime(
+          visionModel,
+          process.env['ASTRA_COMPUTER_VISION_URL'] ?? 'http://127.0.0.1:11434/v1',
+        )
+      : llm;
   const computerVision = new ComputerVisionRuntime({
     enabled: process.env['ASTRA_COMPUTER_USE'] === 'on',
-    model: llm,
-    selectModel: async () => selectLanguageModel(await llm.options())?.kind ?? null,
-    allowExternalPixels: process.env['ASTRA_COMPUTER_VISION_EXTERNAL'] === 'on',
+    model: visionLlm,
+    selectModel: async () => selectLanguageModel(await visionLlm.options())?.kind ?? null,
+    allowExternalPixels:
+      visionModel === undefined && process.env['ASTRA_COMPUTER_VISION_EXTERNAL'] === 'on',
     device: () => new NativeVisionDevice(process.env['ASTRA_COMPUTER_VISION_HELPER'] ?? ''),
     budget,
   });
@@ -396,7 +410,7 @@ async function main(): Promise<void> {
       // 「端末を120台にしたら提案書も合わせた案を」: 案件の書類をコピーの上でそろえて変え、確かめる。
       new WorkPreviewRuntime(),
       // 今日のまとめ（読み取り専用。モデルは使わない）。
-      new BriefRuntime(),
+      new BriefRuntime({ connectors: runtime }),
       new CurrentInfoRunner(),
       llm,
     ]),
@@ -433,6 +447,27 @@ async function main(): Promise<void> {
       logger.warn({ source, err: error.message }, 'work context sync failed for a source'),
   });
   let initialBusy = false;
+  // Initial body analysis has a local-only boundary, independent of the conversation provider.
+  // Reuse the explicitly selected local model; never silently send mail to a cloud fallback.
+  const initialConfig = initialProfileLocalConfig(process.env);
+  let initialAnalyzer: ReturnType<typeof localInitialProfileAnalyzer> | undefined;
+  try {
+    if (initialConfig)
+      initialAnalyzer = localInitialProfileAnalyzer({
+        ...initialConfig,
+        onDiagnostic: (code) =>
+          logger.warn({ code }, 'A local initial profile analysis step was unavailable'),
+        onSourceValidationFailure: (reason) =>
+          logger.warn({ reason }, 'Local initial profile source validation failed'),
+        onRecoverySummary: (summary) =>
+          logger.info(summary, 'Local initial profile recovery counts'),
+      });
+  } catch {
+    // A bad optional profile configuration must not disable conversation or connectors.
+    logger.warn(
+      'Local initial profile analysis is unavailable; check the local model configuration',
+    );
+  }
   // 失敗が続く間は間を空ける（4 秒 → 最大 5 分）。以前は一時的な障害（DB の接続切れ）の間、
   // 理由の無い警告を 4 秒ごとに出し続けていた（2026-09-29）。
   let initialFailures = 0;
@@ -442,7 +477,14 @@ async function main(): Promise<void> {
     // continuous background sync must not strand that user-requested job.
     if (initialBusy || Date.now() < initialNextAt) return;
     initialBusy = true;
-    void runInitialProfile({ cloud, connectors: runtime, refreshGrants })
+    void runInitialProfile({
+      cloud,
+      connectors: runtime,
+      refreshGrants,
+      onDiagnostic: (phase, code) =>
+        logger.warn({ phase, code }, 'An initial profile read step was unavailable'),
+      ...(initialAnalyzer ? { analyze: initialAnalyzer } : {}),
+    })
       .then(() => {
         initialFailures = 0;
         initialNextAt = 0;

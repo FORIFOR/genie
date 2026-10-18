@@ -19,8 +19,10 @@ import { createServer } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import {
   parseOptions,
+  DEFAULT_STATE,
   selectModel,
   modelConfiguration,
+  computerVisionConfiguration,
   modelEnvironment,
   modelAppEnvironment,
   desktopConnectionDescriptor,
@@ -34,6 +36,7 @@ import {
   validateConfig,
   composeConfig,
   serviceEnvironment,
+  usesNativeConnectionConfig,
   lockPort,
   availablePort,
 } from '../local-preview/config.mjs';
@@ -1034,6 +1037,82 @@ test('Ollama cloud models and renamed remote aliases cannot be disclosed as loca
   await assert.rejects(verifyLocalOllamaModel(config, async () => ({})));
 });
 
+test('explicit local computer vision preserves Claude conversation and refuses implicit overrides', () => {
+  const config = {
+    modelProvider: 'claude_code',
+    model: 'claude-sonnet-5-5',
+    allowCloud: true,
+    modelURL: 'http://127.0.0.1:11434/v1',
+  };
+  const options = parseOptions(['--computer-use', '--computer-vision-model', 'qwen3.5:9b']);
+  assert.equal(computerVisionConfiguration(config), config);
+  assert.deepEqual(computerVisionConfiguration(config, options), {
+    modelProvider: 'local',
+    model: 'qwen3.5:9b',
+    modelURL: config.modelURL,
+  });
+  const env = serviceEnvironment(
+    config,
+    '/tmp/preview',
+    repo,
+    { ASTRA_COMPUTER_VISION_MODEL: 'ambient' },
+    options,
+  );
+  assert.equal(env.ASTRA_LLM_CLI, 'claude_code');
+  assert.equal(env.ASTRA_CLAUDE_CODE_MODEL, config.model);
+  assert.equal(env.ASTRA_COMPUTER_VISION_MODEL, 'qwen3.5:9b');
+  assert.equal(env.ASTRA_COMPUTER_VISION_URL, config.modelURL);
+  assert.equal(env.ASTRA_COMPUTER_VISION_EXTERNAL, 'off');
+  assert.equal(
+    serviceEnvironment(config, '/tmp/preview', repo, { ASTRA_COMPUTER_VISION_MODEL: 'ambient' })
+      .ASTRA_COMPUTER_VISION_MODEL,
+    undefined,
+  );
+  assert.throws(() => parseOptions(['--computer-vision-model', 'qwen3.5:9b']));
+  assert.throws(() => parseOptions(['--computer-use', '--computer-vision-model', 'alias:cloud']));
+  assert.throws(() =>
+    parseOptions([
+      '--computer-use',
+      '--computer-vision-model',
+      'qwen3.5:9b',
+      '--allow-external-screen',
+    ]),
+  );
+});
+
+test('independent vision preflight verifies installed local vision metadata even on a custom port', async () => {
+  const config = { model: 'qwen3.5:9b', modelURL: 'http://127.0.0.1:11435/v1' };
+  const valid = { model_info: { architecture: 'qwen35' }, capabilities: ['vision'] };
+  const request =
+    (metadata, names = [config.model]) =>
+    async (url) =>
+      url.endsWith('/api/show') ? metadata : { data: names.map((id) => ({ id })) };
+  await verifyLocalOllamaModel(config, request(valid), { requireVision: true });
+  for (const metadata of [
+    { ...valid, remote_model: 'hosted' },
+    { ...valid, capabilities: ['completion'] },
+    {},
+  ])
+    await assert.rejects(
+      verifyLocalOllamaModel(config, request(metadata), { requireVision: true }),
+    );
+  await assert.rejects(verifyLocalOllamaModel(config, request(valid, []), { requireVision: true }));
+});
+
+test('native connection refresh settings preserve custom workspace isolation without work sync', () => {
+  assert.equal(usesNativeConnectionConfig(DEFAULT_STATE, { platform: 'darwin' }), true);
+  assert.equal(usesNativeConnectionConfig('/isolated/test', { platform: 'darwin' }), false);
+  assert.equal(
+    usesNativeConnectionConfig('/isolated/test', { platform: 'darwin', workSync: true }),
+    true,
+  );
+  assert.equal(usesNativeConnectionConfig(DEFAULT_STATE, { platform: 'linux' }), false);
+  assert.equal(
+    usesNativeConnectionConfig('/isolated/test', { platform: 'linux', workSync: true }),
+    false,
+  );
+});
+
 test('service environment does not inherit paid credentials, remote infrastructure or shell hooks', async (t) => {
   const root = await temporary(t);
   const config = await loadConfig(root);
@@ -1050,6 +1129,7 @@ test('service environment does not inherit paid credentials, remote infrastructu
     DOCKER_CONTEXT: 'remote',
     NODE_OPTIONS: '--require malicious',
     ASTRA_WORK_SYNC: 'on',
+    ASTRA_CONNECTIONS_CONFIG: '/untrusted/connections.json',
     ASTRA_TRANSACTION_SIMULATION: 'on',
     ASTRA_TRANSACTION_SIMULATION_APP: '/external/fixture',
     HTTPS_PROXY: 'http://proxy',
@@ -1074,7 +1154,7 @@ test('service environment does not inherit paid credentials, remote infrastructu
     serviceEnvironment(config, root, repo, source, { workSync: true }).ASTRA_WORK_SYNC,
     'on',
   );
-  // 同期するときだけ、運営者の接続設定の場所を渡す（トークン更新のため）。同期しないなら渡さない。
+  // Native の接続設定は明示した読取の更新にも使う。同期の許可とは独立。
   assert.equal(
     serviceEnvironment(config, root, repo, source, {
       workSync: true,
@@ -1082,11 +1162,11 @@ test('service environment does not inherit paid credentials, remote infrastructu
     }).ASTRA_CONNECTIONS_CONFIG,
     '/x/connections.json',
   );
-  assert.equal(
-    serviceEnvironment(config, root, repo, source, { connectionsConfig: '/x/connections.json' })
-      .ASTRA_CONNECTIONS_CONFIG,
-    undefined,
-  );
+  const refreshOnly = serviceEnvironment(config, root, repo, source, {
+    connectionsConfig: '/x/connections.json',
+  });
+  assert.equal(refreshOnly.ASTRA_CONNECTIONS_CONFIG, '/x/connections.json');
+  assert.equal(refreshOnly.ASTRA_WORK_SYNC, 'off');
   assert.equal(env.ASTRA_CONNECTIONS_CONFIG, undefined);
   assert.equal(env.ASTRA_LLM_CLI, 'local');
   assert.equal(env.ASTRA_API_HOST, '127.0.0.1');

@@ -52,4 +52,24 @@ final class InfoCardTests: XCTestCase {
         XCTAssertLessThanOrEqual(size.height, Metrics.dockCardMaxHeight)
         XCTAssertGreaterThan(size.height, 60)
     }
+
+    func testMarketsCardDecodesProviderValues() throws {
+        let body = #"""
+        {"schema":"genie.info/v1","kind":"markets","text":"日経平均は69,030.92ポイント（前日比 -11.19、-0.02%）、前営業日 10/9(金)の終値です。参考値で、遅れている可能性があります。",
+         "data":{"subject":"日経平均は？","quotes":[{"symbol":"^N225","name":"日経平均","price":69030.92,"currency":"JPY","is_index":true,
+           "change":-11.19,"change_percent":-0.0162,"session":"前営業日 10/9(金)の終値","observed":"10/9 15:30","url":"https://finance.yahoo.com/quote/%5EN225/"}]},
+         "sources":[{"name":"Yahoo Finance（参考値・遅延の可能性・実験的）","url":"https://finance.yahoo.com/"}],"fetched_at":"2026-10-16T00:10:00.000Z"}
+        """#
+        let card = try XCTUnwrap(InfoCard.decode(body))
+        XCTAssertEqual(card.kind, .markets)
+        XCTAssertTrue(card.hasContent)
+        let quote = try XCTUnwrap(card.markets?.quotes.first)
+        XCTAssertEqual(quote.name, "日経平均")
+        XCTAssertEqual(quote.price, 69030.92)
+        XCTAssertTrue(quote.isIndex)
+        XCTAssertEqual(quote.changePercent, -0.0162)
+        // 銘柄が分からなかったときは文だけ（カードを出さない）
+        let none = try XCTUnwrap(InfoCard.decode(#"{"schema":"genie.info/v1","kind":"markets","text":"銘柄が分かりませんでした。","data":null,"sources":[],"fetched_at":"2026-10-16T00:10:00.000Z"}"#))
+        XCTAssertFalse(none.hasContent)
+    }
 }

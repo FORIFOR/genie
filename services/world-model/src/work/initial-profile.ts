@@ -1,17 +1,19 @@
+import { createHash } from 'node:crypto';
 import { sql } from 'kysely';
 import { withTenant, type DbHandle } from '@genie/db';
 import {
   InitialProfile,
+  InitialProfileAnalysis,
   type InitialProfileOutcome,
   type InitialProfileSections,
   WorkArtifact,
   type WorkArtifactBatch,
   uuidv7,
   type PersonalizationProfile,
+  type PersonalizationTrait,
 } from '@genie/contracts';
-import { buildWorkContext, clusterProjects, personKey } from './graph.js';
+import { personKey } from './graph.js';
 import { wallClock } from './business-time.js';
-import { deriveProfile, EMPTY_PERSONALIZATION } from './personalization.js';
 
 // Provider titles may exceed the editable profile's 200-character limit.
 const summaryText = (value: string): string => {
@@ -23,63 +25,195 @@ const summaryText = (value: string): string => {
   return result.trim();
 };
 
+const DAY = 86_400_000;
+// These are exclusion hints, never evidence that an unmarked sender is a person.
+const AUTOMATED_ADDRESS =
+  /(?:^|[._+-])(?:no-?reply|do-?not-?reply|notifications?|newsletters?|mailer-daemon|postmaster|automated)(?:[._+-]|@|$)/i;
+const BULK_TITLE =
+  /(?:メルマガ|メールマガジン|配信停止|自動配信|自動通知|ニュースレター|newsletter|unsubscribe|\bweekly digest\b|\bdaily digest\b|\bspecial offer\b|\bverification code\b|認証コード|ワンタイムパスワード)/i;
+
+function usableMail(a: WorkArtifact): boolean {
+  return (
+    isMail(a) &&
+    !BULK_TITLE.test(a.title) &&
+    !a.people.some((p) => p.role === 'from' && AUTOMATED_ADDRESS.test(p.email ?? ''))
+  );
+}
+
+function isMail(a: WorkArtifact): boolean {
+  return a.kind === 'email' && (a.source === 'gmail' || a.source === 'outlook_mail');
+}
+
+/** Source ownership and coverage are checked at the server boundary, not trusted to the model. */
+function validAnalysis(
+  artifacts: readonly WorkArtifact[],
+  analysis: InitialProfileAnalysis,
+): boolean {
+  const parsed = InitialProfileAnalysis.safeParse(analysis);
+  if (!parsed.success) return false;
+  const mail = new Map(artifacts.filter(isMail).map((a) => [a.id, a]));
+  const analyzed = new Set(analysis.analyzed_ids);
+  const excluded = new Set(analysis.excluded_ids);
+  if (
+    analyzed.size !== analysis.analyzed_ids.length ||
+    excluded.size !== analysis.excluded_ids.length ||
+    analysis.analyzed_count !== analyzed.size ||
+    analysis.selected_count < analyzed.size ||
+    analysis.selected_count > mail.size ||
+    [...analyzed].some((id) => !mail.has(id)) ||
+    [...excluded].some((id) => !analyzed.has(id))
+  )
+    return false;
+  const claims = [...analysis.focus, ...analysis.priorities, ...analysis.open_items];
+  if (analysis.status === 'unavailable') {
+    return analyzed.size === 0 && excluded.size === 0 && claims.length === 0;
+  }
+  if (analysis.status === 'complete' && analysis.selected_count === 0) {
+    return analyzed.size === 0 && excluded.size === 0 && claims.length === 0;
+  }
+  if (
+    analyzed.size === 0 ||
+    (analysis.status === 'complete' && analyzed.size !== analysis.selected_count) ||
+    (analysis.status === 'partial' && analyzed.size >= analysis.selected_count)
+  )
+    return false;
+  return (
+    claims.every(
+      (claim) =>
+        new Set(claim.source_ids).size === claim.source_ids.length &&
+        claim.source_ids.every((id) => analyzed.has(id) && !excluded.has(id)),
+    ) &&
+    [analysis.focus, analysis.priorities, analysis.open_items].every((group) => {
+      const fingerprints = group.map((claim) =>
+        JSON.stringify([claim.text.trim().replace(/\s+/gu, ' '), [...claim.source_ids].sort()]),
+      );
+      return new Set(fingerprints).size === group.length;
+    })
+  );
+}
+
+function initialPeople(
+  artifacts: readonly WorkArtifact[],
+  now: Date,
+  excluded: ReadonlySet<string>,
+) {
+  const mail = [...new Map(artifacts.filter(isMail).map((a) => [a.id, a])).values()].filter(
+    (a) =>
+      Date.parse(a.occurred_at) <= now.getTime() &&
+      Date.parse(a.occurred_at) >= now.getTime() - 90 * DAY,
+  );
+  const self = new Set(
+    mail
+      .filter((a) => a.direction === 'outbound')
+      .flatMap((a) => a.people.filter((p) => p.role === 'from').map(personKey)),
+  );
+  const people = new Map<
+    string,
+    { key: string; name: string; inbound: number; outbound: number; artifacts: WorkArtifact[] }
+  >();
+  for (const a of mail) {
+    if (excluded.has(a.id) || !usableMail(a) || a.direction === 'self') continue;
+    const seen = new Set<string>();
+    for (const p of a.people) {
+      if (p.role !== (a.direction === 'inbound' ? 'from' : 'to')) continue;
+      const key = personKey(p);
+      if (self.has(key) || seen.has(key) || AUTOMATED_ADDRESS.test(p.email ?? '')) continue;
+      seen.add(key);
+      const entry = people.get(key) ?? {
+        key,
+        name: p.name,
+        inbound: 0,
+        outbound: 0,
+        artifacts: [],
+      };
+      entry[a.direction] += 1;
+      entry.artifacts.push(a);
+      people.set(key, entry);
+    }
+  }
+  const reciprocal = (p: { inbound: number; outbound: number }) =>
+    Number(p.inbound > 0 && p.outbound > 0);
+  return [...people.values()]
+    .filter((p) => reciprocal(p) || p.outbound >= 2)
+    .sort(
+      (a, b) =>
+        reciprocal(b) - reciprocal(a) ||
+        b.outbound - a.outbound ||
+        b.inbound - a.inbound ||
+        a.key.localeCompare(b.key),
+    )
+    .slice(0, 12);
+}
+
+function observedPatterns(artifacts: readonly WorkArtifact[], now: Date): PersonalizationTrait[] {
+  const events = [...new Map(artifacts.map((a) => [a.id, a])).values()].filter((a) => {
+    const start = Date.parse(a.occurred_at),
+      end = Date.parse(a.ends_at ?? '');
+    return (
+      a.kind === 'calendar_event' &&
+      start <= now.getTime() &&
+      start >= now.getTime() - 90 * DAY &&
+      end > start &&
+      end <= now.getTime() &&
+      end - start < DAY
+    );
+  });
+  const dates = new Set(
+    events.map((a) => wallClock(new Date(a.occurred_at)).toISOString().slice(0, 10)),
+  );
+  if (events.length < 5 || dates.size < 3) return [];
+  const afternoon = events.filter((a) => wallClock(new Date(a.occurred_at)).getUTCHours() >= 12);
+  const morning = events.filter((a) => wallClock(new Date(a.occurred_at)).getUTCHours() < 12);
+  const dominant = afternoon.length >= morning.length ? afternoon : morning;
+  if (dominant.length / events.length < 0.65) return [];
+  const period = dominant === afternoon ? '午後' : '午前';
+  return [
+    {
+      key: 'initial.observedCalendarPeriod',
+      label: `過去90日の予定は${period}開始が多い（${dominant.length}/${events.length}件）`,
+      value: period,
+      status: 'observed',
+      enabled: true,
+      sources: dominant.slice(0, 3).map((a) => ({ ...a.provenance, excerpt: null })),
+    },
+  ];
+}
+
 export function initialSnapshot(
   artifacts: readonly WorkArtifact[],
   now: Date,
+  analysis?: InitialProfileAnalysis,
 ): {
   sections: InitialProfileSections;
   profile: PersonalizationProfile;
 } {
-  const context = buildWorkContext({ artifacts, corrections: [], now, inferenceEnabled: true });
-  const history = artifacts.filter((a) => Date.parse(a.occurred_at) <= now.getTime());
-  const profile = deriveProfile(history, EMPTY_PERSONALIZATION, now, 90);
-  const meetings = history.filter((a) => a.kind === 'calendar_event');
-  const afternoon = meetings.filter((a) => wallClock(new Date(a.occurred_at)).getUTCHours() >= 12);
-  const workPattern =
-    meetings.length >= 5 && afternoon.length / meetings.length >= 0.65
-      ? ['午後に会議が多い', ...profile.work_patterns.map((item) => item.label)]
-      : profile.work_patterns.map((item) => item.label);
-  const people = new Map<string, { name: string; count: number }>();
-  for (const artifact of artifacts) {
-    const seen = new Set<string>();
-    for (const person of artifact.people) {
-      if (
-        artifact.kind !== 'email' ||
-        (artifact.direction === 'inbound' ? person.role !== 'from' : person.role !== 'to')
-      )
-        continue;
-      const key = personKey(person);
-      if (seen.has(key)) continue;
-      seen.add(key);
-      const entry = people.get(key) ?? { name: person.name, count: 0 };
-      entry.count += 1;
-      people.set(key, entry);
-    }
-  }
+  if (analysis && !validAnalysis(artifacts, analysis))
+    throw new Error('invalid_initial_profile_analysis');
+  const accepted = analysis ? InitialProfileAnalysis.parse(analysis) : undefined;
+  const people = initialPeople(artifacts, now, new Set(accepted?.excluded_ids ?? []));
+  const patterns = observedPatterns(artifacts, now);
+  const profile: PersonalizationProfile = {
+    inference_enabled: true,
+    updated_at: now.toISOString(),
+    working_style: [],
+    work_patterns: patterns,
+    frequent_entities: people.map((p) => ({
+      key: 'initial.person.' + createHash('sha256').update(p.key).digest('hex'),
+      label: summaryText(p.name),
+      value: p.inbound + p.outbound,
+      status: 'observed',
+      enabled: true,
+      sources: p.artifacts.slice(0, 2).map((a) => ({ ...a.provenance, excerpt: null })),
+    })),
+  };
   return {
     profile,
     sections: {
-      focus: clusterProjects(
-        artifacts.filter(
-          (a) => a.completed !== true && Date.parse(a.occurred_at) >= now.getTime() - 45 * 86400000,
-        ),
-      )
-        .sort((a, b) => b.artifacts.length - a.artifacts.length)
-        .slice(0, 5)
-        .map((project) => summaryText(project.name))
-        .filter(Boolean),
-      people: [...people.values()]
-        .filter((p) => p.count >= 2)
-        .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
-        .slice(0, 12)
-        .map((p) => summaryText(p.name))
-        .filter(Boolean),
-      priorities: context.priorities
-        .slice(0, 5)
-        .map((item) => summaryText(item.title))
-        .filter(Boolean),
-      work_pattern: workPattern.slice(0, 3).map(summaryText).filter(Boolean),
-      open_items: new Set([...context.waiting_on, ...context.owed].map((item) => item.id)).size,
+      focus: accepted?.focus.map((claim) => claim.text) ?? [],
+      people: people.map((p) => summaryText(p.name)).filter(Boolean),
+      priorities: accepted?.priorities.map((claim) => claim.text) ?? [],
+      work_pattern: patterns.map((item) => item.label),
+      open_items: accepted?.open_items.length ?? 0,
     },
   };
 }
@@ -115,6 +249,7 @@ export class InitialProfileService {
       outcomes: [],
       sections: null,
       profile: null,
+      analysis: null,
     };
     await withTenant(this.db, tenant, (tx) =>
       sql`INSERT INTO initial_profiles (tenant_id,user_id,payload)
@@ -134,7 +269,7 @@ export class InitialProfileService {
     return withTenant(this.db, tenant, async (tx) => {
       const r = await sql<{ payload: unknown }>`UPDATE initial_profiles
         SET artifact_snapshot='[]'::jsonb, lease_id=${lease}, lease_until=${new Date(now.getTime() + 5 * 60_000)},
-          payload=payload || '{"status":"analysing","outcomes":[],"sections":null,"profile":null}'::jsonb
+          payload=payload || '{"status":"analysing","outcomes":[],"sections":null,"profile":null,"analysis":null}'::jsonb
         WHERE user_id=${user} AND (payload->>'status'='queued' OR
           (payload->>'status'='analysing' AND lease_until < ${now})) RETURNING payload`.execute(tx);
       return r.rows[0] ? { lease, profile: InitialProfile.parse(r.rows[0].payload) } : null;
@@ -238,6 +373,7 @@ export class InitialProfileService {
     user: string,
     lease: string,
     artifactIds: readonly string[],
+    analysis?: InitialProfileAnalysis,
   ): Promise<boolean> {
     return withTenant(this.db, tenant, async (tx) => {
       const r = await sql<{
@@ -248,6 +384,13 @@ export class InitialProfileService {
       if (!r.rows[0]) return false;
       const p = InitialProfile.parse(r.rows[0].payload);
       const successful = p.outcomes.filter((o) => o.status === 'synced');
+      const allowed = new Set(successful.map((o) => o.source));
+      const selected = new Set(artifactIds);
+      const artifacts = r.rows[0].artifact_snapshot
+        .map((value) => WorkArtifact.parse(value))
+        .filter((a) => selected.has(a.id))
+        .filter((a) => allowed.has(a.source as InitialProfileOutcome['source']));
+      if (analysis && !validAnalysis(artifacts, analysis)) return false;
       p.status =
         successful.length &&
         p.outcomes.length === 2 &&
@@ -255,14 +398,10 @@ export class InitialProfileService {
           ? 'ready'
           : 'failed';
       if (p.status === 'ready') {
-        const allowed = new Set(successful.map((o) => o.source));
-        const artifacts = r.rows[0].artifact_snapshot
-          .map((value) => WorkArtifact.parse(value))
-          .filter((a) => artifactIds.includes(a.id))
-          .filter((a) => allowed.has(a.source as InitialProfileOutcome['source']));
-        const snapshot = initialSnapshot(artifacts, this.now());
+        const snapshot = initialSnapshot(artifacts, this.now(), analysis);
         p.sections = snapshot.sections;
         p.profile = snapshot.profile;
+        p.analysis = analysis ? InitialProfileAnalysis.parse(analysis) : null;
       }
       p.updated_at = this.now().toISOString();
       await sql`UPDATE initial_profiles SET payload=${JSON.stringify(p)}::jsonb, lease_id=NULL, lease_until=NULL WHERE user_id=${user}`.execute(
@@ -275,8 +414,9 @@ export class InitialProfileService {
   async retry(tenant: string, user: string): Promise<void> {
     await withTenant(this.db, tenant, (tx) =>
       sql`UPDATE initial_profiles SET
-      payload=payload || '{"status":"queued","outcomes":[],"sections":null,"profile":null}'::jsonb
-      WHERE user_id=${user} AND payload->>'status'='failed'`.execute(tx),
+      payload=payload || '{"status":"queued","outcomes":[],"sections":null,"profile":null,"analysis":null}'::jsonb,
+      artifact_snapshot='[]'::jsonb, lease_id=NULL, lease_until=NULL
+      WHERE user_id=${user} AND payload->>'status' IN ('ready','failed')`.execute(tx),
     );
   }
 

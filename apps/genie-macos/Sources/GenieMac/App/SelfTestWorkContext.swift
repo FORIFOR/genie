@@ -50,6 +50,15 @@ extension SelfTest {
         host.layoutSubtreeIfNeeded()
         let height = host.fittingSize.height
         row("card_height_pt", String(Int(height)))
+        // 目で見る用（合成データだけ）。GENIE_WORKCONTEXT_SHOT に PNG の道を渡したときだけ書く。
+        if let shot = ProcessInfo.processInfo.environment["GENIE_WORKCONTEXT_SHOT"] {
+            host.frame = NSRect(x: 0, y: 0, width: 820, height: height)
+            host.layoutSubtreeIfNeeded()
+            if let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) {
+                host.cacheDisplay(in: host.bounds, to: rep)
+                try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: shot))
+            }
+        }
         // 3 件 + 待ち 2 + 返す 2 + 週 4 本 + 入口 で 1 面（620pt の窓）に収まる。大きな札なら超える。
         check(height > 200 && height < 660, "Work Context の高さが面に収まらない (\(Int(height))pt)")
         row("no_big_cards", height < 660 ? "PASS" : "FAIL")

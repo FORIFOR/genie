@@ -143,6 +143,12 @@ export function connectorForTool(toolId: string): ConnectorKey | null {
 export class ConnectorRuntime {
   readonly #deps: ConnectorRuntimeDeps;
   readonly #tokens: TokenStore;
+  /**
+   * 接続ごとに、進行中の更新は 1 つだけ。同時に呼ばれた側はその結果を待つ。
+   * 2 つが同時に更新・保存すると、同じキーチェーン項目への書き込みが競合して片方が
+   * 「既に存在します」で落ち、同期全体が失敗になっていた（2026-10-07〜12、毎時）。
+   */
+  readonly #refreshing = new Map<string, Promise<string>>();
 
   constructor(deps: ConnectorRuntimeDeps) {
     this.#deps = deps;
@@ -392,24 +398,36 @@ export class ConnectorRuntime {
       // まだ切れてはいない。更新できないだけなので、今回はそのまま使う。
       return tokens.accessToken;
     }
-    const renewed = await refresh(
-      config,
-      tokens.refreshToken,
-      this.#deps.fetch ?? globalThis.fetch,
-      () => now,
-    );
-    if (
-      provider === 'microsoft' &&
-      this.#deps.refreshConfig &&
-      !this.#deps.refreshConfig(provider, connectorId, renewed.grantedScopes)
-    ) {
-      throw new ConnectorError(
-        'provider_error',
-        'Microsoft returned scopes outside this connection',
+    const inflight = this.#refreshing.get(ref);
+    if (inflight) return inflight;
+    const refreshToken = tokens.refreshToken;
+    const task = (async () => {
+      const renewed = await refresh(
+        config,
+        refreshToken,
+        this.#deps.fetch ?? globalThis.fetch,
+        () => now,
       );
-    }
-    await this.#tokens.save(pluginId, connectorId, renewed);
-    return renewed.accessToken;
+      if (
+        provider === 'microsoft' &&
+        this.#deps.refreshConfig &&
+        !this.#deps.refreshConfig(provider, connectorId, renewed.grantedScopes)
+      ) {
+        throw new ConnectorError(
+          'provider_error',
+          'Microsoft returned scopes outside this connection',
+        );
+      }
+      await this.#tokens.save(pluginId, connectorId, {
+        ...renewed,
+        // Refresh responses do not carry the native UI's account label. Keep only
+        // that local metadata; tokens, scopes and client binding come from renewal.
+        ...(typeof tokens.accountLabel === 'string' ? { accountLabel: tokens.accountLabel } : {}),
+      });
+      return renewed.accessToken;
+    })().finally(() => this.#refreshing.delete(ref));
+    this.#refreshing.set(ref, task);
+    return task;
   }
 }
 

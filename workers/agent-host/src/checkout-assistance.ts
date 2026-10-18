@@ -5,11 +5,15 @@ import type { HostStep, StepOutcome } from './connector-steps.js';
 
 const exec = promisify(execFile);
 export interface CheckoutOpener {
-  request(service: keyof typeof CHECKOUT_SERVICES, signal?: AbortSignal): Promise<void>;
+  request(
+    service: keyof typeof CHECKOUT_SERVICES,
+    signal?: AbortSignal,
+    display?: CheckoutOpenArgs['display'],
+  ): Promise<void>;
 }
 
 /**
- * 公式サイトを既定のブラウザで**前面に**開く（本人が見て選べるように。本人の指示 2026-10-04）。
+ * 通常の引き継ぎは前面表示。自動準備はフォーカスを奪わず背面で公式サイトを開く。
  * 終了コード 0 は OS が受け付けたことだけを示す。ページの表示は確かめていない。
  */
 export function nativeCheckoutOpener(
@@ -17,11 +21,12 @@ export function nativeCheckoutOpener(
   run: typeof exec = exec,
 ): CheckoutOpener {
   return {
-    async request(service, signal) {
+    async request(service, signal, display = 'foreground') {
       if (platform !== 'darwin') throw new Error('unsupported_platform');
-      const args = CheckoutOpenArgs.parse({ service });
+      const args = CheckoutOpenArgs.parse({ service, display });
       signal?.throwIfAborted();
-      await run('/usr/bin/open', ['-u', CHECKOUT_SERVICES[args.service].url], {
+      const flags = args.display === 'background' ? ['-g', '-u'] : ['-u'];
+      await run('/usr/bin/open', [...flags, CHECKOUT_SERVICES[args.service].url], {
         ...(signal ? { signal } : {}),
         timeout: 10_000,
         maxBuffer: 4096,
@@ -60,7 +65,7 @@ export class CheckoutAssistanceRuntime {
     };
     try {
       signal?.throwIfAborted();
-      await this.opener.request(parsed.data.service, signal);
+      await this.opener.request(parsed.data.service, signal, parsed.data.display);
       signal?.throwIfAborted();
       return { ok: true, result: { ...result, navigation: 'requested' } };
     } catch {

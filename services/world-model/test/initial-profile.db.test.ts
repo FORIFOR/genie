@@ -1,12 +1,14 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { sql } from 'kysely';
 import {
   WorkSemantic,
   PersonalizationProfile,
   InitialProfileSections,
+  type InitialProfileAnalysis,
   uuidv7,
   type WorkArtifact,
 } from '@genie/contracts';
-import { createDb, withIdentity, type DbHandle } from '@genie/db';
+import { createDb, withIdentity, withTenant, type DbHandle } from '@genie/db';
 import { WorkContextService } from '../src/work/service.js';
 import { initialSnapshot } from '../src/work/initial-profile.js';
 
@@ -45,20 +47,28 @@ describe('initial profile summary', () => {
   it('bounds long entity keys without merging distinct contacts', () => {
     const longMail = (suffix: string) => ({
       ...artifact(suffix),
+      direction: 'outbound' as const,
       people: [
         {
           name: 'Colleague',
           email: `${'a'.repeat(90)}${suffix}@example.invalid`,
-          role: 'from' as const,
+          role: 'to' as const,
         },
       ],
     });
-    const snapshot = initialSnapshot([longMail('1'), longMail('2')], NOW);
+    const messages = [
+      longMail('1'),
+      longMail('2'),
+      { ...longMail('1'), id: '1-repeat' },
+      { ...longMail('2'), id: '2-repeat' },
+    ];
+    const snapshot = initialSnapshot(messages, NOW);
     const profile = PersonalizationProfile.parse(snapshot.profile);
     const keys = profile.frequent_entities.map((item) => item.key);
+    expect(keys).toHaveLength(2);
     expect(new Set(keys).size).toBe(keys.length);
     expect(keys.every((key) => key.length <= 100)).toBe(true);
-    expect(initialSnapshot([longMail('1'), longMail('2')], NOW).profile).toEqual(profile);
+    expect(initialSnapshot(messages, NOW).profile).toEqual(profile);
   });
   it('does not invent facts for empty data', () => {
     expect(initialSnapshot([], NOW).sections).toEqual({
@@ -69,12 +79,10 @@ describe('initial profile summary', () => {
       open_items: 0,
     });
   });
-  it('counts recurring counterparts rather than the mailbox owner', () => {
-    expect(initialSnapshot([artifact('a'), artifact('b')], NOW).sections.people).toEqual([
-      'Colleague',
-    ]);
+  it('does not label frequent inbound-only senders as important people', () => {
+    expect(initialSnapshot([artifact('a'), artifact('b')], NOW).sections.people).toEqual([]);
   });
-  it('keeps long provider subjects within the editable profile limits', () => {
+  it('does not turn long provider subjects into work or priority claims', () => {
     const event = {
       ...artifact('long'),
       kind: 'calendar_event' as const,
@@ -84,9 +92,10 @@ describe('initial profile summary', () => {
     };
     const sections = initialSnapshot([event], NOW).sections;
     expect(InitialProfileSections.safeParse(sections).success).toBe(true);
-    expect(sections.priorities[0]?.length).toBeLessThanOrEqual(200);
+    expect(sections.priorities).toEqual([]);
+    expect(sections.focus).toEqual([]);
     const emoji = initialSnapshot([{ ...event, title: 'A' + '🙂'.repeat(200) }], NOW).sections;
-    expect(emoji.priorities[0]).not.toMatch(/[\uD800-\uDBFF]$/u);
+    expect(emoji.priorities).toEqual([]);
   });
 });
 
@@ -158,7 +167,7 @@ describe.skipIf(!process.env['TEST_DATABASE_URL'])('initial profile persistence'
       { source: 'gmail', status: 'synced', artifacts: 2 },
       ['a', 'b'],
     );
-    expect((await work.initialProfile.get(tenant, user))?.sections?.people).toEqual(['Colleague']);
+    expect((await work.initialProfile.get(tenant, user))?.sections?.people).toEqual([]);
     await work.initialProfile.progress(tenant, user, claim.lease, {
       source: 'google_calendar',
       status: 'not_connected',
@@ -167,7 +176,7 @@ describe.skipIf(!process.env['TEST_DATABASE_URL'])('initial profile persistence'
     expect(await work.initialProfile.finish(tenant, user, claim.lease, ['a', 'b'])).toBe(true);
     const ready = (await work.initialProfile.get(tenant, user))!;
     expect(ready.status).toBe('ready');
-    expect(ready.sections?.people).toEqual(['Colleague']);
+    expect(ready.sections?.people).toEqual([]);
     expect((await work.personalization(tenant, user)).working_style).toEqual([]);
     expect(
       await work.initialProfile.confirm(tenant, user, {
@@ -298,6 +307,122 @@ describe.skipIf(!process.env['TEST_DATABASE_URL'])('initial profile persistence'
     expect((await work.initialProfile.get(tenant, owner))?.status).toBe('failed');
     await work.initialProfile.retry(tenant, owner);
     expect((await work.initialProfile.get(tenant, owner))?.sections).toBeNull();
+    expect(await work.initialProfile.claim(tenant, owner)).not.toBeNull();
+  });
+
+  it('validates local analysis against only successful snapshot mail and permits explicit ready retry', async () => {
+    const owner = uuidv7();
+    await withIdentity(db, (tx) =>
+      tx
+        .insertInto('users')
+        .values({
+          id: owner,
+          email: `${owner}@example.invalid`,
+          display_name: 'Analysis',
+        })
+        .execute(),
+    );
+    await work.initialProfile.begin(tenant, owner, 'google');
+    const claim = (await work.initialProfile.claim(tenant, owner))!;
+    const message = {
+      ...artifact('analyzed'),
+      body_excerpt: 'Synthetic local-only body',
+      semantic: WorkSemantic.parse({ category: 'info', confidence: 0.9, extracted_by: 'llm' }),
+      provenance: { ...artifact('analyzed').provenance, excerpt: 'Synthetic local-only excerpt' },
+    };
+    await work.initialProfile.ingest(tenant, owner, claim.lease, {
+      source: 'gmail',
+      cursor: null,
+      watermark: null,
+      artifacts: [message],
+    });
+    const stored = await withTenant(db, tenant, (tx) =>
+      sql<{
+        artifact_snapshot: WorkArtifact[];
+      }>`SELECT artifact_snapshot FROM initial_profiles WHERE user_id=${owner}`.execute(tx),
+    );
+    expect(stored.rows[0]?.artifact_snapshot[0]?.body_excerpt).toBeNull();
+    expect(stored.rows[0]?.artifact_snapshot[0]?.semantic).toBeNull();
+    expect(stored.rows[0]?.artifact_snapshot[0]?.provenance.excerpt).toBeNull();
+    await work.initialProfile.ingest(tenant, owner, claim.lease, {
+      source: 'google_calendar',
+      cursor: null,
+      watermark: null,
+      artifacts: [{ ...artifact('calendar'), source: 'google_calendar', kind: 'calendar_event' }],
+    });
+    const analysis: InitialProfileAnalysis = {
+      version: 2,
+      status: 'complete',
+      selected_count: 1,
+      analyzed_count: 1,
+      analyzed_ids: ['analyzed'],
+      excluded_ids: [],
+      focus: [{ text: 'Prepare the reviewed launch plan', source_ids: ['analyzed'] }],
+      priorities: [],
+      open_items: [],
+    };
+    await work.initialProfile.progress(tenant, owner, claim.lease, {
+      source: 'gmail',
+      status: 'failed',
+      artifacts: 0,
+    });
+    await work.initialProfile.progress(tenant, owner, claim.lease, {
+      source: 'google_calendar',
+      status: 'synced',
+      artifacts: 1,
+    });
+    expect(
+      await work.initialProfile.finish(
+        tenant,
+        owner,
+        claim.lease,
+        ['analyzed', 'calendar'],
+        analysis,
+      ),
+    ).toBe(false);
+    await work.initialProfile.progress(tenant, owner, claim.lease, {
+      source: 'gmail',
+      status: 'synced',
+      artifacts: 1,
+    });
+    for (const invalid of [
+      { ...analysis, analyzed_ids: ['unknown'] },
+      { ...analysis, analyzed_ids: ['calendar'], focus: [] },
+      { ...analysis, analyzed_count: 0 },
+      { ...analysis, focus: [{ text: 'Unrelated claim', source_ids: ['unknown'] }] },
+    ]) {
+      expect(
+        await work.initialProfile.finish(
+          tenant,
+          owner,
+          claim.lease,
+          ['analyzed', 'calendar'],
+          invalid,
+        ),
+      ).toBe(false);
+      expect((await work.initialProfile.get(tenant, owner))?.status).toBe('analysing');
+    }
+    expect(
+      await work.initialProfile.finish(tenant, owner, claim.lease, ['calendar'], analysis),
+    ).toBe(false);
+    expect(
+      await work.initialProfile.finish(
+        tenant,
+        owner,
+        claim.lease,
+        ['analyzed', 'calendar'],
+        analysis,
+      ),
+    ).toBe(true);
+    const ready = (await work.initialProfile.get(tenant, owner))!;
+    expect(ready.analysis).toEqual(analysis);
+    expect(ready.sections?.focus).toEqual(['Prepare the reviewed launch plan']);
+    expect(JSON.stringify(ready)).not.toContain('Synthetic local-only');
+    await work.initialProfile.retry(tenant, owner);
+    const retry = (await work.initialProfile.get(tenant, owner))!;
+    expect(retry.status).toBe('queued');
+    expect(retry.analysis).toBeNull();
+    expect(retry.sections).toBeNull();
     expect(await work.initialProfile.claim(tenant, owner)).not.toBeNull();
   });
 });

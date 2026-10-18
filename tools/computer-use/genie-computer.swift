@@ -24,6 +24,9 @@ struct Frame: Codable {
      * 無い場合は 0 として扱う（前面経路の写真には世代が無い）。
      */
     var backgroundEpoch: Int? = nil
+    /// Native AX document evidence for an explicitly constrained browser run.
+    var documentOrigin: String? = nil
+    var allowedOrigins: [String]? = nil
 }
 struct Action: Decodable {
     let action: String; let frameId: String; let expectation: String
@@ -57,9 +60,107 @@ struct Request: Decodable {
     let expectedTarget: ExpectedTarget?
     /// 撮影中に出す状態。いまは "signin"（本人のサインインを待っている）だけ。
     var phase: String? = nil
+    var allowedOrigins: [String]? = nil
 }
 struct Target {
     let bundleId: String; let windowId: UInt32; let pid: Int32; let bounds: Bounds
+}
+/// A native-only, durable privacy barrier. No field value, URL, email or secret is
+/// stored. A new run/consent cannot clear it. The entire browser process remains
+/// blocked for its lifetime: a password may become ordinary visible text or its
+/// tab may move to another window. Closing windows alone cannot clear the barrier.
+enum RegistrationCapturePrivacy {
+    /// Shared by the native document-origin gate: no other process can create a
+    /// registration marker. Unrelated protected system agents are not inspected.
+    static let supportedBrowserBundles: Set<String> = [
+        "com.apple.Safari", "com.google.Chrome", "com.google.Chrome.beta",
+        "com.google.Chrome.dev", "com.google.Chrome.canary", "org.chromium.Chromium",
+        "com.microsoft.edgemac", "com.brave.Browser", "com.vivaldi.Vivaldi",
+        "company.thebrowser.Browser",
+    ]
+    static var directory: URL {
+        FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".genie-computer-privacy", isDirectory: true)
+    }
+    static func markerKey(pid: Int32, seconds: UInt64, microseconds: UInt64) -> String {
+        digest(Data("\(pid):\(seconds):\(microseconds)".utf8))
+    }
+    static func key(_ target: Target) throws -> String {
+        var info = proc_bsdinfo()
+        guard proc_pidinfo(target.pid, PROC_PIDTBSDINFO, 0, &info, Int32(MemoryLayout<proc_bsdinfo>.size)) == MemoryLayout<proc_bsdinfo>.size,
+              info.pbi_start_tvsec > 0 else { throw Failure("registration_capture_paused") }
+        return markerKey(pid: target.pid, seconds: info.pbi_start_tvsec, microseconds: info.pbi_start_tvusec)
+    }
+    private static func validDirectory(_ dir: URL, create: Bool) throws -> Bool {
+        if create, mkdir(dir.path, 0o700) != 0, errno != EEXIST { throw Failure("registration_capture_paused") }
+        var info = stat()
+        if lstat(dir.path, &info) != 0 {
+            if errno == ENOENT, !create { return false }
+            throw Failure("registration_capture_paused")
+        }
+        guard (info.st_mode & S_IFMT) == S_IFDIR, info.st_uid == getuid(), (info.st_mode & 0o077) == 0
+        else { throw Failure("registration_capture_paused") }
+        return true
+    }
+    /// `directory` injection is for filesystem-only tests, never accepted over the helper protocol.
+    static func requireUnblocked(key: String, directory dir: URL) throws {
+        guard key.count == 64, key.allSatisfy({ $0.isHexDigit }) else { throw Failure("registration_capture_paused") }
+        guard try validDirectory(dir, create: false) else { return }
+        var info = stat()
+        guard lstat(dir.appendingPathComponent(key).path, &info) != 0, errno == ENOENT
+        else { throw Failure("registration_capture_paused") }
+    }
+    static func block(key: String, directory dir: URL) throws {
+        try requireUnblocked(key: key, directory: dir)
+        _ = try validDirectory(dir, create: true)
+        let fd = open(dir.appendingPathComponent(key).path, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW, 0o600)
+        guard fd >= 0 else { throw Failure("registration_capture_paused") }
+        defer { close(fd) }
+        guard fsync(fd) == 0 else { throw Failure("registration_capture_paused") }
+        let parent = open(dir.path, O_RDONLY | O_NOFOLLOW)
+        guard parent >= 0 else { throw Failure("registration_capture_paused") }
+        defer { close(parent) }
+        guard fsync(parent) == 0 else { throw Failure("registration_capture_paused") }
+    }
+    static func requireUnblocked(_ target: Target) throws { try requireUnblocked(key: key(target), directory: directory) }
+    static func block(_ target: Target) throws { try block(key: key(target), directory: directory) }
+
+    /// Read-only global image-egress guard for other capture consumers. Only
+    /// process IDs and kernel birth time are read; no titles, AX or pixels.
+    static func activeBlock(directory dir: URL, currentKeys: () throws -> Set<String>) throws -> Bool {
+        guard try validDirectory(dir, create: false) else { return false }
+        let names = try FileManager.default.contentsOfDirectory(atPath: dir.path)
+        guard !names.isEmpty else { return false }
+        for name in names {
+            var info = stat()
+            guard name.count == 64, name.allSatisfy({ $0.isHexDigit }),
+                  lstat(dir.appendingPathComponent(name).path, &info) == 0,
+                  (info.st_mode & S_IFMT) == S_IFREG, info.st_uid == getuid(),
+                  (info.st_mode & 0o077) == 0, info.st_size == 0
+            else { throw Failure("registration_capture_paused") }
+        }
+        return !Set(names).isDisjoint(with: try currentKeys())
+    }
+    static func activeProcessKeys() throws -> Set<String> {
+        // An app with zero windows is still live and can reopen the same tab.
+        // Do not infer process lifetime from the visible/onscreen window list.
+        let applications = NSWorkspace.shared.runningApplications
+        guard !applications.isEmpty else { throw Failure("registration_capture_paused") }
+        var keys = Set<String>()
+        for app in applications where supportedBrowserBundles.contains(app.bundleIdentifier ?? "") {
+            if app.isTerminated { continue }
+            let pid = app.processIdentifier
+            guard pid > 0 else { throw Failure("registration_capture_paused") }
+            var info = proc_bsdinfo()
+            guard proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, &info, Int32(MemoryLayout<proc_bsdinfo>.size)) == MemoryLayout<proc_bsdinfo>.size,
+                  info.pbi_start_tvsec > 0 else { throw Failure("registration_capture_paused") }
+            keys.insert(markerKey(pid: pid, seconds: info.pbi_start_tvsec, microseconds: info.pbi_start_tvusec))
+        }
+        return keys
+    }
+    static func privacyStatus() -> Data {
+        let blocked = (try? activeBlock(directory: directory, currentKeys: activeProcessKeys)) ?? true
+        return Data(blocked ? "{\"blocked\":true}\n".utf8 : "{\"blocked\":false}\n".utf8)
+    }
 }
 let navigationKeys: [String: CGKeyCode] = ["TAB": 48, "ESC": 53, "LEFT": 123, "RIGHT": 124, "UP": 126, "DOWN": 125]
 /** 失敗した段階だけを stderr に残す。画面の中身・入力文字・座標は書かない。 */
@@ -717,6 +818,7 @@ struct Helper {
         throw Failure("capture_failed")
     }
     static func captureOnce(_ t: Target) async throws -> (CGImage, Data) {
+        try RegistrationCapturePrivacy.requireUnblocked(t)
         try checkPermissions()
         guard !secureFocus() else { throw Failure("protected_field") }
         let content = try await SCShareableContent.excludingDesktopWindows(true, onScreenWindowsOnly: true)
@@ -730,6 +832,7 @@ struct Helper {
         config.showsCursor = false
         config.ignoreShadowsSingleWindow = true
         let image = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
+        try RegistrationCapturePrivacy.requireUnblocked(t)
         // 撮っている間に窓が動いていないこと。前面かどうかはここでは問わない。
         guard try windowBounds(pid: t.pid, windowId: t.windowId) == t.bounds else { throw Failure("stale_frame") }
         guard let data = NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:]), data.count <= 10 * 1024 * 1024
@@ -777,6 +880,8 @@ struct Helper {
         // The legacy foreground helper does not implement constrained consent.
         // Never silently ignore a caller's narrower target boundary.
         guard request.expectedTarget == nil else { throw Failure("target_constraint_unsupported") }
+        guard request.allowedOrigins == nil, request.scope?.allowedOrigins == nil
+        else { throw Failure("document_origin_unavailable") }
         try checkPermissions()
         stage("op-\(request.op)")
         if request.op == "begin" || request.op == "capture" {
@@ -804,6 +909,7 @@ struct Helper {
         guard a.textMode == nil, a.direction == nil, a.action != "scroll" else { throw Failure("policy_action_not_allowed") }
         stage("rescope")
         var t = try await rescopeActivating(f)
+        try RegistrationCapturePrivacy.requireUnblocked(t)
         /*
          * **決める前に前へ出す。**対象が背面にある間、アプリは中身を変える——
          * 実測では、Chrome が前面でない Google の検索欄が、同じ座標で
@@ -919,6 +1025,9 @@ struct Helper {
      * 自己テストは AppKit を起こさない（window server の無い CI で走らせるため）。
      */
     static func main() {
+        if CommandLine.arguments == [CommandLine.arguments[0], "--privacy-status"] {
+            FileHandle.standardOutput.write(RegistrationCapturePrivacy.privacyStatus()); return
+        }
         if CommandLine.arguments.contains("--self-test") { selfTest(); return }
         // Read-only setup probe: never capture a screen or request TCC authorization.
         if CommandLine.arguments.contains("--status") {

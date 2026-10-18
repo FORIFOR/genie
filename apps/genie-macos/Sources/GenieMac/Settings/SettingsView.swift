@@ -85,14 +85,23 @@ struct SettingsView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            // Gemini Live は「会話」の相手を Google に替える。送るものと費用を、オンにする前に読める場所に書く。
-            section("会話（Gemini Live）") {
-                Toggle("会話で Gemini Live を使う", isOn: Binding(
+            section("会話（音声モデル）") {
+                Toggle("会話で音声モデルを使う", isOn: Binding(
                     get: { gemini.enabled },
                     set: { gemini.setEnabled($0) }))
                 .toggleStyle(.switch)
                 .disabled(!gemini.enabled && (!gemini.hasKey || gemini.checkingKey || gemini.keyAccessIssue != nil || gemini.budget.monthlyMinutes == 0))
                 .accessibilityIdentifier("geminiLiveToggle")
+
+                Picker("音声モデル", selection: Binding(
+                    get: { gemini.selectedModel },
+                    set: { gemini.setSelectedModel($0) })) {
+                    Text("Gemini 3.8 Live").tag(GeminiLive.defaultModel)
+                    Text("ElevenLabs v4 turbo").tag(GeminiLive.elevenLabsTurboModel)
+                }
+                .pickerStyle(.segmented)
+                .accessibilityIdentifier("voiceModelPicker")
+
                 VStack(alignment: .leading, spacing: 2) {
                     Text("「会話」の間の声と文字起こしを Google に送ります。")
                     Text("利用料はあなたの API キーにかかります。")

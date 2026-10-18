@@ -25,6 +25,27 @@ describe('info.lookup plan', () => {
   });
 
   it('refuses kinds it cannot look up', () => {
-    expect(() => planTask('info.lookup', { kind: 'quote' })).toThrow();
+    expect(() => planTask('info.lookup', { kind: 'horoscope' })).toThrow();
+  });
+
+  it('looks up quotes as markets with only the subject and symbols', () => {
+    const step = planTask('info.lookup', {
+      kind: 'quote',
+      subject: 'トヨタの株価',
+      symbols: '7203.T',
+      holdings: 'must not travel',
+    }).steps[0]!;
+    expect(step.args).toEqual({ kind: 'markets', subject: 'トヨタの株価', symbols: '7203.T' });
+  });
+
+  it('passes the Mac location only for weather, rounded to two decimals', () => {
+    const weather = planTask('info.lookup', {
+      kind: 'weather',
+      latitude: 35.68123,
+      longitude: 139.76712,
+    });
+    expect(weather.steps[0]!.args).toMatchObject({ latitude: 35.68, longitude: 139.77 });
+    const news = planTask('info.lookup', { kind: 'news', latitude: 35.68, longitude: 139.76 });
+    expect(news.steps[0]!.args).not.toHaveProperty('latitude');
   });
 });

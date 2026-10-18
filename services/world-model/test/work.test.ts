@@ -12,6 +12,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import type { WorkArtifact, WorkSemantic } from '@genie/contracts';
+import { OwedItem } from '@genie/contracts';
 import {
   applyUpdate,
   buildWorkContext,
@@ -376,6 +377,43 @@ describe('priority scoring', () => {
     expect(off.waiting_on).toEqual([]);
     expect(off.week.meeting_hours).toBe(1);
   });
+
+  it('keeps a confirmed candidate visible as registered, and hides it once it is done or not mine', () => {
+    const base = buildWorkContext({
+      artifacts: fixture,
+      corrections: [],
+      now: NOW,
+      inferenceEnabled: true,
+    });
+    const owed = base.owed[0]!;
+    const priority = base.priorities[0]!;
+    expect(base.owed.every((o) => o.confirmed === false)).toBe(true);
+    const confirmed = buildWorkContext({
+      artifacts: fixture,
+      corrections: [
+        { item_id: owed.id, action: 'confirm', note: null },
+        { item_id: priority.id, action: 'confirm', note: null },
+      ],
+      now: NOW,
+      inferenceEnabled: true,
+    });
+    expect(confirmed.owed.find((o) => o.id === owed.id)?.confirmed).toBe(true);
+    expect(confirmed.priorities.find((p) => p.id === priority.id)?.confirmed).toBe(true);
+    expect(confirmed.owed.filter((o) => o.confirmed)).toHaveLength(1);
+    for (const action of ['done', 'dismiss'] as const) {
+      const after = buildWorkContext({
+        artifacts: fixture,
+        corrections: [
+          { item_id: owed.id, action: 'confirm', note: null },
+          { item_id: owed.id, action, note: action === 'dismiss' ? '担当外' : null },
+        ],
+        now: NOW,
+        inferenceEnabled: true,
+      });
+      expect(after.owed.map((o) => o.id)).not.toContain(owed.id);
+    }
+    for (const o of confirmed.owed) expect(OwedItem.parse(o).confirmed).toBe(o.confirmed);
+  });
 });
 
 describe('context injection', () => {
@@ -455,6 +493,7 @@ describe('context injection', () => {
             what: '見積を提出する',
             due_at: due,
             sources: p.sources,
+            confirmed: false,
           },
         ],
       },

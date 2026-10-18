@@ -26,4 +26,30 @@ final class InitialProfileTests: XCTestCase {
         s.focus = [" "]; XCTAssertFalse(InitialProfileStore.valid(s))
         s.focus = []; s.openItems = -1; XCTAssertFalse(InitialProfileStore.valid(s))
     }
+    func testOlderProfileIsDistinguishedFromBodyAnalysis() throws {
+        let json = """
+        {"profile":{"id":"old","provider":"google","status":"ready","started_at":"2026-09-09T00:00:00Z","updated_at":"2026-09-09T00:00:00Z","outcomes":[],"sections":{"focus":[],"people":[],"priorities":[],"work_pattern":[],"open_items":0}}}
+        """
+        XCTAssertNil(try InitialProfileStore.decode(json)?.analysis)
+    }
+    func testCoverageDoesNotCallFailedAnalysisComplete() {
+        let unavailable = InitialProfileAnalysis(version: 2, status: "unavailable", selectedCount: 12, analyzedCount: 0)
+        XCTAssertTrue(unavailable.coverage.contains("分析できませんでした"))
+        let partial = InitialProfileAnalysis(version: 2, status: "partial", selectedCount: 12, analyzedCount: 8)
+        XCTAssertTrue(partial.coverage.contains("12件のうち8件"))
+        XCTAssertTrue(partial.coverage.contains("一部は分析できていません"))
+    }
+    func testHundredMailCoverageAndLegacyResultDecode() throws {
+        for count in [24, 100] {
+            let json = """
+            {"profile":{"id":"sample","provider":"google","status":"ready","started_at":"2026-10-10T00:00:00Z","updated_at":"2026-10-10T00:00:00Z","outcomes":[],"sections":{"focus":[],"people":[],"priorities":[],"work_pattern":[],"open_items":0},"analysis":{"version":2,"status":"complete","selected_count":\(count),"analyzed_count":\(count)}}}
+            """
+            let result = try InitialProfileStore.decode(json)
+            XCTAssertEqual(result?.analysis?.selectedCount, count)
+            XCTAssertTrue(result?.analysis?.coverage.contains("\(count)件のうち\(count)件") == true)
+            if count == 100 {
+                XCTAssertThrowsError(try InitialProfileStore.decode(json.replacingOccurrences(of: ":100", with: ":101")))
+            }
+        }
+    }
 }

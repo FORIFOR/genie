@@ -16,6 +16,8 @@ const {
   actionPoint,
   targetPreviewOf,
   scrollReadbackOf,
+  allowedOriginsOf,
+  assertDocumentOrigin,
 } = await import(new URL('computer-vision-policy.js', base));
 const { visionPromptFor } = await import(new URL('computer-vision-prompts.js', base));
 const now = Date.now();
@@ -95,12 +97,14 @@ function harness(decide, options = {}) {
       claimed = true;
     },
     // 時計を動かす試験では、撮った時刻もその時計に従う（実機と同じく撮影は常に「今」）。
-    async begin() {
+    async begin(_goal, _recipient, _signal, _expectedTarget, allowedOrigins) {
       captures++;
+      options.onBegin?.(allowedOrigins);
       return frame(n, {
         capturedAt: options.config?.now?.() ?? now,
         elements,
         ...(options.background ? { deliveryMode: 'background' } : {}),
+        ...(options.initial ?? {}),
       });
     },
     async capture(_scope, _signal, phase) {
@@ -110,6 +114,7 @@ function harness(decide, options = {}) {
         capturedAt: options.config?.now?.() ?? now,
         elements,
         ...(options.background ? { deliveryMode: 'background' } : {}),
+        ...(options.initial ?? {}),
         ...(options.after ?? {}),
       });
     },
@@ -160,6 +165,92 @@ function happy(s) {
           : done(f),
   };
 }
+
+test('origin constraints accept exact canonical HTTPS origins only; omission remains compatible', () => {
+  assert.equal(allowedOriginsOf(undefined), undefined);
+  assert.deepEqual(allowedOriginsOf(['https://www.mcdonalds.co.jp']), [
+    'https://www.mcdonalds.co.jp',
+  ]);
+  for (const invalid of [
+    null,
+    [],
+    ['https://example.test', 'https://example.test'],
+    ['http://example.test'],
+    ['https://example.test/'],
+    ['https://example.test:443'],
+    ['https://user:password@example.test'],
+    ['https://example.test?q=1'],
+    ['https://example.test#fragment'],
+    ['https://*.example.test'],
+    ['data:text/plain,hello'],
+  ]) {
+    assert.throws(() => allowedOriginsOf(invalid), /invalid_allowed_origins/);
+  }
+  assert.doesNotThrow(() => assertDocumentOrigin(frame(), undefined));
+});
+
+test('restricted begin requires native origin evidence before any model call or input', async () => {
+  const allowedOrigins = ['https://official.example'];
+  for (const initial of [
+    {},
+    { documentOrigin: 'https://official.example' },
+    { documentOrigin: 'https://official.example', allowedOrigins: ['https://other.example'] },
+    { documentOrigin: 'https://official.example.evil.test', allowedOrigins },
+  ]) {
+    const h = harness(happy, {
+      background: true,
+      initial,
+      onBegin: (received) => assert.deepEqual(received, allowedOrigins),
+    });
+    const result = await h.runtime.run(step({ args: { goal: 'Prepare cart', allowedOrigins } }));
+    assert.equal(result.ok, false);
+    assert.match(result.error.code, /document_origin_(unavailable|not_allowed)/);
+    assert.equal(h.stats().calls, 0);
+    assert.equal(h.stats().applied, 0);
+  }
+});
+
+test('restricted capture stops on redirects before sending the new screenshot to the model', async () => {
+  const allowedOrigins = ['https://official.example'];
+  const h = harness(happy, {
+    background: true,
+    initial: { documentOrigin: allowedOrigins[0], allowedOrigins },
+    after: { documentOrigin: 'https://signin.other.example' },
+  });
+  const result = await h.runtime.run(step({ args: { goal: 'Prepare cart', allowedOrigins } }));
+  assert.equal(result.ok, false);
+  assert.equal(result.error.code, 'computer.vision.document_origin_not_allowed');
+  assert.equal(h.stats().calls, 1);
+  assert.equal(h.stats().applied, 1);
+});
+
+test('restricted native delivery refusal is not replayed or represented as sent input', async () => {
+  const allowedOrigins = ['https://official.example'];
+  const h = harness(happy, {
+    background: true,
+    initial: { documentOrigin: allowedOrigins[0], allowedOrigins },
+    apply: async () => {
+      throw new VisionFailure('document_origin_changed');
+    },
+  });
+  const result = await h.runtime.run(step({ args: { goal: 'Prepare cart', allowedOrigins } }));
+  assert.equal(result.ok, false);
+  assert.equal(result.error.code, 'computer.vision.document_origin_changed');
+  assert.equal(h.stats().applied, 1);
+  assert.equal(result.result.audit.length, 0);
+});
+
+test('restricted same-origin run preserves ordinary visual goal verification', async () => {
+  const allowedOrigins = ['https://official.example'];
+  const h = harness(happy, {
+    background: true,
+    initial: { documentOrigin: allowedOrigins[0], allowedOrigins },
+  });
+  const result = await h.runtime.run(step({ args: { goal: 'Prepare cart', allowedOrigins } }));
+  assert.equal(result.ok, true);
+  assert.equal(result.result.verification, 'visual');
+  assert.equal(h.stats().applied, 1);
+});
 
 test('actual before/after image references go to the action verifier; goal gets a NEW frame', async () => {
   const h = harness(happy);

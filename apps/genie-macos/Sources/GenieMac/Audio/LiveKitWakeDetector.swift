@@ -19,7 +19,6 @@ final class LiveKitWakeDetector: WakeDetector {
     private var ring = [Int16](repeating: 0, count: windowSamples)
     private var filled = 0
     private var sinceEval = 0
-    private var streak = 0
     private var quietUntil = Date.distantPast
     /// 調整用: 直近の最高点（genie.log に時々書く）。
     private var peak: Float = 0
@@ -42,7 +41,7 @@ final class LiveKitWakeDetector: WakeDetector {
 
     func reset() {
         ring = [Int16](repeating: 0, count: Self.windowSamples)
-        filled = 0; sinceEval = 0; streak = 0; recentLoud = []
+        filled = 0; sinceEval = 0; decision = WakeDecision(); recentLoud = []
     }
 
     func process(_ frame: [Float]) -> Bool {
@@ -54,33 +53,55 @@ final class LiveKitWakeDetector: WakeDetector {
             ring.append(contentsOf: samples)
         }
         filled = min(Self.windowSamples, filled + samples.count)
+        heardSeconds += Double(samples.count) / 16_000
         sinceEval += samples.count
         let rms = sqrt(frame.reduce(0) { $0 + $1 * $1 } / Float(max(1, frame.count)))
         recentLoud.append((rms, frame.count))
+        noteInput(rms)
         var kept = recentLoud.reduce(0) { $0 + $1.samples }
         while kept - (recentLoud.first?.samples ?? 0) >= 16_000 { kept -= recentLoud.removeFirst().samples }
         guard filled >= Self.windowSamples, sinceEval >= Self.stride, Date() >= quietUntil else { return false }
         sinceEval = 0
-        guard (recentLoud.map(\.rms).max() ?? 0) >= Self.speechLevel else { streak = 0; return false }
+        guard (recentLoud.map(\.rms).max() ?? 0) >= Self.speechLevel else { decision.quiet(); return false }
         guard let score = try? model.predict(ring)[Self.modelName] else { return false }
         notePeak(score)
-        streak = score >= threshold ? streak + 1 : 0
-        guard streak >= hits else { return false }
-        streak = 0
+        onScore?(heardSeconds, score)
+        let verdict = decision.next(score: score, threshold: threshold, hits: hits,
+                                    at: Date(timeIntervalSinceReferenceDate: heardSeconds))
+        guard verdict != .none else { return false }
         quietUntil = Date().addingTimeInterval(Self.cooldown)
         lastFiredWindow = ring
-        GenieLog.write("wake", String(format: "model score %.2f", score))
+        GenieLog.write("wake", String(format: "model score %.2f%@", score, verdict == .repeated ? " (called again)" : ""))
         return true
+    }
+
+    private var decision = WakeDecision()
+    /// 検査（--selftest wakemodel）: 評価のたびに、音の時刻と点を渡す。
+    var onScore: ((TimeInterval, Float) -> Void)?
+    /// 聞いた音の長さ（秒）。呼び直しの間は音の時刻で測る（ファイルを速く流す検査でも、マイクと同じ判定になる）。
+    private var heardSeconds: TimeInterval = 0
+
+    /// マイクに音が届いているかの調べ: 1 分ごとに、待ち受けで聞いた最大の大きさを残す。
+    private var inputMax: Float = 0
+    private var inputLogged = Date()
+    private func noteInput(_ rms: Float) {
+        inputMax = max(inputMax, rms)
+        guard Date().timeIntervalSince(inputLogged) >= 60 else { return }
+        GenieLog.write("wake", String(format: "input level in the last minute: %.4f (speech gate %.4f)", inputMax, Self.speechLevel))
+        inputMax = 0; inputLogged = Date()
     }
 
     /// 直近に起きたときの 2 秒（誤検出だったら学び直しに使う。端末の中だけ）。
     private(set) var lastFiredWindow: [Int16]?
-    private var nearMissLogged = Date.distantPast
+    /// 呼んだのに起きなかったときの調べ: 声のまとまりごとに最高点を 1 行残す（0.5 以上で起きなかったもの）。
+    private var burstMax: Float = 0
     private func notePeak(_ score: Float) {
-        // 呼んだのに起きなかったときの調べ: 0.5 以上で閾値に届かなかった点を時刻つきで残す（10 秒に 1 回まで）。
-        if score >= 0.5, score < threshold, Date().timeIntervalSince(nearMissLogged) > 10 {
-            nearMissLogged = Date()
-            GenieLog.write("wake", String(format: "near miss %.2f (threshold %.2f)", score, threshold))
+        if score >= 0.3 { burstMax = max(burstMax, score) }
+        else if burstMax > 0 {
+            if burstMax >= 0.5 {
+                GenieLog.write("wake", String(format: "near miss %.2f (one call %.2f, called twice %.2f)", burstMax, threshold, WakeDecision.repeatFloor))
+            }
+            burstMax = 0
         }
         peak = max(peak, score)
         guard Date().timeIntervalSince(lastPeakLog) > 30 else { return }
@@ -94,5 +115,52 @@ final class LiveKitWakeDetector: WakeDetector {
             .appendingPathComponent("Genie/wake/\(modelName).onnx")
         if FileManager.default.fileExists(atPath: custom.path) { return custom }
         return Bundle.main.url(forResource: modelName, withExtension: "onnx")
+    }
+}
+
+/// 起きるかどうかの判定（点数の並びだけで決める。モデルを使わないので試験できる）。
+///
+/// - 閾値を `hits` 回続けて超えたら起きる（一瞬の似た音で起きない）。
+/// - **呼び直し**: 一瞬だけ閾値を超えた（続かなかった）呼びかけが、`repeatWindow` 秒以内にもう一度あれば起きる。
+///   本人の短い「ジーニー」は 1.00 が一瞬だけ出て続かず、何度呼んでも起きなかった（genie.log 2026-10-16
+///   02:18〜02:21、30 秒ごとの最高点 1.00 が 3 回・near miss 0.87〜0.94 が 4 回で、会話は始まらなかった）。
+///   閾値を下げるのと違い、離れた 2 回の高い点が要るので、テレビや会話の一瞬では起きにくい。
+struct WakeDecision {
+    enum Verdict { case none, streak, repeated }
+    static let repeatWindow: TimeInterval = 12
+    /// 呼びかけの始まりどうしがこれより近ければ、同じ呼びかけの揺れとみなす。1.2 秒では、ふつうの文
+    /// （「明日の天気は…銀行に行ってから、新しいシステムの設定を…」、Kyoko の合成音）の 0.91 → 0.89 で起きた。
+    static let repeatGap: TimeInterval = 1.5
+    /// 点がここより下がったら、1 回の呼びかけが終わった（次に高くなれば別の呼びかけ）。
+    /// 以前は高い点が出るたびに「前の高い点」を更新していたので、高い点が続く間は 2 回目と数えられなかった。
+    static let releaseLevel: Float = 0.5
+    /// 呼び直しで数える点。本人の「ジーニー」は 0.77〜0.86 で止まる日があった（genie.log 2026-10-16 03:19〜04:09、
+    /// 1 回で起きる 0.95 に届かず、呼んでも反応しなかった）。1 回だけでは起きず、2 回が要る。
+    static let repeatFloor: Float = 0.80
+
+    private(set) var streak = 0
+    private var callStart: Date?
+    private var inCall = false
+
+    mutating func quiet() { streak = 0; inCall = false }
+
+    mutating func next(score: Float, threshold: Float, hits: Int, at now: Date) -> Verdict {
+        if score >= threshold {
+            streak += 1
+            if streak >= hits { self = WakeDecision(); return .streak }
+        } else {
+            streak = 0
+        }
+        if score < Self.releaseLevel { inCall = false }
+        guard score >= Self.repeatFloor, !inCall else { return .none }
+        // 新しい呼びかけの始まり。
+        inCall = true
+        if let start = callStart {
+            let since = now.timeIntervalSince(start)
+            if since < Self.repeatGap { return .none }   // 同じ呼びかけの揺れ
+            if since <= Self.repeatWindow { self = WakeDecision(); return .repeated }
+        }
+        callStart = now
+        return .none
     }
 }

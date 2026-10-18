@@ -119,6 +119,17 @@ final class MicCapture {
         engine.stop()
     }
 
+    /// 音が届かなくなった engine を捨てる。次の `start` で作り直す
+    /// （エコー除去を切った後の作り直しで、tap に何も来ないまま止まった。genie.log 2026-10-16 02:29Z・05:20Z）。
+    func discard() {
+        player.stop()
+        engine.inputNode.removeTap(onBus: 0)
+        engine.stop()
+        engine = AVAudioEngine()
+        player = AVAudioPlayerNode()
+        playerConnected = false
+    }
+
     /// 起動を速くするため、資源だけ先に確保する。**IO は始めない・許可も求めない**
     /// （呼ぶ側がマイク許可済みのときだけ呼ぶ）。実測: 新しい engine は start に 200〜770ms、
     /// prepare 済みなら 77ms、止めた engine の再 start は 47〜170ms。最初のバッファは start の +100ms。

@@ -24,6 +24,8 @@ swiftc -D GENIE_BACKGROUND -D GENIE_UNATTENDED_TEST $SPI_FLAG -parse-as-library 
   "$ROOT/tools/computer-use/BackgroundWebLink.swift" \
   "$ROOT/tools/computer-use/TargetPreview.swift" \
   "$ROOT/tools/computer-use/BackgroundAX.swift" \
+  "$ROOT/tools/computer-use/RegistrationVault.swift" \
+  "$ROOT/tools/computer-use/RegistrationAssist.swift" \
   -o "$OUT/genie-computer-unattended-test"
 "$OUT/genie-computer-unattended-test" --status | grep -q '"unattendedTest":true' \
   || { echo "試験用ビルドの印が出ていない" >&2; exit 1; }

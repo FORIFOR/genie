@@ -20,6 +20,7 @@ swiftc -D GENIE_BACKGROUND_TEST -D GENIE_PRIVATE_SPI -parse-as-library \
   "$ROOT/tools/computer-use/BackgroundScroll.swift" \
   "$ROOT/tools/computer-use/BackgroundWebLink.swift" \
   "$ROOT/tools/computer-use/TargetPreview.swift" \
+  "$ROOT/tools/computer-use/RegistrationVault.swift" "$ROOT/tools/computer-use/RegistrationAssist.swift" \
   "$ROOT/tools/computer-use/BackgroundAX.swift" \
   "$ROOT/tools/computer-use/BackgroundNativeTests.swift" -o "$WORK/Verify" > "$WORK/build.log" 2>&1
 app="$WORK/GenieNativeInput.app"

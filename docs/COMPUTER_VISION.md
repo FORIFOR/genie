@@ -24,7 +24,17 @@ node scripts/start-local-preview.mjs --app apps/genie-macos/build/Genie.app \
   --model-provider local --model qwen3.5:9b --computer-use
 ```
 
-`--allow-cloud` alone does **not** enable automatic screen capture/egress. The additional choice is saved only in this state directory for the exact provider and model. Restarting the same selection can reuse it; changing provider/model invalidates it, and local mode cannot accept this flag. Use `--no-external-screen` on the next start to remove the saved screen permission while retaining the conversation connection. `--computer-use` remains an explicit per-start capability. The normal per-run target-window/recipient consent and task approval are still required; the flag grants neither.
+To keep Claude Code for conversation and use local Ollama only for computer vision:
+
+```sh
+node scripts/start-local-preview.mjs --app apps/genie-macos/build/Genie.app \
+  --model-provider claude_code --allow-cloud --computer-use \
+  --computer-vision-model qwen3.5:9b
+```
+
+This experimental override is explicit on each start; omitting it preserves the existing shared-model behavior. It uses the saved local Ollama `/v1` endpoint, verifies that the selected model is installed with local weights and vision capability, and rejects cloud models and renamed remote aliases. Screen planning and verification use a separate local-only runtime, with no external fallback. Conversation remains on its selected provider. `check` reports the effective vision model and pixel recipient. The override does not grant screen/input permissions, change authentication handling, or permit order/payment confirmation through generic screen actions.
+
+`--allow-cloud` alone does **not** enable automatic screen capture/egress. The additional choice is saved only in this state directory for the exact provider and model. Restarting the same selection can reuse it; changing provider/model invalidates it, and local mode cannot accept this flag. Use `--no-external-screen` on the next start to remove the saved screen permission while retaining the conversation connection. `--computer-use` remains an explicit per-start capability. External screen delivery still requires the native target-window/recipient consent and task approval; the flag grants neither. The origin-constrained automatic target path described below supports local vision only.
 
 In a second terminal:
 
@@ -43,7 +53,7 @@ node scripts/computer-use.mjs cancel --run-file /tmp/genie-computer-run.json
 
 For custom storage, give every command the same `--state-dir`. `check` is read-only: it asks the authenticated running supervisor for `/computer/status`. That supervisor probes the exact helper executable passed to its host, without capture/input. The response includes the path, current permissions/readiness/capabilities, normal-consent versus unattended-test mode, selected model/recipient and effective external-screen permission. Startup-cached permission state is not treated as current readiness; missing/invalid/unavailable status is not ready. The CLI never executes a helper path returned over HTTP. Setup readiness is not task success. The released v0.1.4 DMG alone does not include these source changes.
 
-The native consent dialog lists specific app windows, with an unselected placeholder. Select only a test window you authorize. Consent discloses the pixel recipient, one window, up to12 inputs/5minutes, and no confirmation for each individual input. The consent dialog itself is interactive; the subsequent target operations are background-only. Keep another app frontmost. Returning to the target app causes a conservative stop, not a foreground fallback or automatic resume.
+For ordinary `computer.run` without `allowedOrigins`, the native consent dialog lists specific app windows, with an unselected placeholder. Select only a test window you authorize. Consent discloses the pixel recipient, one window, up to12 inputs/5minutes, and no confirmation for each individual input. A still-valid 20-minute grant can be reused for the same target and recipient without showing the picker again. The origin-constrained local route resolves its verified service window automatically; removing that picker does not remove task approval or the separate password-generation consent. Subsequent target operations are background-only. Keep another app frontmost. Returning to the target app causes a conservative stop, not a foreground fallback or automatic resume.
 
 ## Supported operations and boundaries
 
@@ -61,7 +71,7 @@ The native consent dialog lists specific app windows, with an unselected placeho
 | Other browser or custom-rendered controls                     | Not generally supported or verified; no Playwright/CDP adapter in this increment |
 | Operation indicator                                          | Persistent blue 22 × 22 pt stemless dart with a soft blue halo and app/state label; [current design and measured evidence](ux-benchmark/compare/computer-pointer/ROUND-2.md). It is click-through and never moves the human's mouse. Covered targets are explicitly labelled 背面 and omit the target outline. A separate stable 停止 button stops future input |
 
-The execution layer binds the consent and snapshot to bundle ID, PID, kernel process start time, window ID and bounds. Window binding uses a unique AX window rectangle; ambiguous matches stop. Each capture saves an owner-only local AX sidecar with control path, role/subrole/identifier/title, relative bounds and value hash. The action must match that pre-model snapshot, not a newly invented target. The one-shot snapshot is consumed before AX dispatch, so a timeout or uncertain action is not repeated. Identity/value checks are not an atomic lock against arbitrary third-party app changes; changed/unavailable targets stop conservatively.
+The execution layer binds the consent and snapshot to bundle ID, PID, kernel process start time, window ID and bounds. When the native window-ID API is available, window binding requires the exact PID, window ID and rectangle; main/focused AX windows can supplement an empty AX window list. Missing or conflicting IDs stop. Only when that API is unavailable does the helper use a unique rectangle from the original AX window list. The focused-window input guard uses the same identity checks. Each capture saves an owner-only local AX sidecar with control path, role/subrole/identifier/title, relative bounds and value hash. The action must match that pre-model snapshot, not a newly invented target. The one-shot snapshot is consumed before AX dispatch, so a timeout or uncertain action is not repeated. Identity/value checks are not an atomic lock against arbitrary third-party app changes; changed/unavailable targets stop conservatively.
 
 A separate monitor persists activation/click/scroll takeover until session end. It observes event types/locations, never records keyboard text, and uses an expiring heartbeat. Monitoring failure or inability to record an interruption stops authority. A human can still change state in the tiny interval between verification and dispatch; arbitrary apps are not transactionally isolated. Model prompts are not a security boundary for high-risk actions. Do not use mail, payment or production consoles as initial test targets.
 
@@ -97,7 +107,44 @@ The existing watcher now owns the pointer for the whole run, including model wai
 
 Before writing text, the native helper resolves the exact writable element without changing focus or sending input. It creates a marked context image and an enlarged crop from the original screenshot. A separate model call compares that selection and the exact proposed text against the original request. The host verifies the preview's source, hash and dimensions, then sends input to that same canonical element ID. Missing preview support, mismatch, uncertainty, or a malformed verdict stops before delivery; there is no raw-image fallback. This is an additional model check, not a guarantee of semantic correctness; native scope/secure-field/identity checks remain authoritative. Input errors after dispatch are recorded as an unknown effect and never automatically replayed. The final native stop/identity checks run after the pointer transition and between physical keys.
 
+An experimental `computer.run` argument, `allowedOrigins`, narrows a browser run to an exact list of canonical HTTPS origins. The native helper reads the document's `AXURL`; page text and model-reported URLs are not authority. It binds the resulting `documentOrigin` and origin list into the capture snapshot, checks before and after capture, and rechecks immediately before native delivery. The host rejects missing or mismatched evidence before any screenshot reaches the model. Omitting the argument preserves ordinary Computer Use behavior. An old helper that cannot return this evidence cannot run a constrained request.
+
+With local vision, this constrained route skips the window picker and resolves an already open, on-screen supported browser window whose native document origin is allowed. Among verified service windows, it prefers the foreground browser process, then WindowServer front-to-back order, and pins the resulting window ID. It never switches tabs or selects an unrelated app. No eligible window returns `document_origin_target_unavailable`; an external pixel recipient returns `origin_provider_consent_required` before capture. Current official-site cart and registration preparation use this route. The generic CLI `start` command does not supply `allowedOrigins`, so its ordinary window-selection flow remains.
+
+The constrained path requires one exposed browser `AXWebArea` and rejects nested/opaque frame boundaries, unresolved elements, browser chrome and coordinate-only fallback. Clicks also require a fresh native hit target within the selected element. It depends on browser accessibility metadata and has not established compatibility with arbitrary merchant pages. A cross-origin sign-in page stops the run; the origin list is never expanded automatically. Password, payment and commit guards remain in force: this prepares a cart only where the existing non-sensitive actions and these checks are supported, and does not authorize an order or prove that one was placed.
+
 Current implementation and verification: [visible background pointer](quality/VISIBLE_COMPUTER_POINTER.md).
+
+## Order and registration preparation (experimental, 2026-10-10)
+
+An explicit request such as `マックデリバリーで注文して` now collects items and quantities,
+delivery time and a JPY total limit. `checkout_draft` persists those terms;
+`注文を再開して` resumes collection, and dispatch uses one durable turn identity. A lost task
+acknowledgement or repeated request does not enqueue another preparation. Apply migration
+`20261010020000_checkout_order_draft.sql` before running the updated gateway (the managed
+preview launcher applies migrations). Acceptance is `dispatched`, never `prepared`.
+
+Once all terms are explicit, `checkout.prepare` opens the fixed official URL and runs
+origin-constrained Computer Use with normal approval. It checks the existing cart before
+adding items and stops before order/payment confirmation. Login, destination, payment selection
+and ambiguous options require the person. A verified cart artifact still says **not ordered**;
+its budget is not a charged amount. A real merchant quote/submit/reconcile adapter is not yet
+connected. This is not end-to-end ordering or payment support.
+
+`マクドナルドに会員登録して` starts `account.registration.prepare`. Its only task input is the
+fixed service ID. The model navigates to the registration form and requests `register`; the
+separate signed native helper asks for an email and consent to generate, save and fill a new
+password. The password never enters model arguments or the helper's JSON response. The visual
+run ends with `completed:false, status:awaiting_user_registration`; the task artifact describes
+preparation only. Terms, submission and verification are still performed by the person.
+The browser process is then blocked from Genie capture, including moved tabs and new windows;
+close the registration page and quit/restart the browser after registration to continue. See [native storage and signing](REGISTRATION_VAULT.md).
+
+The vision provider can be a local Ollama image model while the conversation keeps its existing
+provider, using `--computer-use --computer-vision-model qwen3.5:9b`.
+The registration helper needs a stable signing identity; an ad-hoc helper refuses registration.
+Contract, native fixture and isolated Keychain tests are distinct from a live merchant
+registration, authenticated cart, charge or order receipt.
 
 ## Storage, recovery and cancellation
 

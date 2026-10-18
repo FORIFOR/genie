@@ -1,6 +1,8 @@
 import { createHash } from 'node:crypto';
 import {
   VisionFailure,
+  allowedOriginsOf,
+  assertDocumentOrigin,
   assertScope,
   decisionOf,
   frameOf,
@@ -44,7 +46,13 @@ export interface VisionDevice {
    */
   stopped?(requestId: string, code: string, audit: unknown[]): Promise<void>;
   /** Local consent precedes capture/egress. The selected window becomes the immutable scope. */
-  begin(goal: string, recipient: string, signal: AbortSignal): Promise<VisionFrame>;
+  begin(
+    goal: string,
+    recipient: string,
+    signal: AbortSignal,
+    expectedTarget?: { readonly pid: number; readonly bundleId: string },
+    allowedOrigins?: readonly string[],
+  ): Promise<VisionFrame>;
   /** `phase: 'signin'` は、本人のサインインを待っている間だと窓の上に出す。 */
   capture(scope: VisionFrame, signal: AbortSignal, phase?: 'signin'): Promise<VisionFrame>;
   /*
@@ -55,6 +63,12 @@ export interface VisionDevice {
    * 実装しない装置では、割り込みはこれまでどおりその場で停止になる。
    */
   resume?(scope: VisionFrame, signal: AbortSignal): Promise<void>;
+  /** Native consent, generation, Keychain storage and filling; no secret crosses this boundary. */
+  prepareRegistration?(
+    scope: VisionFrame,
+    signal: AbortSignal,
+    expiresAt: number,
+  ): Promise<{ credentialRef: string }>;
   /** Read-only native grounding. Required before any text write; never focuses or dispatches input. */
   previewTarget?(
     frame: VisionFrame,
@@ -158,6 +172,15 @@ export class ComputerVisionRuntime {
     try {
       check(signal);
       requireApproval(step.approval, 'computer.run', this.#now());
+      const allowedOrigins = allowedOriginsOf(step.args['allowedOrigins']);
+      const registrationAssist = step.args['registrationAssist'] === true;
+      if (
+        step.args['registrationAssist'] !== undefined &&
+        (!registrationAssist ||
+          allowedOrigins?.length !== 1 ||
+          allowedOrigins[0] !== 'https://www.mcdonalds.co.jp')
+      )
+        throw new VisionFailure('registration_not_authorized');
       const goal = step.args['goal'];
       const criteria = step.args['successCriteria'] ?? goal;
       if (
@@ -184,7 +207,11 @@ export class ComputerVisionRuntime {
       cloud?.beginTask();
       device = this.config.device();
       await wait(device.claim(step.id), signal);
-      const initial = frameOf(await wait(device.begin(goal, kind, signal), signal), this.#now());
+      const initial = frameOf(
+        await wait(device.begin(goal, kind, signal, undefined, allowedOrigins), signal),
+        this.#now(),
+      );
+      assertDocumentOrigin(initial, allowedOrigins);
       /*
        * 持ち時間は**人が選び終えてから**計る。選択ダイアログを見つけるのに 4 分かかれば、
        * 自動で動ける時間が 1 分しか残らない——待たせたのはこちらなのに。
@@ -223,6 +250,7 @@ export class ComputerVisionRuntime {
         preview?: TargetPreview,
       ) => {
         check(signal);
+        for (const frame of frames) assertDocumentOrigin(frame, allowedOrigins);
         requireApproval(step.approval, 'computer.run', this.#now());
         if (++calls > 30) throw new VisionFailure('model_call_limit');
         /*
@@ -247,6 +275,7 @@ export class ComputerVisionRuntime {
               approval: null,
               args: {
                 ...args,
+                registrationAssist,
                 goal,
                 successCriteria: criteria,
                 vision_model_kind: kind,
@@ -314,6 +343,7 @@ export class ComputerVisionRuntime {
               this.#now(),
             );
             assertScope(fresh, initial);
+            assertDocumentOrigin(fresh, allowedOrigins);
             return fresh;
           } catch (error) {
             if (error instanceof VisionFailure && error.code === 'human_takeover') {
@@ -366,6 +396,11 @@ export class ComputerVisionRuntime {
         'policy_secure_field',
         // 確定のボタン。狙いの誤りではなく、してはいけないこと。選び直させず人に返す。
         'policy_commit_control',
+        'invalid_allowed_origins',
+        'document_origin_unavailable',
+        'document_origin_not_allowed',
+        'document_origin_changed',
+        'document_origin_target_unverified',
         'user_cancelled',
         'session_stopped',
         'consent_expired',
@@ -466,6 +501,72 @@ export class ComputerVisionRuntime {
         check(signal);
         let proposed = await plan();
         if (proposed.action === 'stop') throw new VisionFailure('planner_stopped');
+        if (proposed.action === 'register') {
+          if (!registrationAssist || !device.prepareRegistration)
+            throw new VisionFailure('registration_not_authorized');
+          if (await reframeIfStale()) continue;
+          requireApproval(step.approval, 'computer.run', this.#now());
+          // Native confirmation is the only authority for creating a new credential.
+          // End the visual run immediately: a filled password must never be photographed.
+          const attempt: AuditRow = {
+            sequence: count,
+            event: 'registration_prepare',
+            before: current.sha256,
+            delivery: 'unknown',
+          };
+          audit.push(attempt);
+          let receipt: { credentialRef: string };
+          try {
+            receipt = await wait(
+              device.prepareRegistration(
+                current,
+                signal,
+                Date.parse((step.approval as { expiresAt: string }).expiresAt),
+              ),
+              signal,
+            );
+          } catch (error) {
+            // Only definite pre-input refusals erase the possible-delivery marker.
+            if (
+              !signal.aborted &&
+              error instanceof VisionFailure &&
+              [
+                'registration_cancelled',
+                'registration_invalid_request',
+                'registration_invalid_email',
+                'registration_invalid_origin',
+                'registration_form_unsupported',
+                'registration_stale_form',
+                'registration_signed_helper_required',
+                'registration_account_already_stored',
+                'registration_capture_paused',
+                'registration_consent_expired',
+              ].includes(error.code)
+            )
+              audit.pop();
+            throw error;
+          }
+          if (
+            !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+              receipt.credentialRef,
+            )
+          )
+            throw new VisionFailure('registration_result_invalid');
+          delete attempt.delivery;
+          attempt.event = 'registration_prepared';
+          count += 1;
+          return {
+            ok: true,
+            result: {
+              completed: false,
+              status: 'awaiting_user_registration',
+              registration: { credentialRef: receipt.credentialRef },
+              actions: count,
+              modelCalls: calls,
+              audit,
+            },
+          };
+        }
         if (proposed.action === 'signin') {
           /*
            * サインインの画面。**Genie は資格情報を打たない。**本人がパスキーや Touch ID で
@@ -493,6 +594,7 @@ export class ComputerVisionRuntime {
           continue;
         }
         if (proposed.action === 'done') {
+          if (registrationAssist) throw new VisionFailure('registration_not_prepared');
           const latest = await capture();
           const verdict = await verify(
             [latest],
@@ -542,6 +644,7 @@ export class ComputerVisionRuntime {
         check(signal);
         requireApproval(step.approval, 'computer.run', this.#now());
         if (await reframeIfStale()) continue;
+        assertDocumentOrigin(current, allowedOrigins);
         const verifiesTarget = ['type', 'type_keys', 'scroll'].includes(proposed.action);
         if (verifiesTarget) {
           if (!device.previewTarget) throw new VisionFailure('target_preview_unavailable');
@@ -809,6 +912,35 @@ export class ComputerVisionRuntime {
 function failure(code: string): VisionOutcome {
   // 止まった理由ごとの言い方。どれも「完了していない」ことを先に言う。
   const messages: Record<string, string> = {
+    user_cancelled: '画面操作の確認がキャンセルされたため中止しました。依頼は完了していません。',
+    target_changed:
+      '選んだ窓が閉じたか、画面が変わったため停止しました。対象の公式ページを開いてから、もう一度依頼してください。',
+    document_origin_target_unavailable:
+      '操作できる公式サイトの窓を確認できませんでした。公式ページを画面に表示してから、もう一度依頼してください。',
+    origin_provider_consent_required:
+      '公式サイトの画面を外部モデルへ送る確認が必要なため停止しました。自動で対象を特定する操作には、このMacのモデルを利用してください。',
+    registration_not_authorized:
+      'この依頼では登録情報の作成を許可していません。登録する公式サイトを指定して依頼してください。',
+    registration_not_prepared:
+      '登録フォームへの安全な入力を確認できませんでした。会員登録は完了していません。',
+    registration_result_invalid:
+      '登録準備の結果を確認できません。重複するパスワードを作らず停止しました。',
+    registration_cancelled: '登録準備を中止しました。会員登録は完了していません。',
+    registration_capture_paused:
+      '登録用パスワードを入力した窓は撮影・自動操作を停止しています。登録と本人確認を済ませ、登録画面を閉じ、ブラウザを終了・再起動してから続けてください。',
+    registration_input_unconfirmed:
+      'パスワードは保存しましたが、登録フォームへの入力結果が未確認です。重複入力せず停止しました。会員登録の完了は確認していません。',
+    registration_signed_helper_required:
+      '登録用パスワードを安全に保存するため、署名済みの登録ヘルパーが必要です。会員登録は開始していません。',
+    invalid_allowed_origins: '操作を許可するサイトの指定が不正なため、画面操作を開始していません。',
+    document_origin_unavailable:
+      '操作先の公式サイトとフレーム境界を確認できないため停止しました。公式ページを開いてから再開してください。',
+    document_origin_not_allowed:
+      '許可された公式サイト以外へ移動したため停止しました。元の公式ページに戻ってから再開してください。',
+    document_origin_changed:
+      '確認中に操作先のサイトが変わったため停止しました。元の公式ページを確認してから再開してください。',
+    document_origin_target_unverified:
+      '入力先が確認済みの公式ページ内にあることを確かめられないため、この操作を送らずに停止しました。',
     human_takeover:
       '対象アプリを利用者が操作したため停止しました。手が空くのを待ちましたが、操作は続いています。入力は送っていません。',
     background_unsupported:

@@ -16,6 +16,9 @@ extension SelfTest {
                 let env = ProcessInfo.processInfo.environment
                 let detector = try LiveKitWakeDetector(modelURL: model,
                     threshold: Float(env["WAKE_THRESHOLD"] ?? "") ?? 0.95, hits: Int(env["WAKE_HITS"] ?? "") ?? 2)
+                if env["WAKE_TRACE"] != nil {
+                    detector.onScore = { t, score in if score >= 0.3 { print(String(format: "  %.1fs %.2f", t, score)) } }
+                }
                 // 前に 2 秒の無音を置く（窓が満ちてから評価が始まる）。後ろにも 1 秒。
                 let padded = [Float](repeating: 0, count: 32_000) + frames + [Float](repeating: 0, count: 16_000)
                 var fired = false

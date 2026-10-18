@@ -213,6 +213,7 @@ export function rawOwed(
       due_at: art.semantic.due ?? art.due_at,
       project: clusterOf(art),
       sources: [provenanceOf(art)],
+      confirmed: false,
     });
   }
   return out;
@@ -366,8 +367,14 @@ export function buildWorkContext(input: BuildInput): WorkContext {
       week: weekLoad(input.artifacts, [], [], now),
     };
   }
+  // `confirm` は消さない（本人が自分の TODO と確認した）。後から done / dismiss したら消える。
   const dismissed = new Set(
-    input.corrections.filter((c) => c.action !== 'wrong_project').map((c) => c.item_id),
+    input.corrections
+      .filter((c) => c.action !== 'wrong_project' && c.action !== 'confirm')
+      .map((c) => c.item_id),
+  );
+  const confirmed = new Set(
+    input.corrections.filter((c) => c.action === 'confirm').map((c) => c.item_id),
   );
   /*
    * 意味が付いていないメールは規則で補う（代役）。**端末の LLM が付けたものは上書きしない。**
@@ -479,14 +486,17 @@ export function buildWorkContext(input: BuildInput): WorkContext {
         .sort((a, b) => b.occurred_at.localeCompare(a.occurred_at))
         .slice(0, 6)
         .map(provenanceOf),
+      confirmed: false,
     });
   }
   priorities.sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
   return {
     ...base,
-    priorities: priorities.slice(0, MAX_WORK_PRIORITIES * 4),
+    priorities: priorities
+      .slice(0, MAX_WORK_PRIORITIES * 4)
+      .map((p) => ({ ...p, confirmed: confirmed.has(p.id) })),
     waiting_on: waiting,
-    owed,
+    owed: owed.map((o) => ({ ...o, confirmed: confirmed.has(o.id) })),
     week: weekLoad(active, owed, waiting, now),
   };
 }

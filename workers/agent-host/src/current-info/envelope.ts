@@ -23,7 +23,11 @@ export interface WeatherDay {
 export interface WeatherData {
   readonly place: string;
   /** 今日を聞かれたときだけ。 */
-  readonly current: { readonly temperature: number; readonly code: number; readonly summary: string } | null;
+  readonly current: {
+    readonly temperature: number;
+    readonly code: number;
+    readonly summary: string;
+  } | null;
   readonly days: readonly WeatherDay[];
 }
 
@@ -40,6 +44,11 @@ export interface NewsData {
   readonly items: readonly NewsItem[];
 }
 
+export interface MarketsData {
+  readonly subject: string | null;
+  readonly quotes: readonly import('./markets.js').MarketRow[];
+}
+
 export type InfoEnvelope =
   | {
       readonly schema: typeof INFO_SCHEMA;
@@ -54,6 +63,14 @@ export type InfoEnvelope =
       readonly kind: 'news';
       readonly text: string;
       readonly data: NewsData | null;
+      readonly sources: readonly { name: string; url: string }[];
+      readonly fetched_at: string;
+    }
+  | {
+      readonly schema: typeof INFO_SCHEMA;
+      readonly kind: 'markets';
+      readonly text: string;
+      readonly data: MarketsData | null;
       readonly sources: readonly { name: string; url: string }[];
       readonly fetched_at: string;
     };

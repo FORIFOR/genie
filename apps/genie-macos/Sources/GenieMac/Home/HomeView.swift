@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// §8 Home: KPI dashboard ではなく「今必要な仕事への入口」。greeting + intent、Attention 最大3、Active work、Recent。
+/// Home: 今日の情報を読み、必要な仕事を始める。取得値と依頼入力は同じ面に置く。
 /// 寸法/色/余白は tokens 由来（Palette/TypeScale/Space）。KPI は常設しない（§8.1）。
 struct HomeAttention: Identifiable {
     let id = UUID()
@@ -45,6 +45,7 @@ struct HomeView: View {
     @ObservedObject private var sessions = MeetingSessionStore.shared
     @ObservedObject private var sheetOpener = NewRecordingSheetOpener.shared
     @ObservedObject private var initialProfile = InitialProfileStore.shared
+    @ObservedObject private var dailyBrief = BriefStore.shared
     @ObservedObject private var work = WorkContextStore.shared
     @ObservedObject private var backend = MainData.shared
     @ObservedObject private var credentialRecovery = MainData.shared.credentialRecovery
@@ -60,7 +61,22 @@ struct HomeView: View {
 
     var body: some View {
         ZStack {
-            if initialProfile.visible && nav.intentVisualContext == nil { InitialProfileView() } else { homeBody }
+            if initialProfile.openRequested && initialProfile.visible && nav.intentVisualContext == nil {
+                VStack(alignment: .leading, spacing: 0) {
+                    ProbeButton(id: "homeBackFromProfile", action: {
+                        initialProfile.openRequested = false
+                    }) {
+                        Label("今日のまとめに戻る", systemImage: "chevron.left")
+                    }
+                    .buttonStyle(.borderless)
+                    .font(.system(size: S.type(TypeScale.secondarySize)))
+                    .padding(.horizontal, S.metric(Space.largePadding))
+                    .padding(.top, S.metric(Space.cardPadding))
+                    .accessibilityIdentifier("homeBackFromProfile")
+                    InitialProfileView()
+                }
+                .background(Palette.canvas(dark))
+            } else { homeBody }
             // §4 New Recording は Home に**重ねて**出す。window を増やさない。
             if sheetOpener.isOpen {
                 Color.black.opacity(0.24)
@@ -75,6 +91,9 @@ struct HomeView: View {
         }
         .animation(.easeOut(duration: 0.14), value: sheetOpener.isOpen)
         .onChange(of: nav.intentFocusRequest) { _, request in focusIntent(request) }
+        .onChange(of: initialProfile.visible) { _, visible in
+            if !visible { initialProfile.openRequested = false }
+        }
         .onAppear { if nav.intentVisualContext != nil { intentFocused = true } }
         .onDisappear { connectionTask?.cancel() }
     }
@@ -97,14 +116,43 @@ struct HomeView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: S.metric(Space.largePadding)) {
                 if let live = sessions.live { RecordingNowCard(session: live) }
+                if !hasScreenshot {
+                    DailyBriefView(card: dailyBrief.latest, composing: dailyBrief.composing,
+                                   failure: dailyBrief.lastFailure, preferences: dailyBrief.preferences,
+                                   scheduleLabel: dailyBrief.scheduleLabel,
+                                   onRefresh: { dailyBrief.compose() },
+                                   onPreferences: { dailyBrief.updatePreferences($0) },
+                                   onLocationAuthorization: { dailyBrief.authorizeWeatherLocation() },
+                                   onConnections: { nav.select(.apps); nav.appsTab = .connectors },
+                                   onWork: { nav.select(.work) })
+                        .padding(.top, S.metric(Space.cardPadding))
+                    // 朝に「自分が何をすればよいか」を見せる。メール由来は候補のまま出し、
+                    // 本人が「TODOに追加」で確かめるまで TODO にしない（WorkContextCard）。
+                    if work.context != nil { WorkContextCard() }
+                    if hasPendingProfile {
+                        ProbeButton(id: "homeInitialProfile", action: { initialProfile.showExisting() }) {
+                            HStack(spacing: Space.base) {
+                                Label("プロフィールを確認", systemImage: "person.text.rectangle")
+                                Spacer()
+                                Text(initialProfile.starting || initialProfile.result?.status == "analysing" ? "整理中" : "内容を確認できます")
+                                    .foregroundStyle(Palette.muted(dark))
+                                Image(systemName: "chevron.right").accessibilityHidden(true)
+                            }.contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .font(.system(size: S.type(TypeScale.secondarySize)))
+                        .accessibilityIdentifier("homeInitialProfile")
+                    }
+                    Divider()
+                }
                 VStack(alignment: .leading, spacing: 8) {
                     if !hasScreenshot {
                         Text(greeting)
                             .font(.system(size: S.type(TypeScale.secondarySize)))
                             .foregroundStyle(Palette.muted(dark))
                     }
-                    Text(hasScreenshot ? "この画像について質問" : "今日は、何を形にしますか。")
-                        .font(.system(size: S.type(TypeScale.pageTitleSize), weight: TypeScale.pageTitleWeight))
+                    Text(hasScreenshot ? "この画像について質問" : "Genieに頼む")
+                        .font(.system(size: S.type(hasScreenshot ? TypeScale.pageTitleSize : TypeScale.sectionTitleSize), weight: TypeScale.pageTitleWeight))
                         .foregroundStyle(Palette.text(dark))
                     Text(hasScreenshot ? "知りたいことや、してほしいことを書いてください。" : "メモから文章をつくり、Workで編集・Markdown保存できます。")
                         .font(.system(size: S.type(TypeScale.secondarySize)))
@@ -169,7 +217,7 @@ struct HomeView: View {
                         if sessions.live == nil { StartRecordingCard() }
                         if recordedCount > 0 { recoverableRow }
                         if work.brief != nil { MeetingBriefRow() }
-                        if work.context != nil { WorkContextCard() }
+                        if hasScreenshot, work.context != nil { WorkContextCard() }
                         if !attention.isEmpty {
                             section("これからの予定")
                             ForEach(attention.prefix(3)) { upcomingRow($0) }
@@ -196,6 +244,7 @@ struct HomeView: View {
         .onAppear {
             loadReal()
             work.load()
+            dailyBrief.refreshIfDue()
             // 許可の状態は開くたびに読み直す。設定で許可して戻ってきても、
             // 予定を求める行が古い状態（初回に読んだ値）のままだった。
             calendar = Permissions.calendar
@@ -203,6 +252,11 @@ struct HomeView: View {
         .onReceive(NotificationCenter.default.publisher(for: LocalStore.tasksChanged).receive(on: RunLoop.main)) { _ in
             recentTasks = LocalStore.shared.loadTasks()
         }
+    }
+
+    private var hasPendingProfile: Bool {
+        initialProfile.starting || initialProfile.failure != nil ||
+            (initialProfile.result != nil && initialProfile.result?.finished != true)
     }
 
     private func openDetail(_ session: MeetingSession) {

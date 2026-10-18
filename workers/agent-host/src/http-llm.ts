@@ -104,8 +104,9 @@ export class HttpLlmClient {
     images: readonly HttpLlmImage[] = [],
     signal?: AbortSignal,
     reasoning?: 'none' | 'low' | 'medium' | 'high',
+    schema?: Record<string, unknown>,
   ): Promise<unknown> {
-    const content = await this.#request(prompt, true, false, images, signal, reasoning);
+    const content = await this.#request(prompt, true, false, images, signal, reasoning, schema);
     try {
       return JSON.parse(content) as unknown;
     } catch {
@@ -131,6 +132,7 @@ export class HttpLlmClient {
     signal?: AbortSignal,
     /** この呼び出しに限った指定。設定より優先する（急ぐ仕事のためにある）。 */
     reasoning?: 'none' | 'low' | 'medium' | 'high',
+    schema?: Record<string, unknown>,
   ): Promise<string> {
     if (!prompt.trim()) throw new Error('LLM prompt is empty');
     if (
@@ -173,10 +175,19 @@ export class HttpLlmClient {
                 : prompt,
             },
           ],
-          ...(reasoning ?? this.#config.reasoningEffort
+          ...((reasoning ?? this.#config.reasoningEffort)
             ? { reasoning_effort: reasoning ?? this.#config.reasoningEffort }
             : {}),
-          ...(structured ? { response_format: { type: 'json_object' } } : {}),
+          ...(structured
+            ? {
+                response_format: schema
+                  ? {
+                      type: 'json_schema',
+                      json_schema: { name: 'genie_response', strict: true, schema },
+                    }
+                  : { type: 'json_object' },
+              }
+            : {}),
           ...(this.#config.kind === 'local' ? { temperature: creative ? 0.6 : 0 } : {}),
         }),
         signal: signal

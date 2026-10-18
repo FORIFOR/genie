@@ -68,6 +68,12 @@ export interface OutlookMailSummary {
   readonly webLink: string | null;
   /** 自分が出したものか（`sentitems` から来たか）。 */
   readonly folder: 'inbox' | 'sentitems' | 'other';
+  readonly importance?: string | null;
+  readonly isDraft?: boolean;
+  readonly listUnsubscribe?: boolean;
+  readonly autoSubmitted?: string | null;
+  readonly precedence?: string | null;
+  readonly inReplyTo?: string | null;
 }
 
 interface RawRecipient {
@@ -88,6 +94,9 @@ interface RawMessage {
   hasAttachments?: boolean;
   webLink?: string;
   body?: { contentType?: string; content?: string };
+  importance?: string;
+  isDraft?: boolean;
+  internetMessageHeaders?: { name?: string; value?: string }[];
 }
 
 function recipient(raw: RawRecipient | undefined): OutlookRecipient | null {
@@ -102,6 +111,8 @@ function recipients(raw: RawRecipient[] | undefined): OutlookRecipient[] {
 }
 
 function toMailSummary(raw: RawMessage, folder: OutlookMailSummary['folder']): OutlookMailSummary {
+  const header = (name: string) =>
+    raw.internetMessageHeaders?.find((item) => item.name?.toLowerCase() === name)?.value;
   return {
     id: raw.id ?? '',
     conversationId: raw.conversationId ?? '',
@@ -116,6 +127,12 @@ function toMailSummary(raw: RawMessage, folder: OutlookMailSummary['folder']): O
     hasAttachments: raw.hasAttachments === true,
     webLink: raw.webLink ?? null,
     folder,
+    importance: raw.importance ?? null,
+    isDraft: raw.isDraft === true,
+    listUnsubscribe: Boolean(header('list-unsubscribe') || header('list-id')),
+    autoSubmitted: header('auto-submitted') ?? null,
+    precedence: header('precedence') ?? null,
+    inReplyTo: header('in-reply-to') ?? null,
   };
 }
 
@@ -148,6 +165,8 @@ export class OutlookMailConnector {
   async list(
     input: {
       folder?: 'inbox' | 'sentitems';
+      /** Request selection metadata only when the caller needs it. */
+      selectionMetadata?: boolean;
       since?: string;
       maxResults?: number;
       query?: string;
@@ -156,9 +175,12 @@ export class OutlookMailConnector {
   ): Promise<OutlookMailSummary[]> {
     requireScope(MICROSOFT_OPERATIONS.mailList, this.#deps.grantedScopes);
     const folder = input.folder ?? 'inbox';
+    const limit = Math.max(1, Math.min(Math.floor(input.maxResults ?? 25), 100));
     const params = new URLSearchParams({
-      $select: MAIL_SELECT,
-      $top: String(Math.min(input.maxResults ?? 25, 100)),
+      $select: input.selectionMetadata
+        ? `${MAIL_SELECT},importance,isDraft,internetMessageHeaders`
+        : MAIL_SELECT,
+      $top: String(limit),
       $orderby: folder === 'sentitems' ? 'sentDateTime desc' : 'receivedDateTime desc',
     });
     if (input.since) {
@@ -177,7 +199,7 @@ export class OutlookMailConnector {
       this.#deps,
       signal,
     );
-    return (body.value ?? []).map((raw) => toMailSummary(raw, folder));
+    return (body.value ?? []).slice(0, limit).map((raw) => toMailSummary(raw, folder));
   }
 
   /**

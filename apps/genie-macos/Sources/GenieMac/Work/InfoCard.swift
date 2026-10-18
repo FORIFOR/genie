@@ -8,7 +8,7 @@ import Foundation
 struct InfoCard: Equatable, Decodable {
     static let schema = "genie.info/v1"
 
-    enum Kind: String, Decodable { case weather, news }
+    enum Kind: String, Decodable { case weather, news, markets }
 
     struct Source: Equatable, Decodable {
         let name: String
@@ -48,10 +48,34 @@ struct InfoCard: Equatable, Decodable {
         let items: [Item]
     }
 
+    /// 株価・指数・為替（取得元の値。`markets.ts` の MarketRow）。
+    struct Markets: Equatable, Decodable {
+        struct Quote: Equatable, Decodable {
+            let symbol: String
+            let name: String
+            let price: Double
+            let currency: String
+            let isIndex: Bool
+            let change: Double?
+            let changePercent: Double?
+            let session: String
+            let observed: String
+            let url: String
+
+            enum CodingKeys: String, CodingKey {
+                case symbol, name, price, currency, change, session, observed, url
+                case isIndex = "is_index", changePercent = "change_percent"
+            }
+        }
+        let subject: String?
+        let quotes: [Quote]
+    }
+
     let kind: Kind
     let text: String
     let weather: Weather?
     let news: News?
+    let markets: Markets?
     let sources: [Source]
     let fetchedAt: Date?
 
@@ -68,6 +92,7 @@ struct InfoCard: Equatable, Decodable {
         fetchedAt = try? c.decode(Date.self, forKey: .fetchedAt)
         weather = kind == .weather ? try c.decodeIfPresent(Weather.self, forKey: .data) : nil
         news = kind == .news ? try c.decodeIfPresent(News.self, forKey: .data) : nil
+        markets = kind == .markets ? try c.decodeIfPresent(Markets.self, forKey: .data) : nil
     }
 
     /// 成果物の本文から読む。JSON でない・種類を知らないなら nil。
@@ -94,6 +119,7 @@ struct InfoCard: Equatable, Decodable {
         switch kind {
         case .weather: return !(weather?.days.isEmpty ?? true)
         case .news: return !(news?.items.isEmpty ?? true)
+        case .markets: return !(markets?.quotes.isEmpty ?? true)
         }
     }
 }

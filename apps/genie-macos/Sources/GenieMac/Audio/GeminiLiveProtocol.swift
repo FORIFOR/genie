@@ -12,6 +12,8 @@ enum GeminiLive {
     /// 声（TTS）・診断の短い呼び出しの宛先。宛先を書くのはこのファイルだけ（PRIVACY_EGRESS_GATE）。
     static let restBase = URL(string: "https://generativelanguage.googleapis.com/v1beta/")!
     static let defaultModel = "gemini-3.8-live"
+    static let elevenLabsTurboModel = "elevenlabs-v4-turbo"
+    static let supportedModels = [defaultModel, elevenLabsTurboModel]
     static let inputRate = 16_000
 
     /// 仕事を Genie に渡す道具。会話の中で「やって」と言われたらこれを呼ばせる。
@@ -23,6 +25,8 @@ enum GeminiLive {
     static let stopTool = "stop_work"
     /// 今日のまとめを読む（端末の中の保存を読むだけ。返すのは件数・時刻・状態・天気で、題名や件名は返さない）。
     static let briefTool = "get_today_brief"
+    /// 天気・ニュース・株価を Genie が取りに行き、画面にカードを出す。返すのは取得元の値からの短い文（公開情報だけ）。
+    static let infoTool = "show_info"
 
     /// サーバーが接続を閉じた理由のうち、つなぎ直しても直らないもの（本人が直す）を言葉にする。それ以外は nil。
     /// 例: 利用枠の超過は close 1011「You exceeded your current quota…」、前払いの残高切れは
@@ -112,8 +116,23 @@ enum GeminiLive {
                         "parameters": ["type": "OBJECT", "properties": [String: Any]()],
                     ], [
                         "name": briefTool,
-                        "description": "利用者が「今日どう？」「今日の予定は？」「今日のまとめ」「今日気にすることある？」など、今日の状況を聞いたときに呼ぶ。予定の件数と次の時刻・予定に重なる雨・天気・対応が要るものの件数・取れなかった情報源が返る。予定の題名やメールの件名は返らない（画面のカードに出る）。返った内容だけで短く答え、無いことを推測で足さない。",
+                        "description": "利用者が「おはよう」「おはようございます」「朝のまとめ」「今日どう？」「今日の予定は？」「今日のまとめ」「今日気にすることある？」など、朝の挨拶や今日の状況を聞いたときに呼ぶ。日付・予定・天気・対応が要るもの（メール等）・ニュース・株価相場が返る。予定の題名やメールの件名は返らない（画面のカードに出る）。返った内容だけで短く答え、無いことを推測で足さない。",
                         "parameters": ["type": "OBJECT", "properties": [String: Any]()],
+                    ], [
+                        "name": infoTool,
+                        "description": "利用者が天気・ニュース・株価（日経平均・ダウなどの指数、個別株、ドル円）を聞いたときに必ず呼ぶ。Genie が取得元から取りに行き、画面に専用のカードを出す。返った文の数字だけを使って短く答え、数字を足したり言い換えたりしない。天気で場所を言われなければ place を空にする（Genie が Mac の現在地を使う。場所を聞き返さない）。",
+                        "parameters": [
+                            "type": "OBJECT",
+                            "properties": [
+                                "kind": ["type": "STRING", "enum": ["weather", "news", "markets"], "description": "weather=天気、news=ニュース、markets=株価・指数・為替"],
+                                "request": ["type": "STRING", "description": "利用者の言葉のまま（例:「明日の大阪の天気」「トヨタの株価」）"],
+                                "when": ["type": "STRING", "enum": ["today", "tomorrow", "day_after", "weekend", "week"], "description": "天気の日。言われなければ today"],
+                                "place": ["type": "STRING", "description": "天気の地名。言われなかったら空（現在地を使う）"],
+                                "topic": ["type": "STRING", "description": "ニュースの話題（「半導体のニュース」なら 半導体）。主なニュースなら空"],
+                                "symbols": ["type": "STRING", "description": "株価の銘柄コード。Yahoo Finance の形式でカンマ区切り（例: トヨタ 7203.T、ソニー 6758.T、日経平均 ^N225、ダウ ^DJI、S&P500 ^GSPC、ナスダック ^IXIC、ドル円 JPY=X）"],
+                            ],
+                            "required": ["kind", "request"],
+                        ],
                     ], [
                         "name": endTool,
                         "description": "利用者が「終了して」「終わって」「終わり」「おしまい」「閉じて」「バイバイ」「さようなら」「またね」など、この会話を終えたいと言ったときに必ず呼ぶ。短く「承知しました」と言ってから呼ぶ。仕事は止めない。",
@@ -197,7 +216,11 @@ enum GeminiLive {
         if let call = root["toolCall"] as? [String: Any], let calls = call["functionCalls"] as? [[String: Any]] {
             for c in calls {
                 guard let id = c["id"] as? String, let name = c["name"] as? String else { continue }
-                let request = ((c["args"] as? [String: Any])?["request"] as? String) ?? ""
+                let args = c["args"] as? [String: Any] ?? [:]
+                // show_info は引数が複数ある。JSON のまま渡し、受け手が読む（ほかの道具は依頼文だけ）。
+                let request = name == infoTool
+                    ? ((try? JSONSerialization.data(withJSONObject: args)).flatMap { String(data: $0, encoding: .utf8) } ?? "{}")
+                    : (args["request"] as? String ?? "")
                 events.append(.toolCall(id: id, name: name, request: request))
             }
         }

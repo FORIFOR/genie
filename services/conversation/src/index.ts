@@ -5,7 +5,13 @@
  * 実装仕様: docs/spec/phase-7-implementation-spec.md
  */
 export { routeLane, isDocumentRequest, type LaneDecision, type LaneInput } from './lane.js';
-export { checkoutAssistanceRequest } from './checkout-request.js';
+export { checkoutAssistanceRequest, accountRegistrationRequest } from './checkout-request.js';
+export {
+  advanceCheckoutOrder,
+  checkoutOrderRequest,
+  isCheckoutOrderQuotation,
+  type CheckoutOrderTransition,
+} from './checkout-order.js';
 export { officeEditRequest, type OfficeEditRequest } from './office-request.js';
 export { browserOpenRequest, type BrowserOpenRequest } from './browser-request.js';
 export { workPreviewRequest, type WorkPreviewRequest } from './work-preview-request.js';

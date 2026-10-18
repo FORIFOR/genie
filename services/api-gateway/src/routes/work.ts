@@ -14,6 +14,7 @@
  */
 import {
   canonicalSha256,
+  InitialProfileAnalysis,
   InitialProfileOutcome,
   InitialProfileSections,
   PersonalizationUpdate,
@@ -155,13 +156,18 @@ export function registerWorkRoutes(app: App, deps: WorkRouteDeps): void {
   app.post('/v1/work/initial-profile/finish', async (request, reply) => {
     const p = requirePrincipal();
     const body = z
-      .object({ lease: z.uuid(), artifact_ids: z.array(z.string().max(512)).max(5000) })
+      .object({
+        lease: z.uuid(),
+        artifact_ids: z.array(z.string().max(512)).max(5000),
+        analysis: InitialProfileAnalysis.optional(),
+      })
       .parse(request.body);
     const ok = await deps.work.initialProfile.finish(
       p.tenantId,
       p.userId,
       body.lease,
       body.artifact_ids,
+      body.analysis,
     );
     return reply.status(ok ? 204 : 409).send();
   });

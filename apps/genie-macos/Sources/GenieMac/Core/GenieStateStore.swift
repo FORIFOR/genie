@@ -28,6 +28,41 @@ final class GenieStateStore: ObservableObject {
 
     var dock: DockPresentation { state.dock }
 
+    static let quickActionsIdleInterval: TimeInterval = 30
+    private var quickActionsTimer: Timer?
+    private var quickActionsDeadline: TimeInterval?
+    private(set) var quickActionsGeneration = 0
+
+    /// Only input in the visible Quick Actions surface extends its lifetime.
+    /// Uptime avoids wall-clock changes; a generation rejects already queued callbacks.
+    func noteQuickActionsInteraction(now: TimeInterval = ProcessInfo.processInfo.systemUptime) {
+        guard dock == .quickActions else { return }
+        cancelQuickActionsTimeout()
+        quickActionsDeadline = now + Self.quickActionsIdleInterval
+        let generation = quickActionsGeneration
+        GenieLog.write("dock-idle", "armed generation=\(generation) seconds=30")
+        let timer = Timer(timeInterval: Self.quickActionsIdleInterval, repeats: false) { [weak self] _ in
+            Task { @MainActor in self?.expireQuickActions(generation: generation) }
+        }
+        quickActionsTimer = timer
+        RunLoop.main.add(timer, forMode: .common)
+    }
+
+    func expireQuickActions(generation: Int, now: TimeInterval = ProcessInfo.processInfo.systemUptime) {
+        guard generation == quickActionsGeneration, dock == .quickActions,
+              let deadline = quickActionsDeadline, now >= deadline else { return }
+        GenieLog.write("dock-idle", "expired generation=\(generation)")
+        // Recompose normally so pending approvals and running work retain priority.
+        setDock(.idle)
+    }
+
+    private func cancelQuickActionsTimeout() {
+        quickActionsGeneration += 1
+        quickActionsTimer?.invalidate()
+        quickActionsTimer = nil
+        quickActionsDeadline = nil
+    }
+
     /// 本人・声が頼んだ面を変える。出る一枚は `DockComposer` が決める（`recompose`）。
     ///
     /// **確認カードは、ほかの表示で隠さない。**以前は Listening・回答・会議の開始がカードを上書きし、
@@ -56,6 +91,8 @@ final class GenieStateStore: ObservableObject {
         guard state.dock != presentation else { return }
         let previous = state.dock
         state.dock = presentation
+        if presentation == .quickActions { noteQuickActionsInteraction() }
+        else { cancelQuickActionsTimeout() }
         DockAnnouncer.announce(presentation, previous: previous, activeCount: state.board.active.count)
         // マイクが開いたまま、止める手の無い面にしない（会話を終える / 音声入力のマイクを閉じる）。
         VoiceHUDState.shared.dockChanged(to: presentation)
@@ -454,6 +491,7 @@ final class GenieStateStore: ObservableObject {
 
     /// テスト用に初期化する。
     func reset() {
+        cancelQuickActionsTimeout()
         state = GenieState()
         revs = [:]; stopHandlers = [:]; stopDetails = [:]; confirmationQueue = []
         ackGeneration += 1; holdGeneration += 1

@@ -2,15 +2,17 @@
  * `brief.compose`: 今日のまとめ（読み取り専用）。端末で組み立て、成果物は genie.brief/v1 の JSON。
  */
 import { BriefArgs } from '@genie/contracts';
-import type { HostStep, StepOutcome } from '../connector-steps.js';
+import type { ConnectorRuntime, HostStep, StepOutcome } from '../connector-steps.js';
 import { infoFetch, type InfoFetch } from '../current-info/hosts.js';
 import { defaultRegion } from '../current-info/preferences.js';
 import { composeBrief } from './compose.js';
+import { readBriefMail } from './mail.js';
 
 export interface BriefRuntimeDeps {
   readonly get?: InfoFetch;
   readonly region?: () => string;
   readonly now?: () => Date;
+  readonly connectors?: ConnectorRuntime;
 }
 
 export class BriefRuntime {
@@ -36,6 +38,7 @@ export class BriefRuntime {
     const envelope = await composeBrief(parsed.data, {
       get: this.#deps.get ?? infoFetch(),
       region: (this.#deps.region ?? defaultRegion)(),
+      mail: () => readBriefMail(this.#deps.connectors, this.#deps.now),
       ...(this.#deps.now ? { now: this.#deps.now } : {}),
     });
     return {

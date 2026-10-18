@@ -17,7 +17,10 @@ const HELP = `Genie Computer Use（Mac / ローカルプレビュー）
 
 先に start-local-preview.mjs --computer-use --model <画像対応モデル> を起動します。
 check は撮影・入力・OS許可要求を行いません。start は受付のみで、承認を自動化しません。
-status の approval ID を確認して approve すると、対象アプリの選択ダイアログが出ます。
+この CLI の start は通常の computer.run です。status の approval ID を確認して approve すると、
+対象ウィンドウを選択します。同じ対象・送信先の有効な20分間の許可がある場合は再利用します。
+公式サイトに範囲を固定したカート・登録準備は、ローカル画像処理の場合だけ対象選択を省略します。
+その専用経路でも依頼の承認と、パスワード作成前の確認は残ります。
 同意後はその窓だけ最大12操作・5分。個別操作の確認はありません。
 バックグラウンドAX操作のみ。対象を前面で使うと停止し、自動再開しません。
 送信先は check に表示されるモデルです。外部モデルで画面を扱うには、起動時の
@@ -87,6 +90,7 @@ export function readiness(control, config) {
   const helper = control?.computerHelper;
   const permissions = helper?.status ?? null;
   const provider = config.modelProvider ?? 'local';
+  const visionProvider = control?.computerVisionProvider ?? provider;
   const reasons = [];
   if (control?.project !== config.project) reasons.push('保存先が起動中のサービスと一致しません。');
   if (control?.phase !== 'ready' || control?.computerUse !== true)
@@ -95,22 +99,32 @@ export function readiness(control, config) {
     reasons.push('モデル設定が起動中のサービスと一致しません。再起動してください。');
   if (control?.computerDelivery !== 'background' || permissions?.deliveryMode !== 'background')
     reasons.push('バックグラウンド対応helperを確認できません。');
-  if (helper?.error || typeof helper?.path !== 'string' || !helper.path || permissions?.ready !== true)
-    reasons.push('実際に使用するhelperの準備が未完了です。アクセシビリティ・画面収録の状態を確認してください。');
+  if (
+    helper?.error ||
+    typeof helper?.path !== 'string' ||
+    !helper.path ||
+    permissions?.ready !== true
+  )
+    reasons.push(
+      '実際に使用するhelperの準備が未完了です。アクセシビリティ・画面収録の状態を確認してください。',
+    );
   if (control?.computerHelperUnattendedTest !== false || permissions?.unattendedTest !== false)
     reasons.push('通常の対象窓同意を使うhelperであることを確認できません。');
-  if (provider !== 'local' && control?.externalScreenAllowed !== true)
+  if (visionProvider !== 'local' && control?.externalScreenAllowed !== true)
     reasons.push('外部への画面送信には --allow-external-screen を指定してください。');
   return {
     ready: reasons.length === 0,
     permissions,
     helperPath: helper?.path ?? null,
     computerUse: control?.computerUse === true,
-    model: control?.model ?? null,
-    modelProvider: control?.modelProvider ?? null,
-    recipient: control?.recipient ?? null,
+    model: control?.computerVisionModel ?? control?.model ?? null,
+    modelProvider: visionProvider,
+    recipient: control?.computerVisionRecipient ?? control?.recipient ?? null,
     externalScreenAllowed: control?.externalScreenAllowed === true,
-    next: reasons.length === 0 ? 'start で依頼を作成できます。対象窓への同意は実行時に確認します。' : reasons.join('\n'),
+    next:
+      reasons.length === 0
+        ? 'start で依頼を作成できます。対象窓への同意は実行時に確認します。'
+        : reasons.join('\n'),
   };
 }
 

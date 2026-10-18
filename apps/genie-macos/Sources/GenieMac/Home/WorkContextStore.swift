@@ -34,6 +34,8 @@ struct WorkPriority: Codable, Identifiable, Hashable {
     let counts: [String: Int]
     let factors: [WorkPressureFactor]
     let sources: [WorkProvenance]
+    /// 本人が「自分の TODO」と確認した。nil / false はメール等からの推測（候補）。古い gateway は送らない。
+    var confirmed: Bool?
 }
 
 struct WorkWaitingItem: Codable, Identifiable, Hashable {
@@ -52,6 +54,8 @@ struct WorkOwedItem: Codable, Identifiable, Hashable {
     var dueAt: String?
     var project: String?
     let sources: [WorkProvenance]
+    /// 本人が「自分の TODO」と確認した。nil / false はメール等からの推測（候補）。
+    var confirmed: Bool?
 }
 
 struct WorkWeekLoad: Codable, Hashable {
@@ -233,11 +237,17 @@ final class WorkContextStore: ObservableObject {
     }
 
     /// 本人の訂正。**1 操作。**その場で消し、gateway にも残す（以後の推論に効く）。
+    /// `confirm` だけは消さず、その場で「登録済み」にする。
     func correct(_ itemId: String, action: String, note: String? = nil) {
         guard var ctx = context else { return }
-        ctx.priorities.removeAll { $0.id == itemId }
-        ctx.waitingOn.removeAll { $0.id == itemId }
-        ctx.owed.removeAll { $0.id == itemId }
+        if action == "confirm" {
+            for i in ctx.priorities.indices where ctx.priorities[i].id == itemId { ctx.priorities[i].confirmed = true }
+            for i in ctx.owed.indices where ctx.owed[i].id == itemId { ctx.owed[i].confirmed = true }
+        } else {
+            ctx.priorities.removeAll { $0.id == itemId }
+            ctx.waitingOn.removeAll { $0.id == itemId }
+            ctx.owed.removeAll { $0.id == itemId }
+        }
         context = ctx
         evidenceOpen.remove(itemId)
         if let base, let token {
@@ -315,6 +325,16 @@ enum WorkFormat {
         if let d = f.date(from: iso) { return d }
         f.formatOptions = [.withInternetDateTime]
         return f.date(from: iso)
+    }
+
+    /// 案件名が題と同じ文か（空白・全角半角の違いを除く）。件名から作った案件名は題と重なる。
+    static func repeats(_ project: String, in title: String) -> Bool {
+        let fold = { (s: String) in
+            s.applyingTransform(.fullwidthToHalfwidth, reverse: false)?.lowercased()
+                .filter { !$0.isWhitespace } ?? s
+        }
+        let p = fold(project), t = fold(title)
+        return !p.isEmpty && (p == t || t.contains(p) || p.contains(t))
     }
 
     /// 「Gmail 4 · 会議 2 · Task 1」。

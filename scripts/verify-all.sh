@@ -118,6 +118,7 @@ run "C ABI round-trip (C)"        bash scripts/verify-c-abi.sh
 run "macOS recording + live E2E"  bash scripts/verify-macos-recording.sh
 run "liquid orb native lifecycle" "$ROOT/apps/genie-macos/.build/debug/GenieMac" --selftest liquid-orb /tmp/genie-liquid-orb-verify
 run "initial profile native UI"  "$ROOT/apps/genie-macos/.build/debug/GenieMac" --selftest initialprofile /tmp/astra-initial-profile-verify
+run "daily brief native UI" bash "$ROOT/scripts/verify-daily-brief.sh"
 # 録音セッションの通し。**プロセスを跨いで** kill → 復元まで確かめる。
 # CI が緑でもここが通らなければ未達、という位置づけのゲート。
 run "recording experience E2E"    bash scripts/verify-recording-experience.sh

@@ -215,18 +215,36 @@ struct BackgroundAX {
         guard let value = attribute(app, kAXFocusedWindowAttribute),
               CFGetTypeID(value) == AXUIElementGetTypeID(),
               let rect = Helper.elementRect(value as! AXUIElement) else { return false }
-        return rect == t.bounds.rect
+        let focused = value as! AXUIElement
+        var pid: pid_t = 0
+        guard AXUIElementGetPid(focused, &pid) == .success else { return false }
+        return BackgroundWindowIdentity.match([.init(pid: pid, window: PrivateSPI.windowID(focused), bounds: rect)],
+            pid: t.pid, window: t.windowId, bounds: t.bounds.rect,
+            identityAvailable: PrivateSPI.windowIdentityAvailable) != nil
     }
     static func window(_ t: Target) throws -> AXUIElement {
         let app = AXUIElementCreateApplication(t.pid)
         AXUIElementSetMessagingTimeout(app, 2)
-        let windows = attribute(app, kAXWindowsAttribute) as? [AXUIElement] ?? []
-        let matches = windows.filter { Helper.elementRect($0) == t.bounds.rect }
-        guard matches.count == 1 else {
+        var windows = attribute(app, kAXWindowsAttribute) as? [AXUIElement] ?? []
+        // Safari can return an empty AXWindows array while publishing a valid
+        // AXMainWindow/AXFocusedWindow. Bind these by native window ID + owner PID.
+        for key in PrivateSPI.windowIdentityAvailable ? [kAXMainWindowAttribute, kAXFocusedWindowAttribute] : [] {
+            if let raw = attribute(app, key), CFGetTypeID(raw) == AXUIElementGetTypeID() {
+                let candidate = raw as! AXUIElement
+                if !windows.contains(where: { CFEqual($0, candidate) }) { windows.append(candidate) }
+            }
+        }
+        let evidence = windows.map { element -> BackgroundWindowIdentity.Candidate in
+            var pid: pid_t = 0
+            let owned = AXUIElementGetPid(element, &pid) == .success && string(element, kAXRoleAttribute) == kAXWindowRole
+            return .init(pid: owned ? pid : 0, window: PrivateSPI.windowID(element), bounds: Helper.elementRect(element))
+        }
+        guard let match = BackgroundWindowIdentity.match(evidence, pid: t.pid, window: t.windowId,
+            bounds: t.bounds.rect, identityAvailable: PrivateSPI.windowIdentityAvailable) else {
             stage("window-ambiguous want=\(t.bounds.rect) have=\(windows.map { Helper.elementRect($0).map(String.init(describing:)) ?? "nil" }.joined(separator: " "))")
             throw Failure("background_window_ambiguous")
         }
-        return matches[0]
+        return windows[match]
     }
     /// Only a standard, single-content vertical area whose geometry agrees with
     /// its normalized scrollbar. No nearest-pane or event delivery fallback.
@@ -429,6 +447,45 @@ struct BackgroundAX {
         guard areas.count == 1,let url=attribute(areas[0],kAXURLAttribute) as? URL else { return nil }
         return digest(Data(url.absoluteString.utf8))
     }
+    /// Conservative AX-only scope: a single browser document, with no nested or
+    /// opaque frame. This does not grant secret input or permission to submit.
+    static func documentOrigin(in target: Target, allowed: [String]?) throws -> String? {
+        guard let allowed else { return nil }
+        guard BackgroundDocumentOrigin.valid(allowed) else { throw Failure("invalid_allowed_origins") }
+        guard RegistrationCapturePrivacy.supportedBrowserBundles.contains(target.bundleId)
+        else { throw Failure("document_origin_unavailable") }
+        var areas: [AXUIElement] = [], visited = 0
+        func visit(_ element: AXUIElement, _ depth: Int) throws {
+            visited += 1
+            guard visited <= 2000, depth <= 30 else { throw Failure("document_origin_unavailable") }
+            let role = string(element, kAXRoleAttribute)
+            let tag = string(element, "AXDOMTagName").lowercased()
+            guard !["iframe", "frame"].contains(tag), !["AXFrame", "AXIFrame"].contains(role)
+            else { throw Failure("document_origin_unavailable") }
+            if role == "AXWebArea" {
+                areas.append(element)
+                guard areas.count == 1 else { throw Failure("document_origin_unavailable") }
+            }
+            for child in children(element) { try visit(child, depth + 1) }
+        }
+        try visit(window(target), 0)
+        guard let origin = BackgroundDocumentOrigin.singleDocument(
+            areas.map { attribute($0, kAXURLAttribute) as? URL }, hasEmbeddedFrame: false)
+        else { throw Failure("document_origin_unavailable") }
+        guard allowed.contains(origin) else { throw Failure("document_origin_not_allowed") }
+        return origin
+    }
+    /// A constrained operation may not fall back to ungrounded pixels, browser
+    /// chrome or a key whose focused element has unknown document ancestry.
+    static func requireDocumentTarget(_ element: AXUIElement?, in target: Target,
+                                      origin: String?, allowed: [String]?) throws {
+        guard allowed != nil else { return }
+        guard let element, let area = topWebArea(containing: element),
+              let url = attribute(area, kAXURLAttribute) as? URL,
+              BackgroundDocumentOrigin.origin(url) == origin,
+              try documentOrigin(in: target, allowed: allowed) == origin
+        else { throw Failure("document_origin_target_unverified") }
+    }
     static func tree(_ t: Target) throws -> [Element] {
         var result: [Element] = [], visited = 0
         func visit(_ e: AXUIElement, _ path: [Int]) throws {
@@ -565,6 +622,7 @@ struct BackgroundAX {
         return try Helper.rescope(frame) // Does not reveal, unhide, raise or activate.
     }
     static func capture(_ t: Target) async throws -> (CGImage, Data) {
+        try RegistrationCapturePrivacy.requireUnblocked(t)
         // Window-only capture does not read the human's foreground or focused field.
         try Helper.checkPermissions()
         let content = try await SCShareableContent.excludingDesktopWindows(true, onScreenWindowsOnly: true)
@@ -575,6 +633,7 @@ struct BackgroundAX {
         config.height = max(1, Int((t.bounds.height*scale).rounded()))
         config.showsCursor = false; config.ignoreShadowsSingleWindow = true
         let image = try await SCScreenshotManager.captureImage(contentFilter: SCContentFilter(desktopIndependentWindow: w), configuration: config)
+        try RegistrationCapturePrivacy.requireUnblocked(t)
         guard try Helper.windowBounds(pid:t.pid, windowId:t.windowId) == t.bounds,
               let png = NSBitmapImageRep(cgImage:image).representation(using:.png,properties:[:]) else { throw Failure("stale_frame") }
         return (image,png)
@@ -592,7 +651,8 @@ struct BackgroundAX {
     }
     /// 1 回の依頼に認める長さ。同意の文面で言っている「5 分」と同じ。
     static let runLimit: TimeInterval = 300
-    static func reusableGrant(_ dir: URL, recipient: String?, expectedTarget: ExpectedTarget? = nil) -> (Target, String)? {
+    static func reusableGrant(_ dir: URL, recipient: String?, expectedTarget: ExpectedTarget? = nil,
+                              allowedOrigins: [String]? = nil, expectedWindow: UInt32? = nil) -> (Target, String)? {
         guard let recipient, !recipient.isEmpty else { return nil }
         guard let names = try? FileManager.default.contentsOfDirectory(atPath: dir.path) else { return nil }
         for name in names {
@@ -609,6 +669,7 @@ struct BackgroundAX {
             guard let grant = try? readPrivate(Grant.self, path),
                   grant.recipient == recipient,
                   expectedTarget?.matches(pid: grant.pid, bundleId: grant.bundle) ?? true,
+                  expectedWindow.map({ $0 == grant.window }) ?? true,
                   grant.expires > Date().timeIntervalSince1970 + runLimit,
                   !explicitlyStopped(path),
                   let generationNow = try? generation(grant.pid, bundle: grant.bundle),
@@ -618,6 +679,8 @@ struct BackgroundAX {
                   Date().timeIntervalSince(beat) < 2,
                   let bounds = try? Helper.windowBounds(pid: grant.pid, windowId: grant.window)
             else { continue }
+            let target = Target(bundleId: grant.bundle, windowId: grant.window, pid: grant.pid, bounds: bounds)
+            guard originSelectionAllowed(target, allowedOrigins: allowedOrigins) else { continue }
             /*
              * 前の走行が人の割り込みで止まっていた場合。**それは同意の取り消しではない。**
              *
@@ -635,7 +698,7 @@ struct BackgroundAX {
                       !FileManager.default.fileExists(atPath: path + ".interrupted") else { continue }
                 stage("grant-resumed-after-takeover")
             }
-            return (Target(bundleId: grant.bundle, windowId: grant.window, pid: grant.pid, bounds: bounds), session)
+            return (target, session)
         }
         return nil
     }
@@ -644,7 +707,23 @@ struct BackgroundAX {
      * 同意ダイアログと、試験専用の無人経路が**同じ一覧を使う**ようにしてある。
      */
     static let genieBundles: Set<String> = ["com.astra.mac", "com.astra.desktop"]
-    static func selectableWindows(_ content: SCShareableContent, expectedTarget: ExpectedTarget? = nil) -> [SCWindow] {
+    static func originSelectionAllowed(_ target: Target, allowedOrigins: [String]?) -> Bool {
+        BackgroundDocumentOrigin.selectionAllowed(
+            supportedBrowser: RegistrationCapturePrivacy.supportedBrowserBundles.contains(target.bundleId),
+            allowed: allowedOrigins,
+            observeOrigin: { try documentOrigin(in: target, allowed: allowedOrigins) })
+    }
+    static func originSelectionAllowed(_ window: SCWindow, allowedOrigins: [String]?) -> Bool {
+        guard let allowedOrigins else { return true }
+        guard let owner = window.owningApplication,
+              RegistrationCapturePrivacy.supportedBrowserBundles.contains(owner.bundleIdentifier),
+              let bounds = try? Helper.windowBounds(pid: owner.processID, windowId: window.windowID)
+        else { return false }
+        return originSelectionAllowed(Target(bundleId: owner.bundleIdentifier, windowId: window.windowID,
+                                             pid: owner.processID, bounds: bounds), allowedOrigins: allowedOrigins)
+    }
+    static func selectableWindows(_ content: SCShareableContent, expectedTarget: ExpectedTarget? = nil,
+                                  allowedOrigins: [String]? = nil) -> [SCWindow] {
         content.windows.filter { w in
             guard let owner = w.owningApplication else { return false }
             let id=owner.bundleIdentifier
@@ -656,6 +735,7 @@ struct BackgroundAX {
                 && NSRunningApplication(processIdentifier:owner.processID)?.activationPolicy == .regular
                 && !["com.apple.loginwindow","com.apple.SecurityAgent","com.apple.keychainaccess"].contains(id)
                 && !id.hasPrefix("com.1password") && !id.hasPrefix("com.agilebits.onepassword")
+                && originSelectionAllowed(w, allowedOrigins: allowedOrigins)
         }
     }
     /*
@@ -663,10 +743,11 @@ struct BackgroundAX {
      * **同意の後に起きることは、ここ 1 か所だけ。**試験専用の経路も必ずここを通るので、
      * 期限・見張り・世代の扱いが本番と食い違うことがない。
      */
-    static func establish(_ w: SCWindow, dir: URL, recipient: String?) async throws -> (Target,String) {
+    static func establish(_ w: SCWindow, dir: URL, recipient: String?, allowedOrigins: [String]? = nil) async throws -> (Target,String) {
         guard let owner = w.owningApplication else { throw Failure("target_changed") }
         let t=Target(bundleId:owner.bundleIdentifier,windowId:w.windowID,pid:owner.processID,
                      bounds:try Helper.windowBounds(pid:owner.processID,windowId:w.windowID))
+        guard originSelectionAllowed(t, allowedOrigins: allowedOrigins) else { throw Failure("document_origin_unavailable") }
         let session=UUID().uuidString.lowercased(), path=try sessionPath(dir,session)
         let grant=Grant(pid:t.pid,window:t.windowId,bundle:t.bundleId,generation:try generation(t.pid,bundle:t.bundleId),expires:Date().timeIntervalSince1970+1200,recipient:recipient)
         try privateFile(JSONEncoder().encode(grant),path)
@@ -690,11 +771,14 @@ final class ConsentAccessoryView: NSView {
     private var timer: Timer?
     private let goal: String
     private let expectedTarget: ExpectedTarget?
+    private let allowedOrigins: [String]?
     private weak var alert: NSAlert?
 
-    init(goal: String, initialWindows: [SCWindow], alert: NSAlert, expectedTarget: ExpectedTarget? = nil) {
+    init(goal: String, initialWindows: [SCWindow], alert: NSAlert, expectedTarget: ExpectedTarget? = nil,
+         allowedOrigins: [String]? = nil) {
         self.goal = goal
         self.expectedTarget = expectedTarget
+        self.allowedOrigins = allowedOrigins
         self.currentWindows = initialWindows
         self.alert = alert
         super.init(frame: NSRect(x: 0, y: 0, width: 460, height: 66))
@@ -773,7 +857,7 @@ final class ConsentAccessoryView: NSView {
     private func poll(forceSelectTarget: Bool = false) async {
         do {
             let content = try await SCShareableContent.excludingDesktopWindows(true, onScreenWindowsOnly: true)
-            let windows = BackgroundAX.selectableWindows(content, expectedTarget: expectedTarget)
+            let windows = BackgroundAX.selectableWindows(content, expectedTarget: expectedTarget, allowedOrigins: allowedOrigins)
             updateWindows(windows, forceSelectTarget: forceSelectTarget)
         } catch {
             // ignore temporary capture polling error
@@ -784,7 +868,8 @@ final class ConsentAccessoryView: NSView {
         // Refreshes cannot widen an adapter's owned-target constraint.
         let windows = candidates.filter { w in
             guard let owner = w.owningApplication else { return false }
-            return expectedTarget?.matches(pid: owner.processID, bundleId: owner.bundleIdentifier) ?? true
+            return (expectedTarget?.matches(pid: owner.processID, bundleId: owner.bundleIdentifier) ?? true)
+                && BackgroundAX.originSelectionAllowed(w, allowedOrigins: allowedOrigins)
         }
         let prevSelected = popup.indexOfSelectedItem > 0 && popup.indexOfSelectedItem - 1 < currentWindows.count
             ? currentWindows[popup.indexOfSelectedItem - 1].windowID : nil
@@ -841,8 +926,34 @@ final class ConsentAccessoryView: NSView {
 }
 
     static func select(_ request: Request, dir: URL) async throws -> (Target,String) {
-
-        if let live = reusableGrant(dir, recipient: request.recipient, expectedTarget: request.expectedTarget) { return live }
+        if let allowed = request.allowedOrigins {
+            // The server-approved exact-origin task supplies the target boundary.
+            // External image delivery still needs a separate provider disclosure;
+            // never turn removal of a picker into implicit cloud consent.
+            guard request.recipient == "local" else { throw Failure("origin_provider_consent_required") }
+            let content = try await SCShareableContent.excludingDesktopWindows(true, onScreenWindowsOnly: true)
+            let windows = selectableWindows(content, expectedTarget: request.expectedTarget, allowedOrigins: allowed)
+            guard let order = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]]
+            else { throw Failure("document_origin_target_unavailable") }
+            var zOrder: [UInt32: Int] = [:]
+            for (index, metadata) in order.enumerated() {
+                if let id = metadata[kCGWindowNumber as String] as? UInt32 { zOrder[id] = index }
+            }
+            let candidates = windows.compactMap { window -> BackgroundDocumentOrigin.WindowCandidate? in
+                guard let owner = window.owningApplication, let index = zOrder[window.windowID] else { return nil }
+                return .init(pid: owner.processID, window: window.windowID, zOrder: index)
+            }
+            guard let id = BackgroundDocumentOrigin.preferredWindow(candidates,
+                foregroundPID: NSWorkspace.shared.frontmostApplication?.processIdentifier),
+                  let chosen = windows.first(where: { $0.windowID == id })
+            else { throw Failure("document_origin_target_unavailable") }
+            if let live = reusableGrant(dir, recipient: request.recipient, expectedTarget: request.expectedTarget,
+                                        allowedOrigins: allowed, expectedWindow: id) { return live }
+            stage("origin-target-resolved")
+            return try await establish(chosen, dir: dir, recipient: request.recipient, allowedOrigins: allowed)
+        }
+        if let live = reusableGrant(dir, recipient: request.recipient, expectedTarget: request.expectedTarget,
+                                    allowedOrigins: request.allowedOrigins) { return live }
         let content = try await SCShareableContent.excludingDesktopWindows(true,onScreenWindowsOnly:true)
         /*
          * 出荷ビルドでは、生きた許可が無ければ**必ず下の選択ダイアログを通る。**
@@ -852,7 +963,7 @@ final class ConsentAccessoryView: NSView {
          * 開いているタブを書き換え、別のアプリを起動・前面化していた（承認カードの「範囲」と食い違う）。
          * 自動選択は下の試験専用の経路にだけ残す。
          */
-        let windows = selectableWindows(content, expectedTarget: request.expectedTarget)
+        let windows = selectableWindows(content, expectedTarget: request.expectedTarget, allowedOrigins: request.allowedOrigins)
         #if GENIE_UNATTENDED_TEST
         /*
          * 反復試験のためだけの経路。**出荷する実行ファイルには入らない**
@@ -878,19 +989,21 @@ final class ConsentAccessoryView: NSView {
             let hits = windows.filter { ($0.title ?? "").contains(wanted) }
             guard hits.count == 1 else { throw Failure("test_target_not_unique_\(hits.count)") }
             stage("unattended-test-target")
-            return try await establish(hits[0], dir: dir, recipient: request.recipient)
+            return try await establish(hits[0], dir: dir, recipient: request.recipient, allowedOrigins: request.allowedOrigins)
         }
         // 対象の名前が無い試験では、目的の語から窓を選ぶ（出荷ビルドには入らない。上の注意）。
         if request.expectedTarget == nil, let autoTarget = await autoResolveTargetWindow(goal: request.goal ?? "", content: content) {
             stage("auto-selected-target-\(autoTarget.owningApplication?.applicationName ?? "app")")
-            return try await establish(autoTarget, dir: dir, recipient: request.recipient)
+            return try await establish(autoTarget, dir: dir, recipient: request.recipient, allowedOrigins: request.allowedOrigins)
         }
         #endif
         let alert=NSAlert()
         alert.messageText="バックグラウンドで操作する対象"
         // 送信先は内部の種別名ではなく、画像が届く提供元の名前で見せる（前面の選択ダイアログと同じ対応表）。
         alert.informativeText="目的: \(request.goal ?? "")\n画像の送信先: \(imageDestinationLabel(request.recipient))\n選んだ窓だけ。1 回の依頼につき最大12操作・5分で、この許可は20分間そのまま使えます（その間の追加の依頼では、画像の送信先が同じならこの画面は出ません）。個別確認はしません。共有マウス・キー・クリップボードは使いません。対象を前面で使うと停止します。未対応の操作は前面操作へ切り替えません。"
-        let accessory = ConsentAccessoryView(goal: request.goal ?? "", initialWindows: windows, alert: alert, expectedTarget: request.expectedTarget)
+        if let allowed = request.allowedOrigins { alert.informativeText += "\n対象サイト: " + allowed.joined(separator: ", ") }
+        let accessory = ConsentAccessoryView(goal: request.goal ?? "", initialWindows: windows, alert: alert,
+                                             expectedTarget: request.expectedTarget, allowedOrigins: request.allowedOrigins)
         alert.accessoryView = accessory
         alert.addButton(withTitle:"バックグラウンド操作を許可")
         alert.addButton(withTitle:"中止")
@@ -938,7 +1051,7 @@ final class ConsentAccessoryView: NSView {
                 previous.activate()
             }
         }
-        return try await establish(w, dir: dir, recipient: request.recipient)
+        return try await establish(w, dir: dir, recipient: request.recipient, allowedOrigins: request.allowedOrigins)
     }
     #if GENIE_UNATTENDED_TEST
     /*
@@ -1112,6 +1225,9 @@ final class ConsentAccessoryView: NSView {
     }
     #endif
     static func respond(_ request: Request) async throws -> Data {
+        if let allowed = request.allowedOrigins, !BackgroundDocumentOrigin.valid(allowed) {
+            throw Failure("invalid_allowed_origins")
+        }
         /*
          * 依頼の終了と、同意の失効は別。**1 回の依頼が終わるたびに許可を捨てない。**
          * 捨てていたため、続けて頼むたびに選択画面が出ていた。
@@ -1129,6 +1245,9 @@ final class ConsentAccessoryView: NSView {
             return Data("{}".utf8)
         }
         try Helper.checkPermissions()
+        if request.op == "registration_prepare" {
+            return try RegistrationAssist.prepare(request)
+        }
         /*
          * 人が手を止めたか訊く。**答えるだけで、人を止める操作は何もしない。**
          *
@@ -1164,6 +1283,11 @@ final class ConsentAccessoryView: NSView {
             let t:Target, session:String
             if request.op == "begin" { (t,session)=try await select(request,dir:dir) }
             else { guard let f=request.scope,let s=f.backgroundSession else { throw Failure("invalid_scope") };t=try permitted(f,dir:dir);session=s }
+            if request.op == "capture", request.scope?.allowedOrigins != request.allowedOrigins {
+                throw Failure("document_origin_unavailable")
+            }
+            let origin = try documentOrigin(in: t, allowed: request.allowedOrigins)
+            try RegistrationCapturePrivacy.requireUnblocked(t)
             let activityPath = try sessionPath(dir, session)
             try activity(activityPath, target: t, phase: request.phase == "signin" ? "signin" : "checking",
                          begin: request.op == "begin")
@@ -1184,8 +1308,12 @@ final class ConsentAccessoryView: NSView {
             var image: CGImage!, png: Data!
             var settled=false
             for attempt in 0..<3 {
+                guard try documentOrigin(in: t, allowed: request.allowedOrigins) == origin
+                else { throw Failure("document_origin_changed") }
                 (image,png)=try await capture(t)
                 let again=try tree(t)
+                guard try documentOrigin(in: t, allowed: request.allowedOrigins) == origin
+                else { throw Failure("document_origin_changed") }
                 if again == elements { settled=true; break }
                 stage("tree-unsettled attempt=\(attempt)")
                 elements=again
@@ -1195,10 +1323,12 @@ final class ConsentAccessoryView: NSView {
             var frame=Frame(id:id,bundleId:t.bundleId,windowId:t.windowId,pid:t.pid,capturedAt:Date().timeIntervalSince1970*1000,
                             width:image.width,height:image.height,bounds:t.bounds,sha256:digest(png))
             frame.deliveryMode="background";frame.backgroundSession=session
+            frame.documentOrigin = origin; frame.allowedOrigins = request.allowedOrigins
             // この写真がどの世代のものかを刻む。送るときに今の世代と突き合わせる。
             frame.backgroundEpoch=epoch(try sessionPath(dir,session))
             _ = try permitted(frame,dir:dir)
             let snapshot=Snapshot(frame:frame,generation:try generation(t.pid,bundle:t.bundleId),elements:elements)
+            try RegistrationCapturePrivacy.requireUnblocked(t)
             try Helper.privateWrite(png,id:id,path:output)
             try privateFile(JSONEncoder().encode(snapshot),output+".snapshot.json")
             /*
@@ -1229,6 +1359,10 @@ final class ConsentAccessoryView: NSView {
         let sessionFile=try sessionPath(dir, f.backgroundSession ?? "")
         func current() throws -> Target {
             let scope=try permitted(f,dir:dir)
+            try RegistrationCapturePrivacy.requireUnblocked(scope)
+            guard f.allowedOrigins == request.allowedOrigins else { throw Failure("document_origin_unavailable") }
+            guard try documentOrigin(in: scope, allowed: request.allowedOrigins) == f.documentOrigin
+            else { throw Failure("document_origin_changed") }
             guard (f.backgroundEpoch ?? 0) == epoch(sessionFile) else { throw Failure("stale_generation") }
             let display = try readPrivate(Activity.self, sessionFile + ".activity")
             guard display.expires > Date().timeIntervalSince1970 else { throw Failure("session_stopped") }
@@ -1249,6 +1383,8 @@ final class ConsentAccessoryView: NSView {
               snapshot.frame.deliveryMode == f.deliveryMode,
               snapshot.frame.backgroundSession == f.backgroundSession,
               snapshot.frame.backgroundEpoch == f.backgroundEpoch,
+              snapshot.frame.documentOrigin == f.documentOrigin,
+              snapshot.frame.allowedOrigins == f.allowedOrigins,
               snapshot.frame.pid == f.pid, snapshot.frame.windowId == f.windowId,
               try generation(t.pid,bundle:t.bundleId) == snapshot.generation else { throw Failure("stale_frame") }
         /*
@@ -1274,6 +1410,16 @@ final class ConsentAccessoryView: NSView {
 
         // 経路によらず禁じているもの。能力の不足ではないので、別経路でも回避させない。
         if secureFieldContains(p, in: t) { throw Failure("policy_secure_field") }
+        if request.allowedOrigins != nil {
+            let scopedElement: AXUIElement?
+            if a.action == "key" {
+                let focused = attribute(AXUIElementCreateApplication(t.pid), kAXFocusedUIElementAttribute)
+                scopedElement = focused.flatMap { CFGetTypeID($0) == AXUIElementGetTypeID() ? ($0 as! AXUIElement) : nil }
+            } else if let chosen {
+                scopedElement = try resolve(chosen.path, in: t)
+            } else { scopedElement = nil }
+            try requireDocumentTarget(scopedElement, in: t, origin: f.documentOrigin, allowed: request.allowedOrigins)
+        }
 
         // Freeze the actual text element before the model checks intent. This path
         // reads only: no focus change, input, replay mark, or activity mutation.
@@ -1517,9 +1663,35 @@ final class ConsentAccessoryView: NSView {
         }
         let front=NSWorkspace.shared.frontmostApplication?.processIdentifier
         let clipboard=NSPasteboard.general.changeCount
+        func checkDocumentTarget() throws {
+            guard request.allowedOrigins != nil else { return }
+            let selected: AXUIElement?
+            if a.action == "key" {
+                let focused = attribute(AXUIElementCreateApplication(t.pid), kAXFocusedUIElementAttribute)
+                selected = focused.flatMap { CFGetTypeID($0) == AXUIElementGetTypeID() ? ($0 as! AXUIElement) : nil }
+            } else { selected = element }
+            try requireDocumentTarget(selected, in: t, origin: f.documentOrigin, allowed: request.allowedOrigins)
+            if a.action == "click" {
+                // An inaccessible/opaque overlay must not turn a grounded button
+                // click into input to a different frame at the same coordinates.
+                var hit: AXUIElement?
+                guard AXUIElementCopyElementAtPosition(AXUIElementCreateApplication(t.pid), Float(p.x), Float(p.y), &hit) == .success,
+                      let hit, let selected else { throw Failure("document_origin_target_unverified") }
+                try requireDocumentTarget(hit, in: t, origin: f.documentOrigin, allowed: request.allowedOrigins)
+                var candidate = hit, matches = false
+                for _ in 0..<30 {
+                    if CFEqual(candidate, selected) { matches = true; break }
+                    guard let parent = attribute(candidate, kAXParentAttribute), CFGetTypeID(parent) == AXUIElementGetTypeID()
+                    else { break }
+                    candidate = parent as! AXUIElement
+                }
+                guard matches else { throw Failure("document_origin_target_unverified") }
+            }
+        }
         func inputStillAllowed() -> Bool {
             guard let scope = try? current(), scope.bounds == t.bounds,
                   expires > Date().timeIntervalSince1970 * 1000 else { return false }
+            do { try checkDocumentTarget() } catch { return false }
             if route == .nativeKey {
                 guard keyWindowIsTarget(t) else { return false }
                 if let element {
@@ -1534,6 +1706,9 @@ final class ConsentAccessoryView: NSView {
         // どの経路でどこを押したか。座標と経路だけで、画面の中身や打った文字は残さない。
         stage("route \(route.rawValue) by \(chosen == nil ? "coords" : "element") point \(Int(p.x)),\(Int(p.y)) local \(Int(local.x)),\(Int(local.y))")
         var effect = "unconfirmed"
+        // This read follows journal I/O and is adjacent to every dispatch route.
+        guard try current().bounds == t.bounds else { throw Failure("stale_frame") }
+        try checkDocumentTarget()
         switch route {
         case .axWebLink:
             guard try current().bounds == t.bounds else { throw Failure("stale_frame") }
@@ -1760,6 +1935,9 @@ final class ConsentAccessoryView: NSView {
 #if GENIE_BACKGROUND
 @main struct BackgroundMain {
     static func main() {
+        if CommandLine.arguments == [CommandLine.arguments[0], "--privacy-status"] {
+            FileHandle.standardOutput.write(RegistrationCapturePrivacy.privacyStatus()); return
+        }
         let app=NSApplication.shared;app.setActivationPolicy(.accessory)
         if CommandLine.arguments.contains("--status") {
             let supported:Bool;if #available(macOS 14.4,*) { supported=true } else { supported=false }

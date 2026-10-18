@@ -19,13 +19,13 @@
     "体感の複雑さ（層 C）: 段は 5、面は 1 枚、増えた窓 0"
   ],
   "product" : "Genie",
-  "startedAt" : "2026-10-06T22:11:11Z",
+  "startedAt" : "2026-10-18T18:16:30Z",
   "steps" : [
     {
       "front" : "com.astra.desktop",
       "interactions" : 0,
       "keyWindow" : true,
-      "ms" : 24,
+      "ms" : 22,
       "name" : "Home（Dock は待機）",
       "surface" : {
         "h" : 76,
@@ -43,7 +43,7 @@
       "keys" : {
         "esc" : "listening→idle"
       },
-      "ms" : 1014,
+      "ms" : 1248,
       "name" : "Listening",
       "surface" : {
         "h" : 76,
@@ -52,17 +52,17 @@
         "x" : 754,
         "y" : 1041
       },
-      "transitionMs" : 0,
+      "transitionMs" : 266,
       "windows" : 2
     },
     {
       "front" : "com.astra.desktop",
       "ids" : {
-        "task" : "16B826DA-1266-4DF4-BDFC-F9ACD94E2200"
+        "task" : "908BA36D-7517-4D5E-B536-EFDF051CA38E"
       },
       "interactions" : 0,
       "keyWindow" : true,
-      "ms" : 1050,
+      "ms" : 1064,
       "name" : "Running",
       "surface" : {
         "h" : 258,
@@ -71,14 +71,14 @@
         "x" : 504,
         "y" : 859
       },
-      "transitionMs" : 183,
+      "transitionMs" : 192,
       "windows" : 2
     },
     {
       "front" : "com.astra.desktop",
       "ids" : {
-        "confirmation" : "3E673731-1BF8-43B4-A80B-97E3DD2717E9",
-        "resolved" : "3E673731-1BF8-43B4-A80B-97E3DD2717E9"
+        "confirmation" : "BC481F64-7361-4692-BA9B-B174CCCFD4D5",
+        "resolved" : "BC481F64-7361-4692-BA9B-B174CCCFD4D5"
       },
       "interactions" : 2,
       "keyWindow" : true,
@@ -86,7 +86,7 @@
         "cmdReturn" : "approved",
         "return" : "no-op"
       },
-      "ms" : 1803,
+      "ms" : 1793,
       "name" : "Confirmation",
       "surface" : {
         "h" : 258,
@@ -95,7 +95,7 @@
         "x" : 504,
         "y" : 859
       },
-      "transitionMs" : 210,
+      "transitionMs" : 203,
       "windows" : 2
     },
     {
@@ -105,7 +105,7 @@
       "keys" : {
         "esc" : "result→idle"
       },
-      "ms" : 1279,
+      "ms" : 1275,
       "name" : "Done",
       "surface" : {
         "h" : 76,
@@ -114,11 +114,11 @@
         "x" : 754,
         "y" : 1041
       },
-      "transitionMs" : 197,
+      "transitionMs" : 185,
       "windows" : 2
     }
   ],
   "success" : true,
-  "totalMs" : 5171,
+  "totalMs" : 5404,
   "windowsOpened" : 0
 }

@@ -93,6 +93,12 @@ final class GenieAppDelegate: NSObject, NSApplicationDelegate {
         PresentationGuard.shared.start()
         // グローバル音声ショートカット（⌥Space）で録音を出し入れする。
         // CGEventTap（正本指定）で受信する。Accessibility 権限を使う（§3 と共用）。
+        // ⌥⇧Space で会話を始める（もう一度押すと終える）。Dock を開いて「会話」を押す 2 手を 1 手にする。
+        GlobalShortcut.shared.setConversation {
+            let voice = VoiceHUDState.shared
+            if voice.conversation.isActive { voice.endConversation(.user, caller: "shortcut ⌥⇧Space") }
+            else { WakeController.shared.clearBillingFailure(); voice.beginConversation() }
+        }
         if !GlobalShortcut.shared.register(handler: { WindowCoordinator.shared.toggleRecording() }) {
             // **ここでは求めない。** 起動した瞬間にダイアログを出すと、まだ何も
             // 使っていない人に判断を迫ることになる。⌥Space を案内している場所
@@ -105,7 +111,7 @@ final class GenieAppDelegate: NSObject, NSApplicationDelegate {
         RecordingRuntime.shared.prewarmMic()
         // 「ジーニー」の待ち受け。マイクと音声認識が許可済みのときだけ（ここでは求めない）。
         WakeController.shared.start()
-        // 今日のまとめ（朝 7 時を過ぎて、まだ無ければ作る。黙って持っておく）。
+        // 今日のまとめ（設定時刻・既定8時を過ぎて、まだ無ければ作る。黙って持っておく）。
         if !CommandLine.arguments.contains("--selftest") { BriefStore.shared.start() }
         // 前回落ちたまま残っている録音があれば知らせる（§3 meeting recovery）。
         let recoverable = RecordingRuntime.shared.recoverableMeetings()

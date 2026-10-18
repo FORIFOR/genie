@@ -16,9 +16,45 @@
 | connector の OAuth                                           | 認可コード往復（本文は出ない）                                                                                                                                                                                   | 利用者が接続操作をしたとき                                                                                                                                                                                                   | external-send（本人操作）                                       | `Context/ConnectorFlow.swift:9-14`                                                                                                           |
 | Sparkle appcast（GitHub Releases）                           | 版・OS の情報                                                                                                                                                                                                    | 起動時 1 回、「更新を確認…」                                                                                                                                                                                                 | cloud-used                                                      | `App/SoftwareUpdate.swift`                                                                                                                   |
 | 会話（Gemini Live、`Audio/GeminiLiveProvider.swift`） | **「会話」の間の声**（16 kHz PCM）と、Gemini が作る文字起こし・答えの声。仕事は `delegate_task` で Genie に渡し、Google へ返すのは受け付けたか（status）だけ。API キーはヘッダー（`x-goog-api-key`）で送り、URL・ログに載せない | 本人が設定で「会話で Gemini Live を使う」をオンにし、キー（キーチェーン）と月の上限（分）を置き、「会話」を始めたときだけ。上限に達したら始めない・途中で終える。「聞く」と会議の録音は送らない。失敗しても別の有料の提供元へ切り替えない | external-send（本人の同意・本人のキー） | `Audio/GeminiLiveProtocol.swift`（接続先）、`Audio/GeminiLiveProvider.swift`、`VoiceHUD/VoiceHUDState.swift` `beginConversation` |
-| いまの情報（agent host、`workers/agent-host/src/current-info/`） | 天気: 緯度経度と日数（`api.open-meteo.com`）、質問に出た地名だけ（`geocoding-api.open-meteo.com`。既定の地域は同梱の表で引き、送らない）。ニュース: 何も送らない（`news.web.nhk` の主要 RSS）、話題の語だけ（`news.google.com` の検索 RSS）。会話の文脈・Work Context・既定の地域の設定は送らない | 利用者が天気・ニュースを聞いたときだけ（`info.lookup`）。相手先は `CURRENT_INFO_HOSTS` の 4 つに限り、https・転送不可・5 秒 | external-send（本人の質問） | `current-info/hosts.ts`、`services/conversation/src/current-info.ts` |
-| 近くの店（`Places/PlacesClient.swift`） | 現在地の緯度経度と検索語（例「スターバックス」）→ `places.googleapis.com`（Places API (New) の Text Search）。見つかった店の座標と現在地 → `maps.googleapis.com`（Maps Static API の地図画像）。API キーは Places ではヘッダー（`X-Goog-Api-Key`）、地図画像は Google の仕様で URL に載るので、その URL をログ・記録・画面に出さない。会話の文脈・住所・名前は送らない。結果（店名・住所・地図）は画面に出すだけで保存せず、会話（Gemini）へは件数だけを返す | 本人が設定で Google Maps Platform のキーを置き、月の上限（回数）を決め、「近くの〇〇」を頼み、macOS の位置情報を許可したときだけ。上限に達したら呼ばない |
+| いまの情報（agent host、`workers/agent-host/src/current-info/`） | 天気: 緯度経度と日数（`api.open-meteo.com`）、質問・設定の地名だけ（`geocoding-api.open-meteo.com`。同梱の地域はローカルで引く）。ニュース: 何も送らない（`news.web.nhk` の主要・国際 RSS）、話題の語だけ（`news.google.com` の検索 RSS）。株価・指数: 銘柄コードと期間だけ（`query1.finance.yahoo.com` の公開chart）。会話の文脈・メール・Work Context・認証情報・保有情報はこれらの提供元へ送らない | `info.lookup`（依頼の文、または会話の `show_info`）または日次・手動の `brief.compose`。会話の天気で地名が無いときは、今日のまとめの「現在地付近の天気」がオンなら Mac の現在地（小数2桁）を Open-Meteo へ送る（Gemini には座標を渡さない）。株価は会話のモデルが渡した銘柄コードだけを送り、名前と値は取得元の値を出す。取得先は `CURRENT_INFO_HOSTS` の5つに限り、https・転送不可・5秒。株価は下記の個人利用向け実験的アダプター | external-send（公開情報の照会） | `current-info/hosts.ts`、`current-info/markets.ts`、`brief/runtime.ts` |
+| 近くの店（`Places/PlacesClient.swift`） | 現在地の緯度経度と検索語（例「スターバックス」）→ `places.googleapis.com`（Places API (New) の Text Search）。見つかった店の座標と現在地 → `maps.googleapis.com`（Maps Static API の地図画像）。API キーは Places ではヘッダー（`X-Goog-Api-Key`）、地図画像は Google の仕様で URL に載るので、その URL をログ・記録・画面に出さない。会話の文脈・住所・名前は送らない。「マック」などの略称は端末の表で正式な名前（「マクドナルド」）に直してから送る。返してもらう項目（`X-Goog-FieldMask`）は店名・住所・座標・評価・営業中か・地図リンク・種類（`types`）・営業状態（`businessStatus`）で、種類と営業状態は閉店した店・会社の事務所を外すためだけに使い、送る内容は増えない。結果（店名・住所・地図）は画面に出すだけで保存せず、会話（Gemini）へは件数だけを返す | 本人が設定で Google Maps Platform のキーを置き、月の上限（回数）を決め、「近くの〇〇」を頼み、macOS の位置情報を許可したときだけ。上限に達したら呼ばない |
 | 配布ページ / ガイドの URL                                    | なし（ブラウザを開くだけ）                                                                                                                                                                                       | 本人操作                                                                                                                                                                                                                     | —                                                               | `App/StatusBarController.swift`                                                                                                              |
+
+## 2026-10-10: 日次まとめの現在地付近の天気
+
+「現在地付近の天気」を選んだ場合、`BriefWeatherLocation` は既存の Core Location で
+現在地を1回だけ取得する。定期更新では `allowPrompt: false` とし、未許可ならOSの確認を
+開かず `none` にする。本人の「位置情報を許可」操作のみ確認を開ける。拒否・制限も `none`、
+取得失敗・15分より古い位置・5秒を超えて未来の位置は固定の理由と `stale` を返し、
+設定地域の天気へ黙って置き換えない。
+許可済みでも連続追跡は開始せず、次の更新時に再び1回取得する。
+
+取得した座標はネイティブ内で緯度・経度とも小数2桁に丸める（緯度方向で約1kmの単位）。
+今回の実機構成では、この粗い座標だけを `weather_location` として **ネイティブ → ローカルgatewayの
+タスク入力 → 端末のagent host → `api.open-meteo.com`** へ渡す。hostも外部への送信前に有限値・
+範囲を確認し、小数2桁へ丸める。現在地の天気では地名検索や予定の訪問先の地名検索を使わない。
+座標をモデル・ニュース・株価提供元へは送らず、ログにも出さない。gatewayのタスク入力は通常の
+タスク保存経路を通るため、「位置情報が一切保存されない」とは扱わない。天気の結果と保存する
+Briefカードは「現在地付近」という地名表示のみを持ち、座標自体は含めない。
+
+`BriefStore.permitsDeviceWeather` は接続先を確認し、ローカルgateway以外では現在地を取得せず、
+座標のない `none` と地域指定を促す理由を返す。対象は認証情報をURLに含めない http/https の
+`localhost`・`127.0.0.1`・`[::1]` のみで、似た名前の外部ホストも許可しない。
+地域指定の天気と「近くの店」の既存経路は別。
+
+## 2026-10-10: 株価・指数の実験的な個人用取得
+
+`current-info/markets.ts` はYahoo Financeの公開chartから数値・通貨・実際の観測時刻を読む。
+既定の `^N225`、`^GSPC`、`^IXIC` は参考指数であり、本人の保有銘柄とは推定しない。
+1回最大8銘柄、認証・Cookie・ブラウザ状態を使わず、警告や制限を回避しない。
+画面には「参考値・遅延の可能性」（株価の出所の欄）と観測時刻（各行、本人の時間帯）を表示し、取得時刻を価格の観測時刻の代わりにしない。
+未取得銘柄をニュースやモデルの推定値で埋めない。部分成功は `stale` と未取得一覧を返し、成功した行は保持する。
+空のwatchlistは未設定として通信しない。出典への `finance.yahoo.com` リンクは閲覧用であり、取得先allowlistには含まれない。
+
+この公開chart経路は正式なAPIサポートや継続提供を保証しない。現在の対象は本人の端末での個人利用実験であり、
+商用・再配布可能な提供元としては扱わない。[Yahoo Financeの公式説明](https://uk.help.yahoo.com/kb/finance/exchanges-markets-covered-yahoo-finance-sln2310.html)は再配布を禁じている。
+商用提供や再配布には別途適切なデータ契約と対応アダプターが必要で、`lookupMarkets(watchlist, get, now)` の境界で差し替える。
+数値を取得できた実測は利用許諾や可用性保証の証明ではない。
 
 ## Apple 音声認識の実測（この Mac、macOS 26.6.2、2026-09-04）
 

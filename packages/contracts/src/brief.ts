@@ -26,8 +26,24 @@ export const BriefAttention = z.object({
   due: z.string().max(40).optional(),
   /** Work の項目 id など、元へ戻るための参照 */
   ref: z.string().max(200).optional(),
+  /** 本人が TODO と確かめたもの。無ければメール等からの推測（候補）。 */
+  confirmed: z.boolean().optional(),
 });
 export type BriefAttention = z.infer<typeof BriefAttention>;
+
+export const BriefWeatherLocation = z
+  .object({
+    status: z.enum(['ok', 'none', 'stale']),
+    latitude: z.number().min(-90).max(90).optional(),
+    longitude: z.number().min(-180).max(180).optional(),
+    reason: z.string().max(120).optional(),
+  })
+  .refine(
+    (value) =>
+      value.status !== 'ok' || (value.latitude !== undefined && value.longitude !== undefined),
+    'A successful location requires both coordinates',
+  );
+export type BriefWeatherLocation = z.infer<typeof BriefWeatherLocation>;
 
 export const BriefArgs = z
   .object({
@@ -46,6 +62,12 @@ export const BriefArgs = z
     }),
     /** 関心のあるニュースの話題（本人が決めたものだけ。無ければ主なニュース） */
     interests: z.array(z.string().trim().min(1).max(40)).max(3).default([]),
+    /** 本人が設定した天気の地域。未指定なら端末の既定地域。 */
+    region: z.string().trim().min(1).max(80).optional(),
+    /** 本人の監視銘柄。空配列は監視なし、未指定なら取得元の既定値。 */
+    watchlist: z.array(z.string().trim().min(1).max(20)).max(8).optional(),
+    /** 端末の位置取得結果。未許可・失敗を地域設定で置き換えない。 */
+    weather_location: BriefWeatherLocation.optional(),
   })
   .strip();
 export type BriefArgs = z.infer<typeof BriefArgs>;
@@ -56,11 +78,13 @@ export const BriefLine = z.object({
   time: z.string().optional(),
   url: z.string().optional(),
   ref: z.string().optional(),
+  subtitle: z.string().optional(),
+  received_at: z.string().datetime({ offset: true }).optional(),
 });
 export type BriefLine = z.infer<typeof BriefLine>;
 
 export const BriefSection = z.object({
-  id: z.enum(['calendar', 'weather', 'attention', 'news', 'markets']),
+  id: z.enum(['calendar', 'weather', 'mail', 'attention', 'news', 'markets']),
   title: z.string(),
   /** ok: 取れた / stale: 取れなかった（未更新）/ none: 情報源が無い・未設定 */
   status: z.enum(['ok', 'stale', 'none']),
@@ -84,6 +108,11 @@ export const BriefEnvelope = z.object({
   talk: z.string(),
   /** 今日の要点（規則で選ぶ。モデルに作らせない） */
   highlights: z.array(z.string()),
+  /**
+   * 画面の冒頭に出す 1〜3 文（予定・対応事項・天気から規則で作る。モデルに作らせない）。
+   * 予定の題名を含むので会話へは渡さない（`talk` を使う）。古い保存分には無い。
+   */
+  summary: z.array(z.string().max(200)).max(3).default([]),
   sections: z.array(BriefSection),
 });
 export type BriefEnvelope = z.infer<typeof BriefEnvelope>;

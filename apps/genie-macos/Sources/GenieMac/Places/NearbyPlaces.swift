@@ -46,7 +46,8 @@ enum NearbyPlaces {
         settings.recordSearch()
         do {
             let places = try await client.search(query: intent.query, near: here,
-                                                 mustContain: intent.nameMustContain, limit: shown)
+                                                 mustContain: intent.nameMustContain,
+                                                 expectedTypes: intent.expectedTypes, limit: shown)
             // 地図は無くても店の行は出せる。取れなければ枠に理由を出す。
             let map = places.isEmpty ? nil
                 : try? await client.staticMap(center: here.coordinate, places: places, width: mapWidth, height: mapHeight)

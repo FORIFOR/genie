@@ -10,13 +10,15 @@ struct BriefCard: Equatable, Codable {
         var time: String?
         var url: String?
         var ref: String?
+        var subtitle: String?
+        var receivedAt: String?
     }
     struct Source: Equatable, Codable {
         let name: String
         let url: String
     }
     struct Section: Equatable, Codable {
-        /// calendar / weather / attention / news / markets
+        /// calendar / weather / attention / mail / news / markets
         let id: String
         let title: String
         /// ok: 取れた / stale: 取れなかった（未更新）/ none: 情報源が無い・未設定
@@ -36,10 +38,12 @@ struct BriefCard: Equatable, Codable {
     /// 会話（Gemini Live）へ渡してよい文。件数・時刻・状態・公開の天気だけ（DESIGN.md §8）。
     let talk: String
     let highlights: [String]
+    /// 画面の冒頭の 1〜3 文（規則で作る。予定の題名を含むので会話へは渡さない）。古い保存分には無い。
+    var summary: [String]?
     let sections: [Section]
 
     var hasContent: Bool { !sections.isEmpty }
-    var generated: Date? { ISO8601DateFormatter.brief.date(from: generatedAt) }
+    var generated: Date? { ISO8601DateFormatter.brief.date(from: generatedAt) ?? ISO8601DateFormatter().date(from: generatedAt) }
 
     static func decode(_ body: String) -> BriefCard? {
         let decoder = JSONDecoder()

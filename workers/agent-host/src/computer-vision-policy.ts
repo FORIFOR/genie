@@ -29,6 +29,55 @@ export interface VisionFrame {
    * 運ぶだけでよい——判断を二重に持たない。
    */
   backgroundEpoch?: number;
+  /** Native AX document evidence. No path/query or model-supplied URL is accepted. */
+  documentOrigin?: string;
+  /** Echoed by the native capture and bound into its private snapshot. */
+  allowedOrigins?: readonly string[];
+}
+
+/** Experimental origin-constrained browser operation; omission preserves generic use. */
+export function allowedOriginsOf(raw: unknown): readonly string[] | undefined {
+  if (raw === undefined) return undefined;
+  if (!Array.isArray(raw) || raw.length < 1 || raw.length > 8)
+    throw new VisionFailure('invalid_allowed_origins');
+  const origins = raw.map((value) => {
+    if (typeof value !== 'string' || value.length > 512)
+      throw new VisionFailure('invalid_allowed_origins');
+    let url: URL;
+    try {
+      url = new URL(value);
+    } catch {
+      throw new VisionFailure('invalid_allowed_origins');
+    }
+    if (
+      url.protocol !== 'https:' ||
+      url.username ||
+      url.password ||
+      url.origin !== value ||
+      !/^[a-z0-9.-]+$/.test(url.hostname)
+    )
+      throw new VisionFailure('invalid_allowed_origins');
+    return value;
+  });
+  if (new Set(origins).size !== origins.length) throw new VisionFailure('invalid_allowed_origins');
+  return Object.freeze(origins);
+}
+
+export function assertDocumentOrigin(
+  frame: VisionFrame,
+  allowed: readonly string[] | undefined,
+): void {
+  if (!allowed) return;
+  if (
+    frame.deliveryMode !== 'background' ||
+    !frame.documentOrigin ||
+    !frame.allowedOrigins ||
+    frame.allowedOrigins.length !== allowed.length ||
+    frame.allowedOrigins.some((origin, index) => origin !== allowed[index])
+  )
+    throw new VisionFailure('document_origin_unavailable');
+  if (!allowed.includes(frame.documentOrigin))
+    throw new VisionFailure('document_origin_not_allowed');
 }
 
 export interface GroundedAction {
@@ -157,6 +206,12 @@ export type VisionDecision =
       action: 'signin';
       frameId: string;
       reason: string;
+    }
+  | {
+      /** Request the separate native registration flow; never carries credentials. */
+      action: 'register';
+      frameId: string;
+      reason: string;
     };
 
 /*
@@ -250,6 +305,9 @@ export function frameOf(raw: unknown, now: number): VisionFrame {
     Number(b['width']) > 20_000 ||
     Number(b['height']) > 20_000 ||
     !validElements(f['elements']) ||
+    (f['documentOrigin'] !== undefined &&
+      (typeof f['documentOrigin'] !== 'string' || f['documentOrigin'].length > 512)) ||
+    (f['allowedOrigins'] !== undefined && !Array.isArray(f['allowedOrigins'])) ||
     // 実行世代。無ければ 0 と同じ扱い。負や小数は helper の出力ではない。
     (f['backgroundEpoch'] !== undefined &&
       (!Number.isSafeInteger(f['backgroundEpoch']) || Number(f['backgroundEpoch']) < 0))
@@ -305,7 +363,17 @@ export function decisionOf(raw: unknown, frame: VisionFrame): VisionDecision {
   const said = d['frameId'];
   if (said !== undefined && said !== null && said !== '' && said !== frame.id)
     throw new VisionFailure('stale_plan');
-  if (d['action'] === 'done' || d['action'] === 'stop' || d['action'] === 'signin') {
+  if (
+    d['action'] === 'done' ||
+    d['action'] === 'stop' ||
+    d['action'] === 'signin' ||
+    d['action'] === 'register'
+  ) {
+    if (
+      d['action'] === 'register' &&
+      Object.keys(d).some((key) => !['action', 'frameId', 'reason'].includes(key))
+    )
+      throw new VisionFailure('invalid_plan');
     if (typeof d['reason'] !== 'string' || !d['reason'].trim() || d['reason'].length > 500)
       throw new VisionFailure('invalid_plan');
     return { action: d['action'], frameId: frame.id, reason: d['reason'] };

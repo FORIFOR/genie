@@ -27,6 +27,16 @@ final class GlobalShortcut {
     private var runLoopSource: CFRunLoopSource?
     private var onFire: (() -> Void)?
     private var combo = Combo()
+    /// 会話を始める 2 つ目のキー（既定 ⌥⇧Space）。同じ tap で受ける（許可は 1 つで足りる）。
+    private var conversation: (combo: Combo, handler: () -> Void)?
+
+    /// 会話のキー。⌥Space（録音）とは修飾が違うので取り違えない。
+    static let conversationCombo = Combo(keyCode: UInt32(kVK_Space), modifiers: UInt32(optionKey | shiftKey))
+
+    /// 会話のキーを足す。録音のキーの登録（tap）に相乗りするので、`register` の前でも後でもよい。
+    func setConversation(_ combo: Combo = GlobalShortcut.conversationCombo, handler: @escaping () -> Void) {
+        conversation = (combo, handler)
+    }
 
     /// ⌥Space を受け取れる状態か。tap を作れても、この許可が無ければ
     /// **イベントは 1 つも届かない**（黙って効かないショートカットになる）。
@@ -63,6 +73,11 @@ final class GlobalShortcut {
                     if GlobalShortcut.matches(combo: this.combo, keyCode: kc, flags: event.flags) {
                         DispatchQueue.main.async { this.onFire?() }
                         return nil                // 自分のホットキーは飲み込む（他アプリへ流さない）
+                    }
+                    if let conversation = this.conversation,
+                       GlobalShortcut.matches(combo: conversation.combo, keyCode: kc, flags: event.flags) {
+                        DispatchQueue.main.async { conversation.handler() }
+                        return nil
                     }
                 }
                 return Unmanaged.passUnretained(event)  // それ以外は素通し

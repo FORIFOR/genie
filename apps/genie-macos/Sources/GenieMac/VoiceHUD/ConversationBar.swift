@@ -35,10 +35,22 @@ struct ConversationBar: View {
                 // カードの出所の行と混ざらないよう、面の区切りは hairline で（影や地は使わない）。
                 Rectangle().fill(Color.hairline(dark)).frame(height: 0.5)
                 HStack(spacing: 8) {
-                    Circle()
-                        .fill(micOpen ? Palette.accent(dark) : Palette.muted(dark))
-                        .frame(width: 6, height: 6)
-                        .accessibilityHidden(true)
+                    // マイクが開いている間は、届いている声の大きさを小さな波形で見せる
+                    // （カードを出している間も「いま聞こえているか」が分かる。静かなら低い棒のまま）。
+                    if micOpen, !voice.isListeningMuted {
+                        Waveform(levels: voice.inputLevels.suffix(8).map { $0.squareRoot() },
+                                 color: Palette.presence(dark), barWidth: 2, spacing: 2,
+                                 awaitingInput: voice.listeningAwaitingAudio)
+                            .frame(width: 8 * 4, height: 14)
+                            .clipped()
+                            .accessibilityIdentifier("conversationInputLevel")
+                            .accessibilityLabel(voice.listeningAwaitingAudio ? Facts.recordingHeroPreparing : Facts.conversationListening)
+                    } else {
+                        Circle()
+                            .fill(Palette.muted(dark))
+                            .frame(width: 6, height: 6)
+                            .accessibilityHidden(true)
+                    }
                     if showsPhase {
                         Text(phaseLabel)
                             .font(.system(size: S.type(Metrics.dockMetaSize)))
