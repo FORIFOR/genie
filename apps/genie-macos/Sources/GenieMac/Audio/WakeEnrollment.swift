@@ -9,7 +9,7 @@ import AVFoundation
 @MainActor
 final class WakeEnrollment {
     static let shared = WakeEnrollment()
-    static let count = 20
+    nonisolated static let count = 20
     static let interval = 3.0
     private(set) var running = false
 
@@ -19,28 +19,34 @@ final class WakeEnrollment {
     }
 
     /// 録り終えたら保存先を返す（失敗は nil）。録る間は呼びかけの待ち受けを止める。
-    func record() async -> URL? {
+    func record(count: Int = WakeEnrollment.count) async -> URL? {
         guard !running, Permissions.microphone == .granted else { return nil }
         running = true
         defer { running = false }
         WakeController.shared.stop()
         defer { WakeController.shared.start() }
-        GenieLog.write("wake", "enrollment: recording \(Self.count) calls")
-        let mic = MicCapture()
-        let lock = NSLock()
-        var samples: [Float] = []
+        GenieLog.write("wake", "enrollment: recording \(count) calls")
+        // 待ち受けと同じマイク（VoiceInputHub）で録る。別の MicCapture を開くと、待ち受けの engine と並んだときに
+        // ほぼ無音（RMS 0.0001〜0.0003、合図音だけがかすかに）しか録れなかった（2026-10-18 15:00Z の録音）。
+        let collector = Collector()
         do {
-            try mic.start(echoCancellation: false) { frame in lock.lock(); samples += frame; lock.unlock() }
+            try VoiceInputHub.shared.startStandby(detector: collector, onWake: {})
         } catch {
             GenieLog.write("wake", "enrollment: microphone failed \(error)"); return nil
         }
         try? await Task.sleep(nanoseconds: 1_000_000_000)
-        for _ in 0..<Self.count {
+        for _ in 0..<count {
             NSSound(named: "Tink")?.play()
             try? await Task.sleep(nanoseconds: UInt64(Self.interval * 1_000_000_000))
         }
-        mic.stop()
-        lock.lock(); let audio = samples; lock.unlock()
+        VoiceInputHub.shared.stopStandby()
+        let audio = collector.samples
+        // 声が録れていなければ残さない（無音を「本人の声」として学ばせない）。
+        let loudest = audio.reduce(Float(0)) { max($0, abs($1)) }
+        guard loudest >= Self.minimumPeak else {
+            GenieLog.write("wake", String(format: "enrollment: no voice recorded (peak %.4f) — not saved", loudest))
+            return nil
+        }
         let stamp = ISO8601DateFormatter().string(from: Date()).replacingOccurrences(of: ":", with: "")
         let url = Self.directory.appendingPathComponent("enroll-\(stamp).wav")
         do {
@@ -53,6 +59,18 @@ final class WakeEnrollment {
         } catch {
             GenieLog.write("wake", "enrollment: could not save \(error)"); return nil
         }
+    }
+
+    /// 録音の最大振幅がこれ未満なら、声が録れていない（待ち受けの声は 0.04〜0.09 の RMS で届いている）。
+    static let minimumPeak: Float = 0.02
+
+    /// 録る間、待ち受けの代わりに音を受け取る（呼びかけとしては扱わない）。
+    private final class Collector: WakeDetector {
+        private let lock = NSLock()
+        private var buffer: [Float] = []
+        var samples: [Float] { lock.lock(); defer { lock.unlock() }; return buffer }
+        func process(_ frame: [Float]) -> Bool { lock.lock(); buffer += frame; lock.unlock(); return false }
+        func reset() {}
     }
 
     static func writeWAV(_ samples: [Float], to url: URL) throws {

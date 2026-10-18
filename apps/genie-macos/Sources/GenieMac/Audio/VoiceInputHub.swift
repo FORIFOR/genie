@@ -55,13 +55,35 @@ final class VoiceInputHub: @unchecked Sendable {
     func setEchoCancellation(_ on: Bool) {
         queue.sync {
             guard echoCancellation != on else { return }
+            guard !on || Self.echoCancellationAllowed(state: stateValue) else {
+                GenieLog.write("voice", "echo cancellation kept off (no conversation: \(stateValue))")
+                return
+            }
             echoCancellation = on
             guard micRunning, let mic else { return }
             mic.stop()
             micRunning = false
-            try? startMicLocked()
+            do {
+                try startMicLocked()
+            } catch {
+                // 閉じたままにしない。見張りが stallSeconds 後に engine を作り直して開き直す
+                // （genie.log 2026-10-16 07:27Z、-10875 のあと待ち受けが翌日まで止まった）。
+                GenieLog.write("voice", "could not reopen the microphone: \(error)")
+                lastFrameAt = Date()
+                startWatchdogLocked()
+                // エコー除去を切った直後は入力機器が一瞬 0ch に見える。少し待って engine を作り直せば開ける
+                // （--selftest wakereturn 2026-10-18: 見張りだけだと毎回 6.5 秒聞こえなかった）。
+                queue.asyncAfter(deadline: .now() + Self.quickRetrySeconds) { [weak self] in self?.quickRetryLocked() }
+            }
             GenieLog.write("voice", "echo cancellation \(on ? "on" : "off") (active: \(mic.voiceProcessingActive))")
         }
+    }
+
+    /// エコー除去を入れてよいか。会話の間だけ。会話が終わってから届いた Gemini の声で入れると、待ち受けまで
+    /// 加工した音になり、次の会話の終わりまで戻らなかった（genie.log 2026-10-18 15:12Z・16:00Z・16:28Z）。
+    /// 呼びかけの検出器は加工していない音で学習している。
+    static func echoCancellationAllowed(state: State) -> Bool {
+        state == .holding || state == .streaming || state == .paused
     }
 
     func play(_ buffer: AVAudioPCMBuffer, completion: @escaping () -> Void) {
@@ -169,6 +191,62 @@ final class VoiceInputHub: @unchecked Sendable {
             self.queue.async { self.receiveLocked(frame) }
         }
         micRunning = true
+        lastFrameAt = Date()
+        startWatchdogLocked()
+    }
+
+    // MARK: 音が届かなくなったマイクを開き直す
+
+    /// 開いているマイクから、これだけの間 1 フレームも来なければ止まったとみなす（tap は無音でも届き続ける）。
+    static let stallSeconds = 4.0
+    /// 開き直しに失敗したら、次に試すまでの間。
+    static let stallRetrySeconds = 30.0
+    private var lastFrameAt = Date()
+    private var watchdog: DispatchSourceTimer?
+
+    /// マイクが止まったか。開き直しに失敗して閉じたまま（running: false）の待ち受け・会話も含む。
+    /// Genie が話している間（paused）は開き直さない（再生まで止めてしまう）。
+    static func micStalled(state: State, running: Bool, lastFrame: Date, now: Date) -> Bool {
+        guard state != .off, state != .paused else { return false }
+        return now.timeIntervalSince(lastFrame) >= stallSeconds
+    }
+
+    private func startWatchdogLocked() {
+        guard watchdog == nil else { return }
+        let timer = DispatchSource.makeTimerSource(queue: queue)
+        timer.schedule(deadline: .now() + 2, repeating: 2)
+        timer.setEventHandler { [weak self] in self?.checkStallLocked() }
+        timer.resume()
+        watchdog = timer
+    }
+
+    private func checkStallLocked() {
+        let now = Date()
+        guard let mic, Self.micStalled(state: stateValue, running: micRunning, lastFrame: lastFrameAt, now: now) else { return }
+        GenieLog.write("voice", String(format: "microphone delivered nothing for %.0f s (%@) — reopening it",
+                                       now.timeIntervalSince(lastFrameAt), "\(stateValue)"))
+        mic.discard()
+        micRunning = false
+        do {
+            try startMicLocked()
+        } catch {
+            GenieLog.write("voice", "could not reopen the microphone: \(error)")
+            lastFrameAt = now.addingTimeInterval(Self.stallRetrySeconds - Self.stallSeconds)
+        }
+    }
+
+    /// エコー除去の切り替えで開けなかったとき、見張りより先に一度だけ試すまでの間。
+    static let quickRetrySeconds = 0.5
+
+    private func quickRetryLocked() {
+        guard !micRunning, stateValue != .off, stateValue != .paused, let mic else { return }
+        mic.discard()
+        do {
+            try startMicLocked()
+            GenieLog.write("voice", "microphone reopened on the quick retry")
+        } catch {
+            GenieLog.write("voice", "quick retry could not reopen the microphone: \(error)")
+        }
     }
 
     private func stopMicLocked() {
@@ -193,6 +271,7 @@ final class VoiceInputHub: @unchecked Sendable {
     }
 
     private func receiveLocked(_ frame: [Float]) {
+        lastFrameAt = Date()
         if stateValue == .holding || stateValue == .streaming {
             afterWakeSamples += frame.count
             let rms = sqrt(frame.reduce(0) { $0 + $1 * $1 } / Float(max(1, frame.count)))

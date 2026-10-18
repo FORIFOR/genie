@@ -687,6 +687,7 @@ struct AgentDock: View {
     @Environment(\.colorScheme) private var scheme
     private var dark: Bool { scheme == .dark }
     @ObservedObject private var store = GenieStateStore.shared
+    @ObservedObject private var live = LiveScreenFeed.shared
 
     /// 動いている仕事（声・文字の依頼も会議の AI 操作も）。
     private var active: [DockTask] { store.state.board.active }
@@ -708,6 +709,10 @@ struct AgentDock: View {
             } else {
                 rows
             }
+            // 画面操作が動いている間だけ、いま操作している画面（DESIGN.md §8.1）。仕事が 1 件のときだけ。
+            if active.count <= 1, let frame = live.frame, let image = live.image {
+                LiveScreenView(frame: frame, image: image, now: live.now)
+            }
             Spacer(minLength: 0)
             footer
         }
@@ -719,6 +724,8 @@ struct AgentDock: View {
             if active.contains(where: { $0.status == .running }) || store.state.activeTask?.status == .running { DockFlowLine() }
         }
         .accessibilityElement(children: .contain)
+        .onAppear { LiveScreenFeed.shared.start() }
+        .onDisappear { LiveScreenFeed.shared.stop() }
         .accessibilityIdentifier("dockAgent")
         .accessibilityLabel(Facts.dockRunningLabel(max(active.count, 1)))
     }
@@ -1755,7 +1762,11 @@ struct QuickActionsDock: View {
     var body: some View {
         HStack(spacing: 4) {
             ForEach(items) { item in
-                Button(action: item.run) {
+                Button {
+                    // Accessibility activation may not produce a mouse/key event.
+                    GenieStateStore.shared.noteQuickActionsInteraction()
+                    item.run()
+                } label: {
                     HStack(spacing: 6) {
                         Image(systemName: item.icon).font(.system(size: 14))
                         Text(item.title).font(.system(size: S.type(Metrics.dockRowSize)))

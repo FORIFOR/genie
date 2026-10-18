@@ -129,7 +129,17 @@ final class StatusBarController {
     }
     @objc func tryWakeWord() { WakeController.shared.simulateWake() }
     @objc func diagnoseVoice() { VoiceHUDState.shared.diagnoseVoice() }
-    @objc func enrollWakeWord() { Task { _ = await WakeEnrollment.shared.record() } }
+    @objc func enrollWakeWord() {
+        Task { @MainActor in
+            // 録れたかどうかを言う（無音のまま「録れた」と思わせない。2026-10-18 の録音は無音だった）。
+            let saved = await WakeEnrollment.shared.record() != nil
+            let alert = NSAlert()
+            alert.messageText = saved ? Facts.wakeEnrollSaved : Facts.wakeEnrollNoVoice
+            alert.addButton(withTitle: Facts.updateClose)
+            NSApp.activate(ignoringOtherApps: true)
+            alert.runModal()
+        }
+    }
 
     @objc private func openMain() { MainWindowController.shared.showSection(.home) }
     @objc private func toggleControls() {

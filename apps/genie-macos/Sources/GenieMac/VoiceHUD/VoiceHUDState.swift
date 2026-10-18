@@ -766,7 +766,7 @@ final class VoiceHUDState: ObservableObject {
                 return
             }
             provider = GeminiLiveProvider(
-                apiKey: key, settings: gemini,
+                apiKey: key, model: gemini.selectedModel, settings: gemini,
                 delegate: { [weak self] request in await self?.delegateFromConversation(request) ?? "not_accepted" },
                 onLost: { [weak self] reason in
                     guard let self else { return }
@@ -787,6 +787,8 @@ final class VoiceHUDState: ObservableObject {
             gemini.onEndRequested = { [weak self] in self?.endConversation(.user, caller: "spoken: end_conversation") }
             gemini.onStopWork = { [weak self] in self?.stopWorkFromVoice() ?? "止められる仕事はありませんでした。" }
             gemini.onTodayBrief = { [weak self] in self?.todayBriefForConversation() ?? "今日のまとめはまだありません。" }
+            gemini.onInfo = { [weak self] args in await self?.infoForConversation(args) ?? "いまは取得できません。" }
+            gemini.onInputLevel = { [weak self] level in self?.receiveInputLevel(level) }
         }
         startConversation(using: provider)
         WindowCoordinator.shared.focusListeningDock()
@@ -967,6 +969,9 @@ final class VoiceHUDState: ObservableObject {
             echoCancellation: false,
             onFirstFrame: { [weak self] in
                 guard let self else { return }
+                // 声が届き始めた（波形・「聞いています」はここから。Gemini の会話では立てていなかったので、
+                // 音量が画面へ届かず「聞こえているか分からない」になっていた）。
+                if g == self.conversation.generation { self.listeningAwaitingAudio = false }
                 self.run(self.conversation.firstFrame(generation: g))
             },
             onUtterance: { [weak self] text in
@@ -1053,6 +1058,65 @@ final class VoiceHUDState: ObservableObject {
             }
         }
         return "今日のまとめをいま作っています。できたら画面に出してお伝えします。"
+    }
+
+    /// 「今日の天気は？」「日経平均は？」「今日のニュース」（show_info）。端末の `info.lookup` を直接始め、
+    /// 会話中も専用のカードを出す。会話へ返すのは取得元の値からの文だけ（公開情報。座標・Work の中身は返さない）。
+    /// 天気で場所が無ければ、今日のまとめと同じ設定で現在地（小数 2 桁）を使い、使えなければ設定の地域。
+    func infoForConversation(_ argsJSON: String) async -> String {
+        let args = (try? JSONSerialization.jsonObject(with: Data(argsJSON.utf8))) as? [String: Any] ?? [:]
+        func value(_ key: String, limit: Int = 80) -> String? {
+            guard let raw = args[key] as? String else { return nil }
+            let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            return trimmed.isEmpty ? nil : String(trimmed.prefix(limit))
+        }
+        let kind = value("kind") ?? ""
+        let label = ["weather": "天気", "news": "ニュース", "markets": "株価"][kind]
+        guard let label else { return "天気・ニュース・株価のどれかを聞いてください。" }
+        guard let base = apiBase, let token = apiToken else { return "Genie のサービスにつながっていないため、\(label)を取得できません。" }
+        var input: [String: Any] = ["kind": kind]
+        if let request = value("request", limit: 200) { input["question"] = request }
+        for key in ["when", "topic", "symbols"] { if let v = value(key) { input[key] = v } }
+        if kind == "markets", let request = value("request", limit: 200) { input["subject"] = request }
+        if kind == "weather" {
+            if let place = value("place") {
+                input["place"] = place
+            } else {
+                let preferences = BriefStore.shared.preferences
+                var located = false
+                if preferences.useCurrentLocation, BriefStore.permitsDeviceWeather(base: base) {
+                    let here = await BriefWeatherLocation.input(allowPrompt: false)
+                    if here["status"] as? String == "ok", let lat = here["latitude"] as? Double, let lon = here["longitude"] as? Double {
+                        input["latitude"] = lat; input["longitude"] = lon; located = true
+                    }
+                }
+                if !located, !preferences.region.isEmpty { input["place"] = preferences.region }
+            }
+        }
+        guard let json = try? JSONSerialization.data(withJSONObject: input),
+              let inputJson = String(data: json, encoding: .utf8) else { return "\(label)を取得できませんでした。" }
+        GenieLog.write("conversation", "info: \(kind) here=\(input["latitude"] != nil)")
+        do {
+            let body = try await Task.detached { () throws -> String in
+                let taskId = try GenieCoreBridge.createTask(base, accessToken: token, kind: "info.lookup", inputJson: inputJson)
+                // 待つのは waitForTask の区切りだけ（承認の境界の検査。読み先は TaskReader.live）。
+                let reader = TaskReader.live(base: base, token: token, taskId: taskId)
+                let status = try VoiceHUDState.waitForTask(waitMs: 20_000, now: reader.now, pause: reader.pause, wait: reader.wait)
+                guard status.status == "COMPLETED", !status.resultArtifactId.isEmpty else { return "" }
+                return try reader.content(status.resultArtifactId)
+            }.value
+            guard let card = InfoCard.decode(body) else {
+                GenieLog.write("conversation", "info: \(kind) not available")
+                return "\(label)を取得できませんでした。"
+            }
+            // 会話中でもカードは出す（places・brief と同じ。会話は続く）。
+            if conversation.isActive, card.hasContent { mode = .card(.info(card)) }
+            GenieLog.write("conversation", "info: \(kind) card=\(card.hasContent)")
+            return card.text + (card.hasContent ? "（画面にカードを出しています）" : "")
+        } catch {
+            GenieLog.write("conversation", "info: \(kind) failed")
+            return "\(label)を取得できませんでした。"
+        }
     }
 
     /// 会話へ渡す文。いつの時点かを添える（古いまとめを今の事実のように言わせない）。

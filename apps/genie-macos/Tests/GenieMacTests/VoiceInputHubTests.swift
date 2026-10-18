@@ -80,4 +80,27 @@ final class VoiceInputHubTests: XCTestCase {
         hub.detach()
         XCTAssertEqual(hub.state, .off)
     }
+
+    /// 会話の後の開き直しで音が来なくなったマイクを見つける（genie.log 2026-10-16 05:20Z から 1.5 時間無音）。
+    func testStalledMicIsDetectedOnlyWhileOpenAndNotSpeaking() {
+        let t = Date()
+        let late = t.addingTimeInterval(VoiceInputHub.stallSeconds + 0.1)
+        XCTAssertTrue(VoiceInputHub.micStalled(state: .standby, running: true, lastFrame: t, now: late))
+        XCTAssertTrue(VoiceInputHub.micStalled(state: .streaming, running: true, lastFrame: t, now: late))
+        XCTAssertFalse(VoiceInputHub.micStalled(state: .standby, running: true, lastFrame: t, now: t.addingTimeInterval(1)))
+        XCTAssertFalse(VoiceInputHub.micStalled(state: .paused, running: true, lastFrame: t, now: late))
+        XCTAssertFalse(VoiceInputHub.micStalled(state: .off, running: false, lastFrame: t, now: late))
+        // 開き直しに失敗して閉じたままの待ち受けも、開き直す対象（genie.log 2026-10-16 07:27Z -10875 のあと翌日まで無反応）。
+        XCTAssertTrue(VoiceInputHub.micStalled(state: .standby, running: false, lastFrame: t, now: late))
+        XCTAssertFalse(VoiceInputHub.micStalled(state: .standby, running: false, lastFrame: t, now: t.addingTimeInterval(1)))
+    }
+
+    /// 会話が終わった後に届いた声で、待ち受けにエコー除去を入れない（genie.log 2026-10-18 16:28Z）。
+    func testEchoCancellationOnlyDuringAConversation() {
+        XCTAssertTrue(VoiceInputHub.echoCancellationAllowed(state: .streaming))
+        XCTAssertTrue(VoiceInputHub.echoCancellationAllowed(state: .paused))
+        XCTAssertTrue(VoiceInputHub.echoCancellationAllowed(state: .holding))
+        XCTAssertFalse(VoiceInputHub.echoCancellationAllowed(state: .standby))
+        XCTAssertFalse(VoiceInputHub.echoCancellationAllowed(state: .off))
+    }
 }

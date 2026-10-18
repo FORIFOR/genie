@@ -81,6 +81,10 @@ enum UserFacingFacts {
     /// 結果を出している間に、ほかに動いている仕事。
     static func taskOthersRunning(_ n: Int) -> String { "他 \(n) 件 実行中" }
     static let taskAwaitingApproval = "確認待ち"
+    /// 作業面の操作中の画面の下（DESIGN.md §8.1）。どのページか・いつ撮ったか。
+    static func liveScreenCaption(host: String?, seconds: Int) -> String {
+        (host.map { "\($0) を操作中" } ?? "操作中の画面") + "・\(seconds)秒前"
+    }
     /// VoiceOver: 作業中の面の名前。
     static func dockRunningLabel(_ n: Int) -> String { "Genie: \(n)件 実行中" }
     static let confirmationNeeded = "確認が必要です"
@@ -108,6 +112,14 @@ enum UserFacingFacts {
     static let workNotPriority = "優先ではない"
     static let workDismiss = "外す"
     static let workDone = "済んだ"
+    /// メール等からの推測を、本人が自分の TODO として確かめる。
+    static let workConfirm = "TODOに追加"
+    /// 表示は短く（行の幅に収める）。読み上げは workNotMineSpoken。
+    static let workNotMine = "担当外"
+    static let workNotMineSpoken = "自分の担当ではない"
+    static let workHandled = "対応済み"
+    static let workCandidate = "メール由来・候補"
+    static let workRegistered = "登録済み"
     /// 「なぜ重要？」。数式は見せない。理由の行と、出所。
     static let workWhy = "なぜ重要？"
     static let workClose = "閉じる"
@@ -156,7 +168,7 @@ enum UserFacingFacts {
     static let conversationRemaining = "残り"
     /// 音声入力で聞いている間の欄の案内（Genie には送らない、と押した後にも分かるように）。
     static let dictationPlaceholder = "前面のアプリに入力します…"
-    static let quickConversationHelp = "Genie と話します。答えが返ります"
+    static let quickConversationHelp = "Genie と話します。答えが返ります（⌥⇧Space）"
     static let quickDictationHelp = "前面のアプリに文字を入れます。Genie には送りません"
     static let conversationEnding = "まもなく終了"
     static let conversationStopSpeech = "読み上げを止める"
@@ -174,6 +186,8 @@ enum UserFacingFacts {
     static let menuDiagnose = "声と接続を診断"
     /// 押すと 3 秒ごとに合図音が 20 回鳴る。合図の後に「ジーニー」と言う（録音は Mac の中だけ）。
     static let menuWakeEnroll = "声を覚える（合図のあとに「ジーニー」×20）"
+    static let wakeEnrollSaved = "声を録りました。録音はこの Mac の中だけに残ります。"
+    static let wakeEnrollNoVoice = "声が録れませんでした。マイクの入力を確かめて、もう一度試してください。"
     /// Gemini のクレジット切れ・利用枠の上限で、標準の会話に切り替えたとき。
     static let geminiLiveOff = "会話には Gemini Live を使います。設定で Gemini Live を有効にしてください。"
     static let geminiLiveNoKey = "会話には Gemini Live を使います。設定で Gemini の API キーを登録してください。"
@@ -333,6 +347,11 @@ enum UserFacingFacts {
             f("work.notPriority", workNotPriority, false),
             f("work.dismiss", workDismiss, false),
             f("work.done", workDone, false),
+            f("work.confirm", workConfirm, false),
+            f("work.notMine", workNotMine, false),
+            f("work.handled", workHandled, false),
+            f("work.candidate", workCandidate, false),
+            f("work.registered", workRegistered, false),
             f("work.why", workWhy, false),
             f("work.close", workClose, false),
             f("work.level.high", workLevelHigh, false),

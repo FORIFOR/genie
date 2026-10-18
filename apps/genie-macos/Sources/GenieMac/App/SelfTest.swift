@@ -43,6 +43,7 @@ enum SelfTest {
         case "session-renewal": Task { await sessionRenewal() }; return true
         case "outcome-live": Task { await outcomeLive(args) }; return true
         case "workspace-ux": Task { await workspaceUX(args) }; return true
+        case "dailybrief": Task { await dailyBriefShots(args) }; return true
         case "recording-journeys": Task { await recordingJourneys() }; return true
         case "translation-journeys": Task { await translationJourneys() }; return true
         case "translation-layout": Task { await translationLayout(args) }; return true
@@ -93,6 +94,8 @@ enum SelfTest {
         case "micprobe": Task { await micProbe() }; return true
         case "aecprobe": Task { @MainActor in await aecProbe() }; return true
         case "hubecho": Task { @MainActor in await hubEcho() }; return true
+        case "wakereturn": Task { @MainActor in await wakeReturn(args) }; return true
+        case "enrollrecord": Task { @MainActor in await enrollRecord() }; return true
         case "diagnose": Task { @MainActor in await diagnose() }; return true
         case "liveflow": Task { @MainActor in await liveFlow(args) }; return true
         case "askprobe": Task { @MainActor in await askProbe(args) }; return true
@@ -159,6 +162,7 @@ enum SelfTest {
         case "states": states(args); return true
         case "golden": golden(args); return true
         case "dock8": dock8(args); return true
+        case "liveshot": liveShot(args); return true
         case "dockanim": dockAnim(); return true
         case "surfacemotion": SurfaceMotionGate.run(args); return true
         case "invocation": InvocationGate.run(args); return true
@@ -1659,13 +1663,19 @@ enum SelfTest {
             VoiceHUDState.shared.mode = .card(placesFixture())
         })
         for (name, _) in cardStates + [placesState] { ceilings[name] = [(dockKey, Metrics.dockResultWidth, Metrics.dockCardMaxHeight)] }
+        // 作業面に操作中の画面を出した姿（DESIGN.md §8.1）。写真は合成。
+        let liveState: (String, () -> Void) = ("03b-task-dock-live", {
+            WindowCoordinator.shared.hideRecordingWorkspace()
+            presentLiveScreenState()
+        })
+        ceilings[liveState.0] = [(dockKey, liveScreenCeiling.0, liveScreenCeiling.1)]
         let refW = 1440.0, refH = 900.0
 
         GenieStateStore.shared.reset()
         WindowCoordinator.shared.showVoiceHUD()
         var fail: [String] = []
         var measured = 0
-        for (name, present) in geometryStates() + cardStates + [placesState] {
+        for (name, present) in geometryStates() + cardStates + [placesState, liveState] {
             present()
             settle(1.2)
             guard let snap = UIGeometry.snapshot() else { fail.append("\(name): 実寸を読めない"); continue }
@@ -1683,6 +1693,7 @@ enum SelfTest {
                 }
             }
         }
+        LiveScreenFeed.shared.fixture = nil
         WindowCoordinator.shared.hideRecordingWorkspace()
         WindowCoordinator.shared.hideVoiceHUD()
         GenieStateStore.shared.reset()

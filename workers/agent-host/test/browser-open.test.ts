@@ -193,6 +193,32 @@ describe('opening the official site in the browser', () => {
     expect(() => pickOf({ index: 0.5 }, 2)).toThrow();
   });
 
+  it('retries with the name before 「の」 when the product phrase finds no official site', async () => {
+    const searched: string[] = [];
+    const opened: string[] = [];
+    const r = new BrowserOpenRuntime({
+      ask: async (toolId, args) => {
+        if (toolId === 'search.web') {
+          searched.push(String(args['query']));
+          return { results: [{ url: 'https://www.oakley.com/ja-jp', title: 'Oakley Japan', snippet: '公式' }] };
+        }
+        if (toolId === 'llm.official_guess') return { url: null };
+        // 商品名まで含むと公式と見なさない（実際の 2026-10-18 の結果）。名前だけなら選ぶ。
+        return searched.at(-1)?.startsWith('オークリーのサングラス') ? { index: -1 } : { index: 0, reason: '運営元' };
+      },
+      open: async (url) => {
+        opened.push(url);
+      },
+      frontUrl: async () => opened.at(-1) ?? null,
+      sleep: async () => {},
+      fetchPage: async () => null,
+    });
+    const outcome = await r.run(step({ subject: 'オークリーのサングラス' }));
+    expect(searched).toEqual(['オークリーのサングラス 公式サイト', 'オークリー 公式サイト']);
+    expect(opened).toEqual(['https://www.oakley.com/ja-jp']);
+    expect(outcome).toMatchObject({ ok: true, result: { opened: true, subject: 'オークリー' } });
+  });
+
   it('refuses an empty subject', async () => {
     const { runtime: r, asks } = runtime({ index: 0 });
     expect(await r.run(step({ subject: ' ' }))).toMatchObject({ ok: false });

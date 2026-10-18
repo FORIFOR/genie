@@ -9,6 +9,8 @@ describe('asking to open an official site', () => {
     ['JRAの公式ページを確認して', 'JRA'],
     ['ブラウザでユニクロを開いて', 'ユニクロ'],
     ['トヨタの公式HPを表示して。', 'トヨタ'],
+    ['オークリーのサングラスを公式サイトで見せて', 'オークリーのサングラス'],
+    ['ユニクロのダウンを公式サイトで見せてください', 'ユニクロのダウン'],
   ])('%s → %s', (text, subject) => {
     expect(browserOpenRequest(text)).toEqual({ subject });
   });
@@ -16,6 +18,7 @@ describe('asking to open an official site', () => {
   it.each([
     'マクドナルドの公式サイトはどこ？',
     '資料を見て',
+    '資料をメールで見せて',
     '天気を教えて',
     'https://example.com を開いて',
     'それの公式サイトを開いて',

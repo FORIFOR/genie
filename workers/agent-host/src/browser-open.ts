@@ -58,8 +58,18 @@ export class BrowserOpenRuntime {
   async run(step: HostStep, signal?: AbortSignal): Promise<StepOutcome> {
     const parsed = BrowserOpenArgs.safeParse(step.args);
     if (!parsed.success) return fail('invalid_args', '開くサイトの名前を確認できませんでした。');
-    const subject = parsed.data.subject;
     const browser: BrowserChoice = parsed.data.browser ?? 'default';
+    const first = await this.#open(parsed.data.subject, browser, signal);
+    // 「オークリーのサングラス」のように商品まで含んだ名前では、公式サイトと確かめられなかった
+    // （genie.log 2026-10-18 16:43Z）。見つからなかったときだけ、「の」の前の名前（オークリー）で探し直す。
+    // 「鬼滅の刃」のような名前は、先に名前全体で探すので変わらない。
+    const brand = brandOf(parsed.data.subject);
+    if (!brand || !notFound(first)) return first;
+    const second = await this.#open(brand, browser, signal);
+    return notFound(second) ? first : second;
+  }
+
+  async #open(subject: string, browser: BrowserChoice, signal?: AbortSignal): Promise<StepOutcome> {
 
     let candidates: Candidate[];
     try {
@@ -237,6 +247,18 @@ export function pageTitle(html: string): string {
     .map((t) => t.replace(/\s+/g, ' ').trim())
     .filter(Boolean)
     .join(' / ');
+}
+
+/** 「〇〇の△△」の〇〇。「の」が無い・短すぎるときは null。 */
+export function brandOf(subject: string): string | null {
+  const head = subject.split('の')[0]!.trim();
+  return head.length >= 2 && head !== subject.trim() ? head : null;
+}
+
+/** 開けなかった・候補も無かった（探し直す意味がある）結果か。 */
+function notFound(outcome: StepOutcome): boolean {
+  const result = (outcome as { ok: boolean; result?: { opened?: unknown; url?: unknown } }).result;
+  return outcome.ok === true && result?.opened === false && result?.url === null;
 }
 
 /** 題名に名前が入っているか（全角半角・大文字小文字・空白を無視）。 */

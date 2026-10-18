@@ -4,8 +4,11 @@ import { mkdir, lstat, realpath, open, rm, chmod } from 'node:fs/promises';
 import { isAbsolute, join, resolve } from 'node:path';
 import { homedir } from 'node:os';
 import { visualContextDir, locateImages, readVisualImages } from './visual-context.js';
+import { clearLiveScreen, liveScreenOf, writeLiveScreen } from './live-screen.js';
 import {
   VisionFailure,
+  allowedOriginsOf,
+  assertDocumentOrigin,
   frameOf,
   record,
   targetPreviewOf,
@@ -22,6 +25,7 @@ export class NativeVisionDevice implements VisionDevice {
   readonly #owned = new Set<string>();
   #root = '';
   #backgroundScope?: VisionFrame;
+  #allowedOrigins: readonly string[] | undefined;
   constructor(readonly helper: string) {
     if (!isAbsolute(helper)) throw new VisionFailure('helper_path_required');
   }
@@ -93,7 +97,9 @@ export class NativeVisionDevice implements VisionDevice {
     recipient: string,
     signal: AbortSignal,
     expectedTarget?: { readonly pid: number; readonly bundleId: string },
+    allowedOrigins?: readonly string[],
   ): Promise<VisionFrame> {
+    this.#allowedOrigins = allowedOriginsOf(allowedOrigins);
     if (
       expectedTarget &&
       (!Number.isSafeInteger(expectedTarget.pid) ||
@@ -111,6 +117,34 @@ export class NativeVisionDevice implements VisionDevice {
   }
   async capture(scope: VisionFrame, signal: AbortSignal, phase?: 'signin'): Promise<VisionFrame> {
     return this.#capture({ op: 'capture', scope, ...(phase ? { phase } : {}) }, signal);
+  }
+  async prepareRegistration(
+    scope: VisionFrame,
+    signal: AbortSignal,
+    expiresAt: number,
+  ): Promise<{ credentialRef: string }> {
+    if (!this.#root) throw new VisionFailure('session_not_claimed');
+    assertDocumentOrigin(scope, this.#allowedOrigins);
+    const result = await this.#invoke(
+      {
+        op: 'registration_prepare',
+        scope,
+        allowedOrigins: this.#allowedOrigins,
+        referencePath: join(this.#root, `${scope.id}.png`),
+        authorizationExpiresAt: expiresAt,
+      },
+      signal,
+    );
+    if (
+      result['status'] !== 'awaiting_user_registration' ||
+      typeof result['credentialRef'] !== 'string' ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        result['credentialRef'],
+      ) ||
+      Object.keys(result).some((key) => !['status', 'credentialRef'].includes(key))
+    )
+      throw new VisionFailure('registration_result_invalid');
+    return { credentialRef: result['credentialRef'] };
   }
   /*
    * 人の手が止まったかを helper に訊く。**人には何もしない。**
@@ -131,12 +165,14 @@ export class NativeVisionDevice implements VisionDevice {
     signal: AbortSignal,
     expiresAt: number,
   ): Promise<{ route?: string; effect?: string; scroll?: ScrollReadback }> {
+    assertDocumentOrigin(frame, this.#allowedOrigins);
     const result = await this.#invoke(
       {
         op: 'apply',
         scope: frame,
         action,
         authorizationExpiresAt: expiresAt,
+        ...(this.#allowedOrigins ? { allowedOrigins: this.#allowedOrigins } : {}),
         referencePath: join(this.#root, `${frame.id}.png`),
       },
       signal,
@@ -161,6 +197,7 @@ export class NativeVisionDevice implements VisionDevice {
     expiresAt: number,
   ): Promise<TargetPreview> {
     if (!this.#root) throw new VisionFailure('session_not_claimed');
+    assertDocumentOrigin(frame, this.#allowedOrigins);
     const id = `cv-${randomUUID()}`;
     const path = join(this.#root, `${id}.png`);
     this.#owned.add(path);
@@ -172,6 +209,7 @@ export class NativeVisionDevice implements VisionDevice {
         scope: frame,
         action,
         authorizationExpiresAt: expiresAt,
+        ...(this.#allowedOrigins ? { allowedOrigins: this.#allowedOrigins } : {}),
         referencePath: join(this.#root, `${frame.id}.png`),
       },
       signal,
@@ -202,6 +240,7 @@ export class NativeVisionDevice implements VisionDevice {
         AbortSignal.timeout(2000),
       ).catch(() => undefined);
     }
+    if (this.#root) await clearLiveScreen(this.#root).catch(() => undefined);
     await Promise.all([...this.#owned].map((path) => rm(path, { force: true })));
   }
   async #capture(input: Record<string, unknown>, signal: AbortSignal): Promise<VisionFrame> {
@@ -211,8 +250,17 @@ export class NativeVisionDevice implements VisionDevice {
     this.#owned.add(path);
     this.#owned.add(path + '.snapshot.json');
     this.#owned.add(path + '.used');
-    const result = await this.#invoke({ ...input, id, outputPath: path }, signal);
+    const result = await this.#invoke(
+      {
+        ...input,
+        id,
+        outputPath: path,
+        ...(this.#allowedOrigins ? { allowedOrigins: this.#allowedOrigins } : {}),
+      },
+      signal,
+    );
     const frame = frameOf(result, Date.now());
+    assertDocumentOrigin(frame, this.#allowedOrigins);
     const expectedTarget = input['expectedTarget'] as { pid: number; bundleId: string } | undefined;
     if (
       expectedTarget &&
@@ -231,6 +279,8 @@ export class NativeVisionDevice implements VisionDevice {
       createHash('sha256').update(data).digest('hex') !== frame.sha256
     )
       throw new VisionFailure('image_mismatch');
+    // 本人が追えるように、確かめた写真だけを「いま見ている画面」として示す。示せなくても操作は続ける。
+    await writeLiveScreen(this.#root, liveScreenOf(frame)).catch(() => undefined);
     return frame;
   }
   #invoke(input: Record<string, unknown>, signal: AbortSignal): Promise<Record<string, unknown>> {
@@ -250,7 +300,9 @@ export class NativeVisionDevice implements VisionDevice {
            * 切れて `helper_unavailable` になる。実行全体の上限（既定 5 分）に合わせ、
            * それ以外の呼び出しは従来どおり短いまま——人を待たないので長くする理由がない。
            */
-          timeout: input['op'] === 'begin' ? 300_000 : 120_000,
+          timeout: ['begin', 'registration_prepare'].includes(String(input['op']))
+            ? 300_000
+            : 120_000,
           maxBuffer: 256 * 1024,
           env: { HOME: process.env['HOME'] ?? '', PATH: '/usr/bin:/bin', LANG: 'en_US.UTF-8' },
         },

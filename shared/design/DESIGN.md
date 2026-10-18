@@ -209,3 +209,25 @@ Reduce Motion / `--selftest` では動かさず、静止形で描き分ける（
 - 会話（Gemini Live）へ返すのは件数・状態の文だけ。カードの中身（店名・住所・本文）は返さない（`docs/privacy-egress.md`）。
 - 状態を足したら `--selftest dock8` の撮影と golden（`task-dock/`・`task-dock/dark/`、既存は上書きしない）、
   `--selftest occupation` の上限に加える。
+
+### 8.1 作業面の「いま操作している画面」（2026-10-19、本人の依頼）
+
+§6 の例外として本人が承認したもの（「マクドナルドの注文なども、注文している画面を追って見られるように」）。
+画面操作（`computer.run` / `checkout.prepare`）は背面の窓を操作し、対象の窓を前に出すと止まる作り
+（`docs/COMPUTER_VISION.md`）なので、本人は注文の途中を見る手段が無かった。
+
+```
+reference : Apple 画面収録のサムネイル（収録中の内容を小さく出す）/ Linear の作業面（作業名・段階・停止は変えない）
+hypothesis: Agent Dock（作業 1 件・段あり）の段の下に、画面操作が読み取りに撮った最新の 1 枚を出すと、
+            本人が「いまどのページの何をしているか」を窓を前に出さずに追える
+measured  : いま Agent Dock は 720 x (190 + 36·段)。画面の写真は出していない
+candidates: A = いま（写真なし）/ B = 段の下に 720 幅・高さ agentLiveHeight 200 の写真＋出所・撮影からの秒数 /
+            C = 結果カード（DockCard）として出す（作業中に出ないので棄却）
+gate      : 機械が測る（--selftest occupation に agent-live 720 x (190 + 36·3 + 200) を足す）→ golden（task-dock/ に新規）
+```
+
+- 写真は画面操作がすでに撮って確かめたもの（`VisualContext/cv-*.png`、0600）。どれが最新かを
+  `VisualContext/live.json` が示し、アプリはそれを読むだけ。新しく撮らない・外へ送らない。仕事が終われば消える。
+- 写真の下に出所（`www.mcdonalds.co.jp`）と「n 秒前」。10 秒より古い写真は出さない（止まった画面を「いま」と見せない）。
+- 写真は押せない（操作は Genie と本人の手で、写真からは何もしない）。停止は既存の「止める」。
+

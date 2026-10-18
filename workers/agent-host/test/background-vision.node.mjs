@@ -114,7 +114,7 @@ test('無人試験の経路は出荷ビルドに入らない',async()=>{
    * 本番と同じ `establish` を通る（別経路に複製されていないこと）。
    */
   assert.equal(source.match(/try privateFile\(JSONEncoder\(\)\.encode\(grant\),path\)/g).length,1);
-  assert.match(guarded,/return try await establish\(hits\[0\], dir: dir, recipient: request\.recipient\)/);
+  assert.match(guarded,/return try await establish\(hits\[0\], dir: dir, recipient: request\.recipient, allowedOrigins: request\.allowedOrigins\)/);
   // 伏せ字を扱うアプリを除く一覧は、同意経路と共有していること。
   assert.equal(source.match(/com\.1password/g).length,1);
   /*
@@ -124,9 +124,20 @@ test('無人試験の経路は出荷ビルドに入らない',async()=>{
   const shipped=source.replace(/#if GENIE_UNATTENDED_TEST[\s\S]*?#endif/g,'');
   assert.doesNotMatch(shipped,/autoResolveTargetWindow/);
   const select=shipped.slice(shipped.indexOf('static func select('),shipped.indexOf('static func respond('));
-  // 出荷ビルドの select が対象を決めるのは、生きた許可の引き継ぎか、選択ダイアログの答えだけ。
-  assert.equal(select.match(/establish\(/g).length,1);
-  assert.ok(select.indexOf('establish(')>select.indexOf('alert.runModal()'));
+  /*
+   * 出荷ビルドの select が対象を決めるのは、生きた許可の引き継ぎか、選択ダイアログの答えか、
+   * サーバが承認した出所に縛られた経路（docs/COMPUTER_VISION.md）だけ。最後のものは画面の読み取りが
+   * この Mac の中のときだけで、ダイアログを外すことを外部への送信の同意にしない。
+   */
+  const establishes=[...select.matchAll(/establish\(/g)].map((m)=>m.index);
+  assert.equal(establishes.length,2);
+  const originBranch=select.indexOf('if let allowed');
+  const localOnly=select.indexOf('guard request.recipient == "local" else { throw Failure("origin_provider_consent_required") }');
+  // 出所の経路の終わり = 出所に縛られない生きた許可の引き継ぎ（選択ダイアログの経路の入口）。
+  const originEnd=select.indexOf('allowedOrigins: request.allowedOrigins) { return live }',localOnly);
+  assert.ok(originBranch>=0 && localOnly>originBranch && originEnd>localOnly);
+  assert.ok(establishes[0]>localOnly && establishes[0]<originEnd);
+  assert.ok(establishes[1]>select.indexOf('alert.runModal()'));
   // ダイアログは送信先を内部の種別名でなく、提供元の名前で見せる（前面の選択ダイアログと同じ対応表）。
   assert.match(select,/画像の送信先: \\\(imageDestinationLabel\(request\.recipient\)\)/);
 });

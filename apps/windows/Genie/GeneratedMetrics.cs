@@ -32,6 +32,7 @@ public static class Metrics
     public const double DockAgentWidth = 720;
     public const double DockAgentHeightBase = 190;
     public const double DockAgentRowHeight = 36;
+    public const double DockAgentLiveHeight = 200;
     public const double DockResultWidth = 520;
     public const double DockResultHeight = 150;
     public const double DockCardMaxHeight = 360;

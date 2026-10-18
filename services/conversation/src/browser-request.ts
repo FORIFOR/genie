@@ -35,7 +35,9 @@ export function browserOpenRequest(text: string): BrowserOpenRequest | null {
   if (!match) return null;
   const target = match[1]!
     .replace(LEAD, '')
-    .replace(/[をもは]$/u, '')
+    // 「〇〇を公式サイトで見せて」の「で」も外す（Gemini への指示の例文そのもの。外さないと公式サイトと
+    // 読めず、ブラウザを開けない会話に回っていた。genie.log 2026-10-18 16:09Z・16:20Z）。
+    .replace(/[をもはで]$/u, '')
     .trim();
   const official = OFFICIAL.exec(target);
   const viaBrowser = named !== undefined || /ブラウザ/u.test(trimmed);
