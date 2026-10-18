@@ -99,6 +99,9 @@ export const KNOWN_TASK_KINDS = [
   'mail.send',
   'computer.action',
   'computer.run',
+  'phone.call',
+  'phone.sales',
+  'phone.unresolved',
 ] as const;
 export type TaskKind = (typeof KNOWN_TASK_KINDS)[number];
 
@@ -342,6 +345,120 @@ function planMailSend(input: Record<string, unknown>): TaskPlan {
   };
 }
 
+const SALES_GOAL_LABEL: Readonly<Record<string, string>> = {
+  meeting: '商談の日程を決める',
+  materials: '資料を送ってよいか確かめる',
+  introduce: 'サービスを紹介する',
+};
+
+/**
+ * Oathra 経由の電話（伝言・確認）。1 段だけ。
+ *
+ * **外へ出る・取り消せない・お金がかかる**ので、承認カードを必ず通す。
+ * 承認カードに出すのは日本語の項目だけ。Oathra へ渡す値は `call` に入れる
+ * （文字列でないので、カードには出ない）。
+ */
+function planPhoneCall(input: Record<string, unknown>): TaskPlan {
+  const phone = typeof input['phone'] === 'string' ? input['phone'].trim() : '';
+  const name =
+    typeof input['name'] === 'string' && input['name'].trim() ? input['name'].trim() : '相手';
+  const instruction = typeof input['instruction'] === 'string' ? input['instruction'].trim() : '';
+  if (!phone || !instruction)
+    throw new UnknownTaskKindError('phone.call needs a phone and an instruction');
+  return {
+    steps: [
+      {
+        index: 0,
+        toolId: 'phone.call',
+        risk: 'EXTERNAL_COMMIT',
+        surface: 'cloud',
+        requiresConfirmation: true,
+        message: `${name}（${phone}）に電話します`,
+        args: {
+          相手: name,
+          番号: phone,
+          用件: instruction,
+          call: { phone, name, instruction },
+        },
+      },
+    ],
+    artifact: { type: 'REPORT', title: `電話: ${name}`, mimeType: 'text/markdown' },
+  };
+}
+
+/**
+ * Oathra 経由の営業電話。相手と商品は**依頼を受けた時点で決まっている**
+ * （Oathra の連絡先から、名前が一人に決まったものだけ）。ここでは推測しない。
+ *
+ * Oathra 側の委任（allowSales）が事前の許可、この承認カードが 1 件ごとの許可。
+ */
+function planPhoneSales(input: Record<string, unknown>): TaskPlan {
+  const contactId = typeof input['contact_id'] === 'string' ? input['contact_id'] : '';
+  const contactName = typeof input['contact_name'] === 'string' ? input['contact_name'] : '';
+  const request = typeof input['request'] === 'string' ? input['request'].trim() : '';
+  const goal =
+    typeof input['goal'] === 'string' && input['goal'] in SALES_GOAL_LABEL
+      ? input['goal']
+      : 'introduce';
+  const productId = typeof input['product_id'] === 'string' ? input['product_id'] : null;
+  const productName = typeof input['product_name'] === 'string' ? input['product_name'] : null;
+  if (!contactId || !contactName || !request) {
+    throw new UnknownTaskKindError('phone.sales needs a resolved contact and a request');
+  }
+  return {
+    steps: [
+      {
+        index: 0,
+        toolId: 'phone.sales',
+        risk: 'EXTERNAL_COMMIT',
+        surface: 'cloud',
+        requiresConfirmation: true,
+        message: `${contactName}さんに営業の電話をかけます`,
+        args: {
+          相手: contactName,
+          ...(productName ? { 商品: productName } : {}),
+          目的: SALES_GOAL_LABEL[goal]!,
+          用件: request,
+          sales: {
+            contactId,
+            ...(productId ? { productId } : {}),
+            request,
+            goal,
+          },
+        },
+      },
+    ],
+    artifact: { type: 'REPORT', title: `営業電話: ${contactName}`, mimeType: 'text/markdown' },
+  };
+}
+
+/**
+ * 電話で頼まれたが進められなかったこと（相手が決まらない、委任が無い等）。
+ * 外へは何もしない。理由と聞き取った言葉を成果物にして、仕事の一覧に残す。
+ */
+function planPhoneUnresolved(input: Record<string, unknown>): TaskPlan {
+  const notice = typeof input['notice'] === 'string' ? input['notice'] : '';
+  const words = typeof input['words'] === 'string' ? input['words'] : '';
+  if (!notice) throw new UnknownTaskKindError('phone.unresolved needs a notice');
+  return {
+    steps: [
+      {
+        index: 0,
+        toolId: 'phone.unresolved',
+        risk: 'READ',
+        surface: 'cloud',
+        message: '電話で頼まれたことを確かめています',
+        args: { notice, words },
+      },
+    ],
+    artifact: {
+      type: 'DOCUMENT',
+      title: '電話の依頼を進められませんでした',
+      mimeType: 'text/markdown',
+    },
+  };
+}
+
 function planComputerRun(input: Record<string, unknown>): TaskPlan {
   const goal = typeof input['goal'] === 'string' ? input['goal'].trim() : '';
   if (!goal) throw new UnknownTaskKindError('computer.run needs a goal');
@@ -412,6 +529,12 @@ export function planTask(kind: string, input: Record<string, unknown>): TaskPlan
       return planComputerAction(input);
     case 'computer.run':
       return planComputerRun(input);
+    case 'phone.call':
+      return planPhoneCall(input);
+    case 'phone.sales':
+      return planPhoneSales(input);
+    case 'phone.unresolved':
+      return planPhoneUnresolved(input);
     default:
       throw new UnknownTaskKindError(kind);
   }
@@ -469,6 +592,8 @@ function primaryActionLabel(step: TaskStep, count: number | null): string {
     case 'REGULATED':
       return '記録を更新する';
     case 'EXTERNAL_COMMIT':
+      // 電話は「実行する」より結果で書く（UI/UX §14.1）
+      if (step.toolId === 'phone.call' || step.toolId === 'phone.sales') return '電話をかける';
       return suffix ? `${suffix}実行する` : '実行する';
     default:
       return '実行する';

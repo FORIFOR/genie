@@ -26,7 +26,8 @@
     "@genie/service-plugin-registry": "workspace:*",
     "@genie/service-capabilities": "workspace:*",
     "@genie/service-agent-runtime": "workspace:*",
-    "@genie/service-agent-host": "workspace:*"
+    "@genie/service-agent-host": "workspace:*",
+    "@genie/service-phone": "workspace:*"
   },
   "devDependencies": {
     "@temporalio/testing": "^1.22.0",

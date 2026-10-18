@@ -21,6 +21,24 @@ describe('routeLane', () => {
     }
   });
 
+  it('sends a request to place a phone call to action, but not talk about phones', () => {
+    for (const text of [
+      '田中さんにデモ商品の営業電話をかけて',
+      '090-1234-5678に電話して10時集合と伝えて',
+      '山田商事にテレアポして',
+      '鈴木さんとのアポを取って',
+    ]) {
+      expect(lane(text).lane, text).toBe('action');
+    }
+    for (const text of [
+      '田中さんの電話番号を教えて',
+      '昨日の電話の内容をまとめて',
+      '営業電話はかけてはいけない',
+    ]) {
+      expect(lane(text).lane, text).not.toBe('action');
+    }
+  });
+
   it('only edits when there is something selected', () => {
     // 選択が無い「直して」は、何を直すか決まらない
     expect(lane('この文を短くして').lane).toBe('chat');

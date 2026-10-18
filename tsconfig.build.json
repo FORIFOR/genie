@@ -59,6 +59,9 @@
       "path": "./services/context"
     },
     {
+      "path": "./services/channels"
+    },
+    {
       "path": "./services/conversation"
     },
     {
@@ -72,6 +75,9 @@
     },
     {
       "path": "./services/plugin-registry"
+    },
+    {
+      "path": "./services/phone"
     },
     {
       "path": "./services/research"

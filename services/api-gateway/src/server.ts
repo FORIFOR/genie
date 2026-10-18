@@ -41,6 +41,8 @@ import {
 import { assertReadyForProduction } from '@genie/contracts';
 import { capabilityReport, capabilitySummary } from '@genie/service-capabilities';
 import { buildApp } from './app.js';
+import { phoneFromEnv } from './phone.js';
+import { channelsFromEnv, type GatewayChannels } from './channels.js';
 import { assertPathsExist, gatewayConfigFromEnv } from './config.js';
 import { keyConfigFromEnv, loadSigningKeys } from './auth/keys.js';
 import { JwtTokens } from './auth/tokens.js';
@@ -160,6 +162,11 @@ async function main(): Promise<void> {
     stockDataSources(domain),
   );
 
+  // Oathra 経由の電話。設定が無ければ、電話の頼みには「繋がっていない」と答える
+  const phone = phoneFromEnv(process.env, { db, tasks, logger });
+  // チャット（Slack / LINE）。設定された提供者だけ受け口が開く
+  const chat: { current: GatewayChannels | null } = { current: null };
+
   const app = buildApp({
     config,
     db,
@@ -188,6 +195,19 @@ async function main(): Promise<void> {
     work,
     conversations,
     connections,
+    phone: phone.phone,
+    channels: (turnDeps) => {
+      chat.current = channelsFromEnv(process.env, {
+        db,
+        tasks,
+        conversations,
+        library,
+        turnDeps,
+        logger,
+      });
+      return chat.current?.routes ?? null;
+    },
+    phoneConnections: { store: phone.store, clientOf: phone.clientOf },
     voice: {
       ...(meetingProviders.batch.isStandIn ? {} : { transcriber: meetingProviders.batch }),
       ...(process.env['GOOGLE_CLOUD_PROJECT']
@@ -198,6 +218,8 @@ async function main(): Promise<void> {
 
   const shutdown = async (signal: string): Promise<void> => {
     logger.info({ signal }, 'shutting down');
+    phone.inbound?.stop();
+    chat.current?.stop();
     await app.close();
     await rateLimiter.close();
     await runtime.close();
@@ -208,6 +230,11 @@ async function main(): Promise<void> {
   process.on('SIGINT', () => void shutdown('SIGINT'));
 
   await app.listen({ port: config.port, host: config.host });
+  // 受けた電話を仕事にする。60 秒ごと（Oathra の着信は数分単位なので十分）
+  phone.inbound?.start(60_000);
+  // 受け付けた仕事の区切り（承認待ち・終わり）をチャットへ返す。5 秒ごと
+  chat.current?.start(5_000);
+  logger.info({ channels: chat.current ? 'on' : 'off' }, 'chat channels');
   logger.info(
     {
       port: config.port,

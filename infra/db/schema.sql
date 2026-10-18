@@ -236,6 +236,112 @@ ALTER TABLE ONLY public.audit_sequences FORCE ROW LEVEL SECURITY;
 
 
 --
+-- Name: channel_inbox; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.channel_inbox (
+    provider text NOT NULL,
+    event_id text NOT NULL,
+    received_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT channel_inbox_event_id_check CHECK (((length(event_id) >= 1) AND (length(event_id) <= 256))),
+    CONSTRAINT channel_inbox_provider_check CHECK ((provider = ANY (ARRAY['slack'::text, 'line'::text])))
+);
+
+
+--
+-- Name: channel_link_codes; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.channel_link_codes (
+    code_hash text NOT NULL,
+    tenant_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    provider text NOT NULL,
+    expires_at timestamp with time zone NOT NULL,
+    used_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT channel_link_codes_code_hash_check CHECK ((length(code_hash) = 64)),
+    CONSTRAINT channel_link_codes_provider_check CHECK ((provider = ANY (ARRAY['slack'::text, 'line'::text])))
+);
+
+ALTER TABLE ONLY public.channel_link_codes FORCE ROW LEVEL SECURITY;
+
+
+--
+-- Name: channel_links; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.channel_links (
+    id uuid NOT NULL,
+    tenant_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    provider text NOT NULL,
+    workspace_id text NOT NULL,
+    subject text NOT NULL,
+    device_id uuid NOT NULL,
+    posting_policy text DEFAULT 'summary_and_link'::text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    last_seen_at timestamp with time zone,
+    revoked_at timestamp with time zone,
+    CONSTRAINT channel_links_posting_policy_check CHECK ((posting_policy = ANY (ARRAY['summary_and_link'::text, 'full_text'::text]))),
+    CONSTRAINT channel_links_provider_check CHECK ((provider = ANY (ARRAY['slack'::text, 'line'::text]))),
+    CONSTRAINT channel_links_subject_check CHECK (((length(subject) >= 1) AND (length(subject) <= 128))),
+    CONSTRAINT channel_links_workspace_id_check CHECK (((length(workspace_id) >= 1) AND (length(workspace_id) <= 128)))
+);
+
+ALTER TABLE ONLY public.channel_links FORCE ROW LEVEL SECURITY;
+
+
+--
+-- Name: channel_outbox; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.channel_outbox (
+    id uuid NOT NULL,
+    tenant_id uuid NOT NULL,
+    link_id uuid NOT NULL,
+    task_id uuid,
+    event_sequence bigint,
+    kind text NOT NULL,
+    destination text NOT NULL,
+    thread_key text NOT NULL,
+    body jsonb NOT NULL,
+    status text DEFAULT 'PENDING'::text NOT NULL,
+    attempts integer DEFAULT 0 NOT NULL,
+    provider_message_id text,
+    last_error text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    sent_at timestamp with time zone,
+    CONSTRAINT channel_outbox_attempts_check CHECK ((attempts >= 0)),
+    CONSTRAINT channel_outbox_destination_check CHECK (((length(destination) >= 1) AND (length(destination) <= 128))),
+    CONSTRAINT channel_outbox_kind_check CHECK ((kind = ANY (ARRAY['accepted'::text, 'waiting_approval'::text, 'paused'::text, 'completed'::text, 'failed'::text, 'cancelled'::text, 'notice'::text]))),
+    CONSTRAINT channel_outbox_status_check CHECK ((status = ANY (ARRAY['PENDING'::text, 'SENT'::text, 'FAILED'::text]))),
+    CONSTRAINT channel_outbox_thread_key_check CHECK (((length(thread_key) >= 1) AND (length(thread_key) <= 128)))
+);
+
+ALTER TABLE ONLY public.channel_outbox FORCE ROW LEVEL SECURITY;
+
+
+--
+-- Name: channel_threads; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.channel_threads (
+    tenant_id uuid NOT NULL,
+    link_id uuid NOT NULL,
+    thread_key text NOT NULL,
+    destination text NOT NULL,
+    conversation_id uuid NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    last_message_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT channel_threads_destination_check CHECK (((length(destination) >= 1) AND (length(destination) <= 128))),
+    CONSTRAINT channel_threads_thread_key_check CHECK (((length(thread_key) >= 1) AND (length(thread_key) <= 128)))
+);
+
+ALTER TABLE ONLY public.channel_threads FORCE ROW LEVEL SECURITY;
+
+
+--
 -- Name: connector_connections; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -340,7 +446,7 @@ CREATE TABLE public.devices (
     last_seen_at timestamp with time zone,
     revoked_at timestamp with time zone,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT devices_platform_check CHECK ((platform = ANY (ARRAY['macos'::text, 'windows'::text, 'linux'::text, 'web'::text])))
+    CONSTRAINT devices_platform_check CHECK ((platform = ANY (ARRAY['macos'::text, 'windows'::text, 'linux'::text, 'web'::text, 'slack'::text, 'line'::text])))
 );
 
 ALTER TABLE ONLY public.devices FORCE ROW LEVEL SECURITY;
@@ -633,6 +739,27 @@ CREATE TABLE public.onboarding_states (
 );
 
 ALTER TABLE ONLY public.onboarding_states FORCE ROW LEVEL SECURITY;
+
+
+--
+-- Name: phone_connections; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.phone_connections (
+    id uuid NOT NULL,
+    tenant_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    base_url text NOT NULL,
+    grant_id text NOT NULL,
+    token_ciphertext text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    revoked_at timestamp with time zone,
+    CONSTRAINT phone_connections_base_url_check CHECK (((length(base_url) >= 1) AND (length(base_url) <= 512))),
+    CONSTRAINT phone_connections_grant_id_check CHECK (((length(grant_id) >= 1) AND (length(grant_id) <= 128))),
+    CONSTRAINT phone_connections_token_ciphertext_check CHECK (((length(token_ciphertext) >= 1) AND (length(token_ciphertext) <= 4096)))
+);
+
+ALTER TABLE ONLY public.phone_connections FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -1209,6 +1336,46 @@ ALTER TABLE ONLY public.audit_sequences
 
 
 --
+-- Name: channel_inbox channel_inbox_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.channel_inbox
+    ADD CONSTRAINT channel_inbox_pkey PRIMARY KEY (provider, event_id);
+
+
+--
+-- Name: channel_link_codes channel_link_codes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.channel_link_codes
+    ADD CONSTRAINT channel_link_codes_pkey PRIMARY KEY (code_hash);
+
+
+--
+-- Name: channel_links channel_links_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.channel_links
+    ADD CONSTRAINT channel_links_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: channel_outbox channel_outbox_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.channel_outbox
+    ADD CONSTRAINT channel_outbox_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: channel_threads channel_threads_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.channel_threads
+    ADD CONSTRAINT channel_threads_pkey PRIMARY KEY (link_id, thread_key);
+
+
+--
 -- Name: connector_connections connector_connections_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1350,6 +1517,14 @@ ALTER TABLE ONLY public.memberships
 
 ALTER TABLE ONLY public.onboarding_states
     ADD CONSTRAINT onboarding_states_pkey PRIMARY KEY (tenant_id, user_id);
+
+
+--
+-- Name: phone_connections phone_connections_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.phone_connections
+    ADD CONSTRAINT phone_connections_pkey PRIMARY KEY (id);
 
 
 --
@@ -1680,6 +1855,55 @@ CREATE UNIQUE INDEX audit_events_prev ON public.audit_events USING btree (tenant
 
 
 --
+-- Name: channel_inbox_by_age; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX channel_inbox_by_age ON public.channel_inbox USING btree (received_at);
+
+
+--
+-- Name: channel_link_codes_by_user; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX channel_link_codes_by_user ON public.channel_link_codes USING btree (tenant_id, user_id);
+
+
+--
+-- Name: channel_links_active_subject; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX channel_links_active_subject ON public.channel_links USING btree (provider, workspace_id, subject) WHERE (revoked_at IS NULL);
+
+
+--
+-- Name: channel_links_by_user; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX channel_links_by_user ON public.channel_links USING btree (tenant_id, user_id) WHERE (revoked_at IS NULL);
+
+
+--
+-- Name: channel_outbox_once; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX channel_outbox_once ON public.channel_outbox USING btree (link_id, task_id, event_sequence) WHERE ((task_id IS NOT NULL) AND (event_sequence IS NOT NULL));
+
+
+--
+-- Name: channel_outbox_pending; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX channel_outbox_pending ON public.channel_outbox USING btree (created_at) WHERE (status = 'PENDING'::text);
+
+
+--
+-- Name: channel_threads_by_conversation; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX channel_threads_by_conversation ON public.channel_threads USING btree (tenant_id, conversation_id);
+
+
+--
 -- Name: connector_connections_by_tenant; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1817,6 +2041,13 @@ CREATE INDEX meetings_live ON public.meetings USING btree (tenant_id) WHERE (sta
 --
 
 CREATE INDEX meetings_recent ON public.meetings USING btree (tenant_id, started_at DESC);
+
+
+--
+-- Name: phone_connections_active_user; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX phone_connections_active_user ON public.phone_connections USING btree (tenant_id, user_id) WHERE (revoked_at IS NULL);
 
 
 --
@@ -2253,6 +2484,94 @@ ALTER TABLE ONLY public.audit_sequences
 
 
 --
+-- Name: channel_link_codes channel_link_codes_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.channel_link_codes
+    ADD CONSTRAINT channel_link_codes_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: channel_link_codes channel_link_codes_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.channel_link_codes
+    ADD CONSTRAINT channel_link_codes_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: channel_links channel_links_device_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.channel_links
+    ADD CONSTRAINT channel_links_device_id_fkey FOREIGN KEY (device_id) REFERENCES public.devices(id);
+
+
+--
+-- Name: channel_links channel_links_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.channel_links
+    ADD CONSTRAINT channel_links_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: channel_links channel_links_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.channel_links
+    ADD CONSTRAINT channel_links_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: channel_outbox channel_outbox_link_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.channel_outbox
+    ADD CONSTRAINT channel_outbox_link_id_fkey FOREIGN KEY (link_id) REFERENCES public.channel_links(id);
+
+
+--
+-- Name: channel_outbox channel_outbox_task_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.channel_outbox
+    ADD CONSTRAINT channel_outbox_task_id_fkey FOREIGN KEY (task_id) REFERENCES public.tasks(id);
+
+
+--
+-- Name: channel_outbox channel_outbox_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.channel_outbox
+    ADD CONSTRAINT channel_outbox_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: channel_threads channel_threads_conversation_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.channel_threads
+    ADD CONSTRAINT channel_threads_conversation_id_fkey FOREIGN KEY (conversation_id) REFERENCES public.conversations(id);
+
+
+--
+-- Name: channel_threads channel_threads_link_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.channel_threads
+    ADD CONSTRAINT channel_threads_link_id_fkey FOREIGN KEY (link_id) REFERENCES public.channel_links(id);
+
+
+--
+-- Name: channel_threads channel_threads_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.channel_threads
+    ADD CONSTRAINT channel_threads_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: connector_connections connector_connections_connected_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2666,6 +2985,22 @@ ALTER TABLE ONLY public.onboarding_states
 
 ALTER TABLE ONLY public.onboarding_states
     ADD CONSTRAINT onboarding_states_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: phone_connections phone_connections_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.phone_connections
+    ADD CONSTRAINT phone_connections_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: phone_connections phone_connections_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.phone_connections
+    ADD CONSTRAINT phone_connections_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
 
 
 --
@@ -3165,6 +3500,58 @@ CREATE POLICY audit_sequences_tenant_isolation ON public.audit_sequences USING (
 
 
 --
+-- Name: channel_link_codes; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.channel_link_codes ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: channel_link_codes channel_link_codes_tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY channel_link_codes_tenant_isolation ON public.channel_link_codes USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
+
+
+--
+-- Name: channel_links; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.channel_links ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: channel_links channel_links_tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY channel_links_tenant_isolation ON public.channel_links USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
+
+
+--
+-- Name: channel_outbox; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.channel_outbox ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: channel_outbox channel_outbox_tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY channel_outbox_tenant_isolation ON public.channel_outbox USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
+
+
+--
+-- Name: channel_threads; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.channel_threads ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: channel_threads channel_threads_tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY channel_threads_tenant_isolation ON public.channel_threads USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
+
+
+--
 -- Name: connector_connections; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -3396,6 +3783,19 @@ ALTER TABLE public.onboarding_states ENABLE ROW LEVEL SECURITY;
 --
 
 CREATE POLICY onboarding_states_tenant_isolation ON public.onboarding_states USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
+
+
+--
+-- Name: phone_connections; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.phone_connections ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: phone_connections phone_connections_tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY phone_connections_tenant_isolation ON public.phone_connections USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
 
 
 --
@@ -3699,3 +4099,6 @@ INSERT INTO schema_migrations (version) VALUES ('20260907090000');
 INSERT INTO schema_migrations (version) VALUES ('20260907170000');
 INSERT INTO schema_migrations (version) VALUES ('20260909120000');
 INSERT INTO schema_migrations (version) VALUES ('20260910003000');
+INSERT INTO schema_migrations (version) VALUES ('20261018090000');
+INSERT INTO schema_migrations (version) VALUES ('20261018100000');
+INSERT INTO schema_migrations (version) VALUES ('20261018120000');

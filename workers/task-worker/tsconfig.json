@@ -44,6 +44,9 @@
     },
     {
       "path": "../../services/agent-host"
+    },
+    {
+      "path": "../../services/phone"
     }
   ]
 }

@@ -46,7 +46,9 @@
     "@genie/service-context": "workspace:*",
     "@genie/service-capabilities": "workspace:*",
     "@genie/service-agent-runtime": "workspace:*",
-    "@genie/service-agent-host": "workspace:*"
+    "@genie/service-agent-host": "workspace:*",
+    "@genie/service-phone": "workspace:*",
+    "@genie/service-channels": "workspace:*"
   },
   "devDependencies": {
     "@types/ws": "^8.18.1",

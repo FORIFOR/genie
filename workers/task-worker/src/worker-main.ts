@@ -35,8 +35,22 @@ import {
 import { assertReadyForProduction, canonicalSha256 } from '@genie/contracts';
 import { capabilityReport, capabilitySummary } from '@genie/service-capabilities';
 import { ConnectionService } from '@genie/service-plugin-registry';
-import { createTaskWorker, TASK_QUEUE, NoopPublisher } from '@genie/service-task';
+import {
+  createTaskWorker,
+  currentActivityCancellation,
+  isTaskCancelRequested,
+  TASK_QUEUE,
+  NoopPublisher,
+} from '@genie/service-task';
 import { HostBridge, HostStepExecutor, type ApprovalProof } from '@genie/service-agent-host';
+import {
+  PhoneConnectionStore,
+  oathraClient,
+  phoneConnections,
+  phoneExecutors,
+  phoneSetupFromEnv,
+  secretBoxFromEnv,
+} from '@genie/service-phone';
 import {
   DomainService,
   architectureExecutors,
@@ -137,6 +151,18 @@ async function main(): Promise<void> {
   const recordingRoot = path.resolve(process.env['ASTRA_RECORDING_ROOT'] ?? './.data/recordings');
   const meetings = new MeetingService({ db, publisher: NoopPublisher });
 
+  /*
+   * Oathra 経由の電話。**接続は利用者ごと**（phone_connections、トークンは GENIE_SECRET_KEY で封）。
+   * task を作った本人の接続だけを使い、無ければその step は「繋がっていない」で止まる。
+   * 環境変数の接続（GENIE_OATHRA_*）は、手元で試すための 1 人分の逃がし口。
+   */
+  const secrets = secretBoxFromEnv(process.env);
+  const phone = phoneConnections({
+    store: new PhoneConnectionStore({ db, secrets }),
+    fallback: phoneSetupFromEnv(process.env),
+  });
+  logger.info({ phone_secret_key: secrets ? secrets.keyId : 'not_configured' }, 'phone calls');
+
   const connection = await NativeConnection.connect({ address });
   const worker = await createTaskWorker(
     {
@@ -173,6 +199,19 @@ async function main(): Promise<void> {
          * 繋いでいないので、外から取ってきたふりはしない。
          */
         ...salesCrmExecutors(new DomainService({ db })),
+        /*
+         * 電話（伝言・営業）。承認カードを通った step だけがここに来る。
+         * 上限と相手は Oathra 側の委任が決め、Genie はその中でしか動かない。
+         */
+        ...phoneExecutors({
+          clientFor: async (owner) => {
+            const saved = await phone.connectionFor(owner);
+            return saved ? oathraClient(saved) : null;
+          },
+          // Temporal の取り消しと、Genie の取り消し（task が CANCELLING）の両方を見る
+          signal: currentActivityCancellation,
+          isCancelled: (task) => isTaskCancelRequested(db, task.tenantId, task.taskId),
+        }),
         ...meetingExecutors({
           meetings,
           library,
