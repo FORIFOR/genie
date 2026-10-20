@@ -17,10 +17,15 @@ final class ConnectionJourneyTests: XCTestCase {
         var registrations = 0
         var delayExchange = false
         var account = "tester@example.invalid"
+        var rejected: [String: String] = [:]
+        var locked: Set<String> = []
+        var replaced: [String] = []
+        var refresh = "test-refresh"
     }
     func make(_ storage: Storage) -> ConnectorState {
         let deps = ConnectorState.Dependencies(configuration: { ["ASTRA_OAUTH_GOOGLE_CLIENT_ID": "client"] },
-            read: { storage.values[$0.id] }, write: { storage.values[$0.id] = $1 },
+            read: { if storage.locked.contains($0.id) { throw KeychainStore.KeychainError.accessDenied }; return storage.values[$0.id] },
+            write: { if storage.locked.contains($0.id) { throw KeychainStore.KeychainError.accessDenied }; storage.values[$0.id] = $1 },
             delete: { if storage.failDelete { throw URLError(.cannotWriteToFile) }; storage.values[$0.id] = nil },
             list: { _, _, source in if storage.failList { throw URLError(.notConnectedToInternet) }; return storage.records[source.id] ?? [] },
             register: { _, _, source, credential in
@@ -31,9 +36,13 @@ final class ConnectionJourneyTests: XCTestCase {
             remove: { _, _, source in storage.records[source.id] = [] },
             exchange: { _, _, _, _, _ in
                 if storage.delayExchange { try await Task.sleep(for: .milliseconds(100)) }
-                return .init(clientId: "client", accessToken: "test-access", refreshToken: "test-refresh", expiresAt: nil, grantedScopes: storage.scopes, tokenType: "Bearer")
+                return .init(clientId: "client", accessToken: "test-access", refreshToken: storage.refresh, expiresAt: nil, grantedScopes: storage.scopes, tokenType: "Bearer")
             },
-            account: { _, _ in storage.account })
+            account: { _, _ in storage.account },
+            rejected: { storage.rejected[$0.id] },
+            replaceLocked: { source, value in
+                storage.replaced.append(source.id); storage.locked.remove(source.id); storage.values[source.id] = value
+            })
         return ConnectorState(sources: [mail, calendar], dependencies: deps)
     }
     func complete(_ state: ConnectorState) async {
@@ -87,6 +96,37 @@ final class ConnectionJourneyTests: XCTestCase {
         state.configureBackend(base: "fixture", token: "fixture")
         await state.refreshNow()
         XCTAssertTrue(state.connected.isEmpty)
+    }
+    func testRejectedRenewalShowsExpiredUntilReconnected() async {
+        // host が invalid_grant を受け、この接続の指紋を記録した（Google の「テスト中」のアプリは 7 日で失効する）
+        let store = Storage(); let state = make(store); await complete(state)
+        let saved = try! JSONDecoder().decode(ConnectorState.Credential.self, from: Data(store.values[mail.id]!.utf8))
+        // host（connector-steps.ts の credentialFingerprint）と同じ値になる
+        XCTAssertEqual(saved.fingerprint, "fbfc47f7125f9d940886909d2719b9a4")
+        store.rejected[mail.id] = saved.fingerprint
+        state.configureBackend(base: "fixture", token: "fixture")
+        await state.refreshNow()
+        XCTAssertEqual(state.status[mail.id], .expired)
+        XCTAssertEqual(state.status[calendar.id], .connected)
+        XCTAssertEqual(state.connected, ["Google Calendar"])
+        // つなぎ直すと指紋が変わり、古い記録は当てはまらない
+        store.refresh = "reconnected-refresh"
+        await complete(state)
+        await state.refreshNow()
+        XCTAssertEqual(state.status[mail.id], .connected)
+    }
+    func testUnreadableItemShowsExpiredAndReconnectReplacesIt() async {
+        // host の書き戻しで、アプリが自分の項目を読めなくなった（2026-10-16〜19）
+        let store = Storage(); let state = make(store); await complete(state)
+        store.locked.insert(mail.id)
+        state.configureBackend(base: "fixture", token: "fixture")
+        await state.refreshNow()
+        XCTAssertEqual(state.status[mail.id], .expired)
+        // 「つなぎ直す」: 読めない項目を作り直して保存できる
+        await complete(state)
+        XCTAssertEqual(state.status[mail.id], .connected)
+        XCTAssertEqual(store.replaced, [mail.id])
+        XCTAssertFalse(store.locked.contains(mail.id))
     }
     func testOfflineRefreshShowsFailureInsteadOfFalseConnected() async {
         let store = Storage(); let state = make(store); await complete(state)

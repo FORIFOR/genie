@@ -41,7 +41,7 @@ final class LiveKitWakeDetector: WakeDetector {
 
     func reset() {
         ring = [Int16](repeating: 0, count: Self.windowSamples)
-        filled = 0; sinceEval = 0; decision = WakeDecision(); recentLoud = []
+        filled = 0; sinceEval = 0; decision = WakeDecision(); recentLoud = []; recentCalls = []
     }
 
     func process(_ frame: [Float]) -> Bool {
@@ -63,17 +63,95 @@ final class LiveKitWakeDetector: WakeDetector {
         guard filled >= Self.windowSamples, sinceEval >= Self.stride, Date() >= quietUntil else { return false }
         sinceEval = 0
         guard (recentLoud.map(\.rms).max() ?? 0) >= Self.speechLevel else { decision.quiet(); return false }
-        guard let score = try? model.predict(ring)[Self.modelName] else { return false }
+        guard let out = try? model.predictDetailed(ring), let score = out.scores[Self.modelName] else { return false }
         notePeak(score)
         onScore?(heardSeconds, score)
+        // 覚えた呼びかけと比べる窓（高い点の出た直近の窓）。言い終わりの位置で embedding が揺れるので 1 つに絞らない。
+        if score >= WakeDecision.repeatFloor, out.embeddings.count == WakeVoicePrint.dimension {
+            recentCalls.append((heardSeconds, out.embeddings))
+        }
+        recentCalls.removeAll { heardSeconds - $0.at > Self.compareSeconds }
         let verdict = decision.next(score: score, threshold: threshold, hits: hits,
                                     at: Date(timeIntervalSinceReferenceDate: heardSeconds))
         guard verdict != .none else { return false }
+        var label = String(format: "model score %.2f%@", score, verdict == .repeated ? " (called again)" : "")
+        // 声を覚えていれば、本人の声でなければ起きない（周りの会話・テレビで起きていた）。
+        // 話者の特徴（SpeakerPrint）があればそれで、無ければ前の「言い方の形」（WakeVoicePrint）で比べる。
+        if let speaker = speakerPrint, let encoder = speakerEncoder {
+            recentCalls = []
+            let window = ring.map { Float($0) / Float(Int16.max) }
+            guard let embedding = encoder.embedding(of: window) else {
+                GenieLog.write("wake", label + " — held back: too little voice to tell who called"); return false
+            }
+            let similarity = speaker.similarity(embedding)
+            lastSpeakerSimilarity = similarity
+            if similarity >= SpeakerPrint.threshold {
+                label += String(format: " — the enrolled voice (%.2f)", similarity)
+            } else if similarity >= SpeakerPrint.unsure, let voiced = SpeakerEncoder.voiced(window) {
+                // 迷う点: 起きて、続けて話した声も合わせて確かめ直す（WakeController）。「ジーニー」は 1 秒に満たず、
+                // 本人でも 0.42 に届かないことがあった（本人の 2 回の呼びかけどうしで 0.42、2026-10-20）
+                label += String(format: " — unsure (%.2f), confirming with what follows", similarity)
+                pendingConfirmation = voiced
+            } else {
+                GenieLog.write("wake", label + String(format: " — held back: another voice (%.2f, needs %.2f)",
+                                                      similarity, SpeakerPrint.threshold))
+                return false
+            }
+            GenieLog.write("wake", label)
+        } else if let print = voicePrint {
+            let similarity = recentCalls.map { print.similarity($0.embedding) }.max() ?? 0
+            recentCalls = []
+            guard similarity >= print.threshold else {
+                GenieLog.write("wake", label + String(format: " — held back: unlike the enrolled calls (%.2f, needs %.2f)",
+                                                      similarity, print.threshold))
+                return false
+            }
+            label += String(format: " — like the enrolled calls (%.2f)", similarity)
+            GenieLog.write("wake", label)
+        } else {
+            GenieLog.write("wake", label)
+        }
         quietUntil = Date().addingTimeInterval(Self.cooldown)
         lastFiredWindow = ring
-        GenieLog.write("wake", String(format: "model score %.2f%@", score, verdict == .repeated ? " (called again)" : ""))
+        lastWake = label
         return true
     }
+
+    /// 検査（--selftest wakemodel）: 直近に起きたときの判定（どの道で起きたか）。
+    private(set) var lastWake: String?
+
+    /// 起きると決めた時点から、これだけ前までの高い点の窓を比べる。
+    static let compareSeconds: TimeInterval = 1.0
+    private var recentCalls: [(at: TimeInterval, embedding: [Float])] = []
+
+    /// 声を覚えたときの呼びかけ（無ければ分類器だけで決める）。覚え直したら差し替える。
+    private let printLock = NSLock()
+    private var storedPrint: WakeVoicePrint? = WakeVoicePrint.load()
+    var voicePrint: WakeVoicePrint? {
+        get { printLock.lock(); defer { printLock.unlock() }; return storedPrint }
+        set { printLock.lock(); storedPrint = newValue; printLock.unlock() }
+    }
+
+    /// 本人の声（無ければ使わない）。覚え直したら差し替える。
+    private var storedSpeaker: SpeakerPrint? = SpeakerPrint.load()
+    var speakerPrint: SpeakerPrint? {
+        get { printLock.lock(); defer { printLock.unlock() }; return storedSpeaker }
+        set { printLock.lock(); storedSpeaker = newValue; printLock.unlock() }
+    }
+    /// 話者の特徴を出すモデル（同梱が無ければ nil。そのときは前の比べ方だけ）。
+    var speakerEncoder: SpeakerEncoder? = SpeakerEncoder.modelURL().flatMap { try? SpeakerEncoder(modelURL: $0) }
+    /// 迷う点で起きたときの呼びかけの声（続けて話した声と合わせて確かめ直す）。受け取ったら消える。
+    private var pendingValue: [Float]?
+    var pendingConfirmation: [Float]? {
+        get { printLock.lock(); defer { printLock.unlock() }; return pendingValue }
+        set { printLock.lock(); pendingValue = newValue; printLock.unlock() }
+    }
+    func takePendingConfirmation() -> [Float]? {
+        printLock.lock(); defer { printLock.unlock() }
+        let value = pendingValue; pendingValue = nil; return value
+    }
+    /// 検査（--selftest wakemodel）: 直近に本人かを比べたときの似かた。
+    private(set) var lastSpeakerSimilarity: Float?
 
     private var decision = WakeDecision()
     /// 検査（--selftest wakemodel）: 評価のたびに、音の時刻と点を渡す。

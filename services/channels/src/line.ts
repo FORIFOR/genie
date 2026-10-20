@@ -3,10 +3,16 @@
  *
  * 1 回の配信に複数のイベントが入る。受けるのは **1:1 の text メッセージだけ**（Phase 2）。
  * グループ・複数人トーク・スタンプ・画像・待機（standby）中の配信は入口にしない。
+ * 友だち追加（follow）は、連携のしかたを返すために受ける。
  */
 import { createHmac } from 'node:crypto';
 import { constantTimeEqual } from './slack.js';
-import type { IgnoredReason, InboundChannelAction, InboundChannelMessage } from './message.js';
+import type {
+  IgnoredReason,
+  InboundChannelAction,
+  InboundChannelFollow,
+  InboundChannelMessage,
+} from './message.js';
 
 export interface LineSignatureInput {
   readonly channelSecret: string;
@@ -28,6 +34,8 @@ export interface LineInbound {
   readonly messages: readonly InboundChannelMessage[];
   /** ボタン（postback）。値は Genie が署名して載せたもの。押した人の照合は別に行う。 */
   readonly actions: readonly InboundChannelAction[];
+  /** 友だち追加（1:1）。 */
+  readonly follows: readonly InboundChannelFollow[];
   /** 受けなかったイベントと理由。黙って捨てない。 */
   readonly ignored: readonly { readonly eventId: string | null; readonly reason: IgnoredReason }[];
 }
@@ -39,23 +47,35 @@ export interface LineInbound {
  */
 export function normalizeLineWebhook(payload: unknown): LineInbound {
   if (!isObject(payload) || !Array.isArray(payload['events'])) {
-    return { messages: [], actions: [], ignored: [{ eventId: null, reason: 'malformed' }] };
+    return {
+      messages: [],
+      actions: [],
+      follows: [],
+      ignored: [{ eventId: null, reason: 'malformed' }],
+    };
   }
   const destination = payload['destination'];
   if (typeof destination !== 'string') {
-    return { messages: [], actions: [], ignored: [{ eventId: null, reason: 'malformed' }] };
+    return {
+      messages: [],
+      actions: [],
+      follows: [],
+      ignored: [{ eventId: null, reason: 'malformed' }],
+    };
   }
 
   const messages: InboundChannelMessage[] = [];
   const actions: InboundChannelAction[] = [];
+  const follows: InboundChannelFollow[] = [];
   const ignored: { eventId: string | null; reason: IgnoredReason }[] = [];
   for (const event of payload['events'] as unknown[]) {
     const result = normalizeEvent(destination, event);
     if ('message' in result) messages.push(result.message);
     else if ('action' in result) actions.push(result.action);
+    else if ('follow' in result) follows.push(result.follow);
     else ignored.push(result);
   }
-  return { messages, actions, ignored };
+  return { messages, actions, follows, ignored };
 }
 
 function normalizeEvent(
@@ -64,6 +84,7 @@ function normalizeEvent(
 ):
   | { message: InboundChannelMessage }
   | { action: InboundChannelAction }
+  | { follow: InboundChannelFollow }
   | { eventId: string | null; reason: IgnoredReason } {
   if (!isObject(event)) return { eventId: null, reason: 'malformed' };
   const eventId = typeof event['webhookEventId'] === 'string' ? event['webhookEventId'] : null;
@@ -71,6 +92,7 @@ function normalizeEvent(
   // 別のチャネル（モジュール）が応答を持っている間は、こちらは答えない
   if (event['mode'] === 'standby') return { eventId, reason: 'standby_mode' };
   if (event['type'] === 'postback') return postbackOf(destination, eventId, event);
+  if (event['type'] === 'follow') return followOf(destination, eventId, event);
   if (event['type'] !== 'message') return { eventId, reason: 'unsupported_event' };
 
   const source = event['source'];
@@ -128,6 +150,31 @@ function postbackOf(
       subject: userId,
       destination: userId,
       value: data,
+      replyToken: typeof replyToken === 'string' ? replyToken : null,
+    },
+  };
+}
+
+/** 友だち追加。ブロック解除（`follow.isUnblocked`）でも、連携していなければ同じ案内でよい。 */
+function followOf(
+  destination: string,
+  eventId: string,
+  event: Record<string, unknown>,
+): { follow: InboundChannelFollow } | { eventId: string; reason: IgnoredReason } {
+  const source = event['source'];
+  if (!isObject(source) || source['type'] !== 'user')
+    return { eventId, reason: 'not_direct_message' };
+  const userId = source['userId'];
+  if (typeof userId !== 'string') return { eventId, reason: 'malformed' };
+  const replyToken = event['replyToken'];
+  return {
+    follow: {
+      provider: 'line',
+      eventId,
+      workspaceId: destination,
+      subject: userId,
+      destination: userId,
+      threadKey: userId,
       replyToken: typeof replyToken === 'string' ? replyToken : null,
     },
   };

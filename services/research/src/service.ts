@@ -21,7 +21,7 @@ import {
   score,
   type ScoredCandidate,
 } from './quality.js';
-import type { Finding, LanguageModel, SearchProvider } from './providers.js';
+import type { Finding, LanguageModel, SearchHit, SearchProvider } from './providers.js';
 import { ResearchLedgerService } from './ledger.js';
 
 export { asksForJudgment };
@@ -168,10 +168,18 @@ export class ResearchService {
     now: Date,
   ): Promise<ScoredCandidate[]> {
     // 下位クエリは互いに独立なので並列でよい（正本 §8.1 parallel search）
-    const results = await Promise.all(
+    // 1 本が切れても、ほかの検索で答える。全部が切れたときだけ止める
+    // （「最新の MacBook Air の価格」で 4 本のうち 1 本が時間切れになり、調査ごと失敗した。2026-10-19）。
+    const settled = await Promise.allSettled(
       queries.map((query) => this.#search.search(query, this.#hitsPerQuery)),
     );
-    const hits = results.flat();
+    const found = settled.filter(
+      (r): r is PromiseFulfilledResult<SearchHit[]> => r.status === 'fulfilled',
+    );
+    if (found.length === 0) {
+      throw (settled[0] as PromiseRejectedResult | undefined)?.reason ?? new Error('no search');
+    }
+    const hits = found.flatMap((r) => r.value);
     const extracted: ScoredCandidate[][] = Array.from({ length: hits.length }, () => []);
     // 取り出しも互いに独立。1 件ずつ待っていた間、12 件で 1 分以上かかっていた。
     let next = 0;

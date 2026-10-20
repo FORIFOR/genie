@@ -59,6 +59,46 @@ describe('LineSender', () => {
     expect(fetchImpl.mock.calls[1]![1]!.headers).toMatchObject({ 'X-Line-Retry-Key': 'k-1' });
   });
 
+  it('does not push a second copy when a reply may have been accepted', async () => {
+    for (const failure of [
+      () => Promise.resolve(new Response('{}', { status: 500 })),
+      () => Promise.reject(new TypeError('socket hang up')),
+    ]) {
+      const fetchImpl = vi.fn(failure);
+      const sender = new LineSender('token', fetchImpl as unknown as typeof fetch);
+      await expect(
+        sender.send(
+          { destination: 'U', threadKey: 'U' },
+          { text: 'x' },
+          { replyToken: 'rt', retryKey: 'k' },
+        ),
+      ).rejects.toMatchObject(new ChannelSendError('line_reply_uncertain', false));
+      expect(fetchImpl).toHaveBeenCalledTimes(1);
+    }
+  });
+
+  it('retries a reply that was refused for the rate limit', async () => {
+    const fetchImpl = vi.fn(async () => new Response('{}', { status: 429 }));
+    const sender = new LineSender('token', fetchImpl as unknown as typeof fetch);
+    await expect(
+      sender.send(
+        { destination: 'U', threadKey: 'U' },
+        { text: 'x' },
+        { replyToken: 'rt', retryKey: 'k' },
+      ),
+    ).rejects.toMatchObject(new ChannelSendError('line_http_429', true));
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows the loading animation in the 1:1 chat', async () => {
+    const fetchImpl = vi.fn(async (_url: string, _init?: RequestInit) => ok());
+    const sender = new LineSender('token', fetchImpl as unknown as typeof fetch);
+    await sender.typing({ destination: 'Uline', threadKey: 'Uline' });
+    const [url, init] = fetchImpl.mock.calls[0]!;
+    expect(url).toBe('https://api.line.me/v2/bot/chat/loading/start');
+    expect(JSON.parse(String(init!.body))).toEqual({ chatId: 'Uline', loadingSeconds: 20 });
+  });
+
   it('treats a repeated retry key as already sent', async () => {
     const fetchImpl = vi.fn(async () => new Response('{}', { status: 409 }));
     const sender = new LineSender('token', fetchImpl as unknown as typeof fetch);

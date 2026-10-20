@@ -19,7 +19,8 @@ extension SelfTest {
         say.executableURL = URL(fileURLWithPath: "/usr/bin/say")
         say.arguments = ["-v", "Kyoko", "マイクの確認をしています。録音に声が入るかを見ています。もう少しで終わります。"]
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { try? say.run() }
-        guard let url = await WakeEnrollment.shared.record(count: 3) else {
+        // 「ジーニー」ではない文なので覚えさせない（本人の覚えた呼びかけを上書きしない）。
+        guard let url = await WakeEnrollment.shared.record(count: 3, learn: false)?.url else {
             print("SELFTEST_FAIL enrollrecord: nothing saved (no voice in the recording)"); exit(1)
         }
         let size = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int) ?? 0

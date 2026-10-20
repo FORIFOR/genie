@@ -180,15 +180,20 @@ export function modelConfiguration(config, options = {}) {
     EXTERNAL_PROVIDERS[provider]?.defaultModel ??
     null;
   if (model) validateModel(model);
-  if (options.allowExternalScreen === true && (!options.computerUse || provider !== 'codex'))
-    throw new Error('--allow-external-screen は --computer-use と Codex 接続でのみ指定できます。');
+  if (
+    options.allowExternalScreen === true &&
+    (!options.computerUse || !SCREEN_PROVIDERS.includes(provider))
+  )
+    throw new Error(
+      '--allow-external-screen は --computer-use と、Codex 接続または Claude Code 接続でのみ指定できます。',
+    );
   // A conversation opt-in never authorizes automatic screenshot capture/egress.
   // Persist only an explicit screen choice for this exact provider and model.
   const externalScreenAuthorization =
     options.allowExternalScreen === true
       ? { provider, model }
       : options.allowExternalScreen !== false &&
-          provider === 'codex' &&
+          SCREEN_PROVIDERS.includes(provider) &&
           config.externalScreenAuthorization?.provider === provider &&
           config.externalScreenAuthorization?.model === model
         ? { provider, model }
@@ -248,13 +253,23 @@ export function computerVisionConfiguration(config, options = {}) {
   return { modelProvider: 'local', model, modelURL };
 }
 
+/**
+ * 画面の画像を外へ送ってよい接続。どちらもサインイン済みの CLI で、Genie は資格情報を読まない。
+ * Claude Code には道具を 1 つも渡さず、画像を本文で渡す（agent-host の `askWithImages`）。
+ */
+export const SCREEN_PROVIDERS = ['codex', 'claude_code'];
+export const SCREEN_TASK_CALLS = 30;
+export const SCREEN_MONTH_CALLS = 3000;
+
 export function externalScreenAllowed(config, computerUse = false) {
+  const provider = config?.modelProvider;
   return (
     computerUse === true &&
-    config?.modelProvider === 'codex' &&
+    SCREEN_PROVIDERS.includes(provider) &&
     config.allowCloud === true &&
-    config.externalScreenAuthorization?.provider === 'codex' &&
-    config.externalScreenAuthorization?.model === (config.model ?? DEFAULT_CODEX_MODEL)
+    config.externalScreenAuthorization?.provider === provider &&
+    config.externalScreenAuthorization?.model ===
+      (config.model ?? EXTERNAL_PROVIDERS[provider].defaultModel)
   );
 }
 
@@ -561,9 +576,9 @@ export function validateConfig(config) {
     (typeof screen !== 'object' ||
       Array.isArray(screen) ||
       Object.keys(screen).sort().join(',') !== 'model,provider' ||
-      provider !== 'codex' ||
+      !SCREEN_PROVIDERS.includes(provider) ||
       screen.provider !== provider ||
-      screen.model !== (config.model ?? DEFAULT_CODEX_MODEL))
+      screen.model !== (config.model ?? EXTERNAL_PROVIDERS[provider].defaultModel))
   )
     throw new Error('保存された画面画像の送信許可が選択中の提供元・モデルと一致しません。');
   if (config.dockerContext !== undefined) validateDockerContextName(config.dockerContext);
@@ -684,6 +699,14 @@ export function serviceEnvironment(config, stateDir, repo, source = process.env,
     ASTRA_COMPUTER_VISION_EXTERNAL: externalScreenAllowed(vision, options.computerUse)
       ? 'on'
       : 'off',
+    // 画面の画像を外へ送るときの歯止め。区切り 1 つ（host は区切りごとに数え直す）で 30 回、月 3000 回まで。
+    // 仕事 1 つでは区切り 4 つまでなので、多くて 120 回。
+    ...(externalScreenAllowed(vision, options.computerUse)
+      ? {
+          ASTRA_CLOUD_VISION_TASK_CALLS: String(SCREEN_TASK_CALLS),
+          ASTRA_CLOUD_VISION_MONTH_CALLS: String(SCREEN_MONTH_CALLS),
+        }
+      : {}),
     // つないだ Gmail・カレンダーを Work へ同期する（本人が --work-sync で起動したときだけ。周りの環境変数では入らない）。
     ASTRA_WORK_SYNC: options.workSync === true ? 'on' : 'off',
     // 明示した読取でも期限更新が必要。起動側が確かめた Native の OAuth 設定を渡す。

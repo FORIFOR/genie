@@ -221,6 +221,8 @@ export interface TaskStep {
   /** ユーザーに見せる自然文。tool 名を出さない（正本 §7.2 / §9.3）。 */
   readonly message: string;
   readonly args: Record<string, unknown>;
+  /** 同じ段を端末へ何度か頼むときの区別（画面操作の区切り）。無ければ 1 回だけの段。 */
+  readonly requestKey?: string;
   /**
    * manifest の `requires_confirmation`。
    * **低リスクでも作者が確認を要求できる**（正本 §9.2）。
@@ -661,6 +663,14 @@ function planPhoneUnresolved(input: Record<string, unknown>): TaskPlan {
  */
 const COMPUTER_RUN_MAX_ACTIONS = 12;
 const COMPUTER_RUN_MINUTES = 5;
+/**
+ * 1 回の承認で続けて走らせてよい区切りの数（目的ごとに 1 回の承認、利用者 2026-10-19）。
+ * 区切りは上の上限で止まり、**進んでいて、届いたか分からない入力が無いときだけ**次へ進む。
+ * 対象の窓の許可（helper、20 分）を 4 区切りで使い切る長さにしてある。
+ */
+export const COMPUTER_RUN_SEGMENTS = 4;
+/** 区切りが上限で終わったことを workflow へ伝える失敗の種類。 */
+export const COMPUTER_RUN_SEGMENT_ENDED = 'ComputerRunSegmentEnded';
 
 /**
  * 画面を見ながらの操作（1 つの窓・上限付き）。
@@ -1226,7 +1236,7 @@ function computerRunApproval(step: TaskStep): ApprovalCard {
       '公式サイトで会員登録フォームを開きます。登録するメールアドレスとパスワードの保存・入力は、このMacの確認画面で確かめます。';
     criteria = '入力準備で止まります。利用規約への同意、登録の送信、本人確認はまだ行いません。';
   }
-  const limits = `最大${COMPUTER_RUN_MAX_ACTIONS}操作・${COMPUTER_RUN_MINUTES}分`;
+  const limits = `最大${COMPUTER_RUN_MAX_ACTIONS * COMPUTER_RUN_SEGMENTS}操作・${COMPUTER_RUN_MINUTES * COMPUTER_RUN_SEGMENTS}分`;
   return {
     summary: `対象の窓1つを、1操作ごとの確認なしで${limits}まで操作します`,
     details: [
@@ -1239,7 +1249,10 @@ function computerRunApproval(step: TaskStep): ApprovalCard {
             ? `Genieが公式サイトの窓を自動で特定し、その窓だけを操作します。対象: ${origins.join('、')}`
             : '対象の窓1つだけ（開始時に選ぶ。20分以内の続きの依頼では前に選んだ窓のまま）。ほかの窓へ移りません',
       },
-      { label: '確認', value: `この承認のあとは、1操作ごとには確認しません（${limits}）` },
+      {
+        label: '確認',
+        value: `この承認のあとは、1操作ごとには確認しません（${limits}。${COMPUTER_RUN_MAX_ACTIONS}操作・${COMPUTER_RUN_MINUTES}分ごとに区切り、進んでいれば同じ承認で続けます。支払い・送信・公開・削除の手前では止まります）`,
+      },
       {
         label: '影響',
         value:

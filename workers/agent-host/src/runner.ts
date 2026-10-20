@@ -9,9 +9,15 @@ import type { StepRunner } from './step-loop.js';
 
 export class CompositeRunner implements StepRunner {
   readonly #runners: readonly StepRunner[];
+  /** 1 つ終わるごとに呼ぶ（何を・何秒で・結果の種類。引数や結果の中身は渡さない）。 */
+  readonly #onFinished: ((toolId: string, outcome: StepOutcome, ms: number) => void) | undefined;
 
-  constructor(runners: readonly StepRunner[]) {
+  constructor(
+    runners: readonly StepRunner[],
+    onFinished?: (toolId: string, outcome: StepOutcome, ms: number) => void,
+  ) {
     this.#runners = runners;
+    this.#onFinished = onFinished;
   }
 
   handles(toolId: string): boolean {
@@ -26,6 +32,9 @@ export class CompositeRunner implements StepRunner {
         error: { code: 'host.unsupported_step', message: 'この端末はこの操作に対応していません。' },
       };
     }
-    return runner.run(step, signal);
+    const started = Date.now();
+    const outcome = await runner.run(step, signal);
+    this.#onFinished?.(step.toolId, outcome, Date.now() - started);
+    return outcome;
   }
 }

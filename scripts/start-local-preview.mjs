@@ -41,6 +41,7 @@ import {
   invalidateDesktopConnection,
 } from './local-preview/config.mjs';
 import { OwnedProcesses, waitFor, jsonRequest } from './local-preview/processes.mjs';
+import { RECOVERY_DELAYS_MS, recoverInfrastructure } from './local-preview/recovery.mjs';
 
 const exec = promisify(execFile);
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -62,7 +63,7 @@ DB設定・マイグレーション・3サービスの起動をまとめて行�
                       codex / claude_code はサインイン済みのCLIを使います（資格情報は読みません）
                       gemini_api はKeychainのキーを使います。未登録なら登録コマンドを案内します
   --allow-cloud        外部モデルへの送信を明示許可。専用保存先の選択として保持
-  --allow-external-screen  画面操作の画像送信を別途許可。--computer-use と Codex 接続が必要
+  --allow-external-screen  画面操作の画像送信を別途許可。--computer-use と Codex または Claude Code 接続が必要
   --no-external-screen  保存した画面画像の送信許可を解除（会話の接続設定は保持）
   --model-url <URL>    ローカルHTTPモデル（既定 http://127.0.0.1:11434/v1）
   --app <Genie.app>    開くMacアプリ（既定 /Applications/Genie.app）
@@ -781,25 +782,26 @@ export async function start(options) {
       composeFile,
     ];
     composeEnv = { ...env, GENIE_PREVIEW_DB_PASSWORD: config.adminPassword };
+    const dockerStep = (name, args) =>
+      processes.run(name, 'docker', args, composeEnv, { timeout: 600_000 });
+    const containerLogs = async (service) =>
+      (
+        await exec('docker', [...composeArgs, 'logs', '--no-color', '--tail', '50', service], {
+          env: composeEnv,
+          cwd: stateDir,
+          timeout: 30_000,
+          maxBuffer: 1024 * 1024,
+        })
+      ).stdout;
     stage('database', 'このプレビュー専用の保存場所を準備しています…');
     containersTouched = true;
-    await processes.run(
-      'infrastructure',
-      'docker',
-      [
-        ...composeArgs,
-        'up',
-        '-d',
-        '--wait',
-        '--wait-timeout',
-        '180',
-        'postgres',
-        'redis',
-        'temporal',
-      ],
-      composeEnv,
-      { timeout: 600_000 },
-    );
+    // 前回の停止で redis の保存ファイルが壊れていても、ここで直して起動する（recovery.mjs）
+    await recoverInfrastructure({
+      run: dockerStep,
+      logs: containerLogs,
+      composeArgs,
+      note: (message) => console.log(message),
+    });
     await processes.run(
       'migrations',
       'docker',
@@ -914,6 +916,8 @@ export async function start(options) {
     });
     await runService('host', 'workers/agent-host/dist/main.js', {
       ...simulationHostEnv,
+      // host だけは仕事ごとの 1 行（何を・何秒で・結果の種類）を残す。ほかのサービスは warn のまま
+      ASTRA_LOG_LEVEL: 'info',
       ASTRA_HOST_TOKEN: credentials.access_token,
       ASTRA_HOST_REFRESH_TOKEN: credentials.refresh_token,
     });
@@ -990,6 +994,7 @@ export async function start(options) {
     stage('ready', readyMessage(config, stateDir));
     console.log('GENIE_PREVIEW_READY ' + JSON.stringify(status()));
     let healthFailures = 0;
+    let recoveries = 0;
     while (!abort.signal.aborted) {
       await new Promise((accept) => {
         const done = () => {
@@ -1005,13 +1010,40 @@ export async function start(options) {
         const ready = await jsonRequest(base + '/readyz');
         if (ready.status !== 'ok') throw new Error();
         healthFailures = 0;
+        recoveries = 0;
       } catch {
-        if (++healthFailures >= 3)
-          fail(
-            new Error(
-              '保存サービスとの接続が失われました。Dockerの状態を確認して再実行してください。',
-            ),
+        if (++healthFailures < 3) continue;
+        // 止める前に立て直す。Docker の仮想マシンが戻れば、利用者は何もしなくてよい
+        if (recoveries < RECOVERY_DELAYS_MS.length) {
+          const delay = RECOVERY_DELAYS_MS[recoveries++];
+          console.warn(
+            `保存サービスとの接続が切れました。${Math.round(delay / 1000)}秒後に立て直します…`,
           );
+          await new Promise((accept) => setTimeout(accept, delay));
+          if (abort.signal.aborted) break;
+          try {
+            const done = await recoverInfrastructure({
+              run: dockerStep,
+              logs: containerLogs,
+              composeArgs,
+              note: (message) => console.warn(message),
+            });
+            console.log(
+              done === 'repaired'
+                ? '保存サービスを直して立て直しました。'
+                : '保存サービスを立て直しました。',
+            );
+            healthFailures = 0;
+          } catch {
+            // 次の確認でまだ届かなければ、次の待ち時間で試す
+          }
+          continue;
+        }
+        fail(
+          new Error(
+            '保存サービスとの接続が失われ、立て直せませんでした。Dockerの状態を確認して再実行してください。',
+          ),
+        );
       }
     }
   } catch (error) {

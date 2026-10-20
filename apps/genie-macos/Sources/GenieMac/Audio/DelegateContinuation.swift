@@ -12,6 +12,53 @@ enum DelegateContinuation {
         return req + joiner + more
     }
 
+    /// 呼ばれた後に手元で文字にした音（`tail`）を依頼の後ろに足す。文字にした音は依頼の終わりと重なることがある
+    /// （「チーズバーガーのM」+「Mセットを注文して」）。重なった分は足さない。
+    static func appendTail(_ request: String, tail: String) -> String {
+        let req = request.trimmingCharacters(in: .whitespacesAndNewlines)
+        let more = Array(tail.trimmingCharacters(in: .whitespacesAndNewlines.union(CharacterSet(charactersIn: "、。,."))))
+        guard !more.isEmpty else { return request }
+        let head = normalized(req)
+        guard !head.contains(normalized(String(more))) else { return request }
+        // 依頼の終わりと同じ書き出しを、長い方から探す。
+        var cut = 0
+        for k in stride(from: more.count, through: 1, by: -1) where head.hasSuffix(normalized(String(more.prefix(k)))) && !normalized(String(more.prefix(k))).isEmpty {
+            cut = k; break
+        }
+        // 重ならないが同じ書き出し（手元の認識が言い方を少し違えて全体を拾った）なら、手元の全体を使う。
+        if cut == 0, head.count >= 2, normalized(String(more)).hasPrefix(String(head.prefix(2))),
+           normalized(String(more)).count > head.count {
+            return String(more)
+        }
+        let rest = String(more.dropFirst(cut)).trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !rest.isEmpty else { return request }
+        return req + rest
+    }
+
+    /// 手元で文字にした `local` が、Gemini の聞き取り `heard` より言葉が多ければ、それを返す（切れていた）。
+    /// 2 文字以上多く、聞き取った言葉の書き出しと重なるときだけ（別の音を拾っただけのものは渡さない）。
+    static func longerHearing(_ local: String, than heard: String) -> String? {
+        let a = normalized(local), b = normalized(heard)
+        guard !a.isEmpty, a.count >= b.count + 2 else { return nil }
+        guard b.isEmpty || a.contains(b) || a.hasPrefix(String(b.prefix(2))) else { return nil }
+        return local.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// Gemini が黙ったときに渡す、手元の聞き取り。Gemini と同じ言葉なら nil（黙ったのは Gemini の判断）。
+    /// 黙った後なので、書き出しが違う（聞き違えた）ものも渡す。1 文字だけの音は渡さない。
+    static func differentHearing(_ local: String, than heard: String) -> String? {
+        let a = normalized(local), b = normalized(heard)
+        guard a.count >= 2, a != b, !b.contains(a) else { return nil }
+        return local.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// `earlier` が `request` をすべて含むか（同じ依頼の呼び直し）。短すぎる言葉（「ひとつ」）は同じとみなさない。
+    static func covers(_ earlier: String, _ request: String) -> Bool {
+        let a = normalized(earlier), b = normalized(request)
+        guard b.count >= 4 else { return false }
+        return a.contains(b)
+    }
+
     /// 二つ目の依頼が、先に足した続きと同じ話か（片方がもう片方に含まれる）。
     static func isPart(_ request: String, of continuation: String) -> Bool {
         let a = normalized(request), b = normalized(continuation)

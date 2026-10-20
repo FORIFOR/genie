@@ -13,7 +13,17 @@ extension SelfTest {
         print("connected=\(MainData.shared.connected) inFlight=\(hud.requestInFlight)")
         let ok = hud.ask(text)
         print("ask=\(ok) answer=\(hud.answer) held=\(hud.heldUtterance ?? "-")")
-        try? await Task.sleep(nanoseconds: 3_000_000_000)
+        // ASKPROBE_WAIT 秒まで、答えが落ち着くのを待って最後の答えを出す（既定は 3 秒で受付だけ見る）
+        let wait = Double(ProcessInfo.processInfo.environment["ASKPROBE_WAIT"] ?? "") ?? 3
+        let until = Date().addingTimeInterval(wait)
+        var last = ""
+        var stableSince = Date()
+        while Date() < until {
+            try? await Task.sleep(nanoseconds: 500_000_000)
+            if hud.answer != last { last = hud.answer; stableSince = Date() }
+            if !hud.requestInFlight, hud.followingRequests.isEmpty, !last.isEmpty, Date().timeIntervalSince(stableSince) > 3 { break }
+        }
+        print("final answer=\(hud.answer.replacingOccurrences(of: "\n", with: " ").prefix(400))")
         print("SELFTEST_OK askprobe")
         exit(0)
     }

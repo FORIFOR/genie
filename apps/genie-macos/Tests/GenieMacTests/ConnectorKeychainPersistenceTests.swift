@@ -58,6 +58,28 @@ final class ConnectorKeychainPersistenceTests: XCTestCase {
         XCTAssertEqual(calls, ["update", "access", "add"])
     }
 
+    func testReconnectReplacesOnlyAnItemTheAppCanNoLongerRead() throws {
+        var calls: [String] = []
+        let writer = KeychainStore.ConnectorSecretWriter(update: { _, _ in
+            calls.append("update"); return calls.filter { $0 == "update" }.count == 1 ? errSecAuthFailed : errSecItemNotFound
+        }, add: { _ in calls.append("add"); return errSecSuccess },
+        access: { _ in calls.append("access"); return nil },
+        delete: { query in
+            calls.append("delete")
+            XCTAssertTrue((query[kSecUseAuthenticationContext as String] as? LAContext)?.interactionNotAllowed == true)
+            return errSecSuccess
+        })
+        try writer.replaceLocked(service: "fixture", account: "fixture", value: "new")
+        XCTAssertEqual(calls, ["update", "delete", "update", "access", "add"])
+        // 取り消し・確認待ち・使えないときは、つなぎ直しでも消さない
+        for status in [errSecUserCanceled, errSecInteractionNotAllowed, errSecNotAvailable] {
+            let keep = KeychainStore.ConnectorSecretWriter(update: { _, _ in status },
+                add: { _ in XCTFail("must not add"); return errSecInternalError },
+                access: { _ in nil }, delete: { _ in XCTFail("must not delete"); return errSecInternalError })
+            XCTAssertThrowsError(try keep.replaceLocked(service: "fixture", account: "fixture", value: "new"))
+        }
+    }
+
     func testFailedAddIsReportedWithoutRetryOrReplacement() {
         var calls: [String] = []
         let writer = KeychainStore.ConnectorSecretWriter(update: { _, _ in

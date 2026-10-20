@@ -66,13 +66,14 @@ struct ConnectorsPane: View {
         let busy = connections.activeProvider == provider
         let configured = connections.configuredProviders().contains(provider)
         let needsRecovery = sources(provider).contains { if case .failed = connections.status[$0.statusKey] { return true }; return false }
+        let expired = sources(provider).contains { connections.status[$0.statusKey] == .expired }
         return VStack(alignment: .leading, spacing: 16) {
             HStack(alignment: .top, spacing: 12) {
                 Image(systemName: provider == "google" ? "envelope" : "square.grid.2x2")
                     .font(.system(size: 20)).foregroundStyle(Palette.muted(dark)).frame(width: 32, height: 32)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(title(provider)).font(.system(size: TypeScale.cardTitleSize, weight: .medium))
-                    if let account = connections.accounts[provider], !ready.isEmpty {
+                    if let account = connections.accounts[provider], !ready.isEmpty || expired {
                         Text(account).font(.system(size: TypeScale.microSize)).textSelection(.enabled)
                     }
                 }
@@ -83,7 +84,7 @@ struct ConnectorsPane: View {
                     Label("接続済み", systemImage: "checkmark.circle.fill")
                         .font(.system(size: TypeScale.microSize)).foregroundStyle(Palette.success(dark))
                 } else {
-                    Button(configured ? (ready.isEmpty ? "接続" : "接続を完了") : "接続設定") {
+                    Button(configured ? (expired ? "つなぎ直す" : ready.isEmpty ? "接続" : "接続を完了") : "接続設定") {
                         if configured { preview = provider } else { importConfiguration() }
                     }.disabled(connections.activeProvider != nil)
                         .accessibilityIdentifier("connectProvider-\(provider)")
@@ -91,6 +92,11 @@ struct ConnectorsPane: View {
             }
             Text(provider == "google" ? "会議の準備、必要なメール探し、初期Profileの作成に。" : "メール・会議・未完了タスクをまとめて、次にすることを整理。")
                 .font(.system(size: TypeScale.bodySize)).fixedSize(horizontal: false, vertical: true)
+            if expired && configured {
+                Text("期限切れでメールや予定を読めません。「つなぎ直す」で許可し直してください。")
+                    .font(.system(size: TypeScale.secondarySize)).foregroundStyle(Palette.danger(dark))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             if !configured {
                 Text("このプレビューの接続設定が必要です。「接続設定」から読み込めます。")
                     .font(.system(size: TypeScale.secondarySize)).foregroundStyle(Palette.muted(dark))
@@ -109,7 +115,7 @@ struct ConnectorsPane: View {
             if let notice = connections.notice[provider] {
                 Text(notice).font(.system(size: TypeScale.secondarySize)).foregroundStyle(Palette.muted(dark))
             }
-            if busy || !ready.isEmpty || needsRecovery || connections.disconnectFailures.contains(provider) {
+            if busy || !ready.isEmpty || expired || needsRecovery || connections.disconnectFailures.contains(provider) {
               HStack(spacing: 16) {
                 if busy {
                     if sources(provider).contains(where: { connections.status[$0.statusKey] == .connecting }) {
@@ -187,6 +193,7 @@ struct ConnectorsPane: View {
     private func statusText(_ status: ConnectorState.Status) -> String {
         switch status {
         case .connected: return "接続済み"
+        case .expired: return "期限切れ"
         case .disconnected: return "未接続"
         case .cannotConnect: return "設定が必要"
         case .connecting: return "ブラウザーで許可を待っています"

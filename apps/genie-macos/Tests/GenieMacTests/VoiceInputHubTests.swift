@@ -32,6 +32,43 @@ final class VoiceInputHubTests: XCTestCase {
         XCTAssertTrue(woke)
     }
 
+    func testWhatFollowsTheCallIsCollectedForTheSpeakerCheck() throws {
+        let hub = VoiceInputHub(mic: nil)
+        try hub.startStandby(detector: FakeDetector()) {}
+        hub.inject(frame(1))
+        hub.inject(frame(9))           // 「ジーニー」で検出
+        let got = expectation(description: "collected")
+        var collected: [Float] = []
+        hub.collectAfterWake(seconds: 0.2) { collected = $0; got.fulfill() }
+        hub.inject(frame(2))           // 接続を待つ間
+        try hub.attach { _ in }
+        hub.inject(frame(3))           // つながった後
+        hub.inject(frame(4))           // 足りた後は集めない
+        wait(for: [got], timeout: 1)
+        // 呼びかけの前の音は入らず、後の 0.2 秒だけ
+        XCTAssertEqual(collected.count, 3_200)
+        XCTAssertEqual([collected[0], collected[1_600]], [2, 3])
+    }
+
+    /// 会話で送った音は、時刻つきで手元に残る（Gemini が文字にしなかった続きを文字にし直すため）。会話を外せば消える。
+    func testStreamedAudioIsKeptWithItsTime() throws {
+        let hub = VoiceInputHub(mic: nil)
+        try hub.startStandby(detector: FakeDetector()) {}
+        hub.inject(frame(9))
+        try hub.attach { _ in }
+        hub.inject(frame(1))
+        usleep(5_000)   // 時刻で分けるので、前後の音の時刻を離す
+        let mark = Date()
+        usleep(5_000)
+        hub.inject(frame(2))
+        hub.inject(frame(3))
+        let after = hub.streamed(since: mark)
+        XCTAssertEqual(after.count, 3_200)
+        XCTAssertEqual([after[0], after[1_600]], [2, 3])
+        hub.detach()
+        XCTAssertTrue(hub.streamed(since: .distantPast).isEmpty)
+    }
+
     func testOnlyAShortStretchBeforeTheCallIsKept() throws {
         let hub = VoiceInputHub(mic: nil)
         try hub.startStandby(detector: FakeDetector()) {}

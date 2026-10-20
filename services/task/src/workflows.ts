@@ -15,6 +15,8 @@ import {
   workflowInfo,
 } from '@temporalio/workflow';
 import {
+  COMPUTER_RUN_SEGMENTS,
+  COMPUTER_RUN_SEGMENT_ENDED,
   planTask,
   requiresSingleAttempt,
   isMeteredStep,
@@ -171,6 +173,15 @@ const HOST_WAIT_ROUND_CHECKS = 60;
  */
 const MAX_HOST_WAIT_ROUNDS = 24;
 
+function hasFailureType(error: unknown, type: string): boolean {
+  let current: unknown = error;
+  for (let depth = 0; depth < 8 && current !== null && current !== undefined; depth += 1) {
+    if ((current as { type?: string }).type === type) return true;
+    current = (current as { cause?: unknown }).cause;
+  }
+  return false;
+}
+
 /** 端末が落ちているだけか。**失敗と混ぜない。** */
 function isHostOffline(error: unknown): boolean {
   let current: unknown = error;
@@ -311,7 +322,10 @@ export async function TaskWorkflow(input: TaskWorkflowInput): Promise<TaskResult
       const effective = patched('reuse-meeting-summary-v1')
         ? withMeetingSummary(step, plan.steps, results)
         : step;
-      const result = await runStepWaitingForHost(effective);
+      const result =
+        effective.toolId === 'computer.run' && patched('computer-run-segments-v1')
+          ? await runComputerSegments(effective)
+          : await runStepWaitingForHost(effective);
       transactionTitle = transactionResultTitle(effective, result) ?? transactionTitle;
       results.push(result);
     } catch (error) {
@@ -386,6 +400,34 @@ export async function TaskWorkflow(input: TaskWorkflowInput): Promise<TaskResult
    *   - 待ちには終わりを置く。永久に PAUSED のまま残すと、
    *     結局それは気づかれない失敗になる
    */
+  /**
+   * 画面操作を、1 回の承認のまま区切って続ける（目的ごとに 1 回の承認）。
+   *
+   * 1 区切りは 12 操作・5 分まで。上限で止まり、進んでいて、届いたか分からない入力が無いときだけ
+   * 端末が「続けてよい」と返す（`COMPUTER_RUN_SEGMENT_ENDED`）。それ以外の止まり方
+   * （支払い・送信の手前、サインイン待ちの期限、モデルの失敗）は、これまでどおり失敗として返す。
+   * 区切りごとに別の受け渡し（requestKey）にする。同じ鍵だと、終わった前の区切りが返ってくる。
+   */
+  async function runComputerSegments(step: TaskPlan['steps'][number]): Promise<unknown> {
+    for (let segment = 0; ; segment += 1) {
+      const part =
+        segment === 0
+          ? step
+          : { ...step, requestKey: `segment-${segment}`, args: { ...step.args, segment } };
+      try {
+        return await runStepWaitingForHost(part);
+      } catch (error) {
+        if (
+          !hasFailureType(error, COMPUTER_RUN_SEGMENT_ENDED) ||
+          segment + 1 >= COMPUTER_RUN_SEGMENTS ||
+          cancelRequested !== null ||
+          pendingInstructions.length > 0
+        )
+          throw error;
+      }
+    }
+  }
+
   async function runStepWaitingForHost(step: TaskPlan['steps'][number]): Promise<unknown> {
     for (let round = 0; ; round += 1) {
       if (step.toolId === 'transaction.submit') {

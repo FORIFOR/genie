@@ -681,7 +681,11 @@ final class VoiceHUDState: ObservableObject {
     static let paidFirstSpeechLimit: TimeInterval = 10
     /// この会話で聞き取った言葉（誤検出かどうかの見分けにだけ使う。会話が終われば捨てる）。
     private var heardThisConversation: [String] = []
-    static let paidIdleLimit: TimeInterval = 45
+    /// 45 秒だと、周りの会話や動画の声に Gemini が返事をするたびに数え直し、誰も話しかけていない会話が
+    /// 数分続いていた（2026-10-08〜19 の記録: 誰も話さず終わった 68 回で 37 分、月の上限 120 分に届いた）。
+    /// 同じ記録に当てると 20 秒で約 61 分 → 約 41 分。20 秒より長く黙ってから続けた本人の頼みは無かった
+    /// （そうした 6 回は「終了して」か、周りの声）。聞いている間だけ数える（考え中・読み上げ中は数えない）。
+    static let paidIdleLimit: TimeInterval = 20
 
     /// 声の「止めて」: Dock で動いている仕事をすべて止める（行の「止める」と同じ。backend の取り消しを含む）。
     /// 取り消し（元に戻す）ではない。止める前に済んでいた分はそのまま残る。会話は続ける。
@@ -789,6 +793,7 @@ final class VoiceHUDState: ObservableObject {
             gemini.onTodayBrief = { [weak self] in self?.todayBriefForConversation() ?? "今日のまとめはまだありません。" }
             gemini.onInfo = { [weak self] args in await self?.infoForConversation(args) ?? "いまは取得できません。" }
             gemini.onInputLevel = { [weak self] level in self?.receiveInputLevel(level) }
+            gemini.onReported = { [weak self] in self?.conversation.workReported(now: Date()) }
         }
         startConversation(using: provider)
         WindowCoordinator.shared.focusListeningDock()
@@ -804,7 +809,8 @@ final class VoiceHUDState: ObservableObject {
 
     /// 時計を進める（1 秒ごと。検査では時刻を渡す）。
     func tickConversation(now: Date) {
-        run(conversation.tick(now: now))
+        // 頼んだ仕事の結果を待つ間は、黙っていてもすぐには切らない（結果を会話で伝える）
+        run(conversation.tick(now: now, waitingForWork: !followingRequests.isEmpty))
         conversationRemaining = conversation.remaining(at: now)
     }
 
@@ -1036,6 +1042,31 @@ final class VoiceHUDState: ObservableObject {
         }
     }
 
+    /// 今日のまとめを作り直して出す（文字で「今日の予定は？」と聞かれたとき）。予定を読み直すので、前に作ったものは使わない。
+    private func showTodayBrief() {
+        latestRequestID = nil; answer = ""
+        requestInFlight = true
+        mode = .thinking
+        BriefStore.shared.compose(now: Date()) { [weak self] card in
+            guard let self else { return }
+            self.requestInFlight = false
+            let conversationListening = self.conversation.isActive && self.conversation.phase != .waiting
+            let reply: TaskReply
+            if let card {
+                let text = Self.briefTalk(card, now: Date())
+                self.answer = text
+                reply = TaskReply(text: text, phase: .complete, card: .brief(card))
+                if self.conversation.isActive || (!conversationListening && !self.isListeningSurface) { self.mode = .card(.brief(card)) }
+            } else {
+                let message = "今日のまとめを作れませんでした。" + (BriefStore.shared.lastFailure.map { "（" + GenieLog.clip($0, 60) + "）" } ?? "")
+                self.answer = message
+                reply = TaskReply(text: message, phase: .needsInput)
+                if !conversationListening, !self.isListeningSurface { self.mode = .answer(message) }
+            }
+            self.conversationReply(reply)
+        }
+    }
+
     /// `ask` の結果を会話へ返す（会話中で、答えを待っているときだけ）。
     /// Gemini Live の会話中なら、仕事の結果を会話に戻す（受け付けただけの知らせは戻さない）。戻したら true。
     @discardableResult
@@ -1254,6 +1285,11 @@ final class VoiceHUDState: ObservableObject {
         if visualContext?.isEmpty != false,
            let nearby = NearbyPlaceIntent.detect(text) {
             showNearby(nearby)
+            return true
+        }
+        // 「今日の予定は？」: 声と同じ今日のまとめで答える（予定は Mac と Google カレンダーから読み直す）。
+        if visualContext?.isEmpty != false, TodayBriefIntent.detect(text) {
+            showTodayBrief()
             return true
         }
         guard let base = apiBase, let token = apiToken else {

@@ -49,6 +49,8 @@ struct ConversationLoop: Equatable {
         case user, timeout, sleep, microphoneLost, replaced
         /// 話しかけられないまま `idleLimit` / `firstSpeechLimit` が過ぎた（有料の提供元だけ）。
         case idle
+        /// 迷う点で起きたが、続けて話した声も本人の声ではなかった。
+        case otherVoice
         /// 会話の提供元（Gemini Live など）との接続が切れた・上限に達した。
         case providerLost
     }
@@ -155,15 +157,21 @@ struct ConversationLoop: Equatable {
         return [.stopSpeaking] + listenAgain()
     }
 
-    /// 時計。終わる前に 1 回だけ知らせ、時間が来たら終える。
-    mutating func tick(now: Date) -> [Effect] {
+    /// 頼んだ仕事（delegate_task）の結果を待つ間だけ、黙っている時間の上限をここまで延ばす。結果を会話で伝えるため。
+    /// 20 秒で切ると、公式サイトを開く仕事（55 秒）の結果を伝える前に会話が終わり、サイトは黙って開いた
+    /// （genie.log 2026-10-19 18:32Z）。長い仕事（画面操作は最大 20 分）でずっとつなぎ続けないよう、上限を置く。
+    static let workWaitLimit: TimeInterval = 90
+
+    /// 時計。終わる前に 1 回だけ知らせ、時間が来たら終える。`waitingForWork` は頼んだ仕事がまだ終わっていないこと。
+    mutating func tick(now: Date, waitingForWork: Bool = false) -> [Effect] {
         guard isActive else { return [] }
         let left = remaining(at: now)
         if left <= 0 { return end(.timeout) }
         // 聞いている間だけ数える（考え中・読み上げ中は数えない）。
         if phase == .listening || phase == .preparing {
             if listeningSince == nil { listeningSince = now }
-            let limit = heardAny ? idleLimit : (firstSpeechLimit ?? idleLimit)
+            let base = heardAny ? idleLimit : (firstSpeechLimit ?? idleLimit)
+            let limit = waitingForWork ? base.map { max($0, Self.workWaitLimit) } : base
             if let limit, let since = listeningSince, now.timeIntervalSince(since) >= limit { return end(.idle) }
         } else {
             listeningSince = nil
@@ -173,6 +181,14 @@ struct ConversationLoop: Equatable {
             return [.warnEnding]
         }
         return []
+    }
+
+    /// 頼んだ仕事の結果を会話へ渡した。黙っている時間をそこから数え直す（Gemini が伝え終えるまで閉じない）。
+    /// 仕事を待つ間だけ上限を延ばしていたので、結果が届いた瞬間に普段の 20 秒で数えられ、伝える前に閉じていた
+    /// （liveflow 2026-10-20 00:17:50Z、報告と会話の終わりが同じ時刻）。
+    mutating func workReported(now: Date) {
+        guard isActive, phase == .listening || phase == .preparing else { return }
+        listeningSince = now
     }
 
     /// 本人が延ばす（1 回 5 分、合計 15 分まで）。知らせは次の終わり際にまた出す。

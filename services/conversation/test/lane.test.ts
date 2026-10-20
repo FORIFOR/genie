@@ -55,6 +55,25 @@ describe('routeLane', () => {
     }
   });
 
+  it('takes setting something up in a named web console as screen work, but not asking how', () => {
+    for (const text of [
+      'Google CloudでSpeech-to-Textを有効にして',
+      'Firebaseのプロジェクトを設定して',
+      'GCPのコンソールでAPIを有効化して',
+      'Apple Developerの登録を進めて',
+      'FirebaseでAndroidアプリを追加して',
+    ])
+      expect(routeLane({ text, modality: 'text' }).lane, text).toBe('action');
+    for (const text of [
+      'Speech-to-Textを有効にする方法を教えて',
+      'Firebaseの設定を教えて',
+      'Google Cloudの設定はしないで',
+      'Firebaseってどうやって設定すればいい？',
+      'Firebaseの設定を変えないで',
+    ])
+      expect(routeLane({ text, modality: 'text' }).lane, text).not.toBe('action');
+  });
+
   it('answers how-to and explanation questions instead of operating the screen', () => {
     // 操作の語を含んでも、ほしいのは説明。computer.run に回さない。
     for (const text of [

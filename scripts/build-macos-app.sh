@@ -54,6 +54,9 @@ WAKE_VENDOR="$ROOT/apps/genie-macos/Vendor/LiveKitWakeWord/Resources"
 cp "$WAKE_VENDOR/melspectrogram.onnx" "$WAKE_VENDOR/embedding_model.onnx" "$APP/Contents/Resources/"
 WAKE_MODEL="$ROOT/apps/genie-macos/Resources/wake/genie_ja.onnx"
 [[ -f "$WAKE_MODEL" ]] && cp "$WAKE_MODEL" "$APP/Contents/Resources/genie_ja.onnx"
+# 声で本人を見分けるモデル（tools/speaker、Apache-2.0）。無ければ本人確認は前の比べ方のまま。
+SPEAKER_MODEL="$ROOT/apps/genie-macos/Resources/wake/speaker_ecapa_int8.onnx"
+[[ -f "$SPEAKER_MODEL" ]] && cp "$SPEAKER_MODEL" "$APP/Contents/Resources/speaker_ecapa_int8.onnx"
 # Optional publisher configuration: public native-client parameters only, never user tokens.
 if [[ -n "${ASTRA_CONNECTIONS_CONFIG:-}" ]]; then
   node "$ROOT/scripts/prepare-connection-config.mjs" "$ASTRA_CONNECTIONS_CONFIG" "$APP/Contents/Resources/connections.json"

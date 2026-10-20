@@ -7,7 +7,7 @@ import { MemoryChannelInbox, normalizeLineWebhook, verifyLineSignature } from '.
 
 const secret = 'test-channel-secret';
 
-const textEvent = (over: Record<string, unknown> = {}) => ({
+const textEvent = (over: Record<string, unknown> = {}): Record<string, unknown> => ({
   type: 'message',
   mode: 'active',
   timestamp: 1_790_000_000_000,
@@ -66,12 +66,18 @@ describe('normalizeLineWebhook', () => {
         },
       ],
       actions: [],
+      follows: [],
       ignored: [],
     });
   });
 
   it('accepts the empty verification delivery without taking anything', () => {
-    expect(normalizeLineWebhook(webhook([]))).toEqual({ messages: [], actions: [], ignored: [] });
+    expect(normalizeLineWebhook(webhook([]))).toEqual({
+      messages: [],
+      actions: [],
+      follows: [],
+      ignored: [],
+    });
   });
 
   it('keeps the messages it can take and says why it skipped the others', () => {
@@ -79,7 +85,12 @@ describe('normalizeLineWebhook', () => {
       webhook([
         textEvent({ webhookEventId: 'g', source: { type: 'group', groupId: 'G1', userId: 'U' } }),
         textEvent({ webhookEventId: 's', message: { type: 'sticker', id: '2' } }),
-        textEvent({ webhookEventId: 'f', type: 'follow' }),
+        textEvent({ webhookEventId: 'f', type: 'unfollow' }),
+        textEvent({
+          webhookEventId: 'fg',
+          type: 'follow',
+          source: { type: 'group', groupId: 'G1' },
+        }),
         textEvent({ webhookEventId: 'w', mode: 'standby' }),
         textEvent({ webhookEventId: 'e', message: { type: 'text', id: '3', text: ' ' } }),
         textEvent({ webhookEventId: 'ok' }),
@@ -91,9 +102,33 @@ describe('normalizeLineWebhook', () => {
       { eventId: 'g', reason: 'not_direct_message' },
       { eventId: 's', reason: 'not_text' },
       { eventId: 'f', reason: 'unsupported_event' },
+      { eventId: 'fg', reason: 'not_direct_message' },
       { eventId: 'w', reason: 'standby_mode' },
       { eventId: 'e', reason: 'empty_text' },
       { eventId: null, reason: 'malformed' },
+    ]);
+  });
+
+  it('takes a 1:1 follow so that the new friend can be told how to link', () => {
+    const {
+      follow: _f,
+      message: _m,
+      ...follow
+    } = textEvent({
+      webhookEventId: 'fo',
+      type: 'follow',
+      follow: { isUnblocked: false },
+    });
+    expect(normalizeLineWebhook(webhook([follow])).follows).toEqual([
+      {
+        provider: 'line',
+        eventId: 'fo',
+        workspaceId: 'Ubot001',
+        subject: 'Uline001',
+        destination: 'Uline001',
+        threadKey: 'Uline001',
+        replyToken: 'reply-token-1',
+      },
     ]);
   });
 

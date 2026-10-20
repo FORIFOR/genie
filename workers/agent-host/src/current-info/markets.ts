@@ -251,7 +251,8 @@ const ALIASES: readonly (readonly [RegExp, string])[] = [
   [/ダウ(?!ン)/u, '^DJI'],
   [/S&P|SP500|エスアンドピー/iu, '^GSPC'],
   [/ナスダック|NASDAQ/iu, '^IXIC'],
-  [/ドル円|米ドル|円相場/u, 'JPY=X'],
+  [/ドル円|米ドル|円相場|(?<!ユーロ.{0,4})為替/u, 'JPY=X'],
+  [/ユーロ円/u, 'EURJPY=X'],
 ];
 
 export function symbolsFor(subject: string): string[] {

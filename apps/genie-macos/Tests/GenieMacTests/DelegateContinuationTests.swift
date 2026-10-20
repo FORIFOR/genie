@@ -40,3 +40,97 @@ final class DelegateSubjectTests: XCTestCase {
         XCTAssertEqual(DelegateContinuation.withSubject("注文したい", heardBefore: "昨日の会議の資料をまとめてから来週の予定を確認して"), "注文したい")
     }
 }
+
+final class DelegateTailTests: XCTestCase {
+    /// liveflow 2026-10-19: Gemini は「チーズバーガーのM」で呼び、続きの「セットを注文して」を文字にしなかった。
+    func testTailHeardOnTheMacIsAppended() {
+        XCTAssertEqual(DelegateContinuation.appendTail("チーズバーガーのM", tail: "セットを注文して"), "チーズバーガーのMセットを注文して")
+    }
+
+    func testOverlapWithTheRequestIsNotRepeated() {
+        XCTAssertEqual(DelegateContinuation.appendTail("チーズバーガーのM", tail: "バーガーのMセットを注文して。"), "チーズバーガーのMセットを注文して")
+        XCTAssertEqual(DelegateContinuation.appendTail("チーズバーガーのM", tail: "チーズバーガーのMセットを注文して"), "チーズバーガーのMセットを注文して")
+    }
+
+    /// 手元の認識が全体を拾い、言い方が少し違って重ならないときは、手元の全体を使う（同じ言葉を二度並べない）。
+    func testWholeUtteranceHeardOnTheMacReplacesTheCutRequest() {
+        XCTAssertEqual(DelegateContinuation.appendTail("チーズバーガー", tail: "チーズバーガのMセットを注文して"), "チーズバーガのMセットを注文して")
+    }
+
+    func testTailAlreadyInTheRequestChangesNothing() {
+        XCTAssertEqual(DelegateContinuation.appendTail("チーズバーガーのMセットを注文して", tail: "注文して"), "チーズバーガーのMセットを注文して")
+        XCTAssertEqual(DelegateContinuation.appendTail("近くのカフェを探して", tail: " 。"), "近くのカフェを探して")
+    }
+
+    /// 同じ依頼の呼び直しは二度頼まない。短い答え（「ひとつ」）は同じとみなさない。
+    func testCoversSameRequestButNotShortAnswers() {
+        XCTAssertTrue(DelegateContinuation.covers("チーズバーガーのMセットを注文して", "チーズバーガーのM"))
+        XCTAssertFalse(DelegateContinuation.covers("チーズバーガーのM", "チーズバーガーのMセットを注文して"))
+        XCTAssertFalse(DelegateContinuation.covers("ひとつ", "ひとつ"))
+    }
+
+    func testAcceptedResponseAsksForOneShortAcknowledgement() {
+        let accepted = GeminiLiveProvider.acceptedResponse("accepted")
+        XCTAssertEqual(accepted["status"], "accepted")
+        XCTAssertTrue(accepted["message"]?.contains("もう一度呼ばない") == true)
+        XCTAssertEqual(GeminiLiveProvider.acceptedResponse("not_accepted"), ["status": "not_accepted"])
+    }
+}
+
+final class TodayBriefIntentTests: XCTestCase {
+    func testScheduleQuestionsGoToTheBrief() {
+        for q in ["今日の予定を教えて", "今日の予定は？", "きょうは何か予定ある？", "本日のスケジュール", "今日のまとめ", "まとめを見せて"] {
+            XCTAssertTrue(TodayBriefIntent.detect(q), q)
+        }
+    }
+
+    func testChangingTheScheduleOrOtherQuestionsDoNot() {
+        for q in ["今日の予定に会議を追加して", "今日の予定をキャンセルして", "明日の予定は？", "今日の天気は？", "今日やるべきことは？", "会議のまとめを作って"] {
+            XCTAssertFalse(TodayBriefIntent.detect(q), q)
+        }
+    }
+}
+
+final class ReheardTests: XCTestCase {
+    /// liveflow 2026-10-19: Gemini は「マクドナルド注文して」を「マクドナルド」で切り、何も返さなかった。
+    func testCutOffHearingIsReplacedByTheLongerOne() {
+        XCTAssertEqual(DelegateContinuation.longerHearing("マクドナルド注文して", than: "マクドナルド"), "マクドナルド注文して")
+    }
+
+    /// 黙った後は、聞き違え（「今日どう？」→「共同」）も手元の聞き取りで渡す。同じ言葉なら渡さない。
+    func testAfterSilenceAMisheardRequestIsSentAsHeardOnTheMac() {
+        XCTAssertEqual(DelegateContinuation.differentHearing("今日どう？", than: "共同"), "今日どう？")
+        XCTAssertNil(DelegateContinuation.differentHearing("共同", than: "共同。"))
+        XCTAssertNil(DelegateContinuation.differentHearing("あ", than: ""))
+    }
+
+    func testStageDirectionsCountAsSilence() {
+        for said in ["...", "（返事をせずに待っています）", "<!-- 応答なし（待機） -->", "【待機】", ""] {
+            XCTAssertTrue(GeminiLiveProvider.isSilentReply(said), said)
+        }
+        XCTAssertFalse(GeminiLiveProvider.isSilentReply("はい、どうされましたか？"))
+        XCTAssertFalse(GeminiLiveProvider.isSilentReply("（確認します）承知しました"))
+    }
+
+    func testSameOrUnrelatedHearingIsNotSent() {
+        XCTAssertNil(DelegateContinuation.longerHearing("マクドナルド", than: "マクドナルド。"))
+        XCTAssertNil(DelegateContinuation.longerHearing("きょうはいい天気ですね", than: "マクドナルド"))
+        XCTAssertNil(DelegateContinuation.longerHearing("", than: "マクドナルド"))
+    }
+}
+
+final class UnheardSpeechTests: XCTestCase {
+    /// 声らしい大きさの音だけを数える（静けさや小さな雑音は数えない）。
+    func testVoicedSecondsCountsOnlySpeechLevelAudio() {
+        let quiet = [Float](repeating: 0.001, count: 16_000)
+        let voice = [Float](repeating: 0.05, count: 8_000)
+        XCTAssertEqual(GeminiLiveProvider.voicedSeconds(quiet + voice), 0.5, accuracy: 0.001)
+        XCTAssertEqual(GeminiLiveProvider.voicedSeconds(quiet), 0)
+    }
+
+    /// Genie 自身の声の残り（直前に Genie が言った言葉）は、利用者の言葉として渡さない。
+    func testGeniesOwnWordsAreNotSentBack() {
+        XCTAssertTrue(DelegateContinuation.covers("チーズバーガーのセットの数量を教えていただけますか？", "数量を教えて"))
+        XCTAssertFalse(DelegateContinuation.covers("チーズバーガーのセットの数量を教えていただけますか？", "ひとつ"))
+    }
+}

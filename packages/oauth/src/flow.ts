@@ -131,6 +131,11 @@ export interface TokenSet {
   readonly tokenType: string;
   /** OpenID の ID トークン。scope に openid が無ければ null。サインインはこれだけを使う。 */
   readonly idToken: string | null;
+  /**
+   * 提供者が更新を断った時刻（`invalid_grant`）。つなぎ直すまで更新は通らない。
+   * host が自分の更新分の項目にだけ書く（Mac アプリへは指紋だけを別のファイルで知らせる）。
+   */
+  readonly renewalRejectedAt?: string;
 }
 
 interface TokenResponseBody {
@@ -150,8 +155,10 @@ function parseTokenResponse(
   now: number,
 ): TokenSet {
   if (typeof body.error === 'string') {
-    throw new Error(
-      typeof body.error_description === 'string' ? body.error_description : body.error,
+    // 種類（`invalid_grant` など）は code に残す。呼ぶ側が「つなぎ直し」を見分けられるように。
+    throw Object.assign(
+      new Error(typeof body.error_description === 'string' ? body.error_description : body.error),
+      { code: body.error },
     );
   }
   if (typeof body.access_token !== 'string' || body.access_token.length === 0) {

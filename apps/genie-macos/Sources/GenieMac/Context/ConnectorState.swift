@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import GenieCore
 
@@ -15,7 +16,8 @@ final class ConnectorState: ObservableObject {
         var id: String { statusKey }
         var statusKey: String { readOnly ? pluginId : "\(pluginId)#\(connectorId)" }
     }
-    enum Status: Equatable { case connected, disconnected, cannotConnect, connecting, checking, disconnecting, failed(String) }
+    /// `expired`: 提供者が更新を断った（host が資格情報に印を付けた）。つなぎ直すまで読めない。
+    enum Status: Equatable { case connected, expired, disconnected, cannotConnect, connecting, checking, disconnecting, failed(String) }
     struct Credential: Codable {
         let clientId: String
         let accessToken: String
@@ -26,6 +28,10 @@ final class ConnectorState: ObservableObject {
         var accountLabel: String?
         var usable: Bool {
             !accessToken.isEmpty && (refreshToken?.isEmpty == false || expiresAt.flatMap { ISO8601DateFormatter().date(from: $0) }.map { $0 > Date() } == true)
+        }
+        /// 接続の指紋。host（`credentialFingerprint`）と同じ計算。「更新を断られた」がこの接続のことかを見分ける。
+        var fingerprint: String {
+            String(SHA256.hash(data: Data((refreshToken ?? accessToken).utf8)).map { String(format: "%02x", $0) }.joined().prefix(32))
         }
     }
     struct Record: Decodable {
@@ -45,6 +51,10 @@ final class ConnectorState: ObservableObject {
         var remove: (String, String, Source) async throws -> Void
         var exchange: (String, String, String?, ConnectorFlow.Pending, String) async throws -> Credential
         var account: (String, String) async -> String?
+        /// host が「提供者に更新を断られた」と記録した接続の指紋。無ければ nil。
+        var rejected: (Source) -> String? = { _ in nil }
+        /// 読めなくなった項目を、本人の「つなぎ直す」で作り直す。無ければ通常の保存だけ。
+        var replaceLocked: ((Source, String) throws -> Void)? = nil
     }
     @Published var connected: Set<String> = []
     @Published private(set) var status: [String: Status] = [:]
@@ -153,7 +163,12 @@ final class ConnectorState: ObservableObject {
             do {
                 let rows = try await deps.list(base, token, s)
                 guard attempt == generation, activeProvider == nil, !Task.isCancelled else { return }
-                let local = try deps.read(s).flatMap { try JSONDecoder().decode(Credential.self, from: Data($0.utf8)) }
+                let local: Credential?
+                do { local = try deps.read(s).flatMap { try JSONDecoder().decode(Credential.self, from: Data($0.utf8)) } }
+                catch KeychainStore.KeychainError.accessDenied {
+                    // 項目はあるのにアプリが読めない（host の書き戻しで partition が変わった）。つなぎ直すしかない。
+                    update(s, canConnect(s.name) ? .expired : .cannotConnect); continue
+                }
                 let recorded = rows.first { $0.connectorId == s.connectorId && $0.state == "CONNECTED" }
                 let expected = Self.connectionClientId(provider: s.provider, readOnly: s.readOnly, env: deps.configuration())
                 let valid = recorded.map { r in
@@ -161,7 +176,9 @@ final class ConnectorState: ObservableObject {
                 } ?? false
                 if valid, let local, local.usable, local.clientId == expected, Self.permits(s, granted: local.grantedScopes),
                    Self.scopesSafe(local.grantedScopes, for: sources.filter { $0.provider == s.provider }) {
-                    update(s, .connected); accounts[s.provider] = local.accountLabel ?? recorded?.accountLabel
+                    // 保存はあっても、提供者が更新を断っていれば「接続済み」とは言わない（2026-10-19、7 日で失効した Gmail）。
+                    update(s, deps.rejected(s) == local.fingerprint ? .expired : .connected)
+                    accounts[s.provider] = local.accountLabel ?? recorded?.accountLabel
                 } else { update(s, canConnect(s.name) ? .disconnected : .cannotConnect) }
             } catch {
                 guard attempt == generation, !Task.isCancelled else { return }
@@ -228,9 +245,12 @@ final class ConnectorState: ObservableObject {
             credential.accountLabel = await deps.account(first.provider, credential.accessToken)
             guard attempt == generation, !Task.isCancelled else { return }
             for s in accepted {
-                let previous = try deps.read(s)
+                // 読めない古い項目は、戻す先にもならない。本人がつなぎ直しているので作り直す。
+                var locked = false
+                let previous: String?
+                do { previous = try deps.read(s) } catch KeychainStore.KeychainError.accessDenied { previous = nil; locked = true }
                 let text = String(decoding: try JSONEncoder().encode(credential), as: UTF8.self)
-                try deps.write(s, text)
+                if locked, let replace = deps.replaceLocked { try replace(s, text) } else { try deps.write(s, text) }
                 do { try await deps.register(base, token, s, credential) }
                 catch {
                     if let previous { try? deps.write(s, previous) } else { try? deps.delete(s) }

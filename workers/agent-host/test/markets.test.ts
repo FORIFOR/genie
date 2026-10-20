@@ -291,6 +291,10 @@ describe('quotes asked in conversation or a request', () => {
     expect(symbolsFor('7203の株価')).toEqual(['7203.T']);
     expect(symbolsFor('2026年の日経平均')).toEqual(['^N225']);
     expect(symbolsFor('1000円以下の株価')).toEqual([]);
+    expect(symbolsFor('ドル円はいくら？')).toEqual(['JPY=X']);
+    expect(symbolsFor('今の為替レート教えて')).toEqual(['JPY=X']);
+    expect(symbolsFor('ユーロ円って今どう？')).toEqual(['EURJPY=X']);
+    expect(symbolsFor('ユーロ円の為替')).toEqual(['EURJPY=X']);
     expect(symbolsFor('ダウンロード数')).toEqual([]);
   });
 

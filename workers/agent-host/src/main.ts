@@ -24,6 +24,7 @@ import { httpTransport } from './transport.js';
 import { keychainFor } from './keychain.js';
 import { liveFaultTransport } from './live-fault-transport.js';
 import { ConnectorRuntime } from './connector-steps.js';
+import { recordRenewalRejected } from './connector-status.js';
 import { HostStepLoop } from './step-loop.js';
 import { httpStepTransport } from './step-transport.js';
 import { CodexCli } from './codex.js';
@@ -272,6 +273,14 @@ async function main(): Promise<void> {
   const faultFetch = liveFaultTransport(process.env);
   const runtime = new ConnectorRuntime({
     secrets,
+    // 提供者が更新を断ったら、Mac の Apps に「期限切れ」と出させる（失敗しても読み取りの結果は変えない）。
+    reportRenewalRejected: (pluginId, connectorId, fingerprint) =>
+      recordRenewalRejected(pluginId, connectorId, fingerprint).catch((error: unknown) =>
+        logger.warn(
+          { err: error instanceof Error ? error.message : 'unknown' },
+          'connector status write failed',
+        ),
+      ),
     ...(faultFetch ? { fetch: faultFetch } : {}),
     credentialRefFor: credentialRef,
     /*
@@ -380,40 +389,62 @@ async function main(): Promise<void> {
   const steps = new HostStepLoop({
     transport: httpStepTransport({ baseUrl, token, fetch: apiSession.fetch }),
     // いまの情報（天気・ニュース）は端末で取る。モデルは使わない。
-    runner: new CompositeRunner([
-      runtime,
-      computerVision,
-      transactions,
-      new CheckoutAssistanceRuntime(),
-      // Word / Excel は端末で読み、端末のモデルに案を出させ、別名のコピーに書く。
-      new OfficeEditRuntime({
-        ask: async (args, signal) => {
-          const outcome = await llm.run(
-            { id: `office-${randomUUID()}`, toolId: 'llm.office_edit', args, approval: null },
-            signal,
-          );
-          if (!outcome.ok) throw new Error(outcome.error?.message ?? 'model failed');
-          return outcome.result;
-        },
-      }),
-      // 「〇〇の公式サイトを開いて」: 検索 → 公式の見極め → 既定のブラウザで開く。
-      new BrowserOpenRuntime({
-        ask: async (toolId, args, signal) => {
-          const outcome = await llm.run(
-            { id: `browser-${randomUUID()}`, toolId, args, approval: null },
-            signal,
-          );
-          if (!outcome.ok) throw new Error(outcome.error?.message ?? 'model failed');
-          return outcome.result;
-        },
-      }),
-      // 「端末を120台にしたら提案書も合わせた案を」: 案件の書類をコピーの上でそろえて変え、確かめる。
-      new WorkPreviewRuntime(),
-      // 今日のまとめ（読み取り専用。モデルは使わない）。
-      new BriefRuntime({ connectors: runtime }),
-      new CurrentInfoRunner(),
-      llm,
-    ]),
+    runner: new CompositeRunner(
+      [
+        runtime,
+        computerVision,
+        transactions,
+        new CheckoutAssistanceRuntime(),
+        // Word / Excel は端末で読み、端末のモデルに案を出させ、別名のコピーに書く。
+        new OfficeEditRuntime({
+          ask: async (args, signal) => {
+            const outcome = await llm.run(
+              { id: `office-${randomUUID()}`, toolId: 'llm.office_edit', args, approval: null },
+              signal,
+            );
+            if (!outcome.ok) throw new Error(outcome.error?.message ?? 'model failed');
+            return outcome.result;
+          },
+        }),
+        // 「〇〇の公式サイトを開いて」: 検索 → 公式の見極め → 既定のブラウザで開く。
+        new BrowserOpenRuntime({
+          ask: async (toolId, args, signal) => {
+            const started = Date.now();
+            const outcome = await llm.run(
+              { id: `browser-${randomUUID()}`, toolId, args, approval: null },
+              signal,
+            );
+            // 公式サイトを開くまでの内訳（検索・見極め）。開くまで 55 秒かかった原因を追えなかった（2026-10-19）
+            logger.info(
+              { tool: toolId, ms: Date.now() - started, ok: outcome.ok },
+              'official site lookup step',
+            );
+            if (!outcome.ok) throw new Error(outcome.error?.message ?? 'model failed');
+            return outcome.result;
+          },
+        }),
+        // 「端末を120台にしたら提案書も合わせた案を」: 案件の書類をコピーの上でそろえて変え、確かめる。
+        new WorkPreviewRuntime(),
+        // 今日のまとめ（読み取り専用。モデルは使わない）。
+        new BriefRuntime({
+          connectors: runtime,
+          onCalendarRead: (outcome) => logger.info(outcome, 'brief google calendar'),
+        }),
+        new CurrentInfoRunner(),
+        llm,
+      ],
+      (toolId, outcome, ms) =>
+        // 1 つ終わるごとに 1 行（何を・何秒で・結果の種類）。引数や結果の中身は残さない
+        logger.info(
+          {
+            tool: toolId,
+            ms,
+            ok: outcome.ok,
+            ...(outcome.ok ? {} : { code: outcome.error?.code }),
+          },
+          'host step finished',
+        ),
+    ),
     onError: (error) => logger.warn({ err: error.message }, 'a step could not be handled'),
   });
   void steps.start(id);
@@ -427,6 +458,8 @@ async function main(): Promise<void> {
   const cloud = cloudClient(baseUrl, token, apiSession.fetch);
   const workSync = new WorkSyncLoop({
     connectors: runtime,
+    sweepNoise: true,
+    onSwept: (outcome) => logger.info(outcome, 'work sync closed earlier ads'),
     llm: llm.forBackground(process.env['ASTRA_WORK_SYNC_METERED_LLM'] === 'on'),
     ...(process.env['ASTRA_WORK_SYNC_GOOGLE_QUERY']
       ? { googleQuery: process.env['ASTRA_WORK_SYNC_GOOGLE_QUERY'] }

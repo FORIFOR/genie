@@ -313,6 +313,45 @@ final class SpeechTranscriber {
         pausedEvent = nil
     }
 
+    /// 手元の 16 kHz mono を 1 回で文字にする（オンデバイスのみ）。使えなければ nil。
+    /// 会話で Gemini が文字にしなかった言いかけの続きを拾うため（main を塞がずに待つ）。
+    func recognize(frames: [Float], timeout: TimeInterval = 5) async -> String? {
+        guard Self.authorization == .authorized, let recognizer, recognizer.isAvailable,
+              recognizer.supportsOnDeviceRecognition, !frames.isEmpty,
+              let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(frames.count))
+        else { return nil }
+        buffer.frameLength = AVAudioFrameCount(frames.count)
+        frames.withUnsafeBufferPointer { src in buffer.floatChannelData![0].update(from: src.baseAddress!, count: frames.count) }
+        let request = SFSpeechAudioBufferRecognitionRequest()
+        request.requiresOnDeviceRecognition = true
+        request.shouldReportPartialResults = false
+        request.append(buffer)
+        request.endAudio()
+        return await withCheckedContinuation { (done: CheckedContinuation<String?, Never>) in
+            let lock = NSLock()
+            var finished = false
+            var latest: String?
+            func finish(_ value: String?) {
+                lock.lock(); defer { lock.unlock() }
+                guard !finished else { return }
+                finished = true
+                done.resume(returning: value)
+            }
+            let task = recognizer.recognitionTask(with: request) { result, error in
+                if let result {
+                    lock.lock(); latest = result.bestTranscription.formattedString; lock.unlock()
+                    if result.isFinal { finish(result.bestTranscription.formattedString) }
+                }
+                if error != nil { lock.lock(); let text = latest; lock.unlock(); finish(text) }
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + timeout) {
+                task.cancel()
+                lock.lock(); let text = latest; lock.unlock()
+                finish(text)
+            }
+        }
+    }
+
     /// 音声ファイルを 1 回で認識する（オンデバイス）。会議録音の後処理や検証に使う。
     /// 許可が無い / 使えなければ nil。**オンデバイス資産が無くても nil**（サーバへは出さない）。認識結果の確定文字列を返す。
     ///

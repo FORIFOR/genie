@@ -53,6 +53,18 @@ extension ConnectorState {
                       (response as? HTTPURLResponse)?.statusCode == 200,
                       let value = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
                 return (value["email"] ?? value["mail"] ?? value["userPrincipalName"] ?? value["displayName"]) as? String
+            },
+            rejected: { source in
+                // host（agent-host の connector-status.ts）が書く。値は無く、指紋と時刻だけ。
+                let url = FileManager.default.homeDirectoryForCurrentUser
+                    .appendingPathComponent("Library/Application Support/Genie/connector-status.json")
+                guard let data = try? Data(contentsOf: url),
+                      let all = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                      let entry = all["\(source.pluginId)/\(source.connectorId)"] as? [String: Any] else { return nil }
+                return entry["fingerprint"] as? String
+            },
+            replaceLocked: {
+                try KeychainStore.replaceLockedConnectorSecret(service: KeychainStore.connectorService($0.pluginId, $0.connectorId), account: NSUserName(), value: $1)
             })
     }
 }

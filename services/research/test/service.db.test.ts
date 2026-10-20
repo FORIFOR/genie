@@ -160,4 +160,50 @@ describe.skipIf(!url)('research steps and the model', () => {
     );
     expect(run.status).toBe('COMPLETE');
   });
+
+  /** 検索の 1 本が切れても、ほかの検索の出典で進める。全部が切れたときだけ止める。 */
+  it('keeps the searches that answered when one of them fails', async () => {
+    const insertTask = async (): Promise<string> => {
+      const id = uuidv7();
+      await withTenant(db, tenantId, (tx) =>
+        tx
+          .insertInto('tasks')
+          .values({
+            id,
+            tenant_id: tenantId,
+            created_by: userId,
+            conversation_id: null,
+            kind: 'research',
+            title: 'テスト',
+            status: 'RUNNING',
+            input: JSON.stringify({}),
+            idempotency_key: `k-${id}`,
+            workflow_id: `wf-${id}`,
+          })
+          .execute(),
+      );
+      return id;
+    };
+    const twoQueries: LanguageModel = { ...model, decompose: async () => ['速い検索', '遅い検索'] };
+    const halfDown: SearchProvider = {
+      ...search,
+      async search(query, limit) {
+        if (query === '遅い検索') throw new Error('Claude Code が時間内に返しませんでした。');
+        return search.search(query, limit);
+      },
+    };
+    const partial = await insertTask();
+    const research = new ResearchService({ db, search: halfDown, model: twoQueries });
+    await research.plan(tenantId, partial, '資料 A の公開時期');
+    expect((await research.search(tenantId, partial)).result).toEqual({ sources: 1, claims: 1 });
+
+    const allDown = await insertTask();
+    const down = new ResearchService({
+      db,
+      model: twoQueries,
+      search: { ...search, search: async () => Promise.reject(new Error('timed out')) },
+    });
+    await down.plan(tenantId, allDown, '資料 A の公開時期');
+    await expect(down.search(tenantId, allDown)).rejects.toThrow('timed out');
+  });
 });

@@ -133,6 +133,7 @@ export function registerChannelRoutes(app: App, deps: ChannelRouteDeps): void {
         for (const message of inbound.messages)
           later('line.receive', () => deps.service.receive(message));
         for (const action of inbound.actions) later('line.act', () => deps.service.act(action));
+        for (const follow of inbound.follows) later('line.greet', () => deps.service.greet(follow));
         if (inbound.ignored.length > 0) {
           request.log.info(
             { reasons: inbound.ignored.map((i) => i.reason) },

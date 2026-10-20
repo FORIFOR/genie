@@ -143,10 +143,33 @@ final class WakeController {
                 }
             }
         }
+        if !simulated { confirmSpeakerIfUnsure() }
         wokeAt = Date()
         // 始められなかった（Gemini Live が使えない等）。預かった声は送らずに捨て、待機へ戻る。
         if !hud.conversation.isActive { hub.detach() }
     }
+
+    /// 本人か迷う点で起きたとき: 続けて話した 3 秒も合わせて確かめ直し、ほかの人の声なら黙って会話を閉じる。
+    private func confirmSpeakerIfUnsure() {
+        guard let wake = detector as? LiveKitWakeDetector, let call = wake.takePendingConfirmation(),
+              let print = wake.speakerPrint, let encoder = wake.speakerEncoder else { return }
+        hub.collectAfterWake(seconds: Self.confirmSeconds) { after in
+            let verdict = print.confirm(call: call, after: after, embed: encoder.embed)
+            Task { @MainActor in
+                switch verdict {
+                case .enrolled(let s):
+                    GenieLog.write("wake", String(format: "confirmed the enrolled voice with what followed (%.2f)", s))
+                case .notEnoughVoice:
+                    GenieLog.write("wake", "nothing followed the call — kept the conversation")
+                case .other(let s):
+                    GenieLog.write("wake", String(format: "another voice after all (%.2f, needs %.2f) — closing the conversation",
+                                                  s, SpeakerPrint.threshold))
+                    VoiceHUDState.shared.endConversation(.otherVoice, caller: "speaker check")
+                }
+            }
+        }
+    }
+    static let confirmSeconds = 3.0
 
     /// 端末に置いた呼びかけ専用モデル（`genie_ja.onnx`）。無い・読めなければ待ち受けない。
     static func loadDetector() -> WakeDetector? {

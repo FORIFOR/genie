@@ -12,6 +12,7 @@ export {
   channelIdempotencyKey,
   type IgnoredReason,
   type InboundChannelAction,
+  type InboundChannelFollow,
   type InboundChannelMessage,
 } from './message.js';
 export {
@@ -33,6 +34,7 @@ export {
 export { MemoryChannelInbox, type ChannelInbox } from './inbox.js';
 export {
   ChannelSendError,
+  LINE_LOADING_SECONDS,
   LineSender,
   SlackSender,
   lineMessages,

@@ -194,7 +194,13 @@ export class ComputerVisionRuntime {
         throw new VisionFailure('invalid_goal');
       const kind = await wait(this.config.selectModel(), signal);
       // A CLI with broad Read permissions is not automatically granted screenshot access.
-      if (!kind || !['local', 'openai_api', 'anthropic_api', 'gemini_api', 'codex'].includes(kind))
+      // Claude Code receives the validated bytes inline with no tools (`askWithImages`).
+      if (
+        !kind ||
+        !['local', 'openai_api', 'anthropic_api', 'gemini_api', 'codex', 'claude_code'].includes(
+          kind,
+        )
+      )
         throw new VisionFailure('vision_model_unavailable');
       if (kind !== 'local' && !this.config.allowExternalPixels)
         throw new VisionFailure('egress_consent_required');
@@ -278,6 +284,8 @@ export class ComputerVisionRuntime {
                 registrationAssist,
                 goal,
                 successCriteria: criteria,
+                // 同じ承認の続き（2 区切り目以降）。最初からやり直させない
+                ...(segmentOf(step.args) > 0 ? { segment: segmentOf(step.args) } : {}),
                 vision_model_kind: kind,
                 images: preview
                   ? [{ id: preview.id, kind: 'screenshot', label: 'PROPOSED_TARGET_PREVIEW' }]
@@ -897,7 +905,18 @@ export class ComputerVisionRuntime {
               },
             }
           : {}),
-        result: { completed: false, audit },
+        result: {
+          completed: false,
+          audit,
+          /*
+           * 上限（12 操作・5 分・モデル 30 回）で区切れただけで、進んでいて、届いたか分からない入力が無い。
+           * このときだけ、同じ承認のまま次の区切りを走らせてよい（task の workflow が決める）。
+           */
+          segment: {
+            continuable: SEGMENT_LIMITS.has(code) && delivered > 0 && unknown === 0,
+            inputs: delivered,
+          },
+        },
       };
     } finally {
       clearTimeout(timer);
@@ -907,6 +926,14 @@ export class ComputerVisionRuntime {
       this.#busy = false;
     }
   }
+}
+
+/** 1 回の走行の上限で止まったときの理由。中身の失敗ではない。 */
+const SEGMENT_LIMITS = new Set(['action_limit', 'timeout', 'model_call_limit']);
+
+function segmentOf(args: Record<string, unknown>): number {
+  const value = args['segment'];
+  return Number.isInteger(value) && (value as number) > 0 ? (value as number) : 0;
 }
 
 function failure(code: string): VisionOutcome {

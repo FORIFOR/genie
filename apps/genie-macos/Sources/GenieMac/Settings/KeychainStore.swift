@@ -158,6 +158,24 @@ enum KeychainStore {
         let update: ([String: Any], [String: Any]) -> OSStatus
         let add: ([String: Any]) -> OSStatus
         let access: (String) -> SecAccess?
+        /// `replaceLocked` だけが使う。ふだんの保存は消さない。
+        var delete: ([String: Any]) -> OSStatus = { _ in errSecUnimplemented }
+
+        /// 本人が「つなぎ直す」を押したときだけ。アプリが読めなくなった項目（`errSecAuthFailed`）を作り直す。
+        /// 2026-10-16: host が `security` で書き戻し、項目の partition が `apple-tool:` だけになって、
+        /// アプリは自分の接続を読むことも上書きすることもできなくなった。読めない項目は使い道が無い。
+        /// 取り消し（`errSecUserCanceled`）や確認待ちでは消さない。
+        func replaceLocked(service: String, account: String, value: String) throws {
+            let query = KeychainStore.noninteractiveQuery(service: service, account: account)
+            let updated = update(query, [kSecValueData as String: Data(value.utf8)])
+            if updated == errSecSuccess { return }
+            guard updated == errSecAuthFailed || updated == errSecItemNotFound else { throw KeychainStore.error(updated) }
+            if updated == errSecAuthFailed {
+                let removed = delete(query)
+                guard removed == errSecSuccess || removed == errSecItemNotFound else { throw KeychainStore.error(removed) }
+            }
+            try save(service: service, account: account, value: value)
+        }
 
         func save(service: String, account: String, value: String) throws {
             let query = KeychainStore.noninteractiveQuery(service: service, account: account)
@@ -177,7 +195,15 @@ enum KeychainStore {
     private static let connectorWriter = ConnectorSecretWriter(
         update: { SecItemUpdate($0 as CFDictionary, $1 as CFDictionary) },
         add: { SecItemAdd($0 as CFDictionary, nil) },
-        access: { connectorAccess(label: $0) })
+        access: { connectorAccess(label: $0) },
+        delete: { SecItemDelete($0 as CFDictionary) })
+
+    /// 読めなくなった接続を、本人の「つなぎ直す」で作り直す。`ConnectorSecretWriter.replaceLocked`。
+    static func replaceLockedConnectorSecret(service: String, account: String, value: String) throws {
+        try interaction.perform {
+            try connectorWriter.replaceLocked(service: service, account: account, value: value)
+        }
+    }
 
     /// 読める相手: この Genie アプリと `/usr/bin/security`（Genie のサービスが資格情報を読む経路）。
     static let connectorReaders = ["/usr/bin/security"]

@@ -156,6 +156,11 @@ export function visionPromptFor(tool: string, args: Record<string, unknown>): st
     'Stop or mark blocked at payment, send/publish, delete, shell, or permission-change boundaries.',
     `USER_GOAL: ${JSON.stringify(args['goal'])}`,
     `USER_SUCCESS_CRITERIA: ${JSON.stringify(args['successCriteria'] ?? args['goal'])}`,
+    ...(typeof args['segment'] === 'number'
+      ? [
+          'CONTINUATION: this is a later part of the same approved goal. Earlier parts already changed this window. Continue from what the latest screenshot shows; do not start over or undo earlier progress.',
+        ]
+      : []),
   ];
   if (tool === 'llm.plan_computer_action')
     return [

@@ -45,6 +45,16 @@ const fail = (code: string, message: string): StepOutcome => ({
   error: { code: `browser.${code}`, message },
 });
 
+/** 開かなかった（見つからない・開けない）結果。失敗ではなく結果として ok で返す。 */
+const notOpened = (
+  subject: string,
+  problem: string,
+  extra: Partial<BrowserOpenResult> = {},
+): StepOutcome => ({
+  ok: true,
+  result: { subject, url: null, title: '', opened: false, reason: '', problem, ...extra },
+});
+
 export class BrowserOpenRuntime {
   readonly #deps: BrowserOpenDeps;
   constructor(deps: BrowserOpenDeps) {
@@ -59,18 +69,26 @@ export class BrowserOpenRuntime {
     const parsed = BrowserOpenArgs.safeParse(step.args);
     if (!parsed.success) return fail('invalid_args', '開くサイトの名前を確認できませんでした。');
     const browser: BrowserChoice = parsed.data.browser ?? 'default';
-    const first = await this.#open(parsed.data.subject, browser, signal);
+    const subject = parsed.data.subject;
     // 「オークリーのサングラス」のように商品まで含んだ名前では、公式サイトと確かめられなかった
-    // （genie.log 2026-10-18 16:43Z）。見つからなかったときだけ、「の」の前の名前（オークリー）で探し直す。
-    // 「鬼滅の刃」のような名前は、先に名前全体で探すので変わらない。
-    const brand = brandOf(parsed.data.subject);
-    if (!brand || !notFound(first)) return first;
-    const second = await this.#open(brand, browser, signal);
-    return notFound(second) ? first : second;
+    // （genie.log 2026-10-18 16:43Z）。「の」の前の名前（オークリー）でも**同時に**探し、名前全体で見つかれば
+    // そちらを開く（「鬼滅の刃」は名前全体で見つかるので変わらない）。前は名前全体で見つからなかったときに
+    // 探し直していて、検索と見極めが 2 周になり、開くまで 55 秒かかった（genie.log 2026-10-19 18:32Z）。
+    const brand = brandOf(subject);
+    const [whole, short] = await Promise.all([
+      this.#find(subject, signal),
+      brand ? this.#find(brand, signal) : Promise.resolve(null),
+    ]);
+    if ('chosen' in whole) return this.#show(subject, whole, browser, signal);
+    if (brand && short && 'chosen' in short) return this.#show(brand, short, browser, signal);
+    return whole.outcome;
   }
 
-  async #open(subject: string, browser: BrowserChoice, signal?: AbortSignal): Promise<StepOutcome> {
-
+  /** 探して公式を見極める（開かない）。見つからなければ、そのまま返す結果。 */
+  async #find(
+    subject: string,
+    signal?: AbortSignal,
+  ): Promise<{ chosen: Candidate; reason: string } | { outcome: StepOutcome }> {
     let candidates: Candidate[];
     try {
       candidates = candidatesOf(
@@ -86,16 +104,13 @@ export class BrowserOpenRuntime {
         ),
       );
     } catch (error) {
-      return fail(
-        'search_failed',
-        `「${subject}」を検索できませんでした${reason(error)}。検索できるモデル（Codex または Claude Code）が必要です。`,
-      );
+      return {
+        outcome: fail(
+          'search_failed',
+          `「${subject}」を検索できませんでした${reason(error)}。検索できるモデル（Codex または Claude Code）が必要です。`,
+        ),
+      };
     }
-    // 見つからないのは失敗ではなく結果。理由を秘書の言葉で返せるよう ok で返す。
-    const notOpened = (problem: string, extra: Partial<BrowserOpenResult> = {}): StepOutcome => ({
-      ok: true,
-      result: { subject, url: null, title: '', opened: false, reason: '', problem, ...extra },
-    });
     // 検索結果が無くても、下の「確かめた既知のアドレス」は試す。
     let pick: { index: number; reason: string } = { index: -1, reason: '' };
     if (candidates.length > 0)
@@ -109,41 +124,51 @@ export class BrowserOpenRuntime {
           candidates.length,
         );
       } catch (error) {
-        return fail('pick_failed', `公式サイトを見極められませんでした${reason(error)}。`);
+        return {
+          outcome: fail('pick_failed', `公式サイトを見極められませんでした${reason(error)}。`),
+        };
       }
-    let chosen: Candidate;
-    if (pick.index >= 0) {
-      chosen = candidates[pick.index]!;
-    } else {
-      /*
-       * 検索の索引に公式サイトが無いことがある（実測 2026-10-06: Claude Code の WebSearch は
-       * 「マクドナルド」「マクドナルド 公式サイト」「McDonald's Japan」のどれでも mcdonalds.co.jp を返さない）。
-       * そのときだけ、モデルが知っているアドレスを聞き、**端末がそのページを読んで確かめたら**開く:
-       * https・同じサイトのまま表示され・題名かサイト名に「〇〇」が入っている。確かめられなければ開かない。
-       */
-      const known = await this.#knownOfficial(subject, signal);
-      if (!known)
-        return notOpened(
-          candidates.length === 0
-            ? `「${subject}」の公式サイトを検索で見つけられませんでした。`
-            : `検索結果の中に「${subject}」の公式サイトと確かめられるページがありませんでした。`,
-        );
-      chosen = known;
-      pick = { index: -1, reason: known.snippet };
-    }
+    if (pick.index >= 0) return { chosen: candidates[pick.index]!, reason: pick.reason };
+    /*
+     * 検索の索引に公式サイトが無いことがある（実測 2026-10-06: Claude Code の WebSearch は
+     * 「マクドナルド」「マクドナルド 公式サイト」「McDonald's Japan」のどれでも mcdonalds.co.jp を返さない）。
+     * そのときだけ、モデルが知っているアドレスを聞き、**端末がそのページを読んで確かめたら**開く:
+     * https・同じサイトのまま表示され・題名かサイト名に「〇〇」が入っている。確かめられなければ開かない。
+     */
+    const known = await this.#knownOfficial(subject, signal);
+    if (known) return { chosen: known, reason: known.snippet };
+    // 見つからないのは失敗ではなく結果。理由を秘書の言葉で返せるよう ok で返す。
+    return {
+      outcome: notOpened(
+        subject,
+        candidates.length === 0
+          ? `「${subject}」の公式サイトを検索で見つけられませんでした。`
+          : `検索結果の中に「${subject}」の公式サイトと確かめられるページがありませんでした。`,
+      ),
+    };
+  }
+
+  /** 見極めた公式サイトを開き、前面に出たかを確かめる。 */
+  async #show(
+    subject: string,
+    found: { chosen: Candidate; reason: string },
+    browser: BrowserChoice,
+    signal?: AbortSignal,
+  ): Promise<StepOutcome> {
+    const { chosen } = found;
     const result: BrowserOpenResult = {
       subject,
       url: chosen.url,
       title: chosen.title.slice(0, 300),
       opened: false,
-      reason: pick.reason.slice(0, 400),
+      reason: found.reason.slice(0, 400),
       browser,
     };
     try {
       signal?.throwIfAborted();
       await (this.#deps.open ?? openInBrowser)(chosen.url, browser, signal);
     } catch {
-      return notOpened('公式サイトは見つかりましたが、ブラウザで開けませんでした。', {
+      return notOpened(subject, '公式サイトは見つかりましたが、ブラウザで開けませんでした。', {
         url: chosen.url,
         title: result.title,
         reason: result.reason,
@@ -253,12 +278,6 @@ export function pageTitle(html: string): string {
 export function brandOf(subject: string): string | null {
   const head = subject.split('の')[0]!.trim();
   return head.length >= 2 && head !== subject.trim() ? head : null;
-}
-
-/** 開けなかった・候補も無かった（探し直す意味がある）結果か。 */
-function notFound(outcome: StepOutcome): boolean {
-  const result = (outcome as { ok: boolean; result?: { opened?: unknown; url?: unknown } }).result;
-  return outcome.ok === true && result?.opened === false && result?.url === null;
 }
 
 /** 題名に名前が入っているか（全角半角・大文字小文字・空白を無視）。 */

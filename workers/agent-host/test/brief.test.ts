@@ -172,6 +172,65 @@ describe('morning brief (read-only, rules only)', () => {
     expect(brief.text).not.toContain('予定');
   });
 
+  /** 「今日の予定は？」が Google カレンダーを読まずに「予定はありません」と答えていた（2026-10-19）。 */
+  it('adds today from the connected Google Calendar, once, and only today', async () => {
+    const { get } = fakeGet();
+    const asked: { timeMin: string; timeMax: string }[] = [];
+    const brief = await composeBrief(
+      args({ calendar: { status: 'denied', events: [], fetched_at: NOW.toISOString() } }),
+      {
+        get,
+        region: '東京都',
+        now: () => NOW,
+        cloudCalendar: async (window, offset) => {
+          asked.push(window);
+          expect(offset).toBe('+09:00');
+          return {
+            source: 'Google カレンダー',
+            events: [
+              {
+                title: '歯医者',
+                start: '2026-10-06T16:00:00+09:00',
+                end: '2026-10-06T17:00:00+09:00',
+              },
+              { title: '歯医者', start: '2026-10-06T07:00:00Z', end: '2026-10-06T08:00:00Z' },
+              {
+                title: '休み',
+                start: '2026-10-06T00:00:00+09:00',
+                end: '2026-10-07T00:00:00+09:00',
+                allDay: true,
+              },
+              {
+                title: '明日の会議',
+                start: '2026-10-07T10:00:00+09:00',
+                end: '2026-10-07T11:00:00+09:00',
+              },
+            ],
+          };
+        },
+      },
+    );
+    expect(asked).toHaveLength(1);
+    const calendar = brief.sections.find((s) => s.id === 'calendar');
+    expect(calendar).toMatchObject({ status: 'ok', sources: [{ name: 'Google カレンダー' }] });
+    expect(calendar?.lines.map((l) => l.text)).toEqual(['終日 休み', '16:00–17:00 歯医者']);
+  });
+
+  it('keeps the Mac calendar when Google Calendar cannot be read', async () => {
+    const { get } = fakeGet();
+    const brief = await composeBrief(args(), {
+      get,
+      region: '東京都',
+      now: () => NOW,
+      cloudCalendar: async () => {
+        throw new Error('token_expired');
+      },
+    });
+    const calendar = brief.sections.find((s) => s.id === 'calendar');
+    expect(calendar).toMatchObject({ status: 'ok', sources: [{ name: 'このMacのカレンダー' }] });
+    expect(calendar?.lines).toHaveLength(3);
+  });
+
   it('uses the topics the person chose and drops duplicate headlines', async () => {
     const { get, urls } = fakeGet();
     const brief = await composeBrief(args({ interests: ['半導体', '為替'] }), {
@@ -472,6 +531,28 @@ describe('morning brief (read-only, rules only)', () => {
     expect(brief.sections.find((section) => section.id === 'mail')?.lines).toHaveLength(1);
     expect(brief.sections.find((section) => section.id === 'weather')?.status).toBe('ok');
     expect(brief.talk).toContain('未更新の情報');
+  });
+
+  it('does not count mail candidates as fresh when no mail could be read', async () => {
+    const { get } = fakeGet();
+    const brief = await composeBrief(args(), {
+      get,
+      region: '東京都',
+      now: () => NOW,
+      mail: async () => ({
+        id: 'mail',
+        title: '主要メール',
+        status: 'stale',
+        reason: 'Gmailの接続の期限が切れました。Apps の「つなぎ直す」から許可し直してください。',
+        fetched_at: null,
+        sources: [],
+        lines: [],
+      }),
+    });
+    expect(brief.summary).toContain(
+      '前回同期したメールからTODOの候補が1件あります。いまはメールを読めていません。',
+    );
+    expect(brief.summary.join('')).not.toContain('見つかっています');
   });
 
   it.each(['2026-10-05', '2026-10-07'])(

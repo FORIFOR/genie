@@ -18,6 +18,7 @@ import { lookupNews, sameStory } from '../current-info/news.js';
 import { DEFAULT_WATCHLIST, lookupMarkets } from '../current-info/markets.js';
 import { knownPlace, resolvePlace, type Place } from '../current-info/places.js';
 import { OPEN_METEO, lookupWeather } from '../current-info/weather.js';
+import { offsetOf, type CloudCalendar } from './calendar.js';
 
 export interface BriefDeps {
   readonly get: InfoFetch;
@@ -27,6 +28,18 @@ export interface BriefDeps {
   readonly timeZone?: string;
   /** Fresh metadata from the existing local read-only connection. */
   readonly mail?: () => Promise<BriefSection>;
+  /** つないであるクラウドのカレンダー（Google）。読めなければ null。 */
+  readonly cloudCalendar?: (
+    window: { timeMin: string; timeMax: string },
+    offset: string,
+  ) => Promise<CloudCalendar | null>;
+}
+
+/** 同じ予定（Mac のカレンダーにも Google の予定が入っていることがある）を 1 つにする。 */
+function mergeEvents(local: readonly BriefEvent[], cloud: readonly BriefEvent[]): BriefEvent[] {
+  const key = (e: BriefEvent) => `${e.title.trim()}|${new Date(e.start).getTime()}`;
+  const seen = new Set(local.map(key));
+  return [...local, ...cloud.filter((e) => !seen.has(key(e)) && seen.add(key(e)))];
 }
 
 /** 予定の時間に重なる降水確率がこれ以上なら「雨が重なる」と言う。 */
@@ -166,9 +179,33 @@ export async function composeBrief(args: BriefArgs, deps: BriefDeps): Promise<Br
   // 画面の冒頭の 1〜3 文: 予定 → 対応が要るもの → 雨。
   const summary: { schedule?: string; attention?: string; rain?: string; weather?: string } = {};
 
-  // ---- 予定（Mac の EventKit から） ----
-  const events = [...args.calendar.events].sort((a, b) => a.start.localeCompare(b.start));
-  if (args.calendar.status !== 'granted') {
+  // ---- 予定（Mac の EventKit と、つないである Google カレンダーから） ----
+  const day = args.date;
+  const cloud = deps.cloudCalendar
+    ? await deps
+        .cloudCalendar(
+          {
+            timeMin: new Date(now().getTime() - 86_400_000).toISOString(),
+            timeMax: new Date(now().getTime() + 86_400_000).toISOString(),
+          },
+          offsetOf(now(), timeZone),
+        )
+        .catch(() => null)
+    : null;
+  // 今日（その人の日付）に掛かる予定だけ。終日予定は日付で見る。
+  const today = (cloud?.events ?? []).filter((e) =>
+    e.allDay
+      ? e.start.slice(0, 10) <= day && day < e.end.slice(0, 10)
+      : localHour(new Date(e.start), timeZone).slice(0, 10) <= day &&
+        day <= localHour(new Date(e.end), timeZone).slice(0, 10),
+  );
+  const localEvents = args.calendar.status === 'granted' ? args.calendar.events : [];
+  const events = mergeEvents(localEvents, today).sort((a, b) => a.start.localeCompare(b.start));
+  const calendarSources = [
+    ...(args.calendar.status === 'granted' ? [{ name: 'このMacのカレンダー', url: '' }] : []),
+    ...(cloud ? [{ name: cloud.source, url: '' }] : []),
+  ];
+  if (args.calendar.status !== 'granted' && !cloud) {
     sections.push({
       id: 'calendar',
       title: '予定',
@@ -184,7 +221,7 @@ export async function composeBrief(args: BriefArgs, deps: BriefDeps): Promise<Br
       title: '予定',
       status: 'ok',
       fetched_at: args.calendar.fetched_at,
-      sources: [{ name: 'このMacのカレンダー', url: '' }],
+      sources: calendarSources,
       lines: events.map((e) => ({
         text: `${e.allDay ? '終日' : `${clock(e.start, timeZone)}–${clock(e.end, timeZone)}`} ${e.title}${e.location ? `（${e.location}）` : ''}`,
         ...(e.allDay ? {} : { time: clock(e.start, timeZone) }),
@@ -274,7 +311,7 @@ export async function composeBrief(args: BriefArgs, deps: BriefDeps): Promise<Br
         if (advice?.includes('傘')) summary.rain = advice;
       }
       const upcomingTimed =
-        args.calendar.status === 'granted'
+        calendarSources.length > 0
           ? events.filter((e) => !e.allDay && new Date(e.end).getTime() > now().getTime())
           : [];
       for (const event of upcomingTimed) {
@@ -365,10 +402,16 @@ export async function composeBrief(args: BriefArgs, deps: BriefDeps): Promise<Br
     // 名指すのは本人が TODO と確かめたものだけ。
     const confirmed = items.filter((i) => i.confirmed);
     const candidates = items.length - confirmed.length;
+    // 候補は前回の Work 同期から来る。いまメールを 1 件も読めていないなら、そう言う
+    // （「メールから30件」と「メールを取得できませんでした」が並んでいた、2026-10-19）。
+    const mailUnread = mail.status === 'stale' && !mail.fetched_at;
+    const from = mailUnread ? '前回同期したメール' : 'メール';
     summary.attention = confirmed.length
-      ? `TODOが${confirmed.length}件、まず「${confirmed[0]!.title.slice(0, 40)}」から。${candidates ? `メールからの候補も${candidates}件あります。` : ''}`
+      ? `TODOが${confirmed.length}件、まず「${confirmed[0]!.title.slice(0, 40)}」から。${candidates ? `${from}からの候補も${candidates}件あります。` : ''}`
       : candidates
-        ? `メールからTODOの候補が${candidates}件見つかっています。下で確かめられます。`
+        ? mailUnread
+          ? `${from}からTODOの候補が${candidates}件あります。いまはメールを読めていません。`
+          : `メールからTODOの候補が${candidates}件見つかっています。下で確かめられます。`
         : '急いで対応が要るものは見つかっていません。';
     if (items.length > 0) {
       highlights.push(`対応が要るもの ${items.length}件`);

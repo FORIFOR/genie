@@ -58,7 +58,7 @@ let package = Package(
         .target(name: "GenieApproval", dependencies: ["GenieCore"], path: "Sources/GenieApproval"),
         .executableTarget(
             name: "GenieMac",
-            dependencies: ["GenieCore", "GenieApproval", "Sparkle", "LiveKitWakeWord"],
+            dependencies: ["GenieCore", "GenieApproval", "Sparkle", "LiveKitWakeWord", "OnnxRuntimeBindings"],
             path: "Sources/GenieMac",
             // CLI selftestにもTCCの用途説明が必要。ないと権限拒否ではなくOSがSIGABRTで終了する。
             // releaseは署名バンドルのInfo.plistを使う。

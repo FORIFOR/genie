@@ -35,7 +35,13 @@ import { formatWorkPreviewArtifact } from './work-preview-artifact.js';
 import { formatBrowserArtifact } from './browser-artifact.js';
 import { formatTransactionArtifact } from './transaction-artifact.js';
 import { TransactionAuthorizationService } from './transaction-authorizations.js';
-import { approvalSummaryFor, requiresSingleAttempt, isMeteredStep, type TaskStep } from './plan.js';
+import {
+  COMPUTER_RUN_SEGMENT_ENDED,
+  approvalSummaryFor,
+  requiresSingleAttempt,
+  isMeteredStep,
+  type TaskStep,
+} from './plan.js';
 import type {
   ArtifactSpec,
   RequestedApproval,
@@ -792,6 +798,12 @@ export function createTaskActivities(deps: ActivityDeps): TaskActivities {
             // 元の操作の失敗を保持する。
           }
           const transactionResult = unknownTransactionResult(step, error);
+          // 画面操作が上限（12 操作・5 分）で区切れただけ。workflow が同じ承認で続きを走らせる
+          if (computerRunSegmentEnded(step, error))
+            throw ApplicationFailure.nonRetryable(
+              messageOfCause(error),
+              COMPUTER_RUN_SEGMENT_ENDED,
+            );
           throw ApplicationFailure.nonRetryable(
             messageOfCause(error),
             'ExternalActionFailed',
@@ -1320,6 +1332,14 @@ async function claimedTransactionIdentity(
 
 /** Transport failures may retain a read-only reconciliation identity. Do not
  * propagate an unrelated host result or fabricate a provider receipt. */
+/** 端末が「上限で区切れた。進んでいて、続けてよい」と言ったか。 */
+function computerRunSegmentEnded(step: TaskStep, error: unknown): boolean {
+  if (step.toolId !== 'computer.run') return false;
+  const segment = (error as { result?: { segment?: { continuable?: unknown } } } | null)?.result
+    ?.segment;
+  return segment?.continuable === true;
+}
+
 function unknownTransactionResult(
   step: TaskStep,
   error: unknown,

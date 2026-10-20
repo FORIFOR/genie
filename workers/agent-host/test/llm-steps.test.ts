@@ -13,7 +13,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { NO_MODEL_MESSAGE, type LanguageModelOption } from '@genie/contracts';
 import { ClaudeCodeCli, ClaudeCodeError, type RunResult } from '../src/claude-code.js';
-import { LlmRuntime, promptFor, toolsFor } from '../src/llm-steps.js';
+import { LlmRuntime, SEARCH_TIMEOUT_MS, promptFor, toolsFor } from '../src/llm-steps.js';
 import { HttpLlmClient, HttpLlmError } from '../src/http-llm.js';
 import type { HostStep } from '../src/connector-steps.js';
 
@@ -331,6 +331,31 @@ describe('real web search capability', () => {
     // Excerpts are often missing from search results; the page is opened only to copy one.
     expect(run.mock.calls.at(-1)?.[1]).toContain('WebSearch,WebFetch');
     expect(override).not.toHaveBeenCalled();
+  });
+
+  /** 検索 1 回は、ほかの問い（120 秒）より長く待つ。端末の手順の上限（5 分）よりは短い。 */
+  it('gives a web search longer than an ordinary question, within the step limit', async () => {
+    const run = vi.fn(
+      async (
+        _command: string,
+        args: readonly string[],
+        _options: { timeoutMs: number },
+      ): Promise<RunResult> => ({
+        code: 0,
+        stdout: args.includes('--version') ? '2.0.14' : reply({ results: [], answer: 'ok' }),
+        stderr: '',
+      }),
+    );
+    const runtime = new LlmRuntime({ claudeCode: new ClaudeCodeCli({ run }) });
+    await runtime.run(
+      step({ toolId: 'search.web', args: { query: 'MacBook Air 価格', limit: 3 } }),
+    );
+    const search = run.mock.calls.at(-1)!;
+    expect(search[2].timeoutMs).toBe(SEARCH_TIMEOUT_MS);
+    expect(SEARCH_TIMEOUT_MS).toBeGreaterThan(120_000);
+    expect(SEARCH_TIMEOUT_MS).toBeLessThan(5 * 60_000);
+    await runtime.run(step({ toolId: 'llm.answer', args: { question: 'こんにちは' } }));
+    expect(run.mock.calls.at(-1)![2].timeoutMs).toBe(120_000);
   });
 
   it('does not enable an excluded paid CLI to rescue a local-only search', async () => {
@@ -692,6 +717,59 @@ describe('keeping a screen decision inside the freshness window', () => {
         step({ toolId: 'llm.answer', args: { question: 'これ何？', images: [picture] } }),
       );
       expect(asked).toEqual(['none', 'none', undefined]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('Claude Code as the screen model', () => {
+  it('passes the checked screenshot bytes inline with no tools, and keeps other work on the usual path', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'astra-claude-vision-'));
+    const data = Buffer.from('89504e470d0a1a0a0000000d49484452', 'hex');
+    const calls: { args: readonly string[]; input?: string }[] = [];
+    const run = vi.fn(
+      async (
+        _c: string,
+        args: readonly string[],
+        options: { input?: string },
+      ): Promise<RunResult> => {
+        if (args.includes('--version')) return { code: 0, stdout: '2.1.303', stderr: '' };
+        calls.push({ args, ...(options.input === undefined ? {} : { input: options.input }) });
+        return { code: 0, stdout: reply({ action: 'stop' }), stderr: '' };
+      },
+    );
+    vi.stubEnv('ASTRA_VISUAL_CONTEXT_DIR', dir);
+    try {
+      writeFileSync(join(dir, 'shot-1.png'), data);
+      const runtime = new LlmRuntime({
+        allowedKinds: ['claude_code'],
+        claudeCode: new ClaudeCodeCli({ run }),
+      });
+      const picture = { id: 'shot-1', kind: 'screenshot', label: 'CURRENT' } as const;
+      const outcome = await runtime.run(
+        step({
+          toolId: 'llm.plan_computer_action',
+          args: {
+            goal: 'g',
+            images: [picture],
+            frames: [{ id: picture.id, width: 10, height: 10 }],
+            vision_model_kind: 'claude_code',
+          },
+        }),
+      );
+      expect(outcome.ok).toBe(true);
+      const vision = calls[0]!;
+      expect(vision.args[vision.args.indexOf('--tools') + 1]).toBe('');
+      expect(vision.args).not.toContain('--allowedTools');
+      const sent = JSON.parse(vision.input!);
+      expect(sent.message.content[0].source.data).toBe(data.toString('base64'));
+      // 画面と関係ない仕事は、これまでどおりの呼び方（画像は Read で開く）
+      await runtime.run(
+        step({ toolId: 'llm.answer', args: { question: 'これ何？', images: [picture] } }),
+      );
+      expect(calls[1]!.args).toContain('--allowedTools');
+      expect(calls[1]!.args).not.toContain('stream-json');
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

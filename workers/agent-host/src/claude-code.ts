@@ -150,7 +150,7 @@ export class ClaudeCodeCli {
    */
   async ask(
     prompt: string,
-    options: { signal?: AbortSignal; allowedTools?: readonly string[] } = {},
+    options: { signal?: AbortSignal; allowedTools?: readonly string[]; timeoutMs?: number } = {},
   ): Promise<unknown> {
     if (options.signal?.aborted) {
       throw new ClaudeCodeError('timed_out', '始まる前に取り消されました。');
@@ -169,7 +169,7 @@ export class ClaudeCodeCli {
 
     const result = await this.#run(this.command, args, {
       input: prompt,
-      timeoutMs: this.#config.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+      timeoutMs: options.timeoutMs ?? this.#config.timeoutMs ?? DEFAULT_TIMEOUT_MS,
       ...(options.signal ? { signal: options.signal } : {}),
     });
 
@@ -178,6 +178,85 @@ export class ClaudeCodeCli {
 
     return parseReply(result.stdout);
   }
+
+  /**
+   * 画像（画面の写真）を見せて、JSON を受け取る。画面操作の判断だけに使う。
+   *
+   * **画像は本文として渡し、道具は 1 つも渡さない**（`--tools ""`）。ファイルを読ませて見せると、
+   * 読める範囲が写真の外まで広がる。MCP も設定も読まない（`--strict-mcp-config`・`--setting-sources ""`）。
+   * 実測（2026-10-19、Claude Code 2.1.303、32×32 の PNG）: 道具 0・MCP 0、1 往復 1.8 秒。
+   */
+  async askWithImages(
+    prompt: string,
+    images: readonly { readonly mimeType: 'image/png'; readonly data: Buffer }[],
+    options: { signal?: AbortSignal } = {},
+  ): Promise<unknown> {
+    if (options.signal?.aborted) {
+      throw new ClaudeCodeError('timed_out', '始まる前に取り消されました。');
+    }
+    const args = [
+      '-p',
+      '--input-format',
+      'stream-json',
+      '--output-format',
+      'stream-json',
+      '--verbose',
+      '--tools',
+      '',
+      '--strict-mcp-config',
+      '--setting-sources',
+      '',
+      '--no-session-persistence',
+    ];
+    if (this.#config.model) args.push('--model', this.#config.model);
+    const message = {
+      type: 'user',
+      message: {
+        role: 'user',
+        content: [
+          ...images.map((image) => ({
+            type: 'image',
+            source: {
+              type: 'base64',
+              media_type: image.mimeType,
+              data: image.data.toString('base64'),
+            },
+          })),
+          { type: 'text', text: prompt },
+        ],
+      },
+    };
+    const result = await this.#run(this.command, args, {
+      input: `${JSON.stringify(message)}\n`,
+      timeoutMs: this.#config.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+      ...(options.signal ? { signal: options.signal } : {}),
+    });
+    const failure = failureFrom(result);
+    if (failure) throw new ClaudeCodeError(failure);
+    return parseReply(resultLineOf(result.stdout));
+  }
+}
+
+/**
+ * stream-json の出力から、最後の `result` の行を取り出す（`--output-format json` と同じ封筒）。
+ * 見つからなければ読めないと言う。
+ */
+export function resultLineOf(stdout: string): string {
+  const lines = stdout.split('\n').filter((line) => line.trim());
+  for (const line of lines.reverse()) {
+    try {
+      const parsed = JSON.parse(line) as { type?: unknown; is_error?: unknown; result?: unknown };
+      if (parsed.type !== 'result') continue;
+      if (parsed.is_error === true)
+        throw new ClaudeCodeError(
+          failureFrom({ code: 1, stdout: String(parsed.result ?? ''), stderr: '' }) ?? 'crashed',
+        );
+      return line;
+    } catch (error) {
+      if (error instanceof ClaudeCodeError) throw error;
+    }
+  }
+  throw new ClaudeCodeError('unreadable_output');
 }
 
 /**

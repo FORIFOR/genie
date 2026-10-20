@@ -117,6 +117,8 @@ enum SelfTest {
         case "setplaceskey": Task { @MainActor in await setPlacesKey() }; return true
         case "wakehandoff": Task { await wakeHandoff() }; return true
         case "wakemodel": Task { @MainActor in await wakeModel(args) }; return true
+        case "voiceprint": voicePrint(args); return true
+        case "speaker": speaker(args); return true
         case "geminismoke": Task { await geminiSmoke() }; return true
         case "brief": briefGate(); return true
         case "journey": journeyGate(args); return true

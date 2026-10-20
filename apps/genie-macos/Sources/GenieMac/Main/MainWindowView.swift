@@ -102,6 +102,13 @@ final class MainData: ObservableObject {
     }
 
     private var lastAutoReconnect = Date.distantPast
+    /// 続けて入り直した回数。つながったら 0 に戻す。
+    private var autoReconnects = 0
+    /// 入り直すまでの間（30 秒から倍にして 5 分まで）。一律 5 分だと、サービスを起動し直すたびに
+    /// 最初の入り直しが再起動の途中に当たって失敗し、次まで 5 分つながらなかった（2026-10-19 11:39〜11:44）。
+    static func autoReconnectInterval(after attempts: Int) -> TimeInterval {
+        min(300, 30 * pow(2, Double(min(attempts, 4))))
+    }
 
     static func isLoopback(_ base: String) -> Bool {
         guard let host = URL(string: base)?.host else { return false }
@@ -150,7 +157,7 @@ final class MainData: ObservableObject {
                 }
                 let tokens = try await session.tokens(reauthenticate: reauthenticate)
                 if !connected || connectionIssue != nil { GenieLog.write("connection", "connected") }
-                connected = true; connectionIssue = nil
+                connected = true; connectionIssue = nil; autoReconnects = 0
                 guard configuredToken != tokens.accessToken else { return }
                 let renewal = configuredToken != nil
                 configuredToken = tokens.accessToken
@@ -183,10 +190,11 @@ final class MainData: ObservableObject {
                 GenieLog.write("connection", "unavailable: \(connectionIssue?.diagnosticCode ?? "unknown") (\(GenieLog.clip(String(describing: error), 120)))")
                 // この Mac の中のサービス（127.0.0.1）で更新が途切れた（サービスの再起動中など）なら、同じ利用者として
                 // 入り直す。別の利用者・別の端末は作らない（同じ開発用の本人 ID で入る）。外のサービスでは本人の操作を待つ。
-                // 繰り返さない（5 分に 1 回まで）。2026-10-05、ボタンを押すまで何も頼めない状態が続いた。
+                // 繰り返しすぎない（30 秒から倍にして 5 分に 1 回まで）。2026-10-05、ボタンを押すまで何も頼めない状態が続いた。
                 if connectionIssue == .reconnect, !reauthenticate, Self.isLoopback(base),
-                   Date().timeIntervalSince(lastAutoReconnect) > 300 {
+                   Date().timeIntervalSince(lastAutoReconnect) > Self.autoReconnectInterval(after: autoReconnects) {
                     lastAutoReconnect = Date()
+                    autoReconnects += 1
                     GenieLog.write("connection", "local service: signing in again as the same user")
                     loading = false
                     load(reauthenticate: true)

@@ -36,6 +36,11 @@ describe('classifyCurrentInfo', () => {
   it('recognises stock questions without guessing an answer', () => {
     expect(classifyCurrentInfo('トヨタの株価は？')).toMatchObject({ kind: 'quote' });
     expect(classifyCurrentInfo('日経平均いくら？')).toMatchObject({ kind: 'quote' });
+    expect(classifyCurrentInfo('ドル円はいくら？')).toMatchObject({ kind: 'quote', subject: 'ドル円はいくら？' });
+    expect(classifyCurrentInfo('今の為替レート教えて')).toMatchObject({ kind: 'quote' });
+    expect(classifyCurrentInfo('ユーロ円って今どう？')).toMatchObject({ kind: 'quote' });
+    // 為替の話でも、値段を聞いていないものは拾わない
+    expect(classifyCurrentInfo('為替の仕組みを説明して')).toBeNull();
   });
 
   it('leaves statements and other work alone', () => {

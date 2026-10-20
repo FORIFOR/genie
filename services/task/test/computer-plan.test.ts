@@ -48,18 +48,23 @@ describe('computer.action plan', () => {
    */
   it('says on the approval card that operations run unconfirmed within the limits', () => {
     const card = approvalSummaryFor(planTask('computer.run', { goal: '設定画面を開く' }).steps[0]!);
-    expect(card.summary).toBe('対象の窓1つを、1操作ごとの確認なしで最大12操作・5分まで操作します');
+    // 目的ごとに 1 回の承認: 12 操作・5 分の区切りを、同じ承認で 4 つまで続ける
+    expect(card.summary).toBe('対象の窓1つを、1操作ごとの確認なしで最大48操作・20分まで操作します');
     expect(card.summary.length).toBeLessThanOrEqual(200);
     expect(card.details).toEqual([
       { label: '目的', value: '設定画面を開く' },
       // 許可は 20 分続き、続きの依頼では選択画面を出さずに前の窓を使う。「開始時に決める」とだけは言わない。
       {
         label: '範囲',
-        value: expect.stringMatching(/^対象の窓1つだけ.*20分以内の続きの依頼では前に選んだ窓のまま/),
+        value: expect.stringMatching(
+          /^対象の窓1つだけ.*20分以内の続きの依頼では前に選んだ窓のまま/,
+        ),
       },
       {
         label: '確認',
-        value: expect.stringContaining('1操作ごとには確認しません（最大12操作・5分）'),
+        value: expect.stringMatching(
+          /1操作ごとには確認しません（最大48操作・20分。12操作・5分ごとに区切り、進んでいれば同じ承認で続けます。支払い・送信・公開・削除の手前では止まります）/,
+        ),
       },
       { label: '影響', value: expect.stringContaining('取り消せないことがあります') },
       // 送信先は承認の時点ではサーバに分からない。断定せず、外部なら外へ出ることを言う。

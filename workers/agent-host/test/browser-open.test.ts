@@ -193,18 +193,25 @@ describe('opening the official site in the browser', () => {
     expect(() => pickOf({ index: 0.5 }, 2)).toThrow();
   });
 
-  it('retries with the name before 「の」 when the product phrase finds no official site', async () => {
+  it('also searches the name before 「の」 at the same time, and opens it when the product phrase finds no official site', async () => {
     const searched: string[] = [];
     const opened: string[] = [];
     const r = new BrowserOpenRuntime({
       ask: async (toolId, args) => {
         if (toolId === 'search.web') {
           searched.push(String(args['query']));
-          return { results: [{ url: 'https://www.oakley.com/ja-jp', title: 'Oakley Japan', snippet: '公式' }] };
+          return {
+            results: [
+              { url: 'https://www.oakley.com/ja-jp', title: 'Oakley Japan', snippet: '公式' },
+            ],
+          };
         }
         if (toolId === 'llm.official_guess') return { url: null };
         // 商品名まで含むと公式と見なさない（実際の 2026-10-18 の結果）。名前だけなら選ぶ。
-        return searched.at(-1)?.startsWith('オークリーのサングラス') ? { index: -1 } : { index: 0, reason: '運営元' };
+        // 見極めは「何の公式か」（subject）で決まる。2 つの名前は同時に探すので、検索の順には頼らない
+        return args['subject'] === 'オークリーのサングラス'
+          ? { index: -1 }
+          : { index: 0, reason: '運営元' };
       },
       open: async (url) => {
         opened.push(url);
@@ -217,6 +224,37 @@ describe('opening the official site in the browser', () => {
     expect(searched).toEqual(['オークリーのサングラス 公式サイト', 'オークリー 公式サイト']);
     expect(opened).toEqual(['https://www.oakley.com/ja-jp']);
     expect(outcome).toMatchObject({ ok: true, result: { opened: true, subject: 'オークリー' } });
+  });
+
+  it('opens the whole name when both are found, and searches both at once instead of one after the other', async () => {
+    let inFlight = 0;
+    let most = 0;
+    const opened: string[] = [];
+    const r = new BrowserOpenRuntime({
+      ask: async (toolId, args) => {
+        if (toolId !== 'search.web') return { index: 0, reason: '公式' };
+        inFlight += 1;
+        most = Math.max(most, inFlight);
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        inFlight -= 1;
+        const name = String(args['query']).replace(' 公式サイト', '');
+        return {
+          results: [
+            { url: `https://example.com/${encodeURIComponent(name)}`, title: name, snippet: '' },
+          ],
+        };
+      },
+      open: async (url) => {
+        opened.push(url);
+      },
+      frontUrl: async () => opened.at(-1) ?? null,
+      sleep: async () => {},
+      fetchPage: async () => null,
+    });
+    const outcome = await r.run(step({ subject: '鬼滅の刃' }));
+    expect(most).toBe(2);
+    expect(opened).toEqual([`https://example.com/${encodeURIComponent('鬼滅の刃')}`]);
+    expect(outcome).toMatchObject({ ok: true, result: { opened: true, subject: '鬼滅の刃' } });
   });
 
   it('refuses an empty subject', async () => {

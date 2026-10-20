@@ -166,8 +166,10 @@ final class VoiceInputHub: @unchecked Sendable {
         setEchoCancellation(false)
         queue.sync {
             consumer = nil
+            collector = nil
             held = []; heldSamples = 0
             ring = []; ringSamples = 0
+            recent = []; recentSamples = 0
             if let detector = detectorValue {
                 detector.reset()
                 stateValue = .standby
@@ -288,10 +290,47 @@ final class VoiceInputHub: @unchecked Sendable {
             if detectorValue?.process(frame) == true { wakeLocked() }
         case .holding:
             keep(frame, in: &held, count: &heldSamples, limit: Self.holdLimitSeconds)
+            collectLocked(frame)
         case .streaming:
             consumer?(frame)
+            collectLocked(frame)
+            recent.append((Date(), frame)); recentSamples += frame.count
+            while recentSamples > Int(Self.recentSeconds * Self.sampleRate), let first = recent.first {
+                recentSamples -= first.frame.count
+                recent.removeFirst()
+            }
         case .paused:
             return
+        }
+    }
+
+    /// 会話の受け手へ渡した直近の音（届いた時刻つき）。Gemini が言いかけで依頼を出し、その後の言葉を
+    /// 文字にしなかったとき、手元で文字にし直すため（liveflow 2026-10-19:「チーズバーガーのMセットを注文して」の
+    /// 「セットを注文して」が依頼から落ちた。音は送れていた）。
+    private var recent: [(at: Date, frame: [Float])] = []
+    private var recentSamples = 0
+    static let recentSeconds = 10.0
+
+    /// `since` より後に会話の受け手へ渡した音。
+    func streamed(since: Date) -> [Float] {
+        queue.sync { recent.filter { $0.at >= since }.flatMap(\.frame) }
+    }
+
+    /// 呼びかけの後に聞いた音を、`seconds` 秒ぶん集めて渡す（本人かを確かめ直すため。Genie が話している間の音は入らない）。
+    /// 会話の受け手を外したら、集めかけのものは捨てる。
+    func collectAfterWake(seconds: Double, _ done: @escaping ([Float]) -> Void) {
+        queue.async { self.collector = (Int(seconds * Self.sampleRate), [], done) }
+    }
+    private var collector: (needed: Int, frames: [Float], done: ([Float]) -> Void)?
+    private func collectLocked(_ frame: [Float]) {
+        guard var c = collector else { return }
+        c.frames += frame
+        if c.frames.count >= c.needed {
+            collector = nil
+            let (frames, done) = (c.frames, c.done)
+            DispatchQueue.global(qos: .userInitiated).async { done(frames) }
+        } else {
+            collector = c
         }
     }
 

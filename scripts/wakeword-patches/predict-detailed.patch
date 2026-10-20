@@ -1,0 +1,69 @@
+--- a/LiveKitWakeWord/WakeWordModel.swift
++++ b/LiveKitWakeWord/WakeWordModel.swift
+@@ -138,10 +138,17 @@
+     /// embedding windows return 0 for every model (same semantics as the
+     /// Python reference implementation).
+     public func predict(_ pcm: UnsafeBufferPointer<Int16>) throws -> [String: Float] {
++        try predictDetailed(pcm).scores
++    }
++
++    /// Genie: ``predict(_:)`` plus the `16 × 96` embeddings the classifiers saw
++    /// (empty when the audio was too short). Lets the app compare a call with the
++    /// user's enrolled calls without running the frontend twice.
++    public func predictDetailed(_ pcm: UnsafeBufferPointer<Int16>) throws -> (scores: [String: Float], embeddings: [Float]) {
+         modelsLock.lock()
+         let snapshot = models
+         modelsLock.unlock()
+-        if snapshot.isEmpty { return [:] }
++        if snapshot.isEmpty { return ([:], []) }
+ 
+         let audio16k: [Float]
+         if let resampler {
+@@ -151,7 +158,7 @@
+         }
+ 
+         guard audio16k.count >= WakeWordConstants.minMelSamples else {
+-            return Self.zeroScores(snapshot)
++            return (Self.zeroScores(snapshot), [])
+         }
+ 
+         let capped = min(audio16k.count, WakeWordConstants.maxMelSamples)
+@@ -162,7 +169,7 @@
+ 
+         let frames = melOutput.frameCount
+         if frames < WakeWordConstants.embeddingWindow {
+-            return Self.zeroScores(snapshot)
++            return (Self.zeroScores(snapshot), [])
+         }
+ 
+         // Slide 76-frame windows with stride 8; classifier consumes the
+@@ -170,7 +177,7 @@
+         // undefined, so return zeros.
+         let windowCount = (frames - WakeWordConstants.embeddingWindow) / WakeWordConstants.embeddingStride + 1
+         if windowCount < WakeWordConstants.classifierEmbeddings {
+-            return Self.zeroScores(snapshot)
++            return (Self.zeroScores(snapshot), [])
+         }
+ 
+         let startWindow = windowCount - WakeWordConstants.classifierEmbeddings
+@@ -185,7 +192,7 @@
+         for (name, model) in snapshot {
+             results[name] = try model.predict(embeddings: embeddings)
+         }
+-        return results
++        return (results, embeddings)
+     }
+ 
+     /// Convenience `Array<Int16>` overload.
+@@ -193,6 +200,11 @@
+         try pcm.withUnsafeBufferPointer { try predict($0) }
+     }
+ 
++    /// Convenience `Array<Int16>` overload of ``predictDetailed(_:)``.
++    public func predictDetailed(_ pcm: [Int16]) throws -> (scores: [String: Float], embeddings: [Float]) {
++        try pcm.withUnsafeBufferPointer { try predictDetailed($0) }
++    }
++
+     // MARK: - Helpers
+ 
+     private static func makeEmbeddingBatch(

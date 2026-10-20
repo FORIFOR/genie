@@ -581,6 +581,11 @@ describe('context injection', () => {
     );
     expect(owed.items.length).toBeLessThanOrEqual(3);
 
+    // 返信が要るものを聞く問いは、返信の手順ではなく返すものの一覧（askprobe 2026-10-19）
+    expect(q('未読メールで返信が必要なものはある？').intent).toBe('owed');
+    expect(q('返事しないといけないメールある？').intent).toBe('owed');
+    expect(q('返信が必要なので MTI への下書きを作って').intent).toBe('email_reply');
+
     const prep = q('次の会議を準備して');
     expect(prep.intent).toBe('meeting_prep');
     expect(prep.items.map((i) => i.project)).toEqual(['MOPITA連携']);

@@ -8,7 +8,7 @@
  */
 import { describe, expect, it, vi } from 'vitest';
 import { connectorProviderConfig, type SecretStore } from '@genie/oauth';
-import { ConnectorRuntime } from '../src/connector-steps.js';
+import { ConnectorRuntime, credentialFingerprint } from '../src/connector-steps.js';
 import type { HostStep } from '../src/connector-steps.js';
 
 const ACCESS = 'ya29.test-access-token';
@@ -130,7 +130,8 @@ describe('running a connector step on the device', () => {
     const outcome = await r.run(step({ toolId: 'mail.search', args: {} }));
     expect(outcome.ok).toBe(true);
     expect(sent[0]!.authorization).toBe(`Bearer ${ACCESS}`);
-    expect(reads).toEqual(['com.astra.gmail/gmail']);
+    // 読むのは読む接続と、その更新分の別項目だけ
+    expect(reads).toEqual(['com.astra.gmail/gmail', 'com.astra.gmail/gmail.host-renewal']);
   });
 
   it('routes an Outlook reply to the actions connection, and asks for it with its purpose when absent', async () => {
@@ -373,6 +374,7 @@ describe('native Google credentials after host refresh', () => {
   };
 
   function refreshing(over: Record<string, unknown> = {}, rejected = false) {
+    const reported: [string, string, string][] = [];
     const secrets = memoryStore({ [key]: JSON.stringify({ ...nativeCredential, ...over }) });
     const fetch = vi.fn(async (url: string, init?: RequestInit) => {
       if (url.includes('/token')) {
@@ -401,8 +403,11 @@ describe('native Google credentials after host refresh', () => {
       },
       fetch: fetch as unknown as typeof globalThis.fetch,
       now: () => new Date('2026-08-27T00:00:00.000Z'),
+      reportRenewalRejected: async (...args) => {
+        reported.push(args);
+      },
     });
-    return { runtime, secrets, fetch };
+    return { runtime, secrets, fetch, reported };
   }
 
   it.each(['google-read-client', undefined, 'stale-client'])(
@@ -412,15 +417,21 @@ describe('native Google credentials after host refresh', () => {
       expect(await runtime.run(step({ toolId: 'mail.search', args: {} }))).toMatchObject({
         ok: true,
       });
-      // Parse the actual saved JSON and require every field the Swift Credential decoder uses.
-      expect(JSON.parse(secrets.values[key]!)).toEqual({
+      // アプリが作った項目は書き換えない（`security` で書くとアプリが読めなくなる）。更新分は別項目へ
+      const native = { ...nativeCredential, clientId };
+      expect(JSON.parse(secrets.values[key]!)).toEqual(JSON.parse(JSON.stringify(native)));
+      expect(JSON.parse(secrets.values[`${key}.host-renewal`]!)).toEqual({
         ...nativeCredential,
         accessToken: 'renewed-access',
         grantedScopes: [grantedScope],
         expiresAt: '2026-08-27T01:00:00.000Z',
         idToken: null,
+        origin: credentialFingerprint(nativeCredential),
       });
       expect(fetch).toHaveBeenCalledTimes(2);
+      // 次は更新分を使い、提供者へ更新しに行かない
+      expect((await runtime.run(step({ toolId: 'mail.search', args: {} }))).ok).toBe(true);
+      expect(fetch.mock.calls.filter(([url]) => String(url).includes('/token'))).toHaveLength(1);
     },
   );
 
@@ -434,7 +445,49 @@ describe('native Google credentials after host refresh', () => {
     const tokenCalls = fetch.mock.calls.filter(([url]) => String(url).includes('/token'));
     expect(tokenCalls).toHaveLength(1);
     expect(save).toHaveBeenCalledTimes(1);
-    expect(JSON.parse(secrets.values[key]!).accessToken).toBe('renewed-access');
+    expect(JSON.parse(secrets.values[`${key}.host-renewal`]!).accessToken).toBe('renewed-access');
+  });
+
+  it('prefers the app connection again once it was reconnected', async () => {
+    const { runtime, secrets, fetch } = refreshing({ clientId: 'google-read-client' });
+    await runtime.run(step({ toolId: 'mail.search', args: {} }));
+    // 利用者がつなぎ直した（アプリが新しい更新用トークンで項目を書き直した）
+    secrets.values[key] = JSON.stringify({
+      ...nativeCredential,
+      accessToken: 'reconnected-access',
+      refreshToken: 'reconnected-refresh',
+      expiresAt: '2026-08-27T02:00:00.000Z',
+    });
+    fetch.mockClear();
+    expect((await runtime.run(step({ toolId: 'mail.search', args: {} }))).ok).toBe(true);
+    const call = fetch.mock.calls.find(([url]) => String(url).includes('gmail'))!;
+    expect((call[1] as RequestInit).headers).toMatchObject({
+      authorization: 'Bearer reconnected-access',
+    });
+  });
+
+  it('asks to be connected again when the provider revoked the refresh token', async () => {
+    // Google の「テスト中」のアプリは 7 日で更新用トークンを失効させる（invalid_grant）
+    const { runtime, secrets, fetch, reported } = refreshing(
+      { clientId: 'google-read-client' },
+      true,
+    );
+    const before = secrets.values[key];
+    const outcome = await runtime.run(step({ toolId: 'mail.search', args: {} }));
+    expect(outcome.error!.code).toBe('connector.token_expired');
+    // アプリの項目はそのまま。断られた時刻は別項目に残し、Mac の Apps へは指紋だけを知らせる
+    expect(secrets.values[key]).toBe(before);
+    expect(JSON.parse(secrets.values[`${key}.host-renewal`]!)).toMatchObject({
+      renewalRejectedAt: '2026-08-27T00:00:00.000Z',
+      origin: credentialFingerprint(nativeCredential),
+    });
+    expect(reported).toEqual([
+      ['com.astra.gmail', 'gmail', credentialFingerprint(nativeCredential)],
+    ]);
+    // 断られた更新用トークンで、提供者を呼び直さない
+    const again = await runtime.run(step({ toolId: 'mail.search', args: {} }));
+    expect(again.error!.code).toBe('connector.token_expired');
+    expect(fetch).toHaveBeenCalledTimes(1);
   });
 
   it('does not assign a client to legacy credentials before a successful refresh', async () => {
@@ -442,6 +495,7 @@ describe('native Google credentials after host refresh', () => {
     const before = secrets.values[key];
     expect((await runtime.run(step({ toolId: 'mail.search', args: {} }))).ok).toBe(false);
     expect(secrets.values[key]).toBe(before);
+    expect(JSON.parse(secrets.values[`${key}.host-renewal`]!).clientId).toBeUndefined();
     expect(fetch).toHaveBeenCalledTimes(1);
   });
 

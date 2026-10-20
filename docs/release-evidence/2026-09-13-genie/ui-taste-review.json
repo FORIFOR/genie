@@ -71,12 +71,12 @@
     {
       "kind": "40字超の文言",
       "file": "Main/ConnectionsPane.swift",
-      "sha256": "0bada7063d65df81d74e5196c7da2cda6d444aaef99572150ff5336946f35b76",
+      "sha256": "5a3838deb4a374cc462229561ce8434944714aa4dd05f86cac55d31d84c2f419",
       "count": 1,
       "literal_sha256": [
         "d1e11093e56f67d50cb8b1cf05584949b08e687ecb3174f3159a04bdd6e1e93b"
       ],
-      "reason": "Reviewed 2026-10-02. Existing consent explanation separates account/resource reads from future write/send authorization. Exact production purposeSheet rendered for Google and Microsoft in light/dark; full text and interpolated resource names readable. No OAuth operation performed. Threshold remains 6; only these file- and literal-bound additions are accepted. Evidence: docs/quality/evidence/2026-10-02-completion/UI_TASTE_REVIEW.md; docs/golden-screenshots/disclosure-copy/*.png and matching geometry JSON."
+      "reason": "Reviewed 2026-10-02. Existing consent explanation separates account/resource reads from future write/send authorization. Exact production purposeSheet rendered for Google and Microsoft in light/dark; full text and interpolated resource names readable. No OAuth operation performed. Threshold remains 6; only these file- and literal-bound additions are accepted. Evidence: docs/quality/evidence/2026-10-02-completion/UI_TASTE_REVIEW.md; docs/golden-screenshots/disclosure-copy/*.png and matching geometry JSON. Re-bound 2026-10-20: the file gained the expired-connection state (\"つなぎ直す\", a 37-character notice, under the 40-character rule); the reviewed purposeSheet literal and its count are unchanged (literal_sha256 still matches)."
     },
     {
       "kind": "40字超の文言",

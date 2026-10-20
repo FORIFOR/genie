@@ -1,5 +1,7 @@
 import AppKit
 
+// サービスが接続の鍵を読み書きするときは、画面を出さずにここで終わる（ConnectorSecretCommand）。
+ConnectorSecretCommand.runIfRequested()
 DesktopConnectionBootstrap.install()
 
 // Genie macOS の入口。Dock アイコンを持たない overlay として振る舞う（AI レイヤー）。

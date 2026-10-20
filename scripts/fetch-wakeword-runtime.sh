@@ -15,7 +15,10 @@ ORT_CHECKSUM="f7100a992d2a8135168c8afd831e6a58b465349101982aa58b3e11d36e600b54"
 ORT_SPM_COMMIT="b7fb7f7dea8a2469e6335d95a61b8f36d0dc83b2"
 LIVEKIT_COMMIT="fb92cb3641fedceb0bd8442409e14d1224f7fc97"
 
-if [[ -d "$DEST/onnxruntime/onnxruntime.xcframework" && -d "$DEST/OnnxRuntimeBindings" && -d "$DEST/LiveKitWakeWord" && "${1:-}" != "--force" ]]; then
+PATCHES="$ROOT/scripts/wakeword-patches"
+# 当てたパッチが無い古い取得（predictDetailed が無い）は取り直す。
+if [[ -d "$DEST/onnxruntime/onnxruntime.xcframework" && -d "$DEST/OnnxRuntimeBindings" && -d "$DEST/LiveKitWakeWord" \
+      && "${1:-}" != "--force" ]] && grep -q "func predictDetailed" "$DEST/LiveKitWakeWord/WakeWordModel.swift" 2>/dev/null; then
   echo "wakeword runtime: 取得済み ($DEST)"; exit 0
 fi
 TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
@@ -50,6 +53,8 @@ fetch_commit livekit/livekit-wakeword "$LIVEKIT_COMMIT" livekit
 rm -rf "$DEST/LiveKitWakeWord"
 cp -R "$TMP/livekit/swift/Sources/LiveKitWakeWord" "$DEST/LiveKitWakeWord"
 cp "$TMP/livekit/LICENSE" "$DEST/LiveKitWakeWord/LICENSE"
+# Genie の変更（固定したコミットに当てる）: 呼びかけを、声を覚えたときの呼びかけと比べるために embedding も返す。
+patch -s -p1 -d "$DEST" < "$PATCHES/predict-detailed.patch"
 # 前処理モデル（mel・embedding）は SwiftPM の resource bundle にしない。Bundle.module は bundle が見つからないと
 # アプリごと落ちる。.app の Contents/Resources（build-macos-app.sh が置く）と、開発中はこの Vendor の場所から読む。
 cat > "$DEST/LiveKitWakeWord/Internal/ResourceLoader.swift" <<'SWIFT'

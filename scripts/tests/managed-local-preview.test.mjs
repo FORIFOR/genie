@@ -832,6 +832,39 @@ test('screen opt-in is separate, persists only for the exact provider/model, and
   }
 });
 
+test('Claude Code can carry screen images after its own explicit opt-in; an API-key provider cannot', async (t) => {
+  const base = await loadConfig(await temporary(t));
+  const conversation = modelConfiguration(base, { modelProvider: 'claude_code', allowCloud: true });
+  assert.equal(externalScreenAllowed(conversation, true), false);
+  const screen = modelConfiguration(
+    conversation,
+    parseOptions(['--computer-use', '--allow-external-screen']),
+  );
+  assert.equal(screen.externalScreenAuthorization?.provider, 'claude_code');
+  validateConfig(screen);
+  assert.equal(externalScreenAllowed(screen, true), true);
+  // 画像を外へ送るときは、回数の上限も必ず付く
+  const env = serviceEnvironment(
+    screen,
+    '/tmp/state',
+    '/repo',
+    { PATH: '/bin' },
+    {
+      computerUse: true,
+    },
+  );
+  assert.equal(env.ASTRA_COMPUTER_VISION_EXTERNAL, 'on');
+  assert.equal(env.ASTRA_CLOUD_VISION_TASK_CALLS, '30');
+  assert.equal(env.ASTRA_CLOUD_VISION_MONTH_CALLS, '3000');
+  // 会話の接続を Codex に替えたら、Claude Code への許可は持ち越さない
+  const switched = modelConfiguration(screen, { modelProvider: 'codex', allowCloud: true });
+  assert.equal(externalScreenAllowed(switched, true), false);
+  const gemini = modelConfiguration(base, { modelProvider: 'gemini_api', allowCloud: true });
+  assert.throws(() =>
+    modelConfiguration(gemini, parseOptions(['--computer-use', '--allow-external-screen'])),
+  );
+});
+
 test('screen permission cannot leak from another state directory or enable an inactive computer route', async (t) => {
   const first = await temporary(t);
   const second = await temporary(t);
@@ -1422,15 +1455,18 @@ test('Claude Code and Gemini API are explicit external choices with their own mo
     assert.deepEqual(descriptor.model, { provider, name: model });
     assert.deepEqual(descriptor.externalAuthorization, { provider, model });
 
-    // Screen images stay a separate permission that these providers cannot be given here.
-    assert.throws(() =>
+    // Screen images stay a separate permission. Claude Code may be given it explicitly
+    // (images go inline with no tools); an API-key provider cannot be given it here.
+    const screenOptIn = () =>
       modelConfiguration(base, {
         modelProvider: provider,
         allowCloud: true,
         computerUse: true,
         allowExternalScreen: true,
-      }),
-    );
+      });
+    if (provider === 'claude_code')
+      assert.deepEqual(screenOptIn().externalScreenAuthorization, { provider, model });
+    else assert.throws(screenOptIn);
     // Returning to the Mac drops the external permission.
     const local = modelConfiguration(config, { modelProvider: 'local', model: 'qwen3.5:9b' });
     assert.equal(local.allowCloud, false);

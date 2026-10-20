@@ -1,5 +1,6 @@
 import AppKit
 import AVFoundation
+import LiveKitWakeWord
 
 /// 本人の「ジーニー」を録る（呼びかけ検出を本人の声で学び直すため）。
 ///
@@ -9,8 +10,10 @@ import AVFoundation
 @MainActor
 final class WakeEnrollment {
     static let shared = WakeEnrollment()
-    nonisolated static let count = 20
-    static let interval = 3.0
+    /// 20 回は多すぎた（利用者、2026-10-19）。話者の特徴（`SpeakerPrint`）なら 2 回で足りる
+    /// （LibriSpeech 80 人で、2 回で覚えたとき本人 95.6%・他人 0.11%）。
+    nonisolated static let count = 2
+    nonisolated static let interval = 3.0
     private(set) var running = false
 
     static var directory: URL {
@@ -18,8 +21,15 @@ final class WakeEnrollment {
             .appendingPathComponent("Genie/wake", isDirectory: true)
     }
 
+    struct Recording {
+        let url: URL
+        /// 覚えた呼びかけの数（声が録れず覚えられなければ nil。そのときは前に覚えたものをそのまま使う）。
+        let learnedCalls: Int?
+    }
+
     /// 録り終えたら保存先を返す（失敗は nil）。録る間は呼びかけの待ち受けを止める。
-    func record(count: Int = WakeEnrollment.count) async -> URL? {
+    /// `learn` なら、録った呼びかけを覚えて待ち受けに渡す（`WakeVoicePrint`）。
+    func record(count: Int = WakeEnrollment.count, learn: Bool = true) async -> Recording? {
         guard !running, Permissions.microphone == .granted else { return nil }
         running = true
         defer { running = false }
@@ -55,9 +65,63 @@ final class WakeEnrollment {
             try Self.writeWAV(audio, to: url)
             try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
             GenieLog.write("wake", String(format: "enrollment: saved %.0f s", Double(audio.count) / 16_000))
-            return url
         } catch {
             GenieLog.write("wake", "enrollment: could not save \(error)"); return nil
+        }
+        guard learn else { return Recording(url: url, learnedCalls: nil) }
+        let learned = await Task.detached { Self.learnSpeaker(audio, count: count) }.value
+        if let learned { (WakeController.shared.detector as? LiveKitWakeDetector)?.speakerPrint = learned }
+        return Recording(url: url, learnedCalls: learned?.calls)
+    }
+
+    /// 録音から本人の声（話者の特徴）を覚えて保存する。待ち受けとは別のモデルで計算する（並行して呼ばない）。
+    nonisolated static func learnSpeaker(_ audio: [Float], count: Int, encoder: SpeakerEncoder? = nil,
+                                         saveTo url: URL = SpeakerPrint.url) -> SpeakerPrint? {
+        guard let encoder = encoder ?? SpeakerEncoder.modelURL().flatMap({ try? SpeakerEncoder(modelURL: $0) }) else {
+            GenieLog.write("wake", "enrollment: speaker model unavailable — voice not learned"); return nil
+        }
+        // 合図ごとの区切り（合図音の 0.25 秒は除く）から、待ち受けと同じ切り出し（SpeakerEncoder.voiced）で声を取る
+        let embeddings = speakerSlots(in: audio, count: count).compactMap { encoder.embedding(of: $0) }
+        guard let print = SpeakerPrint.make(embeddings: embeddings) else {
+            GenieLog.write("wake", "enrollment: no usable call of \(count) — voice not learned"); return nil
+        }
+        do {
+            try print.save(to: url)
+            GenieLog.write("wake", "enrollment: learned the voice from \(print.calls) of \(count) calls")
+            return print
+        } catch {
+            GenieLog.write("wake", "enrollment: could not save the voice \(error)"); return nil
+        }
+    }
+
+    /// 録音から呼びかけを覚えて保存する。待ち受けとは別の分類器で計算する（同じモデルを並行して呼ばない）。
+    nonisolated static func learn(_ audio: [Float], count: Int, saveTo url: URL = WakeVoicePrint.url) -> WakeVoicePrint? {
+        guard let modelURL = LiveKitWakeDetector.modelURL(),
+              let model = try? WakeWordModel(models: [modelURL], sampleRate: 16_000, executionProvider: .cpu) else {
+            GenieLog.write("wake", "enrollment: classifier unavailable — calls not learned"); return nil
+        }
+        let calls = WakeVoicePrint.calls(in: audio, count: count, interval: interval)
+        let embeddings = calls.compactMap { WakeVoicePrint.embedding(of: $0, model: model, name: LiveKitWakeDetector.modelName) }
+        guard let print = WakeVoicePrint.make(embeddings: embeddings) else {
+            GenieLog.write("wake", "enrollment: \(embeddings.count) of \(count) calls usable — too few to learn (need \(WakeVoicePrint.minimumCalls))")
+            return nil
+        }
+        do {
+            try print.save(to: url)
+            GenieLog.write("wake", String(format: "enrollment: learned %d of %d calls (match needs %.2f)",
+                                          print.templates.count, count, print.threshold))
+            return print
+        } catch {
+            GenieLog.write("wake", "enrollment: could not save the learned calls \(error)"); return nil
+        }
+    }
+
+    /// 合図の 1 秒後から `interval` 秒ごとの区切り（合図音の 0.25 秒は除く）。`WakeVoicePrint.calls` と同じ位置で、切り出しはしない。
+    nonisolated static func speakerSlots(in audio: [Float], count: Int, first: Double = 1.0) -> [[Float]] {
+        let rate = 16_000.0
+        return (0..<count).compactMap { k in
+            let s0 = Int((first + interval * Double(k) + 0.25) * rate), s1 = Int((first + interval * Double(k + 1)) * rate)
+            return s1 <= audio.count ? Array(audio[s0..<s1]) : nil
         }
     }
 

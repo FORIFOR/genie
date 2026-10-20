@@ -11,7 +11,11 @@
  *   - チャットで承認できるのは EXTERNAL_COMMIT だけ。削除・お金・規制のある記録は承認カードへ
  */
 import type { ChannelProvider } from '@genie/contracts';
-import type { InboundChannelAction, InboundChannelMessage } from './message.js';
+import type {
+  InboundChannelAction,
+  InboundChannelFollow,
+  InboundChannelMessage,
+} from './message.js';
 import * as render from './render.js';
 import {
   ChannelSendError,
@@ -120,6 +124,19 @@ export class ChannelService {
     }
   }
 
+  /** 友だちに追加された（LINE の follow）。連携していなければ、つなぎ方を返す。 */
+  async greet(follow: InboundChannelFollow): Promise<'duplicate' | 'unlinked' | 'linked'> {
+    if (!(await this.deps.store.claimInbox(follow.provider, follow.eventId))) return 'duplicate';
+    const link = await this.deps.store.findLink(
+      follow.provider,
+      follow.workspaceId,
+      follow.subject,
+    );
+    if (link) return 'linked';
+    await this.#reply(follow.provider, follow, render.linkPrompt(), follow.replyToken);
+    return 'unlinked';
+  }
+
   /** 発話を受ける。**重複は何もしない**（再送でも仕事は 1 つ）。 */
   async receive(
     message: InboundChannelMessage,
@@ -169,6 +186,12 @@ export class ChannelService {
         );
     }
     const target = { destination, threadKey: message.threadKey };
+    // 返事を待つ間、考えていることを見せる（出せなくても続ける）
+    this.deps.senders[message.provider]
+      ?.typing?.(target)
+      .catch((error: unknown) =>
+        this.#log('channel.typing_failed', { provider: message.provider, error: errorCode(error) }),
+      );
 
     let outcome: TurnOutcome;
     try {

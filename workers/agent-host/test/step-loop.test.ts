@@ -100,6 +100,28 @@ describe('the host step loop', () => {
     expect(run).toHaveBeenCalledOnce();
   });
 
+  it('tells the cloud only whether a screen run may continue, keeping the audit on the device', async () => {
+    const transport = fakeTransport([step({ toolId: 'computer.run' })]);
+    transport.executionAllowed = async () => true;
+    const fail = vi.spyOn(transport, 'fail');
+    const run = vi.fn(async () => ({
+      ok: false,
+      result: {
+        completed: false,
+        audit: [{ action: 'click', imageSha256: 'f'.repeat(64) }],
+        segment: { continuable: true, inputs: 12 },
+      },
+      error: { code: 'action_limit', message: '操作数の上限に達しました。' },
+    }));
+    await new HostStepLoop({ transport, runner: runner(run) }).tick(HOST);
+    expect(fail).toHaveBeenCalledWith(
+      'req-1',
+      HOST,
+      expect.objectContaining({ code: 'action_limit' }),
+      { segment: { continuable: true, inputs: 12 } },
+    );
+  });
+
   it('does not run when the authority endpoint is missing or unavailable', async () => {
     for (const message of ['404 not found', 'fetch failed']) {
       const transport = fakeTransport([step()]);

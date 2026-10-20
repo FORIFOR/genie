@@ -28,6 +28,10 @@ extension SelfTest {
         guard let url = LiveKitWakeDetector.modelURL(), let detector = try? LiveKitWakeDetector(modelURL: url) else {
             print("SELFTEST_FAIL liveflow: wake model"); exit(2)
         }
+        // 呼びかけは合成音で流す。この端末で覚えた本人の声と比べると、本人ではないので起きない
+        // （2026-10-20: S1 が「another voice (0.11)」で止まった）。検査を端末の状態に左右させない。
+        detector.speakerPrint = nil
+        detector.voicePrint = nil
         let wake = WakeController(hub: hub)
         try? wake.armForTest(detector: detector)
 
@@ -71,6 +75,7 @@ extension SelfTest {
             .map { $0.uppercased() }.filter { $0.range(of: #"^S\d+$"#, options: .regularExpression) != nil })
         func want(_ id: String) -> Bool { only.isEmpty || only.contains(id) }
         func reports() -> Int { (hud.conversationProvider as? GeminiLiveProvider)?.reports.count ?? 0 }
+        func lastReport() -> String { (hud.conversationProvider as? GeminiLiveProvider)?.reports.last ?? "" }
         let failureWords = ["できません", "できませんでし", "見つけ", "申し訳"]
         try? await Task.sleep(nanoseconds: 2_500_000_000)   // 検出の窓が満ちるまで静けさ
 
@@ -105,7 +110,12 @@ extension SelfTest {
         try? await Task.sleep(nanoseconds: 8_000_000_000)
         let after = String(geminiText.dropFirst(mark))
         note("報告後の Gemini: \(after.prefix(120))")
-        let s3 = reported && (after.contains("開き") || after.contains("表示"))
+        // 開いたことは Genie の報告で確かめる。Gemini の言い方は「開きました」「表示しました」「お出ししました」と揺れる
+        // （liveflow 2026-10-19: 開けていたのに「お出ししました」で不合格になった）。
+        let opened = lastReport().contains("表示されたのを確認")
+        let conveyed = ["開き", "開い", "表示", "お出し", "出しました", "お見せ"].contains(where: { after.contains($0) })
+        note("報告: \(lastReport().prefix(80))")
+        let s3 = reported && opened && conveyed
             && !failureWords.contains(where: { after.contains($0) })
         note("聞き取り: \(userText.prefix(40)) / Gemini: \(geminiText.prefix(120))")
         results.append(("S3 公式サイトを Safari で", s3))
@@ -208,7 +218,6 @@ extension SelfTest {
         if want("S12") {
         try? await Task.sleep(nanoseconds: 8_000_000_000)   // 前の場面の Gemini の発話が終わるまで待つ
         geminiText = ""
-        func lastReport() -> String { (hud.conversationProvider as? GeminiLiveProvider)?.reports.last ?? "" }
         var steps: [Bool] = []
         // 言い方は 2026-10-16 朝に本人が実際に言ったもの（「マクドナルドで注文したい」は合成音声だと「で注文」が欠けた）。
         for (phrase, expect) in [("マクドナルド注文して", "商品名と数量"),
@@ -216,7 +225,7 @@ extension SelfTest {
                                  ("ひとつ", "いつ届けたいですか")] {
             let before = reports()
             await say(phrase)
-            // 黙って待ちすぎると会話が「無言」で閉じる（約 45 秒）。答えはふつう 15 秒以内に戻る。
+            // 黙って待ちすぎると会話が「無言」で閉じる（聞いている間で約 20 秒）。答えはふつう 15 秒以内に戻る。
             let got = await wait(30, "S12 「\(phrase)」に Genie が答える") { reports() > before }
             note("報告: \(lastReport().prefix(120)) / 聞き取り: \(userText.prefix(40))")
             let marks = (hud.conversationProvider as? GeminiLiveProvider)?.trace.suffix(8).map(\.1).joined(separator: ",") ?? ""

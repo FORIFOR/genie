@@ -39,6 +39,8 @@ export interface ChannelSender {
     message: OutgoingMessage,
     options: SendOptions,
   ): Promise<{ providerMessageId: string | null }>;
+  /** 考えている間の表示（LINE の読み込み中）。出せなくても仕事は続ける。 */
+  typing?(target: SendTarget): Promise<void>;
 }
 
 export class ChannelSendError extends Error {
@@ -160,7 +162,7 @@ export class LineSender implements ChannelSender {
     headers: Record<string, string> = {},
   ): Promise<Response> {
     try {
-      return await this.fetchImpl(`https://api.line.me/v2/bot/message/${path}`, {
+      return await this.fetchImpl(`https://api.line.me/v2/bot/${path}`, {
         method: 'POST',
         headers: {
           authorization: `Bearer ${this.accessToken}`,
@@ -182,18 +184,27 @@ export class LineSender implements ChannelSender {
   ): Promise<{ providerMessageId: string | null }> {
     const messages = lineMessages(message);
     if (options.replyToken) {
-      const replied = await this.#post('reply', { replyToken: options.replyToken, messages });
+      let replied: Response;
+      try {
+        replied = await this.#post('message/reply', { replyToken: options.replyToken, messages });
+      } catch {
+        // 届いたか分からない。reply は再送を 1 通にできないので、送り直さない
+        throw new ChannelSendError('line_reply_uncertain', false);
+      }
       if (replied.ok) return { providerMessageId: null };
-      // 期限切れ・使用済みの token は push で送り直す。それ以外の 4xx は直らない
+      // 断られた（届いていない）ものだけ送り直す。期限切れ・使用済みの token（400）は push で、
+      // 429 は後で。5xx は受け付けられたかもしれないので、push で二通目を作らない
+      // （openclaw extensions/line の canFallbackAfterLineReplyFailure と同じ考え）
+      if (replied.status === 429) throw new ChannelSendError('line_http_429', true);
       if (replied.status !== 400) {
         throw new ChannelSendError(
-          `line_http_${String(replied.status)}`,
-          retryableStatus(replied.status),
+          replied.status >= 500 ? 'line_reply_uncertain' : `line_http_${String(replied.status)}`,
+          false,
         );
       }
     }
     const pushed = await this.#post(
-      'push',
+      'message/push',
       { to: target.destination, messages },
       // 同じ送信の再試行は、LINE の側でも 1 通になる（409 は「もう送った」）
       { 'X-Line-Retry-Key': options.retryKey },
@@ -204,7 +215,24 @@ export class LineSender implements ChannelSender {
       retryableStatus(pushed.status),
     );
   }
+
+  /** 1:1 のトークに「読み込み中」を出す（最長 60 秒、次の返信で消える）。 */
+  async typing(target: SendTarget): Promise<void> {
+    const response = await this.#post('chat/loading/start', {
+      chatId: target.destination,
+      loadingSeconds: LINE_LOADING_SECONDS,
+    });
+    if (!response.ok) {
+      throw new ChannelSendError(
+        `line_http_${String(response.status)}`,
+        retryableStatus(response.status),
+      );
+    }
+  }
 }
+
+/** 読み込み中を出す秒数（5 秒刻み、5〜60）。返信が先に届けばそこで消える。 */
+export const LINE_LOADING_SECONDS = 20;
 
 /** 本文と、ボタンがあればボタンのテンプレート（本文 160 字・ラベル 20 字・最大 4 つ）。 */
 export function lineMessages(message: OutgoingMessage): unknown[] {

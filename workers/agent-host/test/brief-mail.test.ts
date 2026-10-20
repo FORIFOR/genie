@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { BriefSection } from '@genie/contracts';
 import {
+  ConnectorError,
   GmailConnector,
   type MailSummary,
   type OutlookMailSummary,
@@ -300,15 +301,25 @@ describe('fresh daily brief mail', () => {
   it('reports total read and connection failures with no invented freshness', async () => {
     const h = fixture();
     h.list.mockRejectedValue(new Error('PRIVATE_PROVIDER_RESPONSE'));
-    expect(await readBriefMail(h.connectors, () => NOW)).toMatchObject({
-      status: 'stale',
-      fetched_at: null,
-      lines: [],
-    });
+    const failed = await readBriefMail(h.connectors, () => NOW);
+    expect(failed).toMatchObject({ status: 'stale', fetched_at: null, lines: [] });
+    // 1 件も読めていないのに「一部」「取得0件から…」とは言わない
+    expect(failed.reason).toBe('メールを読み取れませんでした。少し待ってから更新してください。');
     h.connected.mockRejectedValue(new Error('PRIVATE_KEYCHAIN_DETAIL'));
     const result = await readBriefMail(h.connectors, () => NOW);
     expect(result).toMatchObject({ status: 'stale', fetched_at: null, lines: [] });
     expect(JSON.stringify(result)).not.toMatch(/PRIVATE/);
+  });
+
+  it('says to reconnect when the connection has expired', async () => {
+    const h = fixture();
+    h.list.mockRejectedValue(new ConnectorError('token_expired', 'PRIVATE_PLUGIN_ID'));
+    const expired = await readBriefMail(h.connectors, () => NOW);
+    expect(expired).toMatchObject({ status: 'stale', fetched_at: null, lines: [] });
+    expect(expired.reason).toBe(
+      'Gmailの接続の期限が切れました。Apps の「つなぎ直す」から許可し直してください。',
+    );
+    expect(JSON.stringify(expired)).not.toMatch(/PRIVATE/);
   });
 
   it('shares the maximum 100 metadata rows between connected providers and rejects unsafe links', async () => {

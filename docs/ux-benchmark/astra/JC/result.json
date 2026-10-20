@@ -21,10 +21,10 @@
 
   ],
   "product" : "Genie",
-  "startedAt" : "2026-10-18T18:16:48Z",
+  "startedAt" : "2026-10-20T09:58:15Z",
   "steps" : [
     {
-      "front" : "com.apple.finder",
+      "front" : "com.apple.Terminal",
       "ids" : {
         "enable" : "true",
         "later" : "true",
@@ -32,26 +32,26 @@
       },
       "interactions" : 1,
       "keyWindow" : true,
-      "ms" : 1033,
+      "ms" : 1049,
       "name" : "マイクの説明",
       "surface" : {
         "h" : 189,
         "key" : true,
         "w" : 312,
         "x" : 1392,
-        "y" : 94
+        "y" : 95
       },
-      "transitionMs" : 60,
+      "transitionMs" : 57,
       "windows" : 2
     },
     {
-      "front" : "com.apple.finder",
+      "front" : "com.apple.Terminal",
       "ids" : {
-        "session" : "meeting-32ad9690-0658-4ada-a5a4-1dae56f73882"
+        "session" : "meeting-85c4db1b-3f77-4818-bd31-70e0f833bfa6"
       },
       "interactions" : 1,
       "keyWindow" : true,
-      "ms" : 1165,
+      "ms" : 1169,
       "name" : "回復",
       "surface" : {
         "h" : 108,
@@ -63,14 +63,14 @@
       "windows" : 1
     },
     {
-      "front" : "com.apple.finder",
+      "front" : "com.apple.Terminal",
       "ids" : {
         "backAfterSharing" : "true",
         "hiddenWhileSharing" : "true"
       },
       "interactions" : 0,
       "keyWindow" : false,
-      "ms" : 1494,
+      "ms" : 1458,
       "name" : "共有のあと",
       "surface" : {
         "h" : 108,
@@ -82,7 +82,7 @@
       "windows" : 1
     },
     {
-      "front" : "com.apple.finder",
+      "front" : "com.apple.Terminal",
       "ids" : {
         "answered" : "false",
         "surfaces" : "1"
@@ -101,14 +101,14 @@
       "windows" : 1
     },
     {
-      "front" : "com.astra.desktop",
+      "front" : "com.apple.Terminal",
       "ids" : {
         "status" : "interrupted",
         "transcriptRows" : "1"
       },
       "interactions" : 1,
       "keyWindow" : false,
-      "ms" : 2300,
+      "ms" : 2246,
       "name" : "落ちて再開",
       "surface" : {
         "h" : 820,
@@ -121,6 +121,6 @@
     }
   ],
   "success" : true,
-  "totalMs" : 7268,
+  "totalMs" : 7197,
   "windowsOpened" : 0
 }

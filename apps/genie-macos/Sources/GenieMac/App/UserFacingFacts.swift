@@ -184,9 +184,10 @@ enum UserFacingFacts {
     static let menuWakeWord = "「ジーニー」で呼びかける"
     static let menuTryWake = "呼びかけを試す"
     static let menuDiagnose = "声と接続を診断"
-    /// 押すと 3 秒ごとに合図音が 20 回鳴る。合図の後に「ジーニー」と言う（録音は Mac の中だけ）。
-    static let menuWakeEnroll = "声を覚える（合図のあとに「ジーニー」×20）"
-    static let wakeEnrollSaved = "声を録りました。録音はこの Mac の中だけに残ります。"
+    /// 押すと 3 秒ごとに合図音が 8 回鳴る。合図の後に「ジーニー」と言う（録音は Mac の中だけ）。
+    static let menuWakeEnroll = "声を覚える（合図のあとに「ジーニー」×2）"
+    static let wakeEnrollSaved = "声を覚えました。ほかの人の声では起きにくくなります。録音はこの Mac の中だけに残ります。"
+    static let wakeEnrollTooFew = "声を聞き取れず覚えられませんでした。合図のあとに「ジーニー」と言ってください。"
     static let wakeEnrollNoVoice = "声が録れませんでした。マイクの入力を確かめて、もう一度試してください。"
     /// Gemini のクレジット切れ・利用枠の上限で、標準の会話に切り替えたとき。
     static let geminiLiveOff = "会話には Gemini Live を使います。設定で Gemini Live を有効にしてください。"

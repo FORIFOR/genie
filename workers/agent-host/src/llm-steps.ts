@@ -85,6 +85,13 @@ const TOOLS_FOR: Readonly<Record<LlmTool, readonly string[]>> = {
 export type LlmTool = (typeof LLM_TOOLS)[number];
 
 /**
+ * Web 検索 1 回の上限。検索してからページを開いて抜粋を写すので、ほかの問いより長くかかる。
+ * 120 秒では「最新の MacBook Air の日本での価格」が 1 本切れて、調査ごと止まった（host.log 2026-10-19 19:29Z）。
+ * 端末の手順の上限（task の activity、5 分）より短くする。
+ */
+export const SEARCH_TIMEOUT_MS = 210_000;
+
+/**
  * この呼び出しで使ってよい道具。
  *
  * 問いに端末内の画像が添えてあるときだけ、**読むこと**を許す。
@@ -743,7 +750,11 @@ export class LlmRuntime {
     if (tool === 'search.web' && kind === 'claude_code' && this.#deps.claudeCode) {
       const cli = this.#deps.claudeCode;
       return (prompt, allowedTools) =>
-        cli.ask(prompt, { allowedTools, ...(signal ? { signal } : {}) });
+        cli.ask(prompt, {
+          allowedTools,
+          timeoutMs: SEARCH_TIMEOUT_MS,
+          ...(signal ? { signal } : {}),
+        });
     }
     const provided = this.#deps.askWith?.[kind];
     if (provided) return provided;
@@ -780,6 +791,12 @@ export class LlmRuntime {
     }
     if (kind === 'claude_code' && this.#deps.claudeCode) {
       const cli = this.#deps.claudeCode;
+      // 画面操作の判断は、確かめ終えた写真のバイトを本文で渡す（道具は渡さない）
+      if (VISION_TOOLS.has(tool))
+        return (prompt, _allowedTools, images) =>
+          cli.askWithImages(prompt, readImagesForRequest(tool, args, images), {
+            ...(signal ? { signal } : {}),
+          });
       return (prompt, allowedTools) =>
         cli.ask(prompt, { allowedTools, ...(signal ? { signal } : {}) });
     }

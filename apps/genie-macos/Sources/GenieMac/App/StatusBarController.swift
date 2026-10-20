@@ -132,9 +132,10 @@ final class StatusBarController {
     @objc func enrollWakeWord() {
         Task { @MainActor in
             // 録れたかどうかを言う（無音のまま「録れた」と思わせない。2026-10-18 の録音は無音だった）。
-            let saved = await WakeEnrollment.shared.record() != nil
+            let recording = await WakeEnrollment.shared.record()
             let alert = NSAlert()
-            alert.messageText = saved ? Facts.wakeEnrollSaved : Facts.wakeEnrollNoVoice
+            alert.messageText = recording == nil ? Facts.wakeEnrollNoVoice
+                : recording?.learnedCalls == nil ? Facts.wakeEnrollTooFew : Facts.wakeEnrollSaved
             alert.addButton(withTitle: Facts.updateClose)
             NSApp.activate(ignoringOtherApps: true)
             alert.runModal()

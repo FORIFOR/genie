@@ -54,6 +54,17 @@ export interface InboundChannelAction {
   readonly replyToken: string | null;
 }
 
+/** 友だちに追加された（LINE の follow、1:1 だけ）。連携していなければ、つなぎ方を返す。 */
+export interface InboundChannelFollow {
+  readonly provider: ChannelProvider;
+  readonly eventId: string;
+  readonly workspaceId: string;
+  readonly subject: string;
+  readonly destination: string;
+  readonly threadKey: string;
+  readonly replyToken: string | null;
+}
+
 /** 受けなかった理由。黙って捨てずに、記録できる形で返す。 */
 export type IgnoredReason =
   | 'bot_message'

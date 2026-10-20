@@ -7,6 +7,7 @@
  * 承認は cloud で取ってあるが、**ここでもう一度確かめる。**
  * 経路が 1 本しかないと、いつか誰かが近道を作り、それが既定になる。
  */
+import { createHash } from 'node:crypto';
 import {
   ApprovalRequired,
   ConnectorError,
@@ -26,6 +27,7 @@ import {
   TokenStore,
   type ProviderConfig,
   type SecretStore,
+  type TokenSet,
 } from '@genie/oauth';
 
 /** cloud から渡ってくる、端末にやってほしいこと。 */
@@ -56,6 +58,12 @@ export interface ConnectorRuntimeDeps {
   ) => ProviderConfig | null;
   readonly fetch?: typeof globalThis.fetch;
   readonly now?: () => Date;
+  /** 提供者が更新を断ったことを Mac アプリへ知らせる（値は渡さない。指紋だけ）。 */
+  readonly reportRenewalRejected?: (
+    pluginId: string,
+    connectorId: string,
+    fingerprint: string,
+  ) => Promise<void>;
 }
 
 /**
@@ -138,6 +146,23 @@ export const TOOL_CONNECTOR: Readonly<Record<string, ConnectorKey>> = {
 
 export function connectorForTool(toolId: string): ConnectorKey | null {
   return TOOL_CONNECTOR[toolId] ?? null;
+}
+
+/** 更新した分を置く別項目の名前の末尾。アプリが作った項目とは分ける。 */
+export const HOST_RENEWAL_SUFFIX = '.host-renewal';
+
+/** 別項目の中身。どのアプリ側の接続から更新したか（`origin`）を持つ。 */
+type HostRenewal = TokenSet & { readonly origin: string };
+
+/**
+ * 接続の指紋（更新用トークンのハッシュの先頭）。値そのものは出さない。
+ * Mac アプリも同じ計算で、「断られた」がいまの接続のことかを見分ける。
+ */
+export function credentialFingerprint(tokens: Pick<TokenSet, 'refreshToken' | 'accessToken'>) {
+  return createHash('sha256')
+    .update(tokens.refreshToken ?? tokens.accessToken)
+    .digest('hex')
+    .slice(0, 32);
 }
 
 export class ConnectorRuntime {
@@ -370,8 +395,18 @@ export class ConnectorRuntime {
    */
   async #accessToken(pluginId: string, connectorId: string, provider: string): Promise<string> {
     const ref = this.#deps.credentialRefFor(pluginId, connectorId);
-    const tokens = await this.#tokens.load(ref);
-    if (!tokens) throw new ConnectorError('not_connected', `${pluginId} is not connected`);
+    const native = await this.#tokens.load(ref);
+    if (!native) throw new ConnectorError('not_connected', `${pluginId} is not connected`);
+    /*
+     * 更新した分は**別の項目**に置き、Mac アプリが作った項目は書き換えない。
+     * `security` で書き戻すと項目の partition が `apple-tool:` だけになり、アプリが自分の接続を
+     * 読めなくなって「つなぎ直す」も保存できなかった（2026-10-16〜19）。
+     * 別項目は、アプリの項目が同じ更新用トークンのままのときだけ使う（つなぎ直したらアプリの項目が勝つ）。
+     */
+    const origin = credentialFingerprint(native);
+    const hostRef = `${ref}${HOST_RENEWAL_SUFFIX}`;
+    const renewed = (await this.#tokens.load(hostRef)) as HostRenewal | null;
+    const tokens = renewed?.origin === origin ? renewed : native;
 
     const config = this.#deps.refreshConfig?.(provider, connectorId, tokens.grantedScopes ?? []);
     if (
@@ -385,6 +420,9 @@ export class ConnectorRuntime {
     const now = (this.#deps.now ?? (() => new Date()))().getTime();
     const expired = tokens.expiresAt !== null && Date.parse(tokens.expiresAt) <= now;
     if (!expired && !needsRefresh(tokens, now)) return tokens.accessToken;
+    // 一度断られた更新用トークンで、提供者を呼び直さない。
+    if (tokens.renewalRejectedAt)
+      throw new ConnectorError('token_expired', `${pluginId} needs to be connected again`);
 
     if (!config || !tokens.refreshToken) {
       /*
@@ -402,29 +440,51 @@ export class ConnectorRuntime {
     if (inflight) return inflight;
     const refreshToken = tokens.refreshToken;
     const task = (async () => {
-      const renewed = await refresh(
+      const next = await refresh(
         config,
         refreshToken,
         this.#deps.fetch ?? globalThis.fetch,
         () => now,
-      );
+      ).catch(async (error: unknown) => {
+        /*
+         * 更新用のトークンが失効・取り消し済み（`invalid_grant`）。待っても直らないので
+         * 「つなぎ直してください」と言う。Google の「テスト中」のアプリでは 7 日で失効する
+         * （2026-10-16 に切れ、まとめは「一部を取得できませんでした」とだけ出し続け、
+         * Apps は「接続済み」のままだった）。断られたことを残し、Mac の Apps にも知らせる。
+         */
+        if ((error as { code?: unknown } | null)?.code === 'invalid_grant') {
+          // その間につなぎ直されていたら、新しい接続に印を付けない。
+          const current = await this.#tokens.load(ref);
+          if (current && credentialFingerprint(current) === origin) {
+            await this.#tokens.save(pluginId, `${connectorId}${HOST_RENEWAL_SUFFIX}`, {
+              ...tokens,
+              origin,
+              renewalRejectedAt: new Date(now).toISOString(),
+            } as HostRenewal);
+            await this.#deps.reportRenewalRejected?.(pluginId, connectorId, origin);
+          }
+          throw new ConnectorError('token_expired', `${pluginId} needs to be connected again`);
+        }
+        throw error;
+      });
       if (
         provider === 'microsoft' &&
         this.#deps.refreshConfig &&
-        !this.#deps.refreshConfig(provider, connectorId, renewed.grantedScopes)
+        !this.#deps.refreshConfig(provider, connectorId, next.grantedScopes)
       ) {
         throw new ConnectorError(
           'provider_error',
           'Microsoft returned scopes outside this connection',
         );
       }
-      await this.#tokens.save(pluginId, connectorId, {
-        ...renewed,
+      await this.#tokens.save(pluginId, `${connectorId}${HOST_RENEWAL_SUFFIX}`, {
+        ...next,
         // Refresh responses do not carry the native UI's account label. Keep only
         // that local metadata; tokens, scopes and client binding come from renewal.
         ...(typeof tokens.accountLabel === 'string' ? { accountLabel: tokens.accountLabel } : {}),
-      });
-      return renewed.accessToken;
+        origin,
+      } as HostRenewal);
+      return next.accessToken;
     })().finally(() => this.#refreshing.delete(ref));
     this.#refreshing.set(ref, task);
     return task;

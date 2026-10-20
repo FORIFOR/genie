@@ -188,7 +188,11 @@ export class HostStepLoop {
               outcome.error ?? { code: 'host.failed', message: '端末で実行できませんでした。' },
               // Keep reconciliation identity even when an order outcome is unknown.
               // It remains a failure; recording it must not turn it into a new submit.
-              step.toolId.startsWith('transaction.') ? outcome.result : undefined,
+              step.toolId.startsWith('transaction.')
+                ? outcome.result
+                : step.toolId === 'computer.run'
+                  ? segmentResult(outcome.result)
+                  : undefined,
             ),
           );
         }
@@ -272,4 +276,17 @@ export function isTransient(error: unknown): boolean {
   return /fetch failed|ECONNREFUSED|ECONNRESET|ETIMEDOUT|EPIPE|UND_ERR_SOCKET|\b(502|503|504)\b/.test(
     text,
   );
+}
+
+/**
+ * 画面操作が上限で区切れたかどうかだけを cloud へ返す。操作の記録（audit）は端末に残す。
+ */
+function segmentResult(
+  result: unknown,
+): { segment: { continuable: boolean; inputs: number } } | undefined {
+  const segment = (result as { segment?: { continuable?: unknown; inputs?: unknown } } | null)
+    ?.segment;
+  if (typeof segment?.continuable !== 'boolean' || !Number.isInteger(segment.inputs))
+    return undefined;
+  return { segment: { continuable: segment.continuable, inputs: segment.inputs as number } };
 }

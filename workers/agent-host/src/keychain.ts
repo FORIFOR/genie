@@ -8,6 +8,7 @@
  * **鍵を扱う経路を、外から読める短いコードにしておきたい**から。
  */
 import { execFile } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import { chmod, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { promisify } from 'node:util';
@@ -39,21 +40,32 @@ function serviceFor(key: string): string {
  */
 export class MacKeychain implements SecretStore {
   readonly #account: string;
+  /**
+   * 読み書きに使う Genie.app の実行ファイル（`--connector-secret`）。無ければ `security`。
+   * `security` だと、アプリが作った項目を読むたびに macOS がパスワードを求め、書き戻すとアプリが
+   * 読めなくなった（2026-10-16〜20）。同じ署名の Genie 自身なら確認なしで通る。
+   */
+  readonly #genie: string | null;
   /** 同じ項目への書き込みは 1 本ずつ（`security` の更新が並ぶと片方が「既に存在」で落ちる）。 */
   static readonly #writes = new Map<string, Promise<void>>();
 
-  constructor(account: string) {
+  constructor(account: string, genie: string | null = null) {
     this.#account = account;
+    this.#genie = genie;
   }
 
   async get(key: string): Promise<string | null> {
     try {
-      const { stdout } = await run(
-        'security',
-        ['find-generic-password', '-a', this.#account, '-s', serviceFor(key), '-w'],
-        { timeout: 30_000 },
-      );
-      return stdout.trimEnd();
+      const { stdout } = this.#genie
+        ? await run(this.#genie, ['--connector-secret', 'get', serviceFor(key)], {
+            timeout: 30_000,
+          })
+        : await run(
+            'security',
+            ['find-generic-password', '-a', this.#account, '-s', serviceFor(key), '-w'],
+            { timeout: 30_000 },
+          );
+      return this.#genie ? stdout : stdout.trimEnd();
     } catch (error) {
       if (isNotFound(error)) return null;
       throw new KeychainUnavailable(
@@ -75,7 +87,11 @@ export class MacKeychain implements SecretStore {
     const previous = MacKeychain.#writes.get(slot) ?? Promise.resolve();
     const write = previous
       .catch(() => undefined)
-      .then(() => runWithInput('security', ['-i'], line, 30_000));
+      .then(() =>
+        this.#genie
+          ? runWithInput(this.#genie, ['--connector-secret', 'set', serviceFor(key)], value, 30_000)
+          : runWithInput('security', ['-i'], line, 30_000),
+      );
     MacKeychain.#writes.set(slot, write);
     try {
       await write;
@@ -95,13 +111,18 @@ export class MacKeychain implements SecretStore {
 
   async delete(key: string): Promise<void> {
     try {
-      await run('security', [
-        'delete-generic-password',
-        '-a',
-        this.#account,
-        '-s',
-        serviceFor(key),
-      ]);
+      if (this.#genie)
+        await run(this.#genie, ['--connector-secret', 'delete', serviceFor(key)], {
+          timeout: 30_000,
+        });
+      else
+        await run('security', [
+          'delete-generic-password',
+          '-a',
+          this.#account,
+          '-s',
+          serviceFor(key),
+        ]);
     } catch (error) {
       // 無いものを消せなくても、結果は同じ
       if (!isNotFound(error)) throw error;
@@ -232,8 +253,15 @@ export function keychainFor(
   platform: string,
   account: string,
   env: Readonly<Record<string, string | undefined>> = process.env,
+  exists: (path: string) => boolean = existsSync,
 ): SecretStore {
   const file = env['ASTRA_SECRET_STORE_FILE'];
   if (file) return new FileSecretStore(file);
-  return platform === 'darwin' ? new MacKeychain(account) : new NoKeychain();
+  if (platform !== 'darwin') return new NoKeychain();
+  // Genie.app があればそれで読み書きする（パスワードを求めない）。無ければ `security`。
+  const genie = env['ASTRA_GENIE_EXECUTABLE'] || DEFAULT_GENIE_EXECUTABLE;
+  return new MacKeychain(account, exists(genie) ? genie : null);
 }
+
+/** 既定の Genie.app の実行ファイル。 */
+export const DEFAULT_GENIE_EXECUTABLE = '/Applications/Genie.app/Contents/MacOS/Genie';

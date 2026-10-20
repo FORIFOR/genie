@@ -45,6 +45,8 @@ describe.skipIf(!url)('chat channels', () => {
   const texts = (since = 0) =>
     sent
       .slice(since)
+      // 読み込み中の表示は本文ではない
+      .filter((s) => !s.url.endsWith('/chat/loading/start'))
       .map((s) =>
         String(
           s.body['text'] ??
@@ -371,8 +373,28 @@ describe.skipIf(!url)('chat channels', () => {
       replyToken: 'rt-2',
       message: { type: 'text', id: 'm2', text: '半導体市場を調査して' },
     });
-    await waitFor(() => sent.length > before, 'line accepted');
+    await waitFor(() => texts(before).length > 0, 'line accepted');
     expect(texts(before)[0]).toContain('受け付けました');
+    // 考えている間は読み込み中を出す（本文より先）
+    expect(sent.slice(before).map((s) => s.url)[0]).toBe(
+      'https://api.line.me/v2/bot/chat/loading/start',
+    );
+
+    // 友だちに追加しただけの人には、つなぎ方を返す
+    before = sent.length;
+    await webhook({
+      type: 'follow',
+      webhookEventId: 'L3',
+      replyToken: 'rt-3',
+      source: { type: 'user', userId: 'Unew' },
+      follow: { isUnblocked: false },
+    });
+    await waitFor(() => sent.length > before, 'line follow');
+    expect(sent[before]).toMatchObject({
+      url: 'https://api.line.me/v2/bot/message/reply',
+      body: { replyToken: 'rt-3' },
+    });
+    expect(texts(before)[0]).toContain('まだ連携していません');
   });
 
   it('answers a Slack mention in the channel briefly and the work in a DM', async () => {

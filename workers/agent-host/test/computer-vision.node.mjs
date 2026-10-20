@@ -338,6 +338,11 @@ test('external screenshot egress needs separate opt-in BEFORE capture', async ()
   assert.match((await h.runtime.run(step())).error.code, /egress_consent_required/);
   assert.equal(h.stats().captures, 0);
 });
+test('Claude Code is an external screen recipient: it needs the same opt-in before capture', async () => {
+  const h = harness(happy, { config: { selectModel: async () => 'claude_code' } });
+  assert.match((await h.runtime.run(step())).error.code, /egress_consent_required/);
+  assert.equal(h.stats().captures, 0);
+});
 test('unavailable selected model does not silently fall back', async () => {
   const h = harness(happy, { config: { selectModel: async () => null } });
   assert.match((await h.runtime.run(step())).error.code, /vision_model_unavailable/);
@@ -353,8 +358,21 @@ test('action limit is enforced', async () => {
     }),
     { config: { maxActions: 1 } },
   );
-  assert.match((await h.runtime.run(step())).error.code, /action_limit/);
+  const outcome = await h.runtime.run(step());
+  assert.match(outcome.error.code, /action_limit/);
   assert.equal(h.stats().applied, 1);
+  // 進んだところで上限に届いただけなので、同じ承認で続けてよいと返す
+  assert.deepEqual(outcome.result.segment, { continuable: true, inputs: 1 });
+});
+test('a stop that is not a limit, or one with no progress, is not continued', async () => {
+  const h = harness(happy, {
+    apply: async () => {
+      throw new VisionFailure('user_cancelled');
+    },
+  });
+  assert.equal((await h.runtime.run(step())).result.segment.continuable, false);
+  const none = harness(happy, { config: { selectModel: async () => null } });
+  assert.equal((await none.runtime.run(step())).result.segment.continuable, false);
 });
 test('ambiguous input failure is not automatically retried', async () => {
   const h = harness(happy, {

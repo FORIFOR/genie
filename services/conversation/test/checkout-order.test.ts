@@ -30,6 +30,8 @@ describe('durable checkout terms reducer', () => {
     'マックで宅配したい',
     'マクドナルで注文したい', // 書き起こしの語尾が欠けた形
     'マクドで注文したい',
+    'マクドナルド注文', // 書き起こしが「して」を落とした形（liveflow 2026-10-20）
+    'マクドナルド注文します',
   ])('collects %s rather than claiming a site handoff completes it', (text) => {
     expect(checkoutOrderRequest(text)).not.toBeNull();
     expect(checkoutAssistanceRequest(text)).toBeNull();
@@ -103,6 +105,8 @@ describe('durable checkout terms reducer', () => {
     expect(advance(item.draft, '天気を教えて')).toBeNull();
     // 「注文をやめて」は下書きを止める（Gemini が stop_work でなく渡したとき）
     expect(advance(counted.draft, '注文をやめて')!.draft.status).toBe('paused');
+    expect(advance(counted.draft, '注文をやめ')!.draft.status).toBe('paused');
+    expect(advance(counted.draft, '注文をキャンセルして')!.draft.status).toBe('paused');
   });
 
   it('preserves terms on pause, unrelated conversations and resume', () => {

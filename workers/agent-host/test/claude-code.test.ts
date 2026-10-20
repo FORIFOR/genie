@@ -190,4 +190,47 @@ describe('probing the device', () => {
     ).rejects.toMatchObject({ reason: 'timed_out' });
     expect(calls).toEqual([]);
   });
+
+  it('shows screen images inline with no tools, MCP or settings, and reads the stream result', async () => {
+    const { calls, run } = runs({
+      stdout: [
+        JSON.stringify({ type: 'system', subtype: 'init', tools: [] }),
+        JSON.stringify({ type: 'assistant' }),
+        reply({ action: 'click', elementId: 'e1' }),
+      ].join('\n'),
+    });
+    const png = Buffer.from('89504e47', 'hex');
+    const answer = await new ClaudeCodeCli({ run }).askWithImages('次の一手', [
+      { mimeType: 'image/png', data: png },
+    ]);
+    expect(answer).toEqual({ action: 'click', elementId: 'e1' });
+    const args = calls[0]!.args;
+    expect(args).toEqual(
+      expect.arrayContaining(['--input-format', 'stream-json', '--strict-mcp-config']),
+    );
+    expect(args[args.indexOf('--tools') + 1]).toBe('');
+    expect(args[args.indexOf('--setting-sources') + 1]).toBe('');
+    expect(args).not.toContain('--allowedTools');
+    const sent = JSON.parse(calls[0]!.input!);
+    expect(sent.message.content[0]).toEqual({
+      type: 'image',
+      source: { type: 'base64', media_type: 'image/png', data: png.toString('base64') },
+    });
+    expect(sent.message.content[1]).toEqual({ type: 'text', text: '次の一手' });
+  });
+
+  it('turns an error result in the stream into a typed error', async () => {
+    const { run } = runs({
+      stdout: JSON.stringify({ type: 'result', is_error: true, result: 'usage limit reached' }),
+    });
+    await expect(
+      new ClaudeCodeCli({ run }).askWithImages('x', [
+        { mimeType: 'image/png', data: Buffer.from('x') },
+      ]),
+    ).rejects.toMatchObject({ reason: 'rate_limited' });
+    const { run: noResult } = runs({ stdout: JSON.stringify({ type: 'assistant' }) });
+    await expect(new ClaudeCodeCli({ run: noResult }).askWithImages('x', [])).rejects.toMatchObject(
+      { reason: 'unreadable_output' },
+    );
+  });
 });

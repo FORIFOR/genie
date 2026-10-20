@@ -76,7 +76,7 @@ run "Tauri desktop JS regression" bash scripts/verify-desktop-tests.sh
 run "TCC usage descriptions"     bash scripts/verify-usage-descriptions.sh
 run "release consistency"        bash scripts/verify-release-consistency.sh
 run "release aggregation regression" python3 -m unittest discover -s scripts/tests -p 'test_*.py'
-run "managed preview lifecycle" node --test scripts/tests/managed-local-preview.test.mjs
+run "managed preview lifecycle" node --test scripts/tests/managed-local-preview.test.mjs scripts/tests/local-preview-recovery.test.mjs
 run "transaction regression" bash scripts/verify-transactions.sh
 run "computer vision contracts" node --test workers/agent-host/test/computer-vision.node.mjs workers/agent-host/test/computer-vision-integration.node.mjs workers/agent-host/test/background-vision.node.mjs workers/agent-host/test/computer-scroll-device.node.mjs workers/agent-host/test/cloud-budget.node.mjs scripts/tests/computer-use.test.mjs
 if [[ "$(uname -s)" == Darwin ]]; then

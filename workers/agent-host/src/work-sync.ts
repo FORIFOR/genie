@@ -28,6 +28,7 @@ import {
   fromTodo,
   type NormalizeContext,
 } from '@genie/service-connectors';
+import { isGmailNoise } from './brief/mail.js';
 import type { ConnectorRuntime } from './connector-steps.js';
 import type { StepRunner } from './step-loop.js';
 
@@ -79,12 +80,24 @@ export interface WorkSyncDeps {
   readonly backoffMs?: number;
   readonly sleep?: (ms: number) => Promise<void>;
   readonly onError?: (source: WorkSource, error: Error) => void;
+  /**
+   * 起動ごとに 1 回、遡る範囲の広告・自動通知を「対応済み」で上書きする（入口で除く前に取り込んだ分を閉じる）。
+   * 常駐の同期だけで使う（初回の読み取りでは使わない）。
+   */
+  readonly sweepNoise?: boolean;
+  /** 上書きの結果（数と失敗の種類だけ）。 */
+  /** 上書きで 1 回に読む量（ページ数 × 1 ページの件数）。既定 4 × 100。 */
+  readonly noiseSweepLimit?: { readonly pages: number; readonly pageSize: number };
+  readonly onSwept?: (outcome: { checked: number; closed: number; error?: string }) => void;
 }
 
 export const DEFAULT_LOOKBACK_DAYS = 14;
 export const DEFAULT_LOOKAHEAD_DAYS = 14;
 export const DEFAULT_MAX_CLASSIFICATIONS = 30;
 export const DEFAULT_SYNC_INTERVAL_MS = 15 * 60_000;
+/** 前に取り込んだ広告を閉じるときに遡る日数。 */
+export const NOISE_SWEEP_DAYS = 45;
+const NOISE_SWEEP_SLICE_DAYS = 7;
 
 const DAY_MS = 86_400_000;
 
@@ -96,6 +109,9 @@ export class WorkSyncLoop {
    */
   readonly #cursors = new Map<WorkSource, string>();
   #resumed = false;
+  /** 前に取り込んだ広告を、どこまで遡って閉じたか（この起動で）。遡りきったら止める。 */
+  #noiseSweptTo: Date | null = null;
+  #noiseSweepDone = false;
   /** 既に LLM に頼んだ artifact。同じメールを毎回聞き直さない。 */
   readonly #classified = new Map<string, WorkSemantic | null>();
   #timer: ReturnType<typeof setTimeout> | null = null;
@@ -289,10 +305,71 @@ export class WorkSyncLoop {
     // Keep its incoming copy so the same artifact ID cannot overwrite it as outgoing.
     const inboxIds = new Set(inbox.map((message) => message.id));
     const artifacts = [
-      ...inbox.map((m) => fromGmail(m, 'inbound', ctx)),
+      ...inbox.filter((m) => !isGmailNoise(m)).map((m) => fromGmail(m, 'inbound', ctx)),
       ...sent.filter((m) => !inboxIds.has(m.id)).map((m) => fromGmail(m, 'outbound', ctx)),
     ].filter((a): a is WorkArtifact => a !== null);
-    return { artifacts, cursor: latest(artifacts, since) };
+    const cursor = latest(artifacts, since);
+    // 入口で広告を除く前に取り込んだ分を、起動ごとに 1 回だけ「対応済み」で上書きする（cursor は動かさない）。
+    // 入口で広告を除く前に取り込んだ分を、新しい方から 7 日ずつ「対応済み」で上書きする（cursor は動かさない）。
+    if (this.#deps.sweepNoise && !this.#noiseSweepDone) {
+      const swept = await this.#closedNoise(now, ctx).catch((error: unknown) => {
+        this.#deps.onSwept?.({
+          checked: 0,
+          closed: 0,
+          error: error instanceof ConnectorError ? error.reason : 'failed',
+        });
+        return [];
+      });
+      const seen = new Set(artifacts.map((a) => a.id));
+      artifacts.push(...swept.filter((a) => !seen.has(a.id)));
+    }
+    return { artifacts, cursor };
+  }
+
+  /**
+   * 広告・一般の自動通知を、要対応に上がらない形（返信済み・完了・意味づけなし・期限なし）で返す。
+   * 以前は入口で絞っておらず、TOBU POINT などの広告が「未返信」「期限」の要対応に残っていた（2026-10-19）。
+   * cloud の行は id で上書きされる。消す経路は無いので、閉じた形で上書きして一覧から外す。
+   */
+  async #closedNoise(now: Date, ctx: NormalizeContext): Promise<WorkArtifact[]> {
+    // 要対応は遡る範囲より古いものも残る（10/05 の PayPay のクーポンが 10/20 に「返すもの」に出ていた）。
+    const limit = new Date(
+      now.getTime() -
+        Math.max(this.#deps.lookbackDays ?? DEFAULT_LOOKBACK_DAYS, NOISE_SWEEP_DAYS) * DAY_MS,
+    );
+    // 1 回に 7 日分（広告は 45 日で 200 通を超えた）。読む量を同期 1 回分に収める。
+    const before = this.#noiseSweptTo ?? new Date(now.getTime() + DAY_MS);
+    const after = new Date(
+      Math.max(limit.getTime(), before.getTime() - NOISE_SWEEP_SLICE_DAYS * DAY_MS),
+    );
+    const seconds = (d: Date) => String(Math.floor(d.getTime() / 1000));
+    const query = [
+      `after:${seconds(after)} before:${seconds(before)} -in:sent`,
+      '{category:promotions category:social category:forums category:updates unsubscribe 配信停止}',
+      this.#deps.googleQuery,
+    ]
+      .filter(Boolean)
+      .join(' ');
+    // 1 回に読む上限。Gmail の回数制限を避けて 0.25 秒おきに読むので、400 通で約 100 秒（裏の同期の中）。
+    const { pages, pageSize } = this.#deps.noiseSweepLimit ?? { pages: 4, pageSize: 100 };
+    // 受信箱から外したもの（アーカイブ）も、要対応には残っている。ラベルで絞らない。
+    const mails = await this.#deps.connectors
+      .gmail()
+      .list({ query, maxResults: pageSize, maxPages: pages, retryRateLimits: true });
+    // 読める上限まで届いたら、その中でいちばん古いメールから次を続ける（7 日で 400 通を超えた）。
+    const oldest = Math.min(
+      ...mails.map((m) => Date.parse(m.receivedAt ?? '')).filter((t) => Number.isFinite(t)),
+    );
+    const full = mails.length >= pages * pageSize && Number.isFinite(oldest);
+    this.#noiseSweptTo = full ? new Date(oldest) : after;
+    if (!full && after.getTime() <= limit.getTime()) this.#noiseSweepDone = true;
+    const closed = mails
+      .filter(isGmailNoise)
+      .map((m) => fromGmail(m, 'inbound', ctx))
+      .filter((a): a is WorkArtifact => a !== null)
+      .map((a) => ({ ...a, responded: true, completed: true, semantic: null, due_at: null }));
+    this.#deps.onSwept?.({ checked: mails.length, closed: closed.length });
+    return closed;
   }
 
   async #googleCalendar(
@@ -383,7 +460,7 @@ export class WorkSyncLoop {
     let classified = 0;
     const items: WorkArtifact[] = [];
     for (const art of artifacts) {
-      if (art.kind !== 'email' || art.semantic !== null) {
+      if (art.kind !== 'email' || art.semantic !== null || art.completed === true) {
         items.push(art);
         continue;
       }

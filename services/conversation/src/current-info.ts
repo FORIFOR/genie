@@ -22,6 +22,8 @@ const PRECIP_QUESTION = /(?:雨|雪)(?:が|は)?(?:降る|降り|ふる|ふり|�
 const NEWS = /ニュース|速報|ヘッドライン/;
 /** 値段を聞いている（「日経平均について教えて」は値段の質問ではない）。 */
 const QUOTE = /株価|終値|値動き|(?:日経平均|TOPIX|ダウ平均?)(?:は|って|が|の値|いくら|今|どう|[？?]|$)/i;
+/** 為替の値段（「ドル円はいくら？」）。声では show_info で出せていたのに、文字では「分かりません」と返していた（2026-10-19）。 */
+const FX = /(?:ドル円|ユーロ円|円相場|為替(?:レート|相場)?)(?:は|って|が|の値|いくら|今|どう|[？?]|$)|為替レート/;
 /** 何かを作ってほしい依頼は、情報の質問ではない（「天気予報アプリの企画書を作って」）。 */
 const MAKE = /(?:作って|作成|書いて|つくって|企画|設計|実装|アプリ|サイト|記事を)/;
 /** 別の作業の依頼（「ニュースを翻訳して」「気温と売上の相関を分析して」）。 */
@@ -72,7 +74,7 @@ export function classifyCurrentInfo(input: string): CurrentInfoQuery | null {
   const text = input.trim();
   if (!text || text.length > 80 || MAKE.test(text) || PROCESS.test(text)) return null;
   if (NEWS.test(text)) return ASKING.test(text) || /ニュース$/.test(text) ? { kind: 'news', topic: topic(text) } : null;
-  if (QUOTE.test(text)) return { kind: 'quote', subject: text };
+  if (QUOTE.test(text) || FX.test(text)) return { kind: 'quote', subject: text };
   if ((WEATHER.test(text) && ASKING.test(text)) || PRECIP_QUESTION.test(text)) {
     return { kind: 'weather', when: when(text), place: place(text) };
   }

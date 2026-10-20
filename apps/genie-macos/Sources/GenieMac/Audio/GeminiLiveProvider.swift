@@ -167,6 +167,7 @@ final class GeminiLiveProvider: ConversationProvider {
         send(GeminiLive.userText(Self.reportPreamble + text))
         reports.append(text)
         mark("reported")
+        onReported?()
     }
 
     /// 挨拶を促す（「ジーニー」とだけ呼ばれた）。つながっていればすぐ、まだなら setupComplete で。
@@ -174,12 +175,23 @@ final class GeminiLiveProvider: ConversationProvider {
         if ready { send(GeminiLive.greeting); mark("greeting-prompted") } else { greetWhenReady = true }
     }
 
+    /// 仕事の結果を会話へ渡した（会話の側が、黙っている時間を数え直す）。
+    var onReported: (() -> Void)?
     /// 本人が仕事を止めたいと言った（stop_work）。止めた結果の短い説明を返す。
     var onStopWork: (() -> String)?
     /// 「今日どう？」: 今日のまとめの、会話へ渡してよい文（件数・時刻・状態・天気）を返す。
     var onTodayBrief: (() -> String)?
     /// show_info（天気・ニュース・株価）。引数の JSON を渡し、会話へ返す短い文を受け取る。
     var onInfo: ((String) async -> String)?
+    /// 直近の show_info（同じ依頼が続けて来たら、これを返す）。
+    private var recentInfo: (key: String, at: Date, answer: Task<String, Never>)?
+    static let infoReuseSeconds: TimeInterval = 15
+    /// show_info の依頼の見分け（引数の並び順に左右されない）。
+    static func infoKey(_ request: String) -> String {
+        guard let object = try? JSONSerialization.jsonObject(with: Data(request.utf8)) as? [String: Any],
+              let data = try? JSONSerialization.data(withJSONObject: object, options: [.sortedKeys]) else { return request }
+        return String(decoding: data, as: UTF8.self)
+    }
     /// マイクに届いている音量（0〜1、約 0.1 秒ごと）。声が届いているかを画面で見せるため。
     var onInputLevel: ((Float) -> Void)?
 
@@ -203,6 +215,22 @@ final class GeminiLiveProvider: ConversationProvider {
     static var continuationMinimum: TimeInterval = 1.0
     static var continuationQuiet: TimeInterval = 0.7
     static var continuationLimit: TimeInterval = 6.0
+    /// 呼ばれてからこれ以上話し続けていたら、続きを手元で文字にする。前後に足す余白。
+    static let tailSpeechSeconds: TimeInterval = 0.3
+    static let tailLeadSeconds: TimeInterval = 8.0
+    /// 同じ依頼の呼び直しを、二度目の依頼にしない間。
+    static let sameRequestSeconds: TimeInterval = 20
+    /// 直前に受けた依頼（`waiting`: まだ続きを待っていて、頼んでいない）。
+    private var lastDelegate: (full: String, waiting: Bool, at: Date)?
+    /// 手元で文字にする（オンデバイスの音声認識。許可が無ければ nil）。検査で差し替える。
+    var recognizeTail: ([Float]) async -> String? = { frames in await SpeechTranscriber().recognize(frames: frames) }
+
+    /// delegate_task への返事。受け付けたときは、一言だけ返して結果を待つよう添える（黙り込まない・呼び直さない）。
+    nonisolated static func acceptedResponse(_ status: String) -> [String: String] {
+        guard status == "accepted" else { return ["status": status] }
+        return ["status": status,
+                "message": "受け付けました。「確認しますね」など一言だけ伝えてください。結果は Genie から届きます。同じ依頼で delegate_task をもう一度呼ばないでください。"]
+    }
     private var said = ""
     private var answered = false
     /// このターンで Gemini の声を流したか（流していなければ、読み上げは Mac の声で伝える）。
@@ -252,6 +280,7 @@ final class GeminiLiveProvider: ConversationProvider {
         self.onFirstFrame = onFirstFrame
         self.onUtterance = onUtterance
         heard = ""; said = ""; answered = false; streamedThisTurn = false
+        toolCalledThisTurn = false; turnSerial += 1
         if streaming { onFirstFrame(); return true }   // 全二重: 送り続けている（次のターンの区切りだけ戻す）
         if ready { startMic(echoCancellation: echoCancellation) }
         else {
@@ -266,6 +295,7 @@ final class GeminiLiveProvider: ConversationProvider {
         pendingOpen = nil
         guard streaming else { return }
         streaming = false
+        unheardWatch?.cancel(); unheardWatch = nil
         lane.setOpen(false)
         input.pause()
         send(GeminiLive.audioStreamEnd)
@@ -457,8 +487,15 @@ final class GeminiLiveProvider: ConversationProvider {
     「終了して」「終わって」「終わり」「おしまい」「閉じて」「バイバイ」「さようなら」「またね」など会話を終えたいと言われたら、
     必ず「承知しました」とだけ言ってから end_conversation を呼んでください。会話を続けようとしないでください。
 
+    【話しかけられていない声】
+    周りの人どうしの会話、テレビ・動画・ラジオの音声、電話の向こうの声など、Genie に向けて話されていない声には返事をしないでください。
+    Genie への頼みや質問が無いまま、そうした声だけが聞こえ続けるときは、何も言わずに end_conversation を呼んでください。
+    Genie に話しかけているのか分からないときは、返事をせずに待ってください（聞き返して会話を続けようとしないでください）。
+    待つときは何も声に出さないでください（「返事をせずに待っています」のような、かっこ書き・注記・説明も言わない）。
+
     【会話】
     言い直しがあった場合は、最後の訂正を採用してください。
+    聞き取った言葉が、それだけでは意味の通らない短い言葉のときは、同じ音の別の言い方として考えてください（「共同」は「今日どう？」）。
     確認質問は、回答や実行に必要なものを一つずつ聞いてください。
     沈黙のたびに話しかけたり、返事を催促したりしないでください。
     割り込まれた後は、直前の説明を最初から繰り返さないでください。
@@ -472,6 +509,8 @@ final class GeminiLiveProvider: ConversationProvider {
     調べられなかった場合は、推測で答えずにそう伝えてください。
     Mac での作業・アプリの操作・送信・注文や予約（モバイルオーダー・デリバリーを含む）を頼まれたら、断らずに、
     自分で済ませたふりもせず、必ず delegate_task に依頼文を渡し、受け付けたかどうかだけを伝えてください。
+    delegate_task は利用者が言い終えてから、言い終えた全文で 1 回だけ呼んでください（言いかけの途中で呼ばない）。
+    受け付けたら「確認しますね」など一言だけ言い、結果が届くまで同じ依頼で呼び直さないでください。
     支払い・注文の確定・送信の前には Genie が画面で本人に確認を求めるので、あなたが代わりに断ったり止めたりする必要はありません。
     注文の途中で Genie から質問（商品名と数量・届ける時刻・合計の上限など）が返ったら、その質問をそのまま伝え、
     利用者の答えを言葉のまま delegate_task に渡してください。Genie が聞いていないこと（サイドメニュー・ドリンクなど）を足して聞かないでください。
@@ -529,7 +568,8 @@ final class GeminiLiveProvider: ConversationProvider {
             }
             pendingOpen?(); pendingOpen = nil
         case .inputTranscript(let t):
-            if heard.isEmpty { mark("in-transcript") }
+            lastInputTranscriptAt = Date()
+            if heard.isEmpty { mark("in-transcript"); watchForStall() }
             heard += t
             heardAll += t
             transcriptObserver?(t, true)
@@ -539,8 +579,11 @@ final class GeminiLiveProvider: ConversationProvider {
         case .outputTranscript(let t):
             userTurnEnded()
             said += t
+            recentSaid = String((recentSaid + t).suffix(400))
             transcriptObserver?(t, false)
         case .toolCall(let id, let name, let request):
+            toolCalledThisTurn = true
+            lastToolCallAt = Date()
             GenieLog.write("conversation", "Gemini tool: \(name) \(GenieLog.clip(request, 60))")
             userTurnEnded()
             if name == GeminiLive.briefTool {
@@ -551,10 +594,22 @@ final class GeminiLiveProvider: ConversationProvider {
             }
             if name == GeminiLive.infoTool {
                 mark("info")
+                // 同じ依頼が続けて来たら、取り直さずに前の答えを返す。Gemini が「今日のニュースを教えて」で
+                // show_info を 4 秒あけて 2 回呼び、取得とカードの表示が二重になった（genie.log 2026-10-19 18:31Z）。
+                let key = Self.infoKey(request)
+                let now = Date()
+                let task: Task<String, Never>
+                if let recent = recentInfo, recent.key == key, now.timeIntervalSince(recent.at) < Self.infoReuseSeconds {
+                    GenieLog.write("conversation", "info: same request again — reusing the answer")
+                    task = recent.answer
+                } else {
+                    let onInfo = self.onInfo
+                    task = Task { await onInfo?(request) ?? "いまは取得できません。" }
+                    recentInfo = (key, now, task)
+                }
                 Task { [weak self] in
-                    guard let self else { return }
-                    let result = await self.onInfo?(request) ?? "いまは取得できません。"
-                    self.send(GeminiLive.toolResponse(id: id, name: name, response: ["result": result]))
+                    let result = await task.value
+                    self?.send(GeminiLive.toolResponse(id: id, name: name, response: ["result": result]))
                 }
                 return
             }
@@ -590,30 +645,79 @@ final class GeminiLiveProvider: ConversationProvider {
                     self.send(GeminiLive.toolResponse(id: id, name: name, response: ["status": "直前の依頼に含めて受け付けました"]))
                     return
                 }
+                // 同じ依頼を続けて呼ばれたら、二度は頼まない。Gemini は「チーズバーガーのM」を 0.5 秒あけて 2 回呼び、
+                // 2 回目が「前の依頼の途中」で断られ、そのまま黙った（liveflow 2026-10-19 19:23Z）。
+                if let last = self.lastDelegate, Date().timeIntervalSince(last.at) < Self.sameRequestSeconds {
+                    if DelegateContinuation.covers(last.full, request) {
+                        GenieLog.write("conversation", "delegate: same request again — \(GenieLog.clip(request, 60))")
+                        self.send(GeminiLive.toolResponse(id: id, name: name, response: Self.acceptedResponse("accepted")))
+                        return
+                    }
+                    // 前の呼び出しがまだ続きを待っていて、今度の方が長い（言い終えた全文）なら、前の呼び出しで全文を頼む。
+                    if last.waiting, DelegateContinuation.covers(request, last.full) {
+                        GenieLog.write("conversation", "delegate: fuller request while waiting — \(GenieLog.clip(request, 60))")
+                        self.lastDelegate = (request, true, Date())
+                        self.send(GeminiLive.toolResponse(id: id, name: name, response: Self.acceptedResponse("accepted")))
+                        return
+                    }
+                }
+                self.lastDelegate = (request, true, Date())
                 // Gemini は言いかけの間（「〜にしたら、」）で区切って呼ぶことがある。続きを聞いてから頼む（言葉を捨てない）。
                 let mark = self.heardAll.count
                 let calledAt = Date()
+                // 手元で文字にし直す音の始まり: Genie の前の返事が終わった時（このターンを聞き始めた時は、Gemini が
+                // 言いかけで呼んだ直後に次のターンへ切り替わるので、依頼の前半が入らない。liveflow 2026-10-20 00:03Z）。
+                let spokenFrom = self.lastReplyEndedAt
                 while Date().timeIntervalSince(calledAt) < Self.continuationLimit {
                     let quietFor = Date().timeIntervalSince(self.input.lastSpeechAt)
                     if Date().timeIntervalSince(calledAt) >= Self.continuationMinimum, quietFor >= Self.continuationQuiet { break }
                     try? await Task.sleep(nanoseconds: 100_000_000)
                 }
+                // 待つ間に Gemini が全文で呼び直していれば、そちらを依頼にする。
+                let asked = self.lastDelegate.map(\.full) ?? request
                 let more = String(self.heardAll.dropFirst(mark))
                 // 「注文したい」だけが渡されたら、前の依頼の後に聞き取った前半（「マクドナルド」）を前に足す。
                 let earlier = String(self.heardAll.prefix(mark).dropFirst(self.heardAtLastDelegate))
-                let subject = DelegateContinuation.withSubject(request, heardBefore: earlier)
-                if subject != request { GenieLog.write("conversation", "delegate: with the earlier words — \(GenieLog.clip(subject, 60))") }
+                let subject = DelegateContinuation.withSubject(asked, heardBefore: earlier)
+                if subject != asked { GenieLog.write("conversation", "delegate: with the earlier words — \(GenieLog.clip(subject, 60))") }
                 self.heardAtLastDelegate = self.heardAll.count
-                let full = DelegateContinuation.merge(subject, continuation: more)
-                if full != request {
-                    self.recentContinuation = (more, Date())
+                var full = DelegateContinuation.merge(subject, continuation: more)
+                // Gemini の聞き取りは切れたり崩れたりする（「チーズバーガー」で切れる、「公式サイトを開いて」が「公式を開い」）。
+                // 送った音を手元でも文字にし、同じ依頼をより長く聞けていればそちらを、呼ばれた後の続きなら後ろに足す。
+                // このターンより前（Genie の声）は入れない。
+                let continued = more.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    && self.input.lastSpeechAt.timeIntervalSince(calledAt) >= Self.tailSpeechSeconds
+                let from = max(spokenFrom, calledAt.addingTimeInterval(-Self.tailLeadSeconds))
+                let frames = self.input.streamed(since: from)
+                if frames.count >= Int(VoiceInputHub.sampleRate * 0.5), let local = await self.recognizeTail(frames), !local.isEmpty {
+                    if let longer = DelegateContinuation.longerHearing(local, than: full) {
+                        GenieLog.write("conversation", "delegate: heard more on the Mac — \(GenieLog.clip(longer, 80))")
+                        full = longer
+                    } else if NearbyPlaceIntent.detect(local) != nil, NearbyPlaceIntent.detect(full) == nil {
+                        // 「近くのマックを探して」を Gemini は「Mack の Mac を探して」と聞き違えた（liveflow 2026-10-20 00:47Z）。
+                        // 手元の聞き取りがはっきり近くの店を探す依頼なら、そちらを使う。
+                        GenieLog.write("conversation", "delegate: nearby request heard on the Mac — \(GenieLog.clip(local, 80))")
+                        full = local
+                    } else if continued {
+                        let joined = DelegateContinuation.appendTail(full, tail: local)
+                        GenieLog.write("conversation", "delegate: tail heard on the Mac — \(GenieLog.clip(joined, 80))")
+                        full = joined
+                    }
+                } else if continued {
+                    GenieLog.write("conversation", "delegate: speech continued after the call but could not be transcribed")
+                }
+                if full != asked {
+                    self.recentContinuation = (String(full.dropFirst(min(full.count, asked.count))), Date())
                     GenieLog.write("conversation", "delegate: continued — \(GenieLog.clip(full, 80))")
                 }
+                self.lastDelegate = (full, false, Date())
                 let status = await self.delegate(full)
-                self.send(GeminiLive.toolResponse(id: id, name: name, response: ["status": status]))
+                self.send(GeminiLive.toolResponse(id: id, name: name, response: Self.acceptedResponse(status)))
             }
         case .turnComplete:
             mark("turn-complete")
+            recheckIfCutOff(spokenFrom: lastReplyEndedAt)
+            lastReplyEndedAt = Date()
             guard answered, let reply = onReply else { return }
             onReply = nil
             reply(.settled(said))
@@ -633,6 +737,126 @@ final class GeminiLiveProvider: ConversationProvider {
     }
 
     /// Gemini が答え始めた = 相手の区切りが来た。1 ターンに 1 回だけ「言い終えた」を返す。
+    /// このターンで道具が呼ばれたか（聞き取りの補いに使う）。
+    /// Genie の前の返事（Gemini のターン）が終わった時刻。手元で文字にし直す音はここから（Genie の声を入れない）。
+    private var lastReplyEndedAt = Date.distantPast
+    private var toolCalledThisTurn = false
+
+    /// Gemini が言いかけで聞き取りを切り、何も返さなかった（「...」だけ）ときに、送った音を手元で文字にし直して渡す。
+    /// 「マクドナルド注文して」が「マクドナルド」で切れ、Gemini は「...」とだけ返して黙った（liveflow 2026-10-19 23:14Z）。
+    /// 手元の文字が Gemini の聞き取りと違うときだけ渡す（同じなら、黙ったのは Gemini の判断）。
+    /// 「今日どう？」を Gemini は「共同」と聞き違え、注記だけ返して黙った（liveflow 2026-10-20 00:34Z）。
+    private func recheckIfCutOff(spokenFrom: Date) {
+        // 「（返事をせずに待っています）」のような、かっこだけの返事も黙ったのと同じ（liveflow 2026-10-19 23:24Z）。
+        let silent = Self.isSilentReply(said)
+        let heardNow = heard
+        guard silent, !toolCalledThisTurn, !heardNow.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        let frames = input.streamed(since: max(spokenFrom, Date().addingTimeInterval(-Self.tailLeadSeconds)))
+        guard frames.count >= Int(VoiceInputHub.sampleRate * 0.5) else { return }
+        toolCalledThisTurn = true   // 1 ターンに 1 回だけ
+        Task { [weak self] in
+            guard let self, let local = await self.recognizeTail(frames),
+                  let text = DelegateContinuation.differentHearing(local, than: heardNow) else { return }
+            GenieLog.write("conversation", "heard again on the Mac — \(GenieLog.clip(text, 60))")
+            self.mark("reheard")
+            self.send(GeminiLive.userText(Self.reheardPreamble + "「" + text + "」"))
+        }
+    }
+
+    /// 声に出す言葉が無い返事か（「...」、かっこ書き、「<!-- 応答なし（待機） -->」のような注記だけ）。
+    nonisolated static func isSilentReply(_ said: String) -> Bool {
+        var spoken = said
+        for pattern in [#"<!--[\s\S]*?-->"#, #"[（(][^）)]*[）)]"#, #"[【\[][^】\]]*[】\]]"#] {
+            spoken = spoken.replacingOccurrences(of: pattern, with: "", options: .regularExpression)
+        }
+        return spoken.trimmingCharacters(in: CharacterSet(charactersIn: ".。…・-—<>!！ \n")).isEmpty
+    }
+
+    /// 聞き取りは届いたのに、言い終えても Gemini が何も返さない（ターンも閉じない）。そのまま 20 秒で会話が閉じていた
+    /// （liveflow 2026-10-20 00:53Z:「マクドナルド注文して」が「マクドナルド」のまま止まった）。
+    /// 黙ってから `stallSeconds` 待っても返事が無ければ、手元の聞き取りを文字で渡して返事を促す（1 ターンに 1 回）。
+    /// Gemini の返事は長い文だと 3 秒ほどかかる（2.5 秒では返事の直前に重ねて渡した。liveflow 2026-10-20 01:23Z）。
+    static var stallSeconds: TimeInterval = 5
+    /// 道具を呼んだ直後に届く聞き取りは、その依頼の続き（依頼の側で足す）。別の言葉として渡さない。
+    static let afterToolSeconds: TimeInterval = 6
+    /// ターンの番号（見張りが次のターンの様子を見て、前のターンの言葉を渡さないため）。
+    private var turnSerial = 0
+    private func watchForStall() {
+        let spokenFrom = lastReplyEndedAt
+        let turn = turnSerial
+        Task { [weak self] in
+            while true {
+                try? await Task.sleep(nanoseconds: 250_000_000)
+                guard let self, self.turnSerial == turn, self.streaming, !self.answered, !self.toolCalledThisTurn else { return }
+                if Date().timeIntervalSince(self.input.lastSpeechAt) >= Self.stallSeconds { break }
+            }
+            guard let self else { return }
+            guard Date().timeIntervalSince(self.lastToolCallAt) >= Self.afterToolSeconds else { return }
+            self.toolCalledThisTurn = true
+            let heardNow = self.heard
+            let frames = self.input.streamed(since: max(spokenFrom, Date().addingTimeInterval(-Self.tailLeadSeconds - Self.stallSeconds)))
+            let local = frames.count >= Int(VoiceInputHub.sampleRate * 0.5) ? await self.recognizeTail(frames) : nil
+            guard self.turnSerial == turn, !self.answered else { return }
+            let text = local.flatMap { DelegateContinuation.differentHearing($0, than: "") } ?? heardNow
+            guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+            GenieLog.write("conversation", "no reply after the user stopped — sending what was heard: \(GenieLog.clip(text, 60))")
+            self.mark("stalled-reheard")
+            self.send(GeminiLive.userText(Self.reheardPreamble + "「" + text + "」"))
+        }
+    }
+
+    /// Gemini が何も聞き取らなかった声。Genie が話している間の短い答え（「ひとつ」）は、Gemini が声の始まりとして拾わず、
+    /// 文字にもならずに消えた（liveflow 2026-10-20 01:18Z）。言い終えて `stallSeconds` たっても Gemini の聞き取りも
+    /// 道具の呼び出しも無ければ、送った音を手元で文字にして渡す。Genie 自身の声（エコーの残り）は、直前に Genie が
+    /// 言った言葉に含まれていれば渡さない。
+    private var lastInputTranscriptAt = Date.distantPast
+    private var lastToolCallAt = Date.distantPast
+    private var recentSaid = ""
+    private var unheardWatch: Task<Void, Never>?
+    private func watchUnheardSpeech() {
+        unheardWatch?.cancel()
+        unheardWatch = Task { [weak self] in
+            // マイクを開く前の声（呼びかけ）は、預かりとして Gemini に送ってある。ここでは見ない。
+            var handled = Date()
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 300_000_000)
+                guard let self, self.streaming else { return }
+                let speechAt = self.input.lastSpeechAt
+                guard speechAt > handled, Date().timeIntervalSince(speechAt) >= Self.stallSeconds else { continue }
+                handled = speechAt
+                // Gemini が聞いた（文字にした・道具を呼んだ）なら、ほかの見張りの受け持ち。
+                let window = speechAt.addingTimeInterval(-Self.unheardWindowSeconds)
+                guard self.lastInputTranscriptAt < window, self.lastToolCallAt < window,
+                      Date().timeIntervalSince(self.lastToolCallAt) >= Self.afterToolSeconds else { continue }
+                let frames = self.input.streamed(since: window)
+                guard Self.voicedSeconds(frames) >= 0.4, let local = await self.recognizeTail(frames),
+                      let text = DelegateContinuation.differentHearing(local, than: ""),
+                      !DelegateContinuation.covers(self.recentSaid, text),
+                      self.lastInputTranscriptAt < window, self.streaming else { continue }
+                GenieLog.write("conversation", "Gemini did not hear the user — sending what the Mac heard: \(GenieLog.clip(text, 60))")
+                self.mark("unheard-reheard")
+                self.send(GeminiLive.userText(Self.reheardPreamble + "「" + text + "」"))
+            }
+        }
+    }
+    static let unheardWindowSeconds: TimeInterval = 4
+
+    /// 声らしい大きさの音の長さ（秒、0.1 秒ごとに見る）。
+    nonisolated static func voicedSeconds(_ frames: [Float]) -> Double {
+        let step = Int(VoiceInputHub.sampleRate / 10)
+        var loud = 0
+        var i = 0
+        while i + step <= frames.count {
+            var sum: Float = 0
+            for v in frames[i..<(i + step)] { sum += v * v }
+            if sqrt(sum / Float(step)) >= VoiceInputHub.speechLevel { loud += 1 }
+            i += step
+        }
+        return Double(loud) / 10
+    }
+
+    static let reheardPreamble = "（Genie の端末での聞き取りの補いです。音声の聞き取りが途中で切れていました。利用者は次のように言いました。Genie に向けた言葉でなければ返事をしないでください）\n"
+
     private func userTurnEnded() {
         guard !answered else { return }
         answered = true
@@ -643,6 +867,7 @@ final class GeminiLiveProvider: ConversationProvider {
     private func startMic(echoCancellation: Bool) {
         streaming = true
         lane.setOpen(ready)
+        watchUnheardSpeech()
         let lane = self.lane
         var first = true
         // 音量は約 0.1 秒ぶんの peak をまとめて渡す（毎フレーム画面を書き換えない）。

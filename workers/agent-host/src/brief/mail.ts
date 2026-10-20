@@ -1,5 +1,10 @@
 import type { BriefLine, BriefSection } from '@genie/contracts';
-import { parseAddress, type MailSummary, type OutlookMailSummary } from '@genie/service-connectors';
+import {
+  ConnectorError,
+  parseAddress,
+  type MailSummary,
+  type OutlookMailSummary,
+} from '@genie/service-connectors';
 import type { ConnectorRuntime } from '../connector-steps.js';
 import { GMAIL_AUTOMATED_CATEGORY_QUERY, isAutomatedMail } from '../mail-selection.js';
 
@@ -64,6 +69,19 @@ function dailyPolicy(
     directHuman: !automated,
     noise: !starred && (bulk || (automated && !actionable)),
   };
+}
+
+/**
+ * 広告・一般の自動通知か（まとめと同じ線引き。スター付きと、対応が要る一部の通知は残す）。
+ * Work の同期もこれで入口を絞る。広告が「未返信」「期限切れ」の要対応に上がっていた（2026-10-19）。
+ */
+export function isGmailNoise(mail: MailSummary): boolean {
+  return gmailCandidate(mail).noise;
+}
+
+function needsReconnect(error: unknown): boolean {
+  const reason = error instanceof ConnectorError ? error.reason : null;
+  return reason === 'token_expired' || reason === 'not_connected';
 }
 
 function gmailCandidate(mail: MailSummary): Candidate {
@@ -162,6 +180,8 @@ export async function readBriefMail(
   const sources: BriefSection['sources'] = [];
   let metadataCount = 0;
   let completedReads = 0;
+  /** 期限切れなどで、つなぎ直さないと読めない接続。 */
+  const reconnect = new Set<string>();
   for (const key of active) {
     const budget = Math.floor(BRIEF_MAIL_LIMIT / active.length);
     if (key === 'gmail') {
@@ -188,8 +208,9 @@ export async function readBriefMail(
         remainingBudget = budget - important.length;
         candidates.push(...important.map(gmailCandidate));
         completedReads += 1;
-      } catch {
+      } catch (error) {
         failures += 1;
+        if (needsReconnect(error)) reconnect.add('Gmail');
       }
       try {
         const incoming = (
@@ -205,8 +226,9 @@ export async function readBriefMail(
         metadataCount += incoming.length;
         candidates.push(...incoming.map(gmailCandidate));
         completedReads += 1;
-      } catch {
+      } catch (error) {
         failures += 1;
+        if (needsReconnect(error)) reconnect.add('Gmail');
       }
     } else {
       sources.push({ name: 'Outlook', url: 'https://outlook.office.com/' });
@@ -225,8 +247,9 @@ export async function readBriefMail(
         metadataCount += incoming.length;
         candidates.push(...incoming.map(outlookCandidate));
         completedReads += 1;
-      } catch {
+      } catch (error) {
         failures += 1;
+        if (needsReconnect(error)) reconnect.add('Outlook');
       }
     }
   }
@@ -296,7 +319,17 @@ export async function readBriefMail(
     title: '主要メール',
     status: failures ? 'stale' : 'ok',
     fetched_at: completedReads ? now().toISOString() : null,
-    reason: `${failures ? '一部を取得できませんでした。' : ''}直近7日の受信メールを最大100件確認し、取得${metadataCount}件から広告・一般の自動通知・同じ会話の重複を除いた${lines.length}件を表示しています。人からの連絡を優先し、スター付きと対応が必要な一部の通知も含みます。`,
+    reason: !completedReads
+      ? reconnect.size
+        ? `${[...reconnect].join('・')}の接続の期限が切れました。Apps の「つなぎ直す」から許可し直してください。`
+        : 'メールを読み取れませんでした。少し待ってから更新してください。'
+      : `${
+          reconnect.size
+            ? `${[...reconnect].join('・')}の接続の期限が切れました（Apps の「つなぎ直す」から許可し直してください）。`
+            : failures
+              ? '一部を取得できませんでした。'
+              : ''
+        }直近7日の受信メールを最大100件確認し、取得${metadataCount}件から広告・一般の自動通知・同じ会話の重複を除いた${lines.length}件を表示しています。人からの連絡を優先し、スター付きと対応が必要な一部の通知も含みます。`,
     sources,
     lines,
   };

@@ -6,6 +6,7 @@ import type { ConnectorRuntime, HostStep, StepOutcome } from '../connector-steps
 import { infoFetch, type InfoFetch } from '../current-info/hosts.js';
 import { defaultRegion } from '../current-info/preferences.js';
 import { composeBrief } from './compose.js';
+import { readBriefGoogleCalendar } from './calendar.js';
 import { readBriefMail } from './mail.js';
 
 export interface BriefRuntimeDeps {
@@ -13,6 +14,8 @@ export interface BriefRuntimeDeps {
   readonly region?: () => string;
   readonly now?: () => Date;
   readonly connectors?: ConnectorRuntime;
+  /** Google カレンダーを読めたか（件数・理由の種類だけ）。 */
+  readonly onCalendarRead?: (outcome: { read: boolean; events?: number; reason?: string }) => void;
 }
 
 export class BriefRuntime {
@@ -39,6 +42,8 @@ export class BriefRuntime {
       get: this.#deps.get ?? infoFetch(),
       region: (this.#deps.region ?? defaultRegion)(),
       mail: () => readBriefMail(this.#deps.connectors, this.#deps.now),
+      cloudCalendar: (window, offset) =>
+        readBriefGoogleCalendar(this.#deps.connectors, window, offset, this.#deps.onCalendarRead),
       ...(this.#deps.now ? { now: this.#deps.now } : {}),
     });
     return {
