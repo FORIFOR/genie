@@ -75,7 +75,10 @@ describe.skipIf(!url)('chat channels', () => {
   };
 
   let serial = 0;
+  // 発言の ts は配信ごとに決まる。再送（同じ event_id）は同じ ts、別の発言は別の ts
+  const tsOf = new Map<string, string>();
   const slackDm = async (text: string, user = 'U1', eventId = `Ev${++serial}`) => {
+    if (!tsOf.has(eventId)) tsOf.set(eventId, `17600000${String(tsOf.size).padStart(2, '0')}.000100`);
     const raw = JSON.stringify({
       type: 'event_callback',
       team_id: 'T1',
@@ -86,7 +89,7 @@ describe.skipIf(!url)('chat channels', () => {
         channel_type: 'im',
         user,
         channel: `D-${user}`,
-        ts: `17600000${String(serial).padStart(2, '0')}.000100`,
+        ts: tsOf.get(eventId)!,
         text,
       },
     });

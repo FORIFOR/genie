@@ -35,6 +35,8 @@ import { registerDomainRoutes, type DomainRouteDeps } from './routes/domain.js';
 import { registerBriefRoutes } from './routes/brief.js';
 import { registerConversationRoutes, type ConversationRouteDeps } from './routes/conversations.js';
 import { registerChannelRoutes, type ChannelRouteDeps } from './routes/channels.js';
+import { registerScheduleRoutes } from './routes/schedules.js';
+import { registerVocabularyRoutes } from './routes/vocabulary.js';
 import type { TurnDeps } from '@genie/service-conversation';
 import { registerPhoneRoutes, type PhoneRouteDeps } from './routes/phone.js';
 import { registerOnboardingRoutes } from './routes/onboarding.js';
@@ -88,6 +90,16 @@ export interface AppDeps {
    * ここで組んだ TurnDeps を受け取って受け口の依存を返す。null なら受け口を開かない。
    */
   readonly channels?: (turnDeps: TurnDeps) => ChannelRouteDeps | null;
+  /**
+   * 予約（「明日 9 時に〜教えて」）。会話で作り・一覧し・取り消す。無ければ予約の言い方は受けない。
+   * 時間になったら動かす見回り（ScheduleRunner）は、組んだ TurnDeps を受け取って呼ぶ側が作る
+   * （`onTurnDeps`）。
+   */
+  readonly schedules?: import('@genie/service-schedule').ScheduleService;
+  /** 個人の辞書。会話で登録し、Mac の音声入力が取りに来る（GET /v1/vocabulary）。 */
+  readonly vocabulary?: import('@genie/service-vocabulary').VocabularyService;
+  /** 組み上がった TurnDeps を受け取る（予約の見回りが、同じ入口で頼むため）。 */
+  readonly onTurnDeps?: (turnDeps: TurnDeps) => void;
   /** 利用者ごとの電話の接続（PUT / GET / DELETE /v1/phone/connection）。 */
   readonly phoneConnections?: PhoneRouteDeps;
   /** connector の接続状態（正本 §2.4・§21）。 */
@@ -189,6 +201,8 @@ export function buildApp(deps: AppDeps): App {
       conversations: deps.conversations,
       tasks: deps.tasks,
       ...(deps.phone ? { phone: deps.phone } : {}),
+      ...(deps.schedules ? { schedules: deps.schedules } : {}),
+      ...(deps.vocabulary ? { vocabulary: deps.vocabulary } : {}),
       ...(deps.work
         ? {
             work: deps.work,
@@ -214,7 +228,10 @@ export function buildApp(deps: AppDeps): App {
     });
     const channels = deps.channels?.(turnDeps) ?? null;
     if (channels) registerChannelRoutes(app, channels);
+    deps.onTurnDeps?.(turnDeps);
   }
+  if (deps.schedules) registerScheduleRoutes(app, { schedules: deps.schedules });
+  if (deps.vocabulary) registerVocabularyRoutes(app, { vocabulary: deps.vocabulary });
   if (deps.work) {
     registerWorkRoutes(app, {
       work: deps.work,

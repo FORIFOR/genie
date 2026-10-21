@@ -137,9 +137,16 @@ export interface AuditSequences {
 }
 
 export interface ChannelInbox {
+  attempts: Generated<number>;
+  claimed_at: Timestamp | null;
   event_id: string;
+  kind: string | null;
+  lane: string | null;
+  last_error: string | null;
+  payload: string | null;
   provider: string;
   received_at: Generated<Timestamp>;
+  status: Generated<string>;
 }
 
 export interface ChannelLinkCodes {
@@ -176,6 +183,7 @@ export interface ChannelOutbox {
   kind: string;
   last_error: string | null;
   link_id: string;
+  next_attempt_at: Generated<Timestamp>;
   provider_message_id: string | null;
   sent_at: Timestamp | null;
   status: Generated<string>;
@@ -536,6 +544,42 @@ export interface ResearchRuns {
   updated_at: Generated<Timestamp>;
 }
 
+export interface ScheduledJobs {
+  catch_up: Generated<string>;
+  consecutive_errors: Generated<number>;
+  conversation_id: string;
+  created_at: Generated<Timestamp>;
+  id: string;
+  last_error: string | null;
+  last_run_at: Timestamp | null;
+  last_status: string | null;
+  name: string;
+  next_run_at: Timestamp | null;
+  payload: Json;
+  proposed_expires_at: Timestamp | null;
+  running_at: Timestamp | null;
+  schedule: Json;
+  status: string;
+  tenant_id: string;
+  tz: string;
+  updated_at: Generated<Timestamp>;
+  user_id: string;
+}
+
+export interface ScheduledRuns {
+  delivery_status: string | null;
+  error: string | null;
+  finished_at: Timestamp | null;
+  id: string;
+  job_id: string;
+  late_ms: Generated<Int8>;
+  scheduled_for: Timestamp;
+  started_at: Generated<Timestamp>;
+  status: string;
+  task_id: string | null;
+  tenant_id: string;
+}
+
 export interface SchemaMigrations {
   version: string;
 }
@@ -698,12 +742,35 @@ export interface UserIdentities {
   user_id: string;
 }
 
+export interface UserNotices {
+  body: Generated<string>;
+  created_at: Generated<Timestamp>;
+  delivered_at: Timestamp | null;
+  id: string;
+  job_id: string | null;
+  kind: string;
+  task_id: string | null;
+  tenant_id: string;
+  title: string;
+  user_id: string;
+}
+
 export interface Users {
   created_at: Generated<Timestamp>;
   deleted_at: Timestamp | null;
   display_name: string;
   email: string;
   id: string;
+}
+
+export interface UserVocabulary {
+  created_at: Generated<Timestamp>;
+  id: string;
+  spoken: string;
+  tenant_id: string;
+  updated_at: Generated<Timestamp>;
+  user_id: string;
+  written: string;
 }
 
 export interface WorkArtifacts {
@@ -856,6 +923,8 @@ export interface DB {
   plugin_versions: PluginVersions;
   plugins: Plugins;
   research_runs: ResearchRuns;
+  scheduled_jobs: ScheduledJobs;
+  scheduled_runs: ScheduledRuns;
   schema_migrations: SchemaMigrations;
   sessions: Sessions;
   share_access_logs: ShareAccessLogs;
@@ -869,6 +938,8 @@ export interface DB {
   translations: Translations;
   turns: Turns;
   user_identities: UserIdentities;
+  user_notices: UserNotices;
+  user_vocabulary: UserVocabulary;
   users: Users;
   work_artifacts: WorkArtifacts;
   work_corrections: WorkCorrections;

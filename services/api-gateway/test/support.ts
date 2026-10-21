@@ -24,6 +24,9 @@ import {
 } from '@genie/service-meeting';
 import { buildApp } from '../src/app.js';
 import { channelsFromEnv } from '../src/channels.js';
+import { scheduleRunner } from '../src/schedules.js';
+import { ScheduleService, ScheduleStore } from '@genie/service-schedule';
+import { VocabularyService, VocabularyStore } from '@genie/service-vocabulary';
 import type { HostBridge } from '../src/host/bridge.js';
 import { MemoryRateLimiter } from '../src/rate-limit/memory.js';
 import { loadSigningKeys } from '../src/auth/keys.js';
@@ -71,6 +74,8 @@ export interface TestApp {
   readonly recordings: MemoryRecordingStore;
   /** チャットの見回り（pump）を手で回すため。channels を渡したときだけ。 */
   readonly channels: import('../src/channels.js').GatewayChannels | null;
+  /** 予約の見回りを手で回すため。schedules を渡したときだけ。 */
+  readonly schedules: import('@genie/service-schedule').ScheduleRunner | null;
   close(): Promise<void>;
 }
 
@@ -85,6 +90,10 @@ export interface MakeAppOptions {
   readonly seedPlugins?: boolean;
   readonly bridge?: HostBridge;
   readonly allowedOrigins?: readonly string[];
+  /** 個人の辞書を有効にする。 */
+  readonly vocabulary?: boolean;
+  /** 予約を有効にする（時計は差し替えられる）。 */
+  readonly schedules?: { readonly tz?: string; readonly now?: () => number };
   /** 外部 IdP の検証を差し替える（実物の鍵を持たないテストのため）。 */
   readonly identityVerifier?: import('../src/auth/idp.js').IdentityVerifier;
   /** live STT の代役に読ませる台本。省略すると録音だけになる。 */
@@ -94,7 +103,11 @@ export interface MakeAppOptions {
   /** 電話（Oathra）の代役。省略すると電話の頼みは受けない。 */
   readonly phone?: import('../src/app.js').AppDeps['phone'];
   /** チャット（Slack / LINE）。env は本番と同じ名前、外への送信は fetchImpl が受ける。 */
-  readonly channels?: { readonly env: NodeJS.ProcessEnv; readonly fetchImpl: typeof fetch };
+  readonly channels?: {
+    readonly env: NodeJS.ProcessEnv;
+    readonly fetchImpl: typeof fetch;
+    readonly connectSocket?: (url: string) => import('@genie/service-channels').SocketLike;
+  };
   /** 電話の接続の預かり先。省略すると /v1/phone/connection は生えない。 */
   readonly phoneConnections?: import('../src/app.js').AppDeps['phoneConnections'];
 }
@@ -144,6 +157,13 @@ export async function makeTestApp(options: MakeAppOptions): Promise<TestApp> {
   };
 
   const chat: { current: import('../src/channels.js').GatewayChannels | null } = { current: null };
+  const scheduleService = options.schedules
+    ? new ScheduleService(new ScheduleStore(db), {
+        tz: options.schedules.tz ?? 'Asia/Tokyo',
+        ...(options.schedules.now ? { now: options.schedules.now } : {}),
+      })
+    : null;
+  let turnDepsSeen: import('@genie/service-conversation').TurnDeps | null = null;
   const app = buildApp({
     config,
     db,
@@ -177,6 +197,9 @@ export async function makeTestApp(options: MakeAppOptions): Promise<TestApp> {
               turnDeps,
               logger: createLogger({ service: 'test', level: 'silent' }),
               fetchImpl: options.channels!.fetchImpl,
+              ...(options.channels!.connectSocket
+                ? { connectSocket: options.channels!.connectSocket }
+                : {}),
             });
             return chat.current?.routes ?? null;
           },
@@ -192,11 +215,33 @@ export async function makeTestApp(options: MakeAppOptions): Promise<TestApp> {
     world,
     work,
     ...(options.bridge === undefined ? {} : { bridge: options.bridge }),
+    ...(options.vocabulary
+      ? { vocabulary: new VocabularyService(new VocabularyStore(db)) }
+      : {}),
+    ...(scheduleService
+      ? {
+          schedules: scheduleService,
+          onTurnDeps: (turnDeps: import('@genie/service-conversation').TurnDeps) => {
+            turnDepsSeen = turnDeps;
+          },
+        }
+      : {}),
     // テストは待ちたくないので短く回す
     ssePollIntervalMs: 20,
   });
   options.configure?.(app);
   await app.ready();
+  const schedules =
+    scheduleService && turnDepsSeen
+      ? scheduleRunner({
+          schedules: scheduleService,
+          turnDeps: turnDepsSeen,
+          tasks,
+          channels: chat.current?.service ?? null,
+          logger: createLogger({ service: 'test', level: 'silent' }),
+          ...(options.schedules?.now ? { now: options.schedules.now } : {}),
+        })
+      : null;
 
   return {
     app,
@@ -209,6 +254,7 @@ export async function makeTestApp(options: MakeAppOptions): Promise<TestApp> {
     meetings,
     recordings,
     channels: chat.current,
+    schedules,
     async close() {
       await app.close();
       if (owned) await db.close();

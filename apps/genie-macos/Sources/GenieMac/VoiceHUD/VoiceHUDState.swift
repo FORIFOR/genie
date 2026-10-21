@@ -238,6 +238,8 @@ final class VoiceHUDState: ObservableObject {
             lastDictated = nil
             dictatedSegments = 0
             dictationInsertedPID = nil
+            // 会話で登録したばかりの辞書も効くように（1 分に 1 回まで取りに行く）
+            Task { await DictationVocabularyStore.shared.refresh() }
             openMicrophone(onFinal: { [weak self] text in self?.dictateSegment(text) })
             armDictationIdle()
         } else {
@@ -261,7 +263,8 @@ final class VoiceHUDState: ObservableObject {
     func dictateSegment(_ text: String) {
         let raw = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !raw.isEmpty, listenPurpose == .dictation else { return }
-        let cleaned = DictationCleanup.terminated(DictationCleanup.clean(raw))
+        // 言い淀みを消し、個人の辞書で置き換える（どちらも決定的。言葉の意味は変えない）
+        let cleaned = DictationCleanup.terminated(DictationVocabularyStore.shared.apply(DictationCleanup.clean(raw)))
         let pid = Dictation.targetPID()
         let report = Dictation.insertReporting(cleaned, appPID: pid)
         if report.ok {
@@ -290,7 +293,8 @@ final class VoiceHUDState: ObservableObject {
         var pid = dictationInsertedPID
         if !rest.isEmpty {
             let target = pid ?? Dictation.targetPID()
-            let report = Dictation.insertReporting(DictationCleanup.terminated(DictationCleanup.clean(rest)), appPID: target)
+            let report = Dictation.insertReporting(
+                DictationCleanup.terminated(DictationVocabularyStore.shared.apply(DictationCleanup.clean(rest))), appPID: target)
             guard report.ok else {
                 answer = Facts.dictationNotInserted(report.app, reason: report.method)
                 mode = .answer(answer)
@@ -1224,7 +1228,7 @@ final class VoiceHUDState: ObservableObject {
         case .dictation:
             // 音声入力は文章を入れるだけ。入れる先が無ければ、送らずに「会話」を案内する。
             // 整える（言い淀みだけを消す。言葉は変えない）。消したときだけ、数秒「元の文に戻す」を出す。
-            let cleaned = DictationCleanup.clean(text)
+            let cleaned = DictationVocabularyStore.shared.apply(DictationCleanup.clean(text))
             if Dictation.insert(cleaned, excludingOwnProcess: true, appPID: dictationTargetPID) {
                 answer = ""
                 if cleaned != text {

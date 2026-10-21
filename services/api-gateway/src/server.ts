@@ -43,6 +43,10 @@ import { capabilityReport, capabilitySummary } from '@genie/service-capabilities
 import { buildApp } from './app.js';
 import { phoneFromEnv } from './phone.js';
 import { channelsFromEnv, type GatewayChannels } from './channels.js';
+import { scheduleRunner, scheduleServiceFromEnv } from './schedules.js';
+import type { ScheduleRunner } from '@genie/service-schedule';
+import { VocabularyService, VocabularyStore } from '@genie/service-vocabulary';
+import type { TurnDeps } from '@genie/service-conversation';
 import { assertPathsExist, gatewayConfigFromEnv } from './config.js';
 import { keyConfigFromEnv, loadSigningKeys } from './auth/keys.js';
 import { JwtTokens } from './auth/tokens.js';
@@ -169,6 +173,9 @@ async function main(): Promise<void> {
   const phone = phoneFromEnv(process.env, { db, tasks, logger });
   // チャット（Slack / LINE）。設定された提供者だけ受け口が開く
   const chat: { current: GatewayChannels | null } = { current: null };
+  // 予約: 会話で作り、時間になったら同じ入口（handleTurn）で頼む
+  const schedules = scheduleServiceFromEnv(process.env, db);
+  const turnDepsRef: { current: TurnDeps | null } = { current: null };
 
   const app = buildApp({
     config,
@@ -211,6 +218,11 @@ async function main(): Promise<void> {
       return chat.current?.routes ?? null;
     },
     phoneConnections: { store: phone.store, clientOf: phone.clientOf },
+    schedules,
+    vocabulary: new VocabularyService(new VocabularyStore(db)),
+    onTurnDeps: (turnDeps) => {
+      turnDepsRef.current = turnDeps;
+    },
     voice: {
       ...(meetingProviders.batch.isStandIn ? {} : { transcriber: meetingProviders.batch }),
       ...(process.env['GOOGLE_CLOUD_PROJECT']
@@ -219,8 +231,19 @@ async function main(): Promise<void> {
     },
   });
 
+  const runner: ScheduleRunner | null = turnDepsRef.current
+    ? scheduleRunner({
+        schedules,
+        turnDeps: turnDepsRef.current,
+        tasks,
+        channels: chat.current?.service ?? null,
+        logger,
+      })
+    : null;
+
   const shutdown = async (signal: string): Promise<void> => {
     logger.info({ signal }, 'shutting down');
+    runner?.stop();
     phone.inbound?.stop();
     chat.current?.stop();
     await app.close();
@@ -237,6 +260,9 @@ async function main(): Promise<void> {
   phone.inbound?.start(60_000);
   // 受け付けた仕事の区切り（承認待ち・終わり）をチャットへ返す。5 秒ごと
   chat.current?.start(5_000);
+  // 予約の見回り。15 秒ごと（寝ていた Mac が起きたら、最初の見回りで追いつく）
+  runner?.start(15_000);
+  logger.info({ schedules: runner ? 'on' : 'off', tz: schedules.tz }, 'schedules');
   logger.info({ channels: chat.current ? 'on' : 'off' }, 'chat channels');
   logger.info(
     {

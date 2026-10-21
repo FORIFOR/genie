@@ -39,6 +39,54 @@ describe('SlackSender', () => {
     );
     expect(body.thread_ts).toBeUndefined();
   });
+
+  it('does not post again when a post may have landed, but retries a refusal', async () => {
+    const cases: [() => Promise<Response>, ChannelSendError][] = [
+      // 時間切れ・5xx・internal_error は「届いたか分からない」
+      [
+        () => Promise.reject(Object.assign(new Error('timed out'), { name: 'TimeoutError' })),
+        new ChannelSendError('slack_send_uncertain', false),
+      ],
+      [
+        () => Promise.resolve(new Response('{}', { status: 503 })),
+        new ChannelSendError('slack_send_uncertain', false),
+      ],
+      [
+        () => Promise.resolve(ok({ ok: false, error: 'internal_error' })),
+        new ChannelSendError('slack_send_uncertain', false),
+      ],
+      // 繋がらなかった・429 は届いていない。429 は Retry-After を伝える
+      [
+        () => Promise.reject(new TypeError('fetch failed')),
+        new ChannelSendError('slack_unreachable', true),
+      ],
+      [
+        () =>
+          Promise.resolve(new Response('{}', { status: 429, headers: { 'retry-after': '7' } })),
+        new ChannelSendError('slack_http_429', true, 7000),
+      ],
+      [
+        () => Promise.resolve(ok({ ok: false, error: 'channel_not_found' })),
+        new ChannelSendError('channel_not_found', false),
+      ],
+    ];
+    for (const [answer, expected] of cases) {
+      const sender = new SlackSender('xoxb-test', vi.fn(answer) as unknown as typeof fetch);
+      await expect(
+        sender.send({ destination: 'D1', threadKey: '1.0' }, { text: 'x' }),
+      ).rejects.toMatchObject(expected);
+    }
+  });
+
+  it('may retry opening a DM after a server error (opening twice gives the same DM)', async () => {
+    const sender = new SlackSender(
+      'xoxb-test',
+      vi.fn(async () => new Response('{}', { status: 503 })) as unknown as typeof fetch,
+    );
+    await expect(sender.openDirect('U1')).rejects.toMatchObject(
+      new ChannelSendError('slack_http_503', true),
+    );
+  });
 });
 
 describe('LineSender', () => {

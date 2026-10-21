@@ -97,6 +97,7 @@ export function normalizeSlackEvent(payload: unknown): SlackInbound {
       text,
       sentAt: typeof eventTime === 'number' ? eventTime * 1000 : Math.round(Number(ts) * 1000),
       replyToken: null,
+      dedupeKey: `${team}:${channel}:${ts}`,
     },
   };
 }
@@ -142,6 +143,7 @@ function mentionOf(
       sentAt: typeof eventTime === 'number' ? eventTime * 1000 : Math.round(Number(ts) * 1000),
       replyToken: null,
       mention: { channel, ts: threadTs },
+      dedupeKey: `${team}:${channel}:${ts}`,
     },
   };
 }

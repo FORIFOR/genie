@@ -33,6 +33,15 @@ export {
 } from './line.js';
 export { MemoryChannelInbox, type ChannelInbox } from './inbox.js';
 export {
+  SLACK_SOCKET_BACKOFF,
+  SlackSocketMode,
+  slackSocketBackoffMs,
+  type SlackSocketDeps,
+  type SlackSocketState,
+  type SlackSocketStatus,
+  type SocketLike,
+} from './slack-socket.js';
+export {
   ChannelSendError,
   LINE_LOADING_SECONDS,
   LineSender,
@@ -60,8 +69,11 @@ export {
 } from './tokens.js';
 export {
   ChannelStore,
+  MAX_INBOUND_ATTEMPTS,
   MAX_SEND_ATTEMPTS,
   type ChannelLink,
+  type InboundKind,
+  type QueuedInbound,
   type OutboxKind,
   type OutboxRow,
   type WatchedTask,
@@ -69,6 +81,8 @@ export {
 export {
   ChannelService,
   type ChannelEvent,
+  type ChannelInbound,
+  type InboundSealer,
   type ChannelServiceDeps,
   type ChannelTaskView,
   type TurnOutcome,

@@ -49,7 +49,9 @@
     "@genie/service-agent-runtime": "workspace:*",
     "@genie/service-agent-host": "workspace:*",
     "@genie/service-phone": "workspace:*",
-    "@genie/service-channels": "workspace:*"
+    "@genie/service-channels": "workspace:*",
+    "@genie/service-schedule": "workspace:*",
+    "@genie/service-vocabulary": "workspace:*"
   },
   "devDependencies": {
     "@types/ws": "^8.18.1",

@@ -1,7 +1,8 @@
 /**
  * チャット（Slack / LINE）を Genie の仕事に繋ぐ。
  *
- *   受信 → 重複を捨てる → 連携を照合 → スレッドを会話に → handleTurn（Task Dock と同じ入口）
+ *   受信 → 保存（封じて受信箱へ）→ 200 → 取り出す → 重複を捨てる → 連携を照合
+ *        → スレッドを会話に → handleTurn（Task Dock と同じ入口）
  *   見回り → 受け付けた task の区切り（承認待ち・一時停止・終わり）を outbox に積む → 送る
  *   ボタン → 署名・期限・押した本人を確かめて、承認を渡す（外への送信だけ）
  *
@@ -23,8 +24,28 @@ import {
   type OutgoingMessage,
   type SlackSender,
 } from './send.js';
-import type { ChannelLink, ChannelStore, OutboxKind, OutboxRow, WatchedTask } from './store.js';
+import {
+  MAX_INBOUND_ATTEMPTS,
+  type ChannelLink,
+  type ChannelStore,
+  type OutboxKind,
+  type OutboxRow,
+  type QueuedInbound,
+  type WatchedTask,
+} from './store.js';
 import { linkCodeIn, signApprovalAction, verifyApprovalAction } from './tokens.js';
+
+/** 受けたもの（発話・ボタン・友だち追加）。保存してから処理する単位。 */
+export type ChannelInbound =
+  | { readonly kind: 'message'; readonly message: InboundChannelMessage }
+  | { readonly kind: 'action'; readonly action: InboundChannelAction }
+  | { readonly kind: 'follow'; readonly follow: InboundChannelFollow };
+
+/** 受信箱に本文を置くときの封（`GENIE_SECRET_KEY` の AES-256-GCM）。 */
+export interface InboundSealer {
+  seal(plain: string, aad: string): string;
+  open(sealed: string, aad: string): string;
+}
 
 /** handleTurn の結果のうち、チャットへ返すのに要るところ。 */
 export type TurnOutcome =
@@ -80,6 +101,13 @@ export interface ChannelServiceDeps {
   readonly artifactText?: (tenantId: string, artifactId: string) => Promise<string | null>;
   /** ボタンの署名鍵。無ければチャットでは承認させない（承認カードへ案内する）。 */
   readonly actionSecret: string | null;
+  /**
+   * 受けた本文を封じて保存する鍵。**あれば保存してから 200 を返す**（落ちても続きから処理できる）。
+   * 無ければ本文は持たず、これまでどおり 200 のあと同じプロセスで処理する。
+   */
+  readonly sealer?: InboundSealer | null;
+  /** LINE の読み込み中を出し直す間隔（表示は 20 秒で消えるので、その少し前）。 */
+  readonly typingRefreshMs?: number;
   readonly log?: (event: string, detail: Record<string, unknown>) => void;
   readonly now?: () => number;
 }
@@ -88,6 +116,14 @@ export interface ChannelServiceDeps {
 const CHAT_APPROVABLE = new Set(['EXTERNAL_COMMIT']);
 /** ボタンの有効時間。承認そのものの期限より長くはしない。 */
 const BUTTON_TTL_MS = 10 * 60 * 1000;
+/** 同時に処理する相手の数。同じ相手の発話は 1 列に並べて順番どおりに進める。 */
+const MAX_LANES = 4;
+
+/** 処理の途中で受信箱の行をどう扱うか。保存してから処理するときだけ渡る。 */
+interface QueuedContext {
+  readonly provider: ChannelProvider;
+  readonly eventId: string;
+}
 
 const EVENT_KIND: Readonly<Record<string, OutboxKind>> = {
   'task.waiting_approval': 'waiting_approval',
@@ -99,9 +135,169 @@ const EVENT_KIND: Readonly<Record<string, OutboxKind>> = {
 
 export class ChannelService {
   readonly #now: () => number;
+  #draining: Promise<number> | null = null;
 
   constructor(private readonly deps: ChannelServiceDeps) {
     this.#now = deps.now ?? Date.now;
+  }
+
+  /** 本文を保存してから受け取る経路か（`GENIE_SECRET_KEY` があるか）。 */
+  get durable(): boolean {
+    return Boolean(this.deps.sealer);
+  }
+
+  /**
+   * 受け口（Webhook / Socket Mode）が呼ぶ。**これが返ってから提供者に「受け取った」と返す。**
+   *
+   * 鍵があれば、封じて受信箱に保存してから返し、処理はすぐ後ろで始める。落ちても次の見回りで続く。
+   * 鍵が無ければ、何も保存せずに後ろで処理する（これまでどおり）。
+   */
+  async accept(inbound: ChannelInbound): Promise<'queued' | 'duplicate' | 'started'> {
+    const sealer = this.deps.sealer;
+    if (!sealer) {
+      setImmediate(() => {
+        this.#dispatch(inbound, null).catch((error: unknown) =>
+          this.#log('channel.process_failed', { kind: inbound.kind, error: errorCode(error) }),
+        );
+      });
+      return 'started';
+    }
+    const { provider, eventId } = keyOf(inbound);
+    const fresh = await this.deps.store.enqueueInbound({
+      provider,
+      eventId,
+      kind: inbound.kind,
+      lane: laneOf(inbound),
+      payload: sealer.seal(JSON.stringify(inbound), aadOf(provider, eventId)),
+      ...(inbound.kind === 'message' && inbound.message.dedupeKey
+        ? { sameKey: `same:${inbound.message.dedupeKey}` }
+        : {}),
+    });
+    if (!fresh) return 'duplicate';
+    setImmediate(() => {
+      this.drain().catch((error: unknown) =>
+        this.#log('channel.drain_failed', { error: errorCode(error) }),
+      );
+    });
+    return 'queued';
+  }
+
+  /**
+   * 受信箱の処理待ちを片づける。同じ相手は 1 列で順番どおり、相手どうしは並べて（最大 4 列）。
+   * 同じプロセスで重ねて呼ばれたら、走っているものを待つ。
+   */
+  async drain(): Promise<number> {
+    if (!this.deps.sealer) return 0;
+    if (this.#draining) return this.#draining;
+    this.#draining = this.#drainOnce().finally(() => {
+      this.#draining = null;
+    });
+    return this.#draining;
+  }
+
+  async #drainOnce(): Promise<number> {
+    let handled = 0;
+    await this.#reportInterrupted();
+    for (;;) {
+      const rows = await this.deps.store.claimInbound(20);
+      if (rows.length === 0) return handled;
+      const lanes = new Map<string, QueuedInbound[]>();
+      for (const row of rows) lanes.set(row.lane, [...(lanes.get(row.lane) ?? []), row]);
+      const queue = [...lanes.values()];
+      const workers = Array.from({ length: Math.min(MAX_LANES, queue.length) }, async () => {
+        for (let lane = queue.shift(); lane; lane = queue.shift()) {
+          for (const row of lane) {
+            await this.#processQueued(row);
+            handled += 1;
+          }
+        }
+      });
+      await Promise.all(workers);
+    }
+  }
+
+  async #processQueued(row: QueuedInbound): Promise<void> {
+    const { provider, eventId } = row;
+    let inbound: ChannelInbound;
+    try {
+      inbound = this.#openPayload(row);
+    } catch (error) {
+      // 鍵が替わった・壊れた。何度やっても開かないので諦める
+      await this.deps.store.finishInbound(provider, eventId, 'dead', errorCode(error));
+      this.#log('channel.inbound_unreadable', { provider, error: errorCode(error) });
+      return;
+    }
+    try {
+      await this.#dispatch(inbound, { provider, eventId });
+      await this.deps.store.finishInbound(provider, eventId, 'done');
+    } catch (error) {
+      const code = errorCode(error);
+      if (row.attempts >= MAX_INBOUND_ATTEMPTS) {
+        await this.deps.store.finishInbound(provider, eventId, 'dead', code);
+        this.#log('channel.inbound_dead', { provider, kind: row.kind, error: code });
+      } else {
+        await this.deps.store.retryInbound(provider, eventId, code);
+        this.#log('channel.inbound_retry', { provider, attempts: row.attempts, error: code });
+      }
+    }
+  }
+
+  #openPayload(row: QueuedInbound): ChannelInbound {
+    const plain = this.deps.sealer!.open(row.payload, aadOf(row.provider, row.eventId));
+    const inbound = JSON.parse(plain) as ChannelInbound;
+    if (inbound.kind !== row.kind) throw new Error('inbound_kind_mismatch');
+    return inbound;
+  }
+
+  /**
+   * handleTurn の途中で止まったもの。**やり直さない**（仕事ができていれば二つになる）。
+   * 本人に「途中で止まった、作業一覧で確かめて」と伝えて、記録だけ残す。
+   */
+  async #reportInterrupted(): Promise<void> {
+    for (const row of await this.deps.store.interruptedInbound()) {
+      try {
+        const inbound = this.#openPayload(row);
+        if (inbound.kind === 'message') {
+          const message = inbound.message;
+          const link = await this.deps.store.findLink(
+            message.provider,
+            message.workspaceId,
+            message.subject,
+          );
+          if (link) {
+            const destination =
+              message.mention && this.deps.slack
+                ? await this.deps.slack.openDirect(message.subject)
+                : message.destination;
+            await this.#reply(
+              message.provider,
+              { destination, threadKey: message.threadKey },
+              render.interrupted(),
+              null,
+            );
+          }
+        }
+      } catch (error) {
+        this.#log('channel.interrupted_notice_failed', { error: errorCode(error) });
+      }
+      await this.deps.store.finishInbound(row.provider, row.eventId, 'dead', 'interrupted');
+      this.#log('channel.inbound_interrupted', { provider: row.provider, kind: row.kind });
+    }
+  }
+
+  #claimSame(message: InboundChannelMessage): Promise<boolean> {
+    return this.deps.store.claimInbox(message.provider, `same:${message.dedupeKey!}`);
+  }
+
+  async #dispatch(inbound: ChannelInbound, queued: QueuedContext | null): Promise<unknown> {
+    switch (inbound.kind) {
+      case 'message':
+        return this.receive(inbound.message, queued);
+      case 'action':
+        return this.act(inbound.action, queued);
+      case 'follow':
+        return this.greet(inbound.follow, queued);
+    }
   }
 
   #log(event: string, detail: Record<string, unknown>): void {
@@ -125,8 +321,12 @@ export class ChannelService {
   }
 
   /** 友だちに追加された（LINE の follow）。連携していなければ、つなぎ方を返す。 */
-  async greet(follow: InboundChannelFollow): Promise<'duplicate' | 'unlinked' | 'linked'> {
-    if (!(await this.deps.store.claimInbox(follow.provider, follow.eventId))) return 'duplicate';
+  async greet(
+    follow: InboundChannelFollow,
+    queued: QueuedContext | null = null,
+  ): Promise<'duplicate' | 'unlinked' | 'linked'> {
+    if (!queued && !(await this.deps.store.claimInbox(follow.provider, follow.eventId)))
+      return 'duplicate';
     const link = await this.deps.store.findLink(
       follow.provider,
       follow.workspaceId,
@@ -137,11 +337,19 @@ export class ChannelService {
     return 'unlinked';
   }
 
-  /** 発話を受ける。**重複は何もしない**（再送でも仕事は 1 つ）。 */
+  /**
+   * 発話を受ける。**重複は何もしない**（再送でも仕事は 1 つ）。
+   * `queued` は受信箱に保存してから処理しているとき（配信 ID の重複はもう見てある）。
+   */
   async receive(
     message: InboundChannelMessage,
+    queued: QueuedContext | null = null,
   ): Promise<'duplicate' | 'unlinked' | 'linked' | 'handled'> {
-    if (!(await this.deps.store.claimInbox(message.provider, message.eventId))) return 'duplicate';
+    if (!queued && !(await this.deps.store.claimInbox(message.provider, message.eventId)))
+      return 'duplicate';
+    // 同じ発言の別イベント（Slack の message と app_mention）も 1 つにする。
+    // 保存してから処理するときは受け取ったときに見てある（やり直しで自分と重ならないように）
+    if (!queued && message.dedupeKey && !(await this.#claimSame(message))) return 'duplicate';
 
     const link = await this.deps.store.findLink(
       message.provider,
@@ -186,12 +394,22 @@ export class ChannelService {
         );
     }
     const target = { destination, threadKey: message.threadKey };
-    // 返事を待つ間、考えていることを見せる（出せなくても続ける）
-    this.deps.senders[message.provider]
-      ?.typing?.(target)
-      .catch((error: unknown) =>
-        this.#log('channel.typing_failed', { provider: message.provider, error: errorCode(error) }),
-      );
+    // 返事を待つ間、考えていることを見せる（出せなくても続ける）。表示は 20 秒で消えるので出し直す
+    const sender = this.deps.senders[message.provider];
+    const showTyping = () =>
+      sender
+        ?.typing?.(target)
+        .catch((error: unknown) =>
+          this.#log('channel.typing_failed', {
+            provider: message.provider,
+            error: errorCode(error),
+          }),
+        );
+    void showTyping();
+    const typing = sender?.typing
+      ? setInterval(() => void showTyping(), this.deps.typingRefreshMs ?? 18_000)
+      : null;
+    typing?.unref?.();
 
     let outcome: TurnOutcome;
     try {
@@ -201,6 +419,8 @@ export class ChannelService {
         destination,
         () => this.deps.conversations.start(link.tenantId, link.userId, titleOf(message.provider)),
       );
+      // ここから先で落ちたら、やり直さずに本人へ伝える（仕事が二つにならないように）
+      if (queued) await this.deps.store.markInboundTurning(queued.provider, queued.eventId);
       outcome = await this.deps.turn(
         { tenantId: link.tenantId, userId: link.userId },
         conversationId,
@@ -210,6 +430,8 @@ export class ChannelService {
       this.#log('channel.turn_failed', { link_id: link.id, error: errorCode(error) });
       await this.#reply(message.provider, target, render.received(), message.replyToken);
       return 'handled';
+    } finally {
+      if (typing) clearInterval(typing);
     }
 
     if (outcome.kind === 'clarification') {
@@ -297,8 +519,12 @@ export class ChannelService {
   }
 
   /** ボタンを押した。**印・期限・押した人・risk** をすべて確かめてから承認を渡す。 */
-  async act(action: InboundChannelAction): Promise<'duplicate' | 'refused' | 'decided'> {
-    if (!(await this.deps.store.claimInbox(action.provider, action.eventId))) return 'duplicate';
+  async act(
+    action: InboundChannelAction,
+    queued: QueuedContext | null = null,
+  ): Promise<'duplicate' | 'refused' | 'decided'> {
+    if (!queued && !(await this.deps.store.claimInbox(action.provider, action.eventId)))
+      return 'duplicate';
     const target = { destination: action.destination, threadKey: action.destination };
     const refuse = async (reason: Parameters<typeof render.actionRefused>[0]) => {
       await this.#reply(action.provider, target, render.actionRefused(reason), action.replyToken);
@@ -348,6 +574,70 @@ export class ChannelService {
       action.replyToken,
     );
     return 'decided';
+  }
+
+  /**
+   * 予約のお知らせを、頼まれたチャットのスレッドへ送る。チャットの会話でなければ 'none'。
+   * 送れたか分からないときは 'unknown'（送り直しは outbox の規則どおり）。
+   */
+  async notifyConversation(
+    tenantId: string,
+    conversationId: string,
+    text: string,
+  ): Promise<'delivered' | 'failed' | 'unknown' | 'none'> {
+    const thread = await this.deps.store.threadForConversation(tenantId, conversationId);
+    if (!thread) return 'none';
+    const id = await this.deps.store.enqueue({
+      tenantId,
+      linkId: thread.link.id,
+      taskId: null,
+      eventSequence: null,
+      kind: 'notice',
+      destination: thread.destination,
+      threadKey: thread.threadKey,
+      body: render.notice(text),
+    });
+    if (!id) return 'failed';
+    const sent = await this.#send(
+      {
+        id,
+        tenantId,
+        linkId: thread.link.id,
+        provider: thread.link.provider,
+        destination: thread.destination,
+        threadKey: thread.threadKey,
+        kind: 'notice',
+        body: render.notice(text),
+        attempts: 0,
+      },
+      null,
+    );
+    // 送れなかったものは outbox に残り、見回りが送り直す（送り直してよいものだけ）
+    return sent ? 'delivered' : 'unknown';
+  }
+
+  /**
+   * 予約で始めた仕事を、頼まれたチャットのスレッドで見守る（受付・承認待ち・終わりを返す）。
+   * チャットの会話でなければ 'none'。
+   */
+  async followTask(
+    tenantId: string,
+    conversationId: string,
+    taskId: string,
+    title: string | null,
+  ): Promise<'delivered' | 'failed' | 'unknown' | 'none'> {
+    const thread = await this.deps.store.threadForConversation(tenantId, conversationId);
+    if (!thread) return 'none';
+    await this.#queueAndSend(
+      thread.link,
+      { destination: thread.destination, threadKey: thread.threadKey },
+      taskId,
+      0,
+      'accepted',
+      render.scheduledStarted(title),
+      null,
+    );
+    return 'delivered';
   }
 
   /**
@@ -525,12 +815,44 @@ export class ChannelService {
       return true;
     } catch (error) {
       const retryable = error instanceof ChannelSendError ? error.retryable : true;
-      await this.deps.store.markFailed(row.tenantId, row.id, errorCode(error), retryable);
+      const retryAfterMs = error instanceof ChannelSendError ? error.retryAfterMs : null;
+      await this.deps.store.markFailed(
+        row.tenantId,
+        row.id,
+        errorCode(error),
+        retryable,
+        retryAfterMs,
+      );
       this.#log('channel.send_failed', { outbox_id: row.id, error: errorCode(error), retryable });
       return false;
     }
   }
 }
+
+function keyOf(inbound: ChannelInbound): { provider: ChannelProvider; eventId: string } {
+  const body =
+    inbound.kind === 'message'
+      ? inbound.message
+      : inbound.kind === 'action'
+        ? inbound.action
+        : inbound.follow;
+  return { provider: body.provider, eventId: body.eventId };
+}
+
+/** 同じ相手（提供者・区画・話しかけた人）の発話は 1 列に並べる。 */
+function laneOf(inbound: ChannelInbound): string {
+  const body =
+    inbound.kind === 'message'
+      ? inbound.message
+      : inbound.kind === 'action'
+        ? inbound.action
+        : inbound.follow;
+  return `${body.provider}:${body.workspaceId}:${body.subject}`;
+}
+
+/** 封を別の行へ写しても開かないように、どの配信のものかを結びつける。 */
+const aadOf = (provider: ChannelProvider, eventId: string) =>
+  `genie-channel-inbox:${provider}:${eventId}`;
 
 function titleOf(provider: ChannelProvider): string {
   return provider === 'slack' ? 'Slack から' : 'LINE から';

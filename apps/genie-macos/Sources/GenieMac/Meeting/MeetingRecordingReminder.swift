@@ -260,6 +260,15 @@ final class MeetingRecordingReminder: NSObject, UNUserNotificationCenterDelegate
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void) {
         let id = response.notification.request.identifier
+        // 予約のお知らせ（NoticeInbox）。通知の受け手は 1 つなので、ここで振り分ける
+        if id.hasPrefix(NoticeInbox.prefix) {
+            let notification = response.notification
+            Task { @MainActor in
+                if response.actionIdentifier == UNNotificationDefaultActionIdentifier { NoticeInbox.opened(notification) }
+                completionHandler()
+            }
+            return
+        }
         let start = response.actionIdentifier == "astra.meeting-recording.begin"
         let open = response.actionIdentifier == UNNotificationDefaultActionIdentifier
         Task { @MainActor in

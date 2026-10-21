@@ -123,8 +123,29 @@ describe('normalizeSlackEvent', () => {
         text: '明日の会議の資料をまとめて',
         sentAt: now,
         replyToken: null,
+        dedupeKey: 'T001:D001:1790000000.000100',
       },
     });
+  });
+
+  it('gives a message and its app_mention twin the same dedupe key', () => {
+    const message = normalizeSlackEvent(dm());
+    const mention = normalizeSlackEvent({
+      type: 'event_callback',
+      team_id: 'T001',
+      event_id: 'Ev002',
+      event_time: now / 1000,
+      event: {
+        type: 'app_mention',
+        user: 'U001',
+        channel: 'D001',
+        ts: '1790000000.000100',
+        text: '<@UBOT> 明日の会議の資料をまとめて',
+      },
+    });
+    expect(message.kind === 'message' && message.message.dedupeKey).toBe(
+      mention.kind === 'message' && mention.message.dedupeKey,
+    );
   });
 
   it('keeps a reply inside its thread', () => {

@@ -35,6 +35,12 @@ export interface InboundChannelMessage {
    * チャンネルには「DM でお返しします」とだけ答える。DM・LINE では無い。
    */
   readonly mention?: { readonly channel: string; readonly ts: string };
+  /**
+   * 配信 ID とは別の「同じ発言か」の鍵（Slack の `team:channel:ts`）。
+   * Slack は 1 つの発言に `message` と `app_mention` の 2 つのイベントを別の event_id で送ることがある。
+   * event_id だけでは二度仕事になるので、これでも重複を捨てる。
+   */
+  readonly dedupeKey?: string;
 }
 
 /**

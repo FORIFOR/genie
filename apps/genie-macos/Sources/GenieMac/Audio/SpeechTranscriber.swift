@@ -139,6 +139,8 @@ final class SpeechTranscriber {
         req.shouldReportPartialResults = true
         req.addsPunctuation = punctuate
         req.requiresOnDeviceRecognition = true   // 資産が無ければ error 102。false で再試行しない
+        // 個人の辞書の語を、聞き取りの手がかりにする（置き換えは入れる前に DictationVocabulary で行う）
+        req.contextualStrings = DictationVocabularyStore.shared.hints
         generation += 1
         let gen = generation
         requestLock.lock(); request = req; requestLock.unlock()

@@ -166,6 +166,8 @@ final class MainData: ObservableObject {
                 InitialProfileStore.shared.configureBackend(base: base, token: tokens.accessToken, renewal: renewal)
                 WorkContextStore.shared.configureBackend(base: base, token: tokens.accessToken)
                 BriefStore.shared.configureBackend(base: base, token: tokens.accessToken)
+                NoticeInbox.shared.configureBackend(base: base, token: tokens.accessToken)
+                DictationVocabularyStore.shared.configureBackend(base: base, token: tokens.accessToken)
                 ConnectorState.shared.configureBackend(base: base, token: tokens.accessToken)
                 ReplyFlow.shared.configureBackend(base: base, token: tokens.accessToken)
                 RecordingRuntime.shared.configureBackend(base: base, accessToken: tokens.accessToken)

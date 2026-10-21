@@ -57,6 +57,23 @@ export type RedeemResult =
 /** 何度送っても届かないものは、ここで諦める（FAILED として残す）。 */
 export const MAX_SEND_ATTEMPTS = 5;
 
+/** 受けたものを処理し直す回数。超えたら dead（提供者には 200 を返し済みなので、記録だけ残す）。 */
+export const MAX_INBOUND_ATTEMPTS = 5;
+/** 取り出したまま進まない行を、落ちたプロセスのものとみなすまでの時間。 */
+export const INBOUND_STALL_MS = 5 * 60 * 1000;
+
+export type InboundKind = 'message' | 'action' | 'follow';
+
+/** 受信箱から取り出した、処理待ちの 1 件（本文は封じたまま）。 */
+export interface QueuedInbound {
+  readonly provider: ChannelProvider;
+  readonly eventId: string;
+  readonly kind: InboundKind;
+  readonly lane: string;
+  readonly payload: string;
+  readonly attempts: number;
+}
+
 const TERMINAL_KINDS = ['completed', 'failed', 'cancelled'] as const;
 
 export class ChannelStore {
@@ -75,12 +92,174 @@ export class ChannelStore {
     });
   }
 
-  /** 再送の窓（数分）を過ぎた受信箱の行を消す。 */
+  /**
+   * 受けたものを、処理する前に保存する（封じた本文ごと）。初めての配信なら true。
+   * **true を返してから提供者に 200 を返す。**落ちても、次の見回りで続きから処理できる。
+   */
+  async enqueueInbound(input: {
+    provider: ChannelProvider;
+    eventId: string;
+    kind: InboundKind;
+    lane: string;
+    payload: string;
+    /**
+     * 「同じ発言か」の鍵（Slack の message と app_mention）。配信の保存と**同じトランザクション**で
+     * 押さえる。別々にすると、押さえる前に取り出されて二度仕事になる。
+     */
+    sameKey?: string;
+  }): Promise<boolean> {
+    return withIdentity(this.db, async (tx) => {
+      const eventId = input.eventId.slice(0, 256);
+      const row = await tx
+        .insertInto('channel_inbox')
+        .values({
+          provider: input.provider,
+          event_id: eventId,
+          status: 'pending',
+          kind: input.kind,
+          lane: input.lane.slice(0, 400),
+          payload: input.payload,
+        })
+        .onConflict((oc) => oc.columns(['provider', 'event_id']).doNothing())
+        .returning('event_id')
+        .executeTakeFirst();
+      if (!row) return false;
+      if (input.sameKey) {
+        const same = await tx
+          .insertInto('channel_inbox')
+          .values({ provider: input.provider, event_id: input.sameKey.slice(0, 256) })
+          .onConflict((oc) => oc.columns(['provider', 'event_id']).doNothing())
+          .returning('event_id')
+          .executeTakeFirst();
+        if (!same) {
+          await tx
+            .updateTable('channel_inbox')
+            .set({ status: 'done', payload: null, last_error: 'same_message' })
+            .where('provider', '=', input.provider)
+            .where('event_id', '=', eventId)
+            .execute();
+          return false;
+        }
+      }
+      return true;
+    });
+  }
+
+  /**
+   * 処理待ちを取り出す。**複数のプロセスが同時に呼んでも、1 件は 1 つにしか渡らない**（SKIP LOCKED）。
+   * 失敗して待っているものは、回数に応じて間をあけてから（2 秒 × 2^回数、最大 2 分）。
+   * 取り出したまま止まった行（processing）は、持ち主が落ちたとみなして取り直す。
+   */
+  async claimInbound(limit = 20): Promise<QueuedInbound[]> {
+    return withIdentity(this.db, async (tx) => {
+      const rows = await sql<{
+        provider: string;
+        event_id: string;
+        kind: string;
+        lane: string;
+        payload: string;
+        attempts: number;
+      }>`
+        update channel_inbox i
+           set status = 'processing', claimed_at = now(), attempts = i.attempts + 1
+         where (i.provider, i.event_id) in (
+           select provider, event_id from channel_inbox
+            where payload is not null
+              and ((status = 'pending'
+                    and (claimed_at is null
+                         or claimed_at < now() - least(2000 * power(2, attempts), 120000) * interval '1 millisecond'))
+                or (status = 'processing'
+                    and claimed_at < now() - ${INBOUND_STALL_MS} * interval '1 millisecond'))
+            order by received_at
+            limit ${limit}
+            for update skip locked)
+        returning i.provider, i.event_id, i.kind, i.lane, i.payload, i.attempts
+      `.execute(tx);
+      return rows.rows.map((r) => ({
+        provider: r.provider as ChannelProvider,
+        eventId: r.event_id,
+        kind: r.kind as InboundKind,
+        lane: r.lane,
+        payload: r.payload,
+        attempts: r.attempts,
+      }));
+    });
+  }
+
+  /**
+   * handleTurn を呼ぶ直前の印。**ここから先で落ちたものは、やり直さない**（仕事が二つになる）。
+   * 次の見回りで「途中で止まった」と本人に伝える。
+   */
+  async markInboundTurning(provider: ChannelProvider, eventId: string): Promise<void> {
+    await withIdentity(this.db, (tx) =>
+      tx
+        .updateTable('channel_inbox')
+        .set({ status: 'turning', claimed_at: sql`now()` })
+        .where('provider', '=', provider)
+        .where('event_id', '=', eventId)
+        .execute(),
+    );
+  }
+
+  /** 終わった（done）か、諦めた（dead）。**本文はここで消す。** */
+  async finishInbound(
+    provider: ChannelProvider,
+    eventId: string,
+    status: 'done' | 'dead',
+    error: string | null = null,
+  ): Promise<void> {
+    await withIdentity(this.db, (tx) =>
+      tx
+        .updateTable('channel_inbox')
+        .set({ status, payload: null, last_error: error?.slice(0, 200) ?? null })
+        .where('provider', '=', provider)
+        .where('event_id', '=', eventId)
+        .execute(),
+    );
+  }
+
+  /** 失敗した。回数が残っていれば待ち行列に戻す（間をあけて取り直す）。 */
+  async retryInbound(provider: ChannelProvider, eventId: string, error: string): Promise<void> {
+    await withIdentity(this.db, (tx) =>
+      tx
+        .updateTable('channel_inbox')
+        .set({ status: 'pending', claimed_at: sql`now()`, last_error: error.slice(0, 200) })
+        .where('provider', '=', provider)
+        .where('event_id', '=', eventId)
+        .execute(),
+    );
+  }
+
+  /** handleTurn の途中で止まったもの（turning のまま時間が過ぎた）。本人に伝えてから dead にする。 */
+  async interruptedInbound(limit = 20): Promise<QueuedInbound[]> {
+    return withIdentity(this.db, async (tx) => {
+      const rows = await tx
+        .selectFrom('channel_inbox')
+        .select(['provider', 'event_id', 'kind', 'lane', 'payload', 'attempts'])
+        .where('status', '=', 'turning')
+        .where('payload', 'is not', null)
+        .where('claimed_at', '<', sql<Date>`now() - ${INBOUND_STALL_MS} * interval '1 millisecond'`)
+        .orderBy('received_at')
+        .limit(limit)
+        .execute();
+      return rows.map((r) => ({
+        provider: r.provider as ChannelProvider,
+        eventId: r.event_id,
+        kind: (r.kind ?? 'message') as InboundKind,
+        lane: r.lane ?? '',
+        payload: r.payload ?? '',
+        attempts: r.attempts,
+      }));
+    });
+  }
+
+  /** 再送の窓（数分）を過ぎた受信箱の行を消す。処理中のもの（本文あり）は残す。 */
   async pruneInbox(olderThanMs = 24 * 60 * 60 * 1000): Promise<void> {
     await withIdentity(this.db, (tx) =>
       tx
         .deleteFrom('channel_inbox')
         .where('received_at', '<', new Date(Date.now() - olderThanMs))
+        .where('status', 'in', ['done', 'dead'])
         .execute(),
     );
   }
@@ -306,6 +485,27 @@ export class ChannelStore {
     });
   }
 
+  /** 会話 → チャットのスレッド（予約の結果をチャットへ返すため）。チャットの会話でなければ null。 */
+  async threadForConversation(
+    tenantId: string,
+    conversationId: string,
+  ): Promise<{ link: ChannelLink; destination: string; threadKey: string } | null> {
+    return withTenant(this.db, tenantId, async (tx) => {
+      const row = await tx
+        .selectFrom('channel_threads as t')
+        .innerJoin('channel_links as l', 'l.id', 't.link_id')
+        .selectAll('l')
+        .select(['t.destination', 't.thread_key'])
+        .where('t.conversation_id', '=', conversationId)
+        .where('l.revoked_at', 'is', null)
+        .orderBy('t.last_message_at', 'desc')
+        .executeTakeFirst();
+      return row
+        ? { link: toLink(row), destination: row.destination, threadKey: row.thread_key }
+        : null;
+    });
+  }
+
   /** 送るものを積む。task のイベント 1 つにつき 1 行（一意索引）。積めたら id を返す。 */
   async enqueue(input: {
     tenantId: string;
@@ -414,6 +614,8 @@ export class ChannelStore {
           'o.attempts',
         ])
         .where('o.status', '=', 'PENDING')
+        // DB の時計で比べる（書くときも now() で入れている。ホストと DB の時計はずれうる）
+        .where('o.next_attempt_at', '<=', sql<Date>`now()`)
         .where('l.revoked_at', 'is', null)
         .orderBy('o.created_at')
         .limit(100)
@@ -447,8 +649,18 @@ export class ChannelStore {
     );
   }
 
-  /** 失敗を記録する。直らない失敗か、回数を使い切ったら FAILED（もう送らない）。 */
-  async markFailed(tenantId: string, id: string, error: string, retryable: boolean): Promise<void> {
+  /**
+   * 失敗を記録する。直らない失敗か、回数を使い切ったら FAILED（もう送らない）。
+   * 送り直すときは間をあける: 提供者の Retry-After か、5 秒 × 2^回数（最大 10 分）の長い方。
+   */
+  async markFailed(
+    tenantId: string,
+    id: string,
+    error: string,
+    retryable: boolean,
+    retryAfterMs: number | null = null,
+  ): Promise<void> {
+    const after = retryAfterMs ?? 0;
     await withTenant(this.db, tenantId, (tx) =>
       tx
         .updateTable('channel_outbox')
@@ -458,6 +670,7 @@ export class ChannelStore {
           status: retryable
             ? sql`case when attempts + 1 >= ${MAX_SEND_ATTEMPTS} then 'FAILED' else 'PENDING' end`
             : 'FAILED',
+          next_attempt_at: sql`now() + greatest(${after}, least(5000 * power(2, attempts), 600000)) * interval '1 millisecond'`,
         })
         .where('id', '=', id)
         .execute(),

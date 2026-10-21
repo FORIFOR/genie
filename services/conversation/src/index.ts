@@ -38,5 +38,6 @@ export {
   type LaneTaskInput,
   type LaneTaskRequest,
   type TurnDeps,
+  type TurnSchedules,
   type TurnLogger,
 } from './turn.js';

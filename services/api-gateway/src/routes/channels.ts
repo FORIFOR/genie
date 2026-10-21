@@ -2,8 +2,10 @@
  * チャット（Slack / LINE）の HTTP 表面。
  *
  * 受け口（Webhook）は**認証ではなく署名で守る。**署名は受け取ったままのバイト列で確かめるので、
- * この scope だけ本文を Buffer のまま受ける。確かめたらすぐ 200 を返し、処理は後ろで行う
- * （Slack は 3 秒で返さないと送り直す。重複は受信箱が捨てる）。
+ * この scope だけ本文を Buffer のまま受ける。確かめたら受け口（`service.accept`）に渡し、
+ * それが返ってから 200 を返す。accept は保存（鍵があれば）までで、処理は後ろで行う
+ * （Slack は 3 秒で返さないと送り直す。重複は受信箱が捨てる）。保存に失敗したら 5xx を返し、
+ * 提供者に送り直してもらう。
  *
  * 本人の操作（連携コードの発行・連携の一覧・解除・送る範囲）は通常どおり認証必須。
  */
@@ -28,6 +30,8 @@ export interface ChannelRouteDeps {
   /** 設定されている提供者だけ受け口が開く。 */
   readonly slackSigningSecret: string | null;
   readonly lineChannelSecret: string | null;
+  /** 繋がり具合（設定画面・doctor 用）。 */
+  readonly status?: () => import('../channels.js').ChannelsStatus;
 }
 
 /** 受け口は IP ごと。提供者の再送の束でも詰まらない幅にする。 */
@@ -42,14 +46,6 @@ const Provider = z.enum(['slack', 'line']);
 const PostingPolicy = z.enum(['summary_and_link', 'full_text']);
 
 export function registerChannelRoutes(app: App, deps: ChannelRouteDeps): void {
-  const later = (label: string, work: () => Promise<unknown>) => {
-    setImmediate(() => {
-      work().catch((error: unknown) => {
-        app.log.error({ err: error, channel_step: label }, 'channel processing failed');
-      });
-    });
-  };
-
   void app.register(async (scope) => {
     // 署名のために生の本文を残す（この scope の中だけ）
     scope.addContentTypeParser('application/json', { parseAs: 'buffer' }, (_req, body, done) =>
@@ -82,7 +78,7 @@ export function registerChannelRoutes(app: App, deps: ChannelRouteDeps): void {
         if (inbound.kind === 'url_verification')
           return reply.send({ challenge: inbound.challenge });
         if (inbound.kind === 'message')
-          later('slack.receive', () => deps.service.receive(inbound.message));
+          await deps.service.accept({ kind: 'message', message: inbound.message });
         else request.log.info({ reason: inbound.reason }, 'slack event ignored');
         return reply.status(200).send({ ok: true });
       },
@@ -107,7 +103,8 @@ export function registerChannelRoutes(app: App, deps: ChannelRouteDeps): void {
         }
         const payload = new URLSearchParams(raw.toString('utf8')).get('payload');
         const inbound = normalizeSlackAction(payload ? parseJson(Buffer.from(payload)) : null);
-        if (inbound.kind === 'action') later('slack.act', () => deps.service.act(inbound.action));
+        if (inbound.kind === 'action')
+          await deps.service.accept({ kind: 'action', action: inbound.action });
         else request.log.info({ reason: inbound.reason }, 'slack action ignored');
         return reply.status(200).send();
       },
@@ -130,10 +127,12 @@ export function registerChannelRoutes(app: App, deps: ChannelRouteDeps): void {
           throw new GenieError('auth.forbidden', 'bad line signature');
         }
         const inbound = normalizeLineWebhook(parseJson(raw));
+        // 全部を保存してから 200。途中で失敗したら 5xx で LINE に送り直してもらう
+        // （保存できた分は重複として捨てられる）
         for (const message of inbound.messages)
-          later('line.receive', () => deps.service.receive(message));
-        for (const action of inbound.actions) later('line.act', () => deps.service.act(action));
-        for (const follow of inbound.follows) later('line.greet', () => deps.service.greet(follow));
+          await deps.service.accept({ kind: 'message', message });
+        for (const action of inbound.actions) await deps.service.accept({ kind: 'action', action });
+        for (const follow of inbound.follows) await deps.service.accept({ kind: 'follow', follow });
         if (inbound.ignored.length > 0) {
           request.log.info(
             { reasons: inbound.ignored.map((i) => i.reason) },
@@ -143,6 +142,12 @@ export function registerChannelRoutes(app: App, deps: ChannelRouteDeps): void {
         return reply.status(200).send({ ok: true });
       },
     );
+  });
+
+  /** チャットの繋がり具合。トークンや外の利用者 ID は返さない。 */
+  app.get('/v1/channels/status', async () => {
+    requirePrincipal();
+    return deps.status?.() ?? null;
   });
 
   /** 連携コードを出す。チャットで「連携 <コード>」と送ると結ばれる（10 分・1 回）。 */

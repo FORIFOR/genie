@@ -33,8 +33,18 @@ export const accepted = (title: string | null): OutgoingMessage => ({
 
 export const notice = (text: string): OutgoingMessage => ({ text });
 
+/** 予約の時間になって始めた仕事。 */
+export const scheduledStarted = (title: string | null): OutgoingMessage => ({
+  text: `⏰ 予約の時間になったので始めました${title ? `：${title}` : ''}。終わったらお知らせします。`,
+});
+
 export const received = (): OutgoingMessage => ({
   text: 'うまく受け取れませんでした。少し待ってから、もう一度送ってください。',
+});
+
+/** 受けた依頼の処理の途中で Genie が止まった。仕事ができたかは分からないので、確かめ先を示す。 */
+export const interrupted = (): OutgoingMessage => ({
+  text: '受け取った依頼の途中で Genie が止まりました。仕事になったかは Genie の作業一覧で確かめてください。無ければ、もう一度送ってください。',
 });
 
 export const mentionAck = (): OutgoingMessage => ({

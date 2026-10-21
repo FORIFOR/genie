@@ -1,0 +1,32 @@
+{
+  "name": "@genie/service-schedule",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Scheduled requests: read when-phrases, keep jobs, fire them on time, and leave notices for the Mac.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "tsc -b --clean",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@genie/contracts": "workspace:*",
+    "@genie/db": "workspace:*",
+    "@genie/telemetry": "workspace:*",
+    "kysely": "catalog:"
+  },
+  "devDependencies": {
+    "vitest": "catalog:"
+  }
+}

@@ -62,6 +62,12 @@
       "path": "./services/channels"
     },
     {
+      "path": "./services/schedule"
+    },
+    {
+      "path": "./services/vocabulary"
+    },
+    {
       "path": "./services/conversation"
     },
     {

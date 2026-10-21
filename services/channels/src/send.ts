@@ -4,7 +4,10 @@
  * **送るのは外部への送信。**何を送るか（要約だけか本文までか）は呼ぶ側が
  * 連携の posting_policy で決める。ここは決まったものを、決まった先へ届けるだけ。
  *
- * 失敗は投げる。再送するかは outbox が決める（429・5xx・通信の失敗だけ再送してよい）。
+ * 失敗は投げる。再送してよいかは、ここで**届いていないと言えるか**で決める。
+ *   - 断られた（429、繋がらなかった）: 送り直してよい。429 は Retry-After だけ待つ
+ *   - 届いたか分からない（時間切れ、5xx、Slack の internal_error）: 送り直さない。
+ *     二通目を作るより、一通欠ける方を選ぶ（openclaw の Slack 送信と同じ考え）
  */
 import type { ChannelProvider } from '@genie/contracts';
 
@@ -47,6 +50,8 @@ export class ChannelSendError extends Error {
   constructor(
     readonly code: string,
     readonly retryable: boolean,
+    /** 提供者が「この時間は待って」と言った（429 の Retry-After）。 */
+    readonly retryAfterMs: number | null = null,
   ) {
     super(`channel send failed: ${code}`);
     this.name = 'ChannelSendError';
@@ -54,6 +59,20 @@ export class ChannelSendError extends Error {
 }
 
 const retryableStatus = (status: number) => status === 429 || status >= 500;
+
+/** Retry-After（秒）を ms に。無い・壊れているときは null。 */
+function retryAfterOf(response: Response): number | null {
+  const seconds = Number(response.headers.get('retry-after'));
+  return Number.isFinite(seconds) && seconds > 0 ? Math.min(seconds, 3600) * 1000 : null;
+}
+
+/** 時間切れは「送ったが返事が無い」。繋がらなかった（送れていない）のとは分ける。 */
+function timedOut(error: unknown): boolean {
+  return error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError');
+}
+
+/** Slack が「返せなかったが、受け付けたかもしれない」と言う失敗。 */
+const SLACK_UNCERTAIN = new Set(['internal_error', 'fatal_error', 'request_timeout']);
 
 /** Slack の Bot。DM の中ではスレッドに返す（スレッドの ts を thread_ts に）。 */
 export class SlackSender implements ChannelSender {
@@ -64,7 +83,15 @@ export class SlackSender implements ChannelSender {
     private readonly fetchImpl: typeof fetch = fetch,
   ) {}
 
-  async #call(method: string, body: Record<string, unknown>): Promise<Record<string, unknown>> {
+  /**
+   * `idempotent` は二度呼んでも結果が同じもの（DM を開く、など）。
+   * 投稿は idempotent ではないので、届いたか分からない失敗を送り直さない。
+   */
+  async #call(
+    method: string,
+    body: Record<string, unknown>,
+    idempotent = false,
+  ): Promise<Record<string, unknown>> {
     let response: Response;
     try {
       response = await this.fetchImpl(`https://slack.com/api/${method}`, {
@@ -76,18 +103,27 @@ export class SlackSender implements ChannelSender {
         body: JSON.stringify(body),
         signal: AbortSignal.timeout(10_000),
       });
-    } catch {
+    } catch (error) {
+      if (timedOut(error) && !idempotent) throw new ChannelSendError('slack_send_uncertain', false);
       throw new ChannelSendError('slack_unreachable', true);
     }
-    if (!response.ok)
+    if (!response.ok) {
+      if (response.status === 429)
+        throw new ChannelSendError('slack_http_429', true, retryAfterOf(response));
+      if (response.status >= 500 && !idempotent)
+        throw new ChannelSendError('slack_send_uncertain', false);
       throw new ChannelSendError(
         `slack_http_${String(response.status)}`,
         retryableStatus(response.status),
       );
+    }
     const data = (await response.json().catch(() => ({}))) as Record<string, unknown>;
     if (data['ok'] !== true) {
       const error = typeof data['error'] === 'string' ? data['error'] : 'slack_error';
-      throw new ChannelSendError(error, error === 'ratelimited' || error === 'internal_error');
+      if (error === 'ratelimited') throw new ChannelSendError(error, true, retryAfterOf(response));
+      if (SLACK_UNCERTAIN.has(error))
+        throw new ChannelSendError(idempotent ? error : 'slack_send_uncertain', idempotent);
+      throw new ChannelSendError(error, false);
     }
     return data;
   }
@@ -126,7 +162,7 @@ export class SlackSender implements ChannelSender {
 
   /** 本人との DM を開く（メンションの結果を返す先）。 */
   async openDirect(user: string): Promise<string> {
-    const data = await this.#call('conversations.open', { users: user });
+    const data = await this.#call('conversations.open', { users: user }, true);
     const channel = data['channel'];
     const id =
       typeof channel === 'object' && channel !== null
@@ -195,7 +231,8 @@ export class LineSender implements ChannelSender {
       // 断られた（届いていない）ものだけ送り直す。期限切れ・使用済みの token（400）は push で、
       // 429 は後で。5xx は受け付けられたかもしれないので、push で二通目を作らない
       // （openclaw extensions/line の canFallbackAfterLineReplyFailure と同じ考え）
-      if (replied.status === 429) throw new ChannelSendError('line_http_429', true);
+      if (replied.status === 429)
+        throw new ChannelSendError('line_http_429', true, retryAfterOf(replied));
       if (replied.status !== 400) {
         throw new ChannelSendError(
           replied.status >= 500 ? 'line_reply_uncertain' : `line_http_${String(replied.status)}`,
@@ -210,9 +247,11 @@ export class LineSender implements ChannelSender {
       { 'X-Line-Retry-Key': options.retryKey },
     );
     if (pushed.ok || pushed.status === 409) return { providerMessageId: null };
+    // push は X-Line-Retry-Key があるので、5xx でも送り直して二通にならない
     throw new ChannelSendError(
       `line_http_${String(pushed.status)}`,
       retryableStatus(pushed.status),
+      pushed.status === 429 ? retryAfterOf(pushed) : null,
     );
   }
 

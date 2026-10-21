@@ -64,6 +64,22 @@ export interface TurnDeps {
       | null
     >;
   };
+  /** 予約。無ければ予約の言い方は、いつもの振り分けに回る。 */
+  readonly schedules?: TurnSchedules;
+  /** 個人の辞書（「辞書に登録: ジーニーは Genie」）。service-vocabulary の VocabularyService。 */
+  readonly vocabulary?: TurnSchedules;
+}
+
+/**
+ * 予約（「明日 9 時に〜教えて」「毎朝 8 時に〜まとめて」）。service-schedule の ScheduleService。
+ * 予約の話なら答え（言い直しと確かめ・一覧・取り消し）を返す。違えば null。
+ */
+export interface TurnSchedules {
+  handle(
+    principal: { tenantId: string; userId: string },
+    conversationId: string,
+    text: string,
+  ): Promise<{ answer: string; needsClarification: boolean } | null>;
 }
 
 export interface HandleTurnInput {
@@ -79,6 +95,8 @@ export interface HandleTurnInput {
    * チャネルは控えを持たないので渡さない。
    */
   readonly onPrepared?: (response: Record<string, unknown>, dispatchTurnId?: string) => Promise<void>;
+  /** 予約から頼んでいる（予約の言い方は読まない。予約から予約を作らない）。 */
+  readonly scheduled?: boolean;
 }
 
 /**
@@ -170,6 +188,26 @@ export async function handleTurn(
       modality: state.response_mode,
       text,
     });
+
+  // 辞書の話（登録・一覧・削除）と予約の話（作る前の確かめ・一覧・取り消し）。
+  // 予約から頼んだ発話は読まない（予約から予約・辞書を変えない）
+  const commands = input.scheduled ? [] : [deps.vocabulary, deps.schedules];
+  for (const command of commands) {
+    if (!command) continue;
+    const scheduled = await command.handle(principal, id, body.text);
+    if (scheduled) {
+      log.info(
+        { command: command === deps.schedules ? 'schedule' : 'vocabulary' },
+        'turn command',
+      );
+      return {
+        kind: 'answered',
+        turn,
+        answer: await answerWith(scheduled.answer),
+        needsClarification: scheduled.needsClarification,
+      };
+    }
+  }
 
   // Slot answers can be ordinary chat. Keep them with the durable order rather than
   // sending each answer to an unrelated assistant or screen-automation task.
