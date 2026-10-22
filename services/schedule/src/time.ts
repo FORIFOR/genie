@@ -210,11 +210,11 @@ export function formatWhen(epochMs: number, tz: string): string {
   return `${String(w.month)}/${String(w.day)}（${DAY_NAMES[w.weekday]!}）${String(w.hour)}:${pad(w.minute)}`;
 }
 
-/** 予約の言い直し（「平日の 9:00」「毎日 8:00」「30 分ごと」「10/22（水）9:00 に 1 回」）。 */
+/** 予約の言い直し（「平日の 9:00」「毎日 8:00」「30 分ごと」「10/22（水）9:00」）。 */
 export function describeSchedule(schedule: Schedule, tz: string): string {
   switch (schedule.kind) {
     case 'at':
-      return `${formatWhen(Date.parse(schedule.at), tz)} に 1 回`;
+      return formatWhen(Date.parse(schedule.at), tz);
     case 'every': {
       const minutes = Math.round(schedule.everyMs / 60_000);
       return minutes % 60 === 0

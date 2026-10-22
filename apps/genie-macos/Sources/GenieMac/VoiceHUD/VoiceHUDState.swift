@@ -266,8 +266,11 @@ final class VoiceHUDState: ObservableObject {
         // 言い淀みを消し、個人の辞書で置き換える（どちらも決定的。言葉の意味は変えない）
         let cleaned = DictationCleanup.terminated(DictationVocabularyStore.shared.apply(DictationCleanup.clean(raw)))
         let pid = Dictation.targetPID()
+        let secure = Dictation.focusedIsSecure(appPID: pid)
         let report = Dictation.insertReporting(cleaned, appPID: pid)
         if report.ok {
+            DictationHistory.shared.record(text: cleaned, original: DictationCleanup.terminated(raw),
+                                           app: report.app, secureField: secure)
             dictationInsertedPID = pid
             lastDictated = DictatedText(inserted: cleaned, original: DictationCleanup.terminated(raw), appPID: pid)
             dictatedSegments += 1
@@ -293,8 +296,13 @@ final class VoiceHUDState: ObservableObject {
         var pid = dictationInsertedPID
         if !rest.isEmpty {
             let target = pid ?? Dictation.targetPID()
-            let report = Dictation.insertReporting(
-                DictationCleanup.terminated(DictationVocabularyStore.shared.apply(DictationCleanup.clean(rest))), appPID: target)
+            let cleaned = DictationCleanup.terminated(DictationVocabularyStore.shared.apply(DictationCleanup.clean(rest)))
+            let secure = Dictation.focusedIsSecure(appPID: target)
+            let report = Dictation.insertReporting(cleaned, appPID: target)
+            if report.ok {
+                DictationHistory.shared.record(text: cleaned, original: DictationCleanup.terminated(rest),
+                                               app: report.app, secureField: secure)
+            }
             guard report.ok else {
                 answer = Facts.dictationNotInserted(report.app, reason: report.method)
                 mode = .answer(answer)

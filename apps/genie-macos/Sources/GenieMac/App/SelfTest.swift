@@ -86,6 +86,7 @@ enum SelfTest {
         case "screenshotshots": screenshotShots(args); return true
         case "screenshotshot": screenshotShot(args); return true
         case "initialprofile": Task { @MainActor in await initialProfileShots(args) }; return true
+        case "accountboards": Task { @MainActor in await accountBoardShots(args) }; return true
         case "workcontext": workContextGate(); return true
         case "replyflow": Task { await replyFlowGate() }; return true
         case "approval-press": Task { await approvalPress() }; return true

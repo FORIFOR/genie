@@ -123,7 +123,7 @@ describe.skipIf(!url)('scheduled requests', () => {
     const id = await conversation();
     const proposed = await say(id, '30分後に会議だって教えて');
     expect(proposed.needs_clarification).toBe(true);
-    expect(proposed.answer?.text).toContain('「会議」をお知らせします');
+    expect(proposed.answer?.text).toMatch(/\d{1,2}:\d{2} に「会議」をお知らせします/);
     expect(proposed.answer?.text).toContain('よろしいですか');
     expect(proposed.task_id ?? null).toBeNull();
     // 確かめる前は一覧に出ない（動いていない）

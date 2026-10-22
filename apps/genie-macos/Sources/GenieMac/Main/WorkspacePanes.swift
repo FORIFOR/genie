@@ -146,6 +146,7 @@ struct TasksPane: View {
                     Button("新しく依頼する") { MainNav.shared.select(.home) }
                         .accessibilityIdentifier("tasksNewRequest")
                 }
+                ScheduleSection(board: ScheduleBoard.shared, dark: dark)
                 if tasks.isEmpty {
                     WorkspaceEmpty(title: "まだ仕事はありません", hint: "最初の依頼をすると、ここから進み具合を確認できます。",
                                    primaryLabel: "依頼を書く", primaryAction: { MainNav.shared.select(.home) })
@@ -179,6 +180,7 @@ struct TasksPane: View {
         }
         .background(Palette.canvas(dark))
         .onAppear { tasks = LocalStore.shared.loadTasks() }
+        .task { await ScheduleBoard.shared.refresh() }
         .onReceive(NotificationCenter.default.publisher(for: LocalStore.tasksChanged).receive(on: RunLoop.main)) { _ in tasks = LocalStore.shared.loadTasks() }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("tasksPane")

@@ -168,6 +168,8 @@ final class MainData: ObservableObject {
                 BriefStore.shared.configureBackend(base: base, token: tokens.accessToken)
                 NoticeInbox.shared.configureBackend(base: base, token: tokens.accessToken)
                 DictationVocabularyStore.shared.configureBackend(base: base, token: tokens.accessToken)
+                ScheduleBoard.shared.configureBackend(base: base, token: tokens.accessToken)
+                ChatChannelsBoard.shared.configureBackend(base: base, token: tokens.accessToken)
                 ConnectorState.shared.configureBackend(base: base, token: tokens.accessToken)
                 ReplyFlow.shared.configureBackend(base: base, token: tokens.accessToken)
                 RecordingRuntime.shared.configureBackend(base: base, accessToken: tokens.accessToken)

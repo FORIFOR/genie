@@ -205,3 +205,16 @@ describe('nextRunAfter', () => {
     expect(formatWhen(jst('2026-10-22T09:00'), TZ)).toBe('10/22（木）9:00');
   });
 });
+
+describe('scheduleName', () => {
+  it('reads naturally for one-shot, recurring and every-N schedules', async () => {
+    const { scheduleName } = await import('../src/service.js');
+    const tz = 'Asia/Tokyo';
+    expect(
+      scheduleName({ kind: 'at', at: '2026-10-21T02:51:00.000Z' }, { kind: 'reminder', text: '動作確認' }, tz),
+    ).toBe('10/21（水）11:51 に「動作確認」をお知らせ');
+    expect(
+      scheduleName({ kind: 'every', everyMs: 15 * 60_000, anchorMs: 0 }, { kind: 'task', text: 'メールを確認して' }, tz),
+    ).toBe('15 分ごとに「メールを確認して」を頼む');
+  });
+});

@@ -45,6 +45,19 @@ const WEBHOOK_RATE_LIMIT: RouteRateLimit = {
 const Provider = z.enum(['slack', 'line']);
 const PostingPolicy = z.enum(['summary_and_link', 'full_text']);
 
+/** Slack も LINE も設定されていないとき。設定画面が「未設定」と出せるよう、状態だけ返す。 */
+export function registerUnconfiguredChannelStatus(app: App): void {
+  app.get('/v1/channels/status', async () => {
+    requirePrincipal();
+    return {
+      slack: { configured: false, transport: null, socket: null },
+      line: { configured: false },
+      durableInbox: false,
+      approvalButtons: false,
+    } satisfies import('../channels.js').ChannelsStatus;
+  });
+}
+
 export function registerChannelRoutes(app: App, deps: ChannelRouteDeps): void {
   void app.register(async (scope) => {
     // 署名のために生の本文を残す（この scope の中だけ）

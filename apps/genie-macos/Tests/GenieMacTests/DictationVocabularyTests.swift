@@ -24,7 +24,7 @@ final class DictationVocabularyTests: XCTestCase {
     func testDecodesTheGatewayList() {
         let body = #"{"items":[{"id":"1","spoken":"ジーニー","written":"Genie","created_at":"2026-10-21T00:00:00Z"}]}"#
         XCTAssertEqual(DictationVocabulary.decode(Data(body.utf8)),
-                       DictationVocabulary(entries: [.init(spoken: "ジーニー", written: "Genie")]))
+                       DictationVocabulary(entries: [.init(spoken: "ジーニー", written: "Genie", id: "1")]))
         XCTAssertNil(DictationVocabulary.decode(Data("nope".utf8)))
     }
 

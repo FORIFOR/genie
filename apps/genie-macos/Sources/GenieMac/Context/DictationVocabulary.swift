@@ -9,6 +9,8 @@ struct DictationVocabulary: Equatable, Codable {
     struct Entry: Equatable, Codable {
         let spoken: String
         let written: String
+        /// サーバの id（設定で消すときに使う）。古い控えには無い。
+        var id: String? = nil
     }
 
     var entries: [Entry] = []
@@ -84,22 +86,54 @@ final class DictationVocabularyStore: @unchecked Sendable {
 
     /// 取りに行く（1 分に 1 回まで。会話で登録した直後に効かせたいときは `force`）。
     func refresh(force: Bool = false) async {
-        lock.lock()
-        let base = self.base, token = self.token
-        let recent = lastFetch.map { Date().timeIntervalSince($0) < 60 } ?? false
-        lock.unlock()
+        let (base, token, recent) = lock.withLock {
+            (self.base, self.token, lastFetch.map { Date().timeIntervalSince($0) < 60 } ?? false)
+        }
         guard let base, let token, force || !recent, let url = URL(string: "\(base)/v1/vocabulary") else { return }
         var request = URLRequest(url: url, timeoutInterval: 15)
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         guard let (data, response) = try? await URLSession.shared.data(for: request),
               (response as? HTTPURLResponse)?.statusCode == 200,
               let fetched = DictationVocabulary.decode(data) else { return }
-        lock.lock()
-        lastFetch = Date()
-        let changed = fetched != current
-        current = fetched
-        lock.unlock()
-        if changed { save(fetched) }
+        let changed = lock.withLock {
+            lastFetch = Date()
+            defer { current = fetched }
+            return fetched != current
+        }
+        if changed {
+            save(fetched)
+            DispatchQueue.main.async { NotificationCenter.default.post(name: Self.changed, object: nil) }
+        }
+    }
+
+    /// 控えが変わった（設定の一覧を描き直す）。
+    static let changed = Notification.Name("genie.dictationVocabulary.changed")
+
+    /// 設定から登録する（同じ聞こえ方は書き方を上書き）。登録できたら控えも取り直す。
+    func add(spoken: String, written: String) async -> String? {
+        let spoken = spoken.trimmingCharacters(in: .whitespacesAndNewlines)
+        let written = written.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !spoken.isEmpty else { return "聞こえ方を入れてください。" }
+        guard let api = backend else { return "Genie につながっていません。" }
+        let result = await api.call("POST", "/v1/vocabulary",
+                                    body: ["spoken": spoken, "written": written.isEmpty ? spoken : written])
+        switch result?.status {
+        case 200, 201: await refresh(force: true); return nil
+        case 409: return "辞書がいっぱいです。使わないものを消してから登録してください。"
+        default: return "登録できませんでした。"
+        }
+    }
+
+    func remove(_ entry: DictationVocabulary.Entry) async -> String? {
+        guard let id = entry.id, let api = backend else { return "Genie につながっていません。" }
+        let result = await api.call("DELETE", "/v1/vocabulary/\(id)")
+        guard result?.status == 204 || result?.status == 404 else { return "消せませんでした。" }
+        await refresh(force: true)
+        return nil
+    }
+
+    private var backend: GatewayJSON? {
+        lock.withLock { base.flatMap { b in token.map { GatewayJSON(base: b, token: $0) } } }
     }
 
     private func save(_ vocabulary: DictationVocabulary) {

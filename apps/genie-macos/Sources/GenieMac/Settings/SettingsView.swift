@@ -69,6 +69,10 @@ struct SettingsView: View {
                 })
             }
 
+            section("音声入力") {
+                DictationSettingsSection(onResize: { SettingsWindowController.shared.resizeToContent() })
+            }
+
             section("文字起こし") {
                 Toggle("ライブ文字起こし（Google STT）", isOn: Binding(
                     get: { cloudTranscription },

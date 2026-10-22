@@ -32,6 +32,7 @@ struct ConnectorsPane: View {
                 ForEach(providers, id: \.self) { provider in
                     if !sources(provider).isEmpty { providerCard(provider) }
                 }
+                ChatChannelsCard(board: ChatChannelsBoard.shared, dark: dark)
                 Text("メールの送信や変更に必要な権限は、その操作を使うときに確認します。")
                     .font(.system(size: TypeScale.secondarySize)).foregroundStyle(Palette.muted(dark))
                 DisclosureGroup("詳しい接続情報") {
@@ -56,6 +57,7 @@ struct ConnectorsPane: View {
                 // Fixtures do not authenticate or read live account data.
                 guard !CommandLine.arguments.contains("--selftest") else { return }
                 _ = await MainData.shared.ensureConnected(); connections.refresh()
+                await ChatChannelsBoard.shared.refresh()
             }
             .sheet(isPresented: Binding(get: { preview != nil }, set: { if !$0 { preview = nil } })) {
                 if let provider = preview { purposeSheet(provider, dark: dark) }

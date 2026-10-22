@@ -34,7 +34,11 @@ import { registerShareRoutes } from './routes/shares.js';
 import { registerDomainRoutes, type DomainRouteDeps } from './routes/domain.js';
 import { registerBriefRoutes } from './routes/brief.js';
 import { registerConversationRoutes, type ConversationRouteDeps } from './routes/conversations.js';
-import { registerChannelRoutes, type ChannelRouteDeps } from './routes/channels.js';
+import {
+  registerChannelRoutes,
+  registerUnconfiguredChannelStatus,
+  type ChannelRouteDeps,
+} from './routes/channels.js';
 import { registerScheduleRoutes } from './routes/schedules.js';
 import { registerVocabularyRoutes } from './routes/vocabulary.js';
 import type { TurnDeps } from '@genie/service-conversation';
@@ -228,6 +232,7 @@ export function buildApp(deps: AppDeps): App {
     });
     const channels = deps.channels?.(turnDeps) ?? null;
     if (channels) registerChannelRoutes(app, channels);
+    else registerUnconfiguredChannelStatus(app);
     deps.onTurnDeps?.(turnDeps);
   }
   if (deps.schedules) registerScheduleRoutes(app, { schedules: deps.schedules });

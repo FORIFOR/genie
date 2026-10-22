@@ -2,7 +2,7 @@
  * 予約を会話で扱う（作る前に確かめる・一覧・取り消し）。handleTurn から呼ばれる。
  *
  *   「明日 9 時に資料の準備をリマインドして」
- *     → 「10/22（木）9:00 に 1 回、『資料の準備』をお知らせします。よろしいですか？（はい / いいえ）」
+ *     → 「10/22（木）9:00 に『資料の準備』をお知らせします。よろしいですか？（はい / いいえ）」
  *   「はい」 → 予約しました（次は 10/22（木）9:00）
  *
  * **黙って作らない。**読み違えても、作る前に言い直しで気づける（openclaw の「言い直してから作る」と同じ）。
@@ -30,12 +30,15 @@ const LIST = /^\s*(?:予約|リマインダー|リマインド|スケジュー�
 const CANCEL =
   /^\s*(?:(?<all>全部の|すべての|全ての)?(?:予約|リマインダー|リマインド)(?<n>\d{1,2})?(?:番)?|(?<last>さっきの|今の|最後の)(?:予約|リマインダー|リマインド))\s*(?:を)?\s*(?:取り消して|とりけして|キャンセルして|消して|やめて|止めて|解除して)[。！!\s]*$/;
 
+/** 「平日の 9:00 に」「15 分ごとに」（数字のあとは空けて、語のあとは詰める）。 */
+const atWhen = (when: string) => (/ごと$/.test(when) ? `${when}に` : `${when} に`);
+
 /** 予約の言い直し（「平日の 9:00 に『日報を書く』をお知らせ」）。 */
 export function scheduleName(schedule: Schedule, payload: SchedulePayload, tz: string): string {
   const when = describeSchedule(schedule, tz);
   return payload.kind === 'reminder'
-    ? `${when}に「${payload.text}」をお知らせ`
-    : `${when}に「${payload.text}」を頼む`;
+    ? `${atWhen(when)}「${payload.text}」をお知らせ`
+    : `${atWhen(when)}「${payload.text}」を頼む`;
 }
 
 export class ScheduleService {
@@ -106,8 +109,8 @@ export class ScheduleService {
     const upcoming = upcomingRuns(schedule, this.#now(), schedule.kind === 'at' ? 1 : 3);
     const lines = [
       payload.kind === 'reminder'
-        ? `${describeSchedule(schedule, this.#tz)}に「${payload.text}」をお知らせします。`
-        : `${describeSchedule(schedule, this.#tz)}に「${payload.text}」を頼みます。外への送信などは、そのときに承認カードで確かめます。`,
+        ? `${atWhen(describeSchedule(schedule, this.#tz))}「${payload.text}」をお知らせします。`
+        : `${atWhen(describeSchedule(schedule, this.#tz))}「${payload.text}」を頼みます。外への送信などは、そのときに承認カードで確かめます。`,
       ...(schedule.kind === 'at'
         ? []
         : [`次は ${upcoming.map((t) => formatWhen(t, this.#tz)).join('、')}。`]),

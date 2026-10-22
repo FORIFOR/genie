@@ -111,4 +111,19 @@ describe.skipIf(!url)('personal vocabulary', () => {
     expect(removed.statusCode).toBe(204);
     expect(await entries(me)).toEqual([]);
   });
+
+  it('reports chat channels as not configured when neither Slack nor LINE is set', async () => {
+    const me = await signIn('z');
+    const res = await app.inject({ method: 'GET', url: '/v1/channels/status', headers: me });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({
+      slack: { configured: false, transport: null, socket: null },
+      line: { configured: false },
+      durableInbox: false,
+      approvalButtons: false,
+    });
+    expect(
+      (await app.inject({ method: 'GET', url: '/v1/channels/status' })).statusCode,
+    ).toBe(401);
+  });
 });

@@ -237,6 +237,17 @@ enum Dictation {
         return roleRef as? String ?? "-"
     }
 
+    /// フォーカス中の欄がパスワード欄か（履歴に残さないため）。読めなければ安全側の true。
+    static func focusedIsSecure(appPID: pid_t?) -> Bool {
+        guard let appPID, AXIsProcessTrusted() else { return true }
+        var focused: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(AXUIElementCreateApplication(appPID), kAXFocusedUIElementAttribute as CFString, &focused) == .success,
+              let element = focused else { return true }
+        var subrole: CFTypeRef?
+        AXUIElementCopyAttributeValue(element as! AXUIElement, kAXSubroleAttribute as CFString, &subrole)
+        return (subrole as? String) == (kAXSecureTextFieldSubrole as String)
+    }
+
     private static func log(_ r: Report, length: Int) {
         let dir = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Logs/Astra")
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
