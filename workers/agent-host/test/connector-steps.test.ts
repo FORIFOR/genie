@@ -353,6 +353,66 @@ describe('running a connector step on the device', () => {
     expect(sent[0]!.body).toMatchObject({ start: { date: '2026-09-01' } });
   });
 
+  // 仕様 v1.0 §11: 承認された「午後にずらして」を、この端末の Google カレンダーで変える
+  it('moves a calendar event with approval through the actions connection, returning before and after', async () => {
+    const store = memoryStore(connected());
+    const sent: Sent[] = [];
+    const fetch = (async (url: string, init: RequestInit) => {
+      sent.push({
+        url,
+        authorization: undefined,
+        body: init.body ? JSON.parse(init.body as string) : undefined,
+      });
+      const at = (init.method ?? 'GET') === 'GET' ? '10' : '14';
+      return new Response(
+        JSON.stringify({
+          id: 'ev-1',
+          summary: '定例ミーティング',
+          status: 'confirmed',
+          start: { dateTime: `2026-10-28T${at}:00:00+09:00` },
+          end: { dateTime: `2026-10-28T${String(Number(at) + 1)}:00:00+09:00` },
+        }),
+        { status: 200 },
+      );
+    }) as unknown as typeof globalThis.fetch;
+    const r = new ConnectorRuntime({
+      secrets: store,
+      credentialRefFor: (p, c) => `keychain:${p}/${c}`,
+      grantedScopes: () => ['calendar.read', 'calendar.write'],
+      fetch,
+      now: () => new Date('2026-08-27T00:00:00.000Z'),
+    });
+    expect(r.handles('calendar.move_event')).toBe(true);
+    const args = {
+      event_id: 'ev-1',
+      start: '2026-10-28T14:00:00+09:00',
+      end: '2026-10-28T15:00:00+09:00',
+      time_zone: 'Asia/Tokyo',
+    };
+    // 承認が無い・別の操作の承認では変えない
+    expect((await r.run(step({ toolId: 'calendar.move_event', args }))).ok).toBe(false);
+    expect(
+      (
+        await r.run(
+          step({ toolId: 'calendar.move_event', args, approval: approved('calendar.create') }),
+        )
+      ).ok,
+    ).toBe(false);
+    expect(sent).toHaveLength(0);
+
+    const outcome = await r.run(
+      step({ toolId: 'calendar.move_event', args, approval: approved('calendar.move') }),
+    );
+    expect(outcome.ok).toBe(true);
+    expect(outcome.result).toMatchObject({
+      before: { start: { dateTime: '2026-10-28T10:00:00+09:00' } },
+      after: { start: { dateTime: '2026-10-28T14:00:00+09:00' } },
+    });
+    expect(sent[1]!.body).toMatchObject({
+      start: { dateTime: '2026-10-28T14:00:00+09:00', timeZone: 'Asia/Tokyo' },
+    });
+  });
+
   it('never writes the token into what it returns', async () => {
     const { runtime: r } = runtime(memoryStore(connected()));
     const outcome = await r.run(step({ approval: approved('gmail.send') }));

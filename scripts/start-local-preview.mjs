@@ -2,11 +2,12 @@
 /** One owner for setup, the three local services, readiness and clean shutdown. */
 import { execFile } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { mkdir, readFile, realpath, access, constants, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, realpath, access, constants, stat, writeFile } from 'node:fs/promises';
 import { join, dirname, resolve } from 'node:path';
 import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { createServer } from 'node:http';
+import { SECRET_ENV, secretEnvironment } from './local-preview/secrets.mjs';
 import { promisify } from 'node:util';
 import { createInterface } from 'node:readline/promises';
 import { stdin, stdout } from 'node:process';
@@ -26,6 +27,7 @@ import {
   availablePort,
   composeConfig,
   serviceEnvironment,
+  channelEnvironment,
   usesNativeConnectionConfig,
   selectModel,
   modelConfiguration,
@@ -74,6 +76,7 @@ DB設定・マイグレーション・3サービスの起動をまとめて行�
   --computer-use      Macの画面操作を有効化。タスク承認と開始時の同意が必要
   --computer-vision-model <名前>  画面操作だけ導入済みローカルOllama画像モデルを使う（会話設定を保持）
   --work-sync         つないだ Gmail・カレンダーを 15 分ごとに Work へ同期（読み取りのみ。分類にモデルは使わない）
+  --channels-env <file>  LINE / Slack・写真を読む・通話の設定（0600 のファイル）。鍵はキーチェーンから読む（docs/SECRETS.ja.md）
   --transaction-simulation  架空の注文だけを検証。--computer-use 必須、実サービスへ発注しません
   --computer-helper <path>  画面操作ヘルパーの道。既定はこのリポジトリが建てた本番版。
                       反復試験用のビルドを指すためのもので、指したものが同意を省く
@@ -847,6 +850,31 @@ export async function start(options) {
       ...options,
       ...(hasConnections ? { connectionsConfig } : {}),
     });
+    if (options.channelsEnv) {
+      // 設定のファイルは本人だけが読める（0600）ものに限る。鍵はファイルではなくキーチェーンから読む
+      const info = await stat(options.channelsEnv);
+      if ((info.mode & 0o077) !== 0)
+        throw new Error(
+          '--channels-env のファイルは chmod 600 にしてください（本人だけが読める）。',
+        );
+      const {
+        env: channelEnv,
+        ignored,
+        secrets,
+      } = channelEnvironment(await readFile(options.channelsEnv, 'utf8'), Object.keys(SECRET_ENV));
+      if (secrets.length)
+        throw new Error(
+          `鍵はファイルに置かず、キーチェーンに置きます: ${secrets.join(', ')}。` +
+            `「pnpm secrets import "${options.channelsEnv}"」で移してください（docs/SECRETS.ja.md）。`,
+        );
+      const keychainEnv = await secretEnvironment();
+      Object.assign(runtimeEnv, channelEnv, keychainEnv);
+      console.log(
+        `チャットの設定を読みました: ${Object.keys(channelEnv).join(', ') || 'なし'}` +
+          `／キーチェーンの鍵: ${Object.keys(keychainEnv).join(', ') || 'なし'}` +
+          (ignored.length ? `（渡さなかった名前: ${ignored.join(', ')}）` : ''),
+      );
+    }
     if (codexExecutable) runtimeEnv.ASTRA_CODEX_PATH = codexExecutable;
     if (claudeExecutable) runtimeEnv.ASTRA_CLAUDE_CODE_PATH = claudeExecutable;
     if (options.computerUse) {
@@ -951,6 +979,9 @@ export async function start(options) {
         ASTRA_GATEWAY_URL: base,
         ASTRA_DATA_ROOT: appData,
         ASTRA_DESKTOP_IDENTITY: config.identity,
+        // 起動を渡すと、アプリは保存先を「検査の隔離」とみなし運営者の接続設定を読まない。
+        // Gmail・カレンダーが「設定が必要」になり、つなぎ直せなくなる（2026-10-23）。サービスと同じ設定を明示して渡す
+        ...(hasConnections ? { ASTRA_CONNECTIONS_CONFIG: connectionsConfig } : {}),
         ...modelAppEnvironment(config),
         ...(codexExecutable ? { ASTRA_CODEX_PATH: codexExecutable } : {}),
       };

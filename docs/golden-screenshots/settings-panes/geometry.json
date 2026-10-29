@@ -1,0 +1,42 @@
+[
+  {
+    "height": 286,
+    "name": "settings-general-light",
+    "width": 460
+  },
+  {
+    "height": 286,
+    "name": "settings-general-dark",
+    "width": 460
+  },
+  {
+    "height": 360,
+    "name": "settings-permissions-light",
+    "width": 460
+  },
+  {
+    "height": 360,
+    "name": "settings-permissions-dark",
+    "width": 460
+  },
+  {
+    "height": 281,
+    "name": "settings-dictation-light",
+    "width": 460
+  },
+  {
+    "height": 281,
+    "name": "settings-dictation-dark",
+    "width": 460
+  },
+  {
+    "height": 587,
+    "name": "settings-services-light",
+    "width": 460
+  },
+  {
+    "height": 587,
+    "name": "settings-services-dark",
+    "width": 460
+  }
+]

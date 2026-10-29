@@ -13,7 +13,13 @@ import type { Schedule } from './time.js';
 export type JobStatus = 'proposed' | 'active' | 'paused' | 'done' | 'cancelled' | 'disabled';
 export type RunStatus = 'running' | 'ok' | 'error' | 'skipped' | 'interrupted';
 export type DeliveryStatus = 'delivered' | 'failed' | 'unknown' | 'none';
-export type NoticeKind = 'reminder' | 'scheduled_task' | 'schedule_problem';
+export type NoticeKind =
+  | 'reminder'
+  | 'scheduled_task'
+  | 'schedule_problem'
+  | 'agent_session'
+  | 'work_hold'
+  | 'task_followup';
 
 export interface ScheduledJob {
   readonly id: string;
@@ -290,11 +296,7 @@ export class ScheduleStore {
         .where((eb) =>
           eb.or([
             eb.and([eb('running_at', 'is', null), eb('next_run_at', '<=', sql<Date>`now()`)]),
-            eb(
-              'running_at',
-              '<',
-              sql<Date>`now() - ${RUN_STALL_MS} * interval '1 millisecond'`,
-            ),
+            eb('running_at', '<', sql<Date>`now() - ${RUN_STALL_MS} * interval '1 millisecond'`),
           ]),
         )
         .limit(500)

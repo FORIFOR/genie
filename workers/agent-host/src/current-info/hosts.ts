@@ -15,6 +15,8 @@ export const CURRENT_INFO_HOSTS = [
   'news.google.com',
   // 株価・指数: 公開の銘柄コードだけ（認証・保有情報なし、個人用experimental adapter）
   'query1.finance.yahoo.com',
+  // 気象庁の最近の地震の一覧（地震のニュースに添える図）: 何も送らない
+  'www.jma.go.jp',
 ] as const;
 
 export type InfoFetch = (url: string) => Promise<string>;

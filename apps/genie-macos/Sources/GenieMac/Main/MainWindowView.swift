@@ -169,6 +169,8 @@ final class MainData: ObservableObject {
                 NoticeInbox.shared.configureBackend(base: base, token: tokens.accessToken)
                 DictationVocabularyStore.shared.configureBackend(base: base, token: tokens.accessToken)
                 ScheduleBoard.shared.configureBackend(base: base, token: tokens.accessToken)
+                AgentSessionsBoard.shared.configureBackend(base: base, token: tokens.accessToken)
+                WorkOverviewBoard.shared.configureBackend(base: base, token: tokens.accessToken)
                 ChatChannelsBoard.shared.configureBackend(base: base, token: tokens.accessToken)
                 ConnectorState.shared.configureBackend(base: base, token: tokens.accessToken)
                 ReplyFlow.shared.configureBackend(base: base, token: tokens.accessToken)

@@ -68,6 +68,12 @@
       "path": "./services/vocabulary"
     },
     {
+      "path": "./services/understand"
+    },
+    {
+      "path": "./services/line-hub"
+    },
+    {
       "path": "./services/conversation"
     },
     {

@@ -11,7 +11,7 @@
  *   - チャットに返すのは外部への送信。本文まで送るかは連携ごとの posting_policy（既定は要約だけ）
  *   - チャットで承認できるのは EXTERNAL_COMMIT だけ。削除・お金・規制のある記録は承認カードへ
  */
-import type { ChannelProvider } from '@genie/contracts';
+import { parseCallReport, type ChannelProvider } from '@genie/contracts';
 import type {
   InboundChannelAction,
   InboundChannelFollow,
@@ -22,10 +22,12 @@ import {
   ChannelSendError,
   type ChannelSender,
   type OutgoingMessage,
+  type ReceivedContent,
   type SlackSender,
 } from './send.js';
 import {
   MAX_INBOUND_ATTEMPTS,
+  type ChannelGroup,
   type ChannelLink,
   type ChannelStore,
   type OutboxKind,
@@ -49,12 +51,62 @@ export interface InboundSealer {
 
 /** handleTurn の結果のうち、チャットへ返すのに要るところ。 */
 export type TurnOutcome =
-  | { readonly kind: 'clarification'; readonly answer: string }
-  | { readonly kind: 'started'; readonly taskId: string | null; readonly notice: string | null };
+  | {
+      readonly kind: 'clarification';
+      readonly answer: string;
+      /** 答えに添えるカード（店の候補・予約など）。 */
+      readonly card?: string;
+      /** 次の一手の選択肢（LINE の Quick Reply）。 */
+      readonly choices?: readonly string[];
+    }
+  | {
+      readonly kind: 'started';
+      readonly taskId: string | null;
+      readonly notice: string | null;
+      /**
+       * 何の話か（handleTurn の intent）。'talking'（あいさつ・質問）は会話なので「受け付けました」を返さず、
+       * 答えができたら本文をそのまま返す。それ以外（調べもの・操作）は仕事として受付を返す。
+       */
+      readonly intent?: string;
+    }
+  /**
+   * 一度に頼まれた複数のこと（「明日の予定教えて。あと、レシートも家計簿に」）。仕様 v1.0 §1。
+   * すぐ答えられたものは答え、仕事になったものは「確認しています」と言い、終わったら本文で返す。
+   */
+  | {
+      readonly kind: 'multi';
+      readonly parts: readonly {
+        readonly label: string;
+        readonly answer: string | null;
+        readonly taskId: string | null;
+        readonly notice: string | null;
+      }[];
+    };
+
+/** 調べものの答えを待ってから「調べています」と伝えるまで（Mac の Dock と同じ 12 秒）。 */
+const LOOKUP_ACK_MS = 12_000;
+
+/**
+ * 質問の形か（「〜ましたか？」「何分？」）。調べものでも、質問には答えだけを返し、依頼（「〜して」）は「承知しました」と受ける。
+ */
+export function isQuestion(text: string): boolean {
+  const t = text.trim();
+  return (
+    /[？?]$/.test(t) ||
+    /(?:ですか|ますか|ましたか|でしょうか|でしたか|かな|の)[。\s]*$/.test(t) ||
+    /^(?:何|なに|なん|いつ|どこ|誰|だれ|どう|どれ|どの|いくら|なぜ|どうして)/.test(t) ||
+    // 「今日は何曜日」「次の会議はいつ」のように、問いの語で終わる
+    /(?:何|なに|いつ|どこ|誰|だれ|どう|どれ|どの|いくら|いくつ)[^。、？?\s]{0,4}[。\s]*$/.test(t)
+  );
+}
 
 export interface ChannelTaskView {
   readonly title: string | null;
   readonly result_artifact_id: string | null;
+  /** 頼んだ人（仕事のホームのリンクを、その人の分だけ作る）。 */
+  readonly created_by?: string;
+  /** 仕事の種類（電話の結果はカードにする）。 */
+  readonly kind?: string;
 }
 
 export interface ChannelEvent {
@@ -75,6 +127,8 @@ export interface ChannelServiceDeps {
   };
   readonly conversations: {
     start(tenantId: string, userId: string, title: string): Promise<string>;
+    /** 仕事の答えを、その仕事の会話に Genie の発話として残す。 */
+    remember?(tenantId: string, taskId: string, text: string): Promise<void>;
   };
   /** handleTurn を呼ぶ（gateway が束ねる）。 */
   readonly turn: (
@@ -97,6 +151,108 @@ export interface ChannelServiceDeps {
       decision: 'APPROVED' | 'REJECTED',
     ): Promise<void>;
   };
+  /**
+   * 写真・外国語の文を読む（service-understand）。家計簿に付ける・目安を返す・訳すなどは向こうで決め、
+   * 返事の文か、Genie に渡す頼みの文を返す。null ならいつもどおり handleTurn に渡す。
+   * 無ければ写真には「まだ読めません」と答える。
+   */
+  readonly understand?: (
+    principal: { tenantId: string; userId: string },
+    conversationId: string,
+    input: {
+      readonly text: string;
+      readonly images: readonly { readonly mediaType: string; readonly data: Uint8Array }[];
+      readonly source: ChannelProvider;
+    },
+  ) => Promise<{ readonly kind: 'reply' | 'turn'; readonly text: string } | null>;
+  /**
+   * 家族・夫婦のグループ（共有スペース。service-understand の SharedSpaceService などを gateway が束ねる）。
+   * 無ければグループの発言には答えない。
+   *   enable : 連携済みの本人が「@Genie このグループで使う」と言ったとき、共有スペースを作って id を返す
+   *   message: 共有スペースのグループの発言（メンションつきの文、または写真）。答えの文か null を返す
+   * **持ち主の個人のもの（メール・予定・ファイル・個人の家計簿）には触れない。**handleTurn は呼ばない。
+   */
+  readonly shared?: {
+    enable(owner: { tenantId: string; userId: string }, name: string): Promise<string>;
+    /**
+     * グループの 1 発言を見る（覚える設定なら覚える）。呼ばれたか（名前・引用返信）と、一時停止中かを返す。
+     * text は、呼びかけ（「ジーニー、」）を外した本文。
+     */
+    observe?(
+      space: { tenantId: string; householdId: string },
+      message: {
+        readonly messageId: string;
+        readonly senderId: string;
+        readonly text: string;
+        readonly quotedId: string | null;
+        readonly sentAt: number;
+        readonly fromGenie: boolean;
+        readonly mentioned?: boolean;
+      },
+    ): Promise<{ readonly invoked: boolean; readonly paused: boolean; readonly text?: string }>;
+    /** 送信が取り消された発言を、覚えた文脈から外す。 */
+    forget?(space: { tenantId: string; householdId: string }, messageId: string): Promise<void>;
+    message(
+      ctx: {
+        tenantId: string;
+        userId: string;
+        householdId: string;
+        speaker: { id: string; name: string | null };
+      },
+      input: {
+        readonly text: string;
+        readonly images: readonly { readonly mediaType: string; readonly data: Uint8Array }[];
+        readonly mentioned: boolean;
+      },
+    ): Promise<
+      | string
+      | {
+          readonly text: string;
+          /** 店の候補などのカード（cards.ts）。 */
+          readonly card?: string;
+          /** 次の一手（Quick Reply）。 */
+          readonly choices?: readonly string[];
+        }
+      | null
+    >;
+  };
+  /**
+   * 「電話して」で、Genie と声で話すページのリンクを出す（gateway の call）。返すのはトークへ返す文。
+   * 無ければ「電話して」はいつもどおり Genie に渡す。
+   */
+  readonly call?: {
+    issue(link: ChannelLink, conversationId: string): Promise<OutgoingMessage>;
+    /** 家族のグループで、みんなで話す通話のリンク（何人でも入れる。頼みは共有スペースだけ）。 */
+    groupInvite?(
+      owner: ChannelLink,
+      conversationId: string,
+      space: { householdId: string; groupId: string },
+    ): Promise<OutgoingMessage>;
+    /** Genie からかける（出たら opening を話す）。かけられなければ null。 */
+    ring?(
+      link: ChannelLink,
+      conversationId: string,
+      opening: string,
+    ): Promise<OutgoingMessage | null>;
+    /**
+     * 公式アカウントへの LINE の電話（管理画面で受けたもの）を Genie の声につなぐ鍵。
+     * 使えなければ null（通話のキー・月の上限）。
+     */
+    bridge?(link: ChannelLink, conversationId: string): Promise<string | null>;
+  };
+  /**
+   * LINE の中継（公式アカウント 1 つ）を通しているとき、届け先を中継に知らせる。
+   * グループを使い始めた・やめた、連携を切った、のたびに呼ぶ。
+   */
+  readonly hub?: {
+    claimGroup(groupId: string): Promise<boolean>;
+    releaseGroup(groupId: string): Promise<void>;
+    releaseUser(userId: string): Promise<void>;
+  };
+  /** 仕事のホームのリンク（本人だけ・読むだけ）。作れないとき・無いときは null（Mac の作業一覧へ案内する）。 */
+  readonly homeLink?: (tenantId: string, userId: string) => Promise<string | null>;
+  /** 成果物の元の本文（カードにする JSON を読む。無ければ文だけ）。 */
+  readonly artifactBody?: (tenantId: string, artifactId: string) => Promise<string | null>;
   /** 成果物の本文（posting_policy が full_text のときだけ読む）。 */
   readonly artifactText?: (tenantId: string, artifactId: string) => Promise<string | null>;
   /** ボタンの署名鍵。無ければチャットでは承認させない（承認カードへ案内する）。 */
@@ -110,7 +266,25 @@ export interface ChannelServiceDeps {
   readonly typingRefreshMs?: number;
   readonly log?: (event: string, detail: Record<string, unknown>) => void;
   readonly now?: () => number;
+  /** 調べものが長引いたときに「調べています」と伝えるまでの長さ（既定 12 秒。検査で縮める）。 */
+  readonly lookupAckMs?: number;
 }
+
+/** 声で話したい（「電話して」「通話したい」）。 */
+/** 1:1 で「電話して」（Genie の振り分けより先に、通話のリンクを返す）。評価（evals/line-conversation）も使う。 */
+export const CALL =
+  /^\s*(?:genie|ジーニー)?(?:に|と)?\s*(?:電話|でんわ|通話)(?:で話したい|して|したい|する|かけて|しよう|をかけて)?(?:ください)?[。．.！!？?\s]*$/i;
+
+/** 家族で Genie と話したい（グループで「@Genie みんなで話そう」「@Genie 電話して」）。 */
+const GROUP_CALL =
+  /^\s*(?:みんなで|家族で|全員で)?\s*(?:話そう|話したい|電話(?:して|しよう|したい)?|通話(?:して|しよう|したい)?|会議しよう)[。．.！!？?\s]*$/;
+
+/** グループを共有スペースにする / やめる言い方（「@Genie このグループで使う」）。 */
+const GROUP_ENABLE =
+  /^(?:この)?(?:グループ|トーク)(?:で|を)(?:使う|使います|使って|使いたい|始める)|^(?:ここ|ここで)使(?:う|って)/;
+const GROUP_RESUME = /^(?:再開|また使う|戻って|使って)/;
+const GROUP_DISABLE =
+  /^(?:この)?(?:グループ|トーク)(?:で使うの|を使うの)?を?(?:やめる|やめて|止める|終わる)/;
 
 /** チャットで承認してよい risk。 */
 const CHAT_APPROVABLE = new Set(['EXTERNAL_COMMIT']);
@@ -310,14 +484,53 @@ export class ChannelService {
     target: { destination: string; threadKey: string },
     message: OutgoingMessage,
     replyToken: string | null,
-  ): Promise<void> {
+  ): Promise<string | null> {
     const sender = this.deps.senders[provider];
-    if (!sender) return;
+    if (!sender) return null;
     try {
-      await sender.send(target, message, { replyToken, retryKey: crypto.randomUUID() });
+      const sent = await sender.send(target, message, {
+        replyToken,
+        retryKey: crypto.randomUUID(),
+      });
+      return sent.providerMessageId;
     } catch (error) {
       this.#log('channel.reply_failed', { provider, error: errorCode(error) });
+      return null;
     }
+  }
+
+  /**
+   * グループを持ち主の共有スペースにする（招かれた・前の仕様のまま残っていた・止めたあと再開した）。
+   * householdId を渡せば、前の家計簿・リスト・設定をそのまま使う。同時に届いた発言が先に作っていれば、それを返す。
+   */
+  async #registerGroup(
+    provider: ChannelProvider,
+    workspaceId: string,
+    groupId: string,
+    owner: { tenantId: string; userId: string; subject: string },
+    householdId?: string,
+  ): Promise<ChannelGroup | null> {
+    const household =
+      householdId ??
+      (await this.deps.shared!.enable(
+        { tenantId: owner.tenantId, userId: owner.userId },
+        'LINE のグループ',
+      ));
+    try {
+      await this.deps.store.createGroup({
+        tenantId: owner.tenantId,
+        householdId: household,
+        ownerUserId: owner.userId,
+        provider,
+        workspaceId,
+        groupId,
+        enabledBy: owner.subject,
+      });
+    } catch {
+      // 同じグループの別の発言が先に作った（channel_groups_active）。下で引き直す
+    }
+    if (provider === 'line') await this.deps.hub?.claimGroup(groupId);
+    return this.deps.store.findGroup(provider, workspaceId, groupId);
   }
 
   /** 友だちに追加された（LINE の follow）。連携していなければ、つなぎ方を返す。 */
@@ -327,6 +540,33 @@ export class ChannelService {
   ): Promise<'duplicate' | 'unlinked' | 'linked'> {
     if (!queued && !(await this.deps.store.claimInbox(follow.provider, follow.eventId)))
       return 'duplicate';
+    if (follow.group) {
+      // グループに招かれた＝使い始め（本人の設計 2026-10-28 改）。「使う」と言わせない。挨拶は 1 回だけ
+      const where = [follow.provider, follow.workspaceId, follow.group.id] as const;
+      const existing = await this.deps.store.findGroup(...where);
+      if (existing) {
+        await this.#reply(follow.provider, follow, render.groupWelcome(true), follow.replyToken);
+        return 'linked';
+      }
+      // 「@Genie このグループをやめる」で止めたグループは、招き直しでは勝手に再開しない
+      if (await this.deps.store.stoppedGroup(...where)) {
+        await this.#reply(follow.provider, follow, render.groupStopped(), follow.replyToken);
+        return 'unlinked';
+      }
+      const owner = this.deps.shared
+        ? await this.deps.store.soleLink(follow.provider, follow.workspaceId)
+        : null;
+      const space = owner
+        ? await this.#registerGroup(follow.provider, follow.workspaceId, follow.group.id, owner)
+        : null;
+      await this.#reply(
+        follow.provider,
+        follow,
+        render.groupWelcome(space !== null),
+        follow.replyToken,
+      );
+      return space ? 'linked' : 'unlinked';
+    }
     const link = await this.deps.store.findLink(
       follow.provider,
       follow.workspaceId,
@@ -350,6 +590,7 @@ export class ChannelService {
     // 同じ発言の別イベント（Slack の message と app_mention）も 1 つにする。
     // 保存してから処理するときは受け取ったときに見てある（やり直しで自分と重ならないように）
     if (!queued && message.dedupeKey && !(await this.#claimSame(message))) return 'duplicate';
+    if (message.group) return this.#receiveGroup(message, message.group, queued);
 
     const link = await this.deps.store.findLink(
       message.provider,
@@ -397,14 +638,12 @@ export class ChannelService {
     // 返事を待つ間、考えていることを見せる（出せなくても続ける）。表示は 20 秒で消えるので出し直す
     const sender = this.deps.senders[message.provider];
     const showTyping = () =>
-      sender
-        ?.typing?.(target)
-        .catch((error: unknown) =>
-          this.#log('channel.typing_failed', {
-            provider: message.provider,
-            error: errorCode(error),
-          }),
-        );
+      sender?.typing?.(target).catch((error: unknown) =>
+        this.#log('channel.typing_failed', {
+          provider: message.provider,
+          error: errorCode(error),
+        }),
+      );
     void showTyping();
     const typing = sender?.typing
       ? setInterval(() => void showTyping(), this.deps.typingRefreshMs ?? 18_000)
@@ -421,11 +660,17 @@ export class ChannelService {
       );
       // ここから先で落ちたら、やり直さずに本人へ伝える（仕事が二つにならないように）
       if (queued) await this.deps.store.markInboundTurning(queued.provider, queued.eventId);
-      outcome = await this.deps.turn(
-        { tenantId: link.tenantId, userId: link.userId },
-        conversationId,
-        message.text,
-      );
+      const principal = { tenantId: link.tenantId, userId: link.userId };
+      if (this.deps.call && !message.mention && CALL.test(message.text)) {
+        const reply = await this.deps.call.issue(link, conversationId);
+        await this.#queueAndSend(link, target, null, null, 'notice', reply, message.replyToken);
+        return 'handled';
+      }
+      const read = await this.#understand(principal, conversationId, message, sender);
+      outcome =
+        read?.kind === 'reply'
+          ? { kind: 'clarification', answer: read.text }
+          : await this.deps.turn(principal, conversationId, read?.text ?? message.text);
     } catch (error) {
       this.#log('channel.turn_failed', { link_id: link.id, error: errorCode(error) });
       await this.#reply(message.provider, target, render.received(), message.replyToken);
@@ -434,6 +679,73 @@ export class ChannelService {
       if (typing) clearInterval(typing);
     }
 
+    return this.#answer(link, target, outcome, message.replyToken, isQuestion(message.text));
+  }
+
+  /** handleTurn の結果をトークへ返す（聞き返し・会話の答えの見回り・仕事の受付・お知らせ）。 */
+  /**
+   * 調べものが長引いたら（`lookupAckMs`、既定 12 秒）、調べていることだけ先に伝える。すぐ答えられたら何も送らない。
+   * 落ちても失うのはこの一言だけ（答えは見回りが返す）。
+   */
+  #tellIfSlow(
+    link: ChannelLink,
+    target: { destination: string; threadKey: string },
+    taskId: string,
+  ): void {
+    const timer = setTimeout(() => {
+      void (async () => {
+        const events = await this.deps.tasks.eventsAfter(link.tenantId, taskId, 0);
+        if (events.some((e) => /^task\.(completed|failed|cancelled)$/.test(e.type))) return;
+        await this.#queueAndSend(link, target, null, null, 'notice', render.lookingUp(), null);
+      })().catch((error: unknown) =>
+        this.#log('channel.lookup_notice_failed', { link_id: link.id, error: errorCode(error) }),
+      );
+    }, this.deps.lookupAckMs ?? LOOKUP_ACK_MS);
+    timer.unref?.();
+  }
+
+  async #answer(
+    link: ChannelLink,
+    target: { destination: string; threadKey: string },
+    outcome: TurnOutcome,
+    replyToken: string | null,
+    question = false,
+  ): Promise<'handled'> {
+    if (outcome.kind === 'multi') {
+      // 済んだこと・要ることを 1 通に。仕事になったものは、終わったら本文で返す（受付は送らない）
+      const lines = outcome.parts.map((p) => {
+        const said = p.answer ?? p.notice;
+        if (said) return `・${p.label}：${said}`;
+        return p.taskId
+          ? `・${p.label}：確認しています。このあと届きます。`
+          : `・${p.label}：まだ進められません。`;
+      });
+      await this.#queueAndSend(
+        link,
+        target,
+        null,
+        null,
+        'notice',
+        render.notice(lines.join('\n')),
+        replyToken,
+      );
+      for (const part of outcome.parts) {
+        if (!part.taskId) continue;
+        const id = await this.deps.store.enqueue({
+          tenantId: link.tenantId,
+          linkId: link.id,
+          taskId: part.taskId,
+          eventSequence: 0,
+          kind: 'accepted',
+          destination: target.destination,
+          threadKey: target.threadKey,
+          body: render.accepted(null),
+          answerInline: true,
+        });
+        if (id) await this.deps.store.markSent(link.tenantId, id, null);
+      }
+      return 'handled';
+    }
     if (outcome.kind === 'clarification') {
       await this.#queueAndSend(
         link,
@@ -441,9 +753,33 @@ export class ChannelService {
         null,
         null,
         'notice',
-        render.notice(outcome.answer),
-        message.replyToken,
+        {
+          ...render.notice(outcome.answer),
+          ...(outcome.card ? { card: outcome.card } : {}),
+          ...(outcome.choices?.length ? { quickReplies: outcome.choices } : {}),
+        },
+        replyToken,
       );
+    } else if (
+      outcome.taskId &&
+      (outcome.intent === 'talking' || (outcome.intent === 'looking_up' && question))
+    ) {
+      // 会話と、調べて答える質問。受付は送らず、見回りの起点だけ残す（送った扱い）。答えは終わったら本文で返す
+      // （本人の指示 2026-10-26: 質問に「受け付けました」を先に送らない。クレジットの質問で先に届いていた）。
+      // 「競合を調べて」のような依頼は、下で「承知しました」と受ける
+      const id = await this.deps.store.enqueue({
+        tenantId: link.tenantId,
+        linkId: link.id,
+        taskId: outcome.taskId,
+        eventSequence: 0,
+        kind: 'accepted',
+        destination: target.destination,
+        threadKey: target.threadKey,
+        body: render.accepted(null),
+        answerInline: true,
+      });
+      if (id) await this.deps.store.markSent(link.tenantId, id, null);
+      if (outcome.intent === 'looking_up') this.#tellIfSlow(link, target, outcome.taskId);
     } else if (outcome.taskId) {
       const task = await this.deps.tasks.get(link.tenantId, outcome.taskId).catch(() => null);
       // 受付は sequence 0。以後のイベントはこの行を起点に見回る
@@ -454,7 +790,7 @@ export class ChannelService {
         0,
         'accepted',
         render.accepted(task?.title ?? null),
-        message.replyToken,
+        replyToken,
       );
     } else if (outcome.notice) {
       await this.#queueAndSend(
@@ -464,10 +800,230 @@ export class ChannelService {
         null,
         'notice',
         render.notice(outcome.notice),
-        message.replyToken,
+        replyToken,
       );
     }
     return 'handled';
+  }
+
+  /**
+   * グループの発言。**メンションのある発言（と、自動で読むと決めた写真）だけを読む。**
+   * 共有スペースにする前は、連携済みの本人の「@Genie このグループで使う」だけを受ける。
+   */
+  async #receiveGroup(
+    message: InboundChannelMessage,
+    group: NonNullable<InboundChannelMessage['group']>,
+    queued: QueuedContext | null,
+  ): Promise<'unlinked' | 'linked' | 'handled'> {
+    const target = { destination: group.id, threadKey: group.id };
+    let space = await this.deps.store.findGroup(message.provider, message.workspaceId, group.id);
+    // Genie の発言も文脈に残す（引用返信で「これ」と言われたとき、どの返事への返信か分かるように）
+    const say = async (reply: string | OutgoingMessage) => {
+      const outgoing = typeof reply === 'string' ? render.notice(reply) : reply;
+      const id = await this.#reply(message.provider, target, outgoing, message.replyToken);
+      if (space && id)
+        await this.deps.shared
+          ?.observe?.(
+            { tenantId: space.tenantId, householdId: space.householdId },
+            {
+              messageId: id,
+              senderId: 'genie',
+              text: outgoing.text,
+              quotedId: null,
+              sentAt: this.#now(),
+              fromGenie: true,
+            },
+          )
+          .catch(() => undefined);
+    };
+    // 送信の取り消し: 覚えた文脈から外す（返事はしない）
+    if (group.unsent) {
+      if (space)
+        await this.deps.shared
+          ?.forget?.({ tenantId: space.tenantId, householdId: space.householdId }, group.unsent)
+          .catch(() => undefined);
+      return 'handled';
+    }
+    if (!space) {
+      const where = [message.provider, message.workspaceId, group.id] as const;
+      // 止めたグループ: 「@Genie 再開」「@Genie このグループで使う」でだけ戻す（家計簿・設定は前のものを引き継ぐ）
+      const stopped = await this.deps.store.stoppedGroup(...where);
+      if (stopped) {
+        if (!group.mentioned) return 'unlinked';
+        if (
+          !this.deps.shared ||
+          !(GROUP_ENABLE.test(message.text) || GROUP_RESUME.test(message.text))
+        ) {
+          await say(render.groupStopped().text);
+          return 'unlinked';
+        }
+        // 止めたのは持ち主なので、戻せるのも持ち主だけ
+        if (message.subject !== stopped.enabledBy) {
+          await say('Genie を再開できるのは、このグループの Genie の持ち主だけです。');
+          return 'unlinked';
+        }
+        space = await this.#registerGroup(
+          ...where,
+          { tenantId: stopped.tenantId, userId: stopped.ownerUserId, subject: stopped.enabledBy },
+          stopped.householdId,
+        );
+        if (space) await say(render.groupResumed());
+        return space ? 'linked' : 'unlinked';
+      }
+      // 招かれたときに持ち主が決まらなかった・前の仕様で「使う」と言われずに残ったグループは、
+      // 連携済みの人（いなければ、この公式アカウントのただ 1 人の持ち主）のものとして、ここで使い始める
+      const owner =
+        (await this.deps.store.findLink(message.provider, message.workspaceId, message.subject)) ??
+        (await this.deps.store.soleLink(message.provider, message.workspaceId));
+      if (!owner || !this.deps.shared) {
+        if (group.mentioned) await say(render.groupPending().text);
+        return 'unlinked';
+      }
+      space = await this.#registerGroup(...where, owner);
+      if (!space) return 'unlinked';
+    }
+    // もう使える（「このグループで使う」は、招かれた時点で済んでいる）
+    if (group.mentioned && GROUP_ENABLE.test(message.text)) {
+      await say(render.groupWelcome(true));
+      return 'handled';
+    }
+    if (group.mentioned && GROUP_DISABLE.test(message.text)) {
+      if (message.subject !== space.enabledBy) {
+        await say(
+          'Genie を止められるのは、このグループの Genie の持ち主だけです。会話を覚えるのを止めるなら「@Genie 一時停止」、覚えた会話を消すなら「@Genie 忘れて」。',
+        );
+        return 'handled';
+      }
+      await this.deps.store.revokeGroup(space.tenantId, space.id);
+      await say(render.groupDisabled().text);
+      if (message.provider === 'line') await this.deps.hub?.releaseGroup(group.id);
+      return 'handled';
+    }
+    // 中継に届け先を知らせ直す（中継へ移る前に使い始めたグループも、ここで中継に覚えてもらう）
+    if (message.provider === 'line' && group.mentioned) void this.deps.hub?.claimGroup(group.id);
+    // 「@Genie みんなで話そう」「@Genie 電話して」: 家族で Genie と話す通話のリンク
+    if (group.mentioned && this.deps.call?.groupInvite && GROUP_CALL.test(message.text)) {
+      const owner = await this.deps.store.findLink(
+        message.provider,
+        message.workspaceId,
+        space.enabledBy,
+      );
+      if (!owner) {
+        await say('使い始めた人の連携が切れているので、通話を始められません。');
+        return 'handled';
+      }
+      const conversationId = await this.deps.store.conversationFor(
+        owner,
+        owner.subject,
+        owner.subject,
+        () => this.deps.conversations.start(owner.tenantId, owner.userId, titleOf(owner.provider)),
+      );
+      const invite = await this.deps.call.groupInvite(owner, conversationId, {
+        householdId: space.householdId,
+        groupId: group.id,
+      });
+      await this.#reply(message.provider, target, invite, message.replyToken);
+      return 'handled';
+    }
+    const photos = (message.attachments ?? []).filter((a) => a.kind === 'image');
+    // 会話を文脈として覚える（グループの設定が「覚える」のときだけ）。呼ばれたかもここで決める:
+    // @Genie・「ジーニー、」で始まる・Genie の返事への引用返信（本人の設計 2026-10-28）
+    const seen =
+      message.text && group.messageId
+        ? await this.deps.shared
+            ?.observe?.(
+              { tenantId: space.tenantId, householdId: space.householdId },
+              {
+                messageId: group.messageId,
+                senderId: message.subject,
+                text: message.text,
+                quotedId: group.quotedId ?? null,
+                sentAt: message.sentAt || this.#now(),
+                fromGenie: false,
+                mentioned: group.mentioned,
+              },
+            )
+            .catch(() => null)
+        : null;
+    const invoked = group.mentioned || seen?.invoked === true;
+    if (seen?.paused && !group.mentioned) return 'handled';
+    // 呼ばれていない文には答えない（会話に割り込まない）
+    if (!invoked && photos.length === 0) return 'handled';
+    if (!this.deps.shared) return 'handled';
+
+    const sender = this.deps.senders[message.provider];
+    if (queued) await this.deps.store.markInboundTurning(queued.provider, queued.eventId);
+    try {
+      const images: ReceivedContent[] = [];
+      for (const photo of photos.slice(0, 4)) {
+        if (!sender?.content) break;
+        images.push(await sender.content(photo.id));
+      }
+      if (photos.length > 0 && images.length === 0) return 'handled';
+      const name = (await sender?.memberName?.(group.id, message.subject)) ?? null;
+      const answer = await this.deps.shared.message(
+        {
+          tenantId: space.tenantId,
+          userId: space.ownerUserId,
+          householdId: space.householdId,
+          speaker: { id: message.subject, name },
+        },
+        { text: seen?.text ?? message.text, images, mentioned: invoked },
+      );
+      if (answer)
+        await say(
+          // 文の答えはモデルが Markdown で書く。LINE に記号（**・#）をそのまま出さない（2026-10-28 の実機）
+          typeof answer === 'string'
+            ? render.answer(answer)
+            : {
+                ...render.notice(answer.text),
+                ...(answer.card ? { card: answer.card } : {}),
+                ...(answer.choices?.length ? { quickReplies: answer.choices } : {}),
+              },
+        );
+    } catch (error) {
+      this.#log('channel.group_failed', { provider: message.provider, error: errorCode(error) });
+      if (invoked) await say(render.received().text);
+    }
+    return 'handled';
+  }
+
+  /**
+   * 写真と外国語の文を読む。写真は本体を取りに行ってから渡す。
+   * 読めない添付（音声・動画・ファイル）だけなら、そう答える。
+   */
+  async #understand(
+    principal: { tenantId: string; userId: string },
+    conversationId: string,
+    message: InboundChannelMessage,
+    sender: ChannelSender | undefined,
+  ): Promise<{ readonly kind: 'reply' | 'turn'; readonly text: string } | null> {
+    const attachments = message.attachments ?? [];
+    const photos = attachments.filter((a) => a.kind === 'image');
+    if (attachments.length > 0 && photos.length === 0) {
+      return { kind: 'reply', text: render.mediaUnsupported() };
+    }
+    const images: ReceivedContent[] = [];
+    for (const photo of photos.slice(0, 4)) {
+      if (!sender?.content) return { kind: 'reply', text: render.mediaUnsupported() };
+      try {
+        images.push(await sender.content(photo.id));
+      } catch (error) {
+        this.#log('channel.content_failed', {
+          provider: message.provider,
+          error: errorCode(error),
+        });
+        return { kind: 'reply', text: render.mediaFailed() };
+      }
+    }
+    if (!this.deps.understand) {
+      return images.length ? { kind: 'reply', text: render.mediaUnsupported() } : null;
+    }
+    return this.deps.understand(principal, conversationId, {
+      text: message.text,
+      images,
+      source: message.provider,
+    });
   }
 
   async #link(message: InboundChannelMessage, code: string): Promise<'linked' | 'unlinked'> {
@@ -515,6 +1071,8 @@ export class ChannelService {
     const link = await this.deps.store.revokeLink(tenantId, userId, linkId);
     if (!link) return false;
     await this.deps.devices.revoke(tenantId, link.deviceId);
+    if (link.provider === 'line')
+      await this.deps.hub?.releaseUser(link.subject).catch(() => undefined);
     return true;
   }
 
@@ -620,6 +1178,145 @@ export class ChannelService {
    * 予約で始めた仕事を、頼まれたチャットのスレッドで見守る（受付・承認待ち・終わりを返す）。
    * チャットの会話でなければ 'none'。
    */
+  /**
+   * 通話などで始めた仕事を、その会話のトークで見回る。受付は送らず、終わったら答え（または終わりの知らせ）を返す。
+   */
+  /**
+   * 本人へ知らせる。その会話がチャットの会話ならそこへ、違えば（Mac の Task Dock から頼んだなど）本人の LINE の 1:1 へ。
+   * どちらも無ければ 'none'。
+   */
+  async notifyUser(
+    tenantId: string,
+    userId: string,
+    /** null なら、どの会話から始まった知らせでもない（本人の LINE へ）。 */
+    conversationId: string | null,
+    text: string,
+  ): Promise<'delivered' | 'failed' | 'unknown' | 'none'> {
+    if (conversationId) {
+      const here = await this.notifyConversation(tenantId, conversationId, text);
+      if (here !== 'none') return here;
+    }
+    const link = (await this.deps.store.listLinks(tenantId, userId)).find(
+      (l) => l.provider === 'line',
+    );
+    if (!link) return 'none';
+    const lineConversation = await this.deps.store.conversationFor(
+      link,
+      link.subject,
+      link.subject,
+      () => this.deps.conversations.start(tenantId, userId, titleOf('line')),
+    );
+    return this.notifyConversation(tenantId, lineConversation, text);
+  }
+
+  async watchTask(tenantId: string, conversationId: string, taskId: string): Promise<boolean> {
+    const thread = await this.deps.store.threadForConversation(tenantId, conversationId);
+    if (!thread) return false;
+    const id = await this.deps.store.enqueue({
+      tenantId,
+      linkId: thread.link.id,
+      taskId,
+      eventSequence: 0,
+      kind: 'accepted',
+      destination: thread.destination,
+      threadKey: thread.threadKey,
+      body: render.accepted(null),
+      answerInline: true,
+    });
+    if (id) await this.deps.store.markSent(tenantId, id, null);
+    return true;
+  }
+
+  /**
+   * 本人の共有スペースのグループへ送る（本人が「送って」と確かめたあとだけ呼ぶ）。
+   * 送れたグループの数を返す（グループが無ければ 0）。
+   */
+  async postToGroup(tenantId: string, ownerUserId: string, text: string): Promise<number> {
+    const groups = await this.deps.store.groupsForOwner(tenantId, ownerUserId);
+    const group = groups[0];
+    if (!group) return 0;
+    const sender = this.deps.senders[group.provider];
+    if (!sender) return 0;
+    if (group.provider === 'line') await this.deps.hub?.claimGroup(group.groupId);
+    try {
+      await sender.send(
+        { destination: group.groupId, threadKey: group.groupId },
+        render.notice(text),
+        { replyToken: null, retryKey: crypto.randomUUID() },
+      );
+      return 1;
+    } catch (error) {
+      this.#log('channel.group_post_failed', { provider: group.provider, error: errorCode(error) });
+      return 0;
+    }
+  }
+
+  /**
+   * 公式アカウントにかかってきた LINE の電話を、かけた人の Genie の会話につなぐ鍵を出す。
+   * かけた人が分からない（subject が null）ときは、この Genie の LINE の連携が 1 つだけのときに限ってその人とみなす。
+   * **連携していない人の電話にはつながない**（本人のメールや予定を使える Genie に、他人が話せてしまう）。
+   */
+  async lineCallKey(
+    subject: string | null,
+  ): Promise<
+    | { readonly token: string }
+    | { readonly refused: 'not_linked' | 'caller_unknown' | 'unavailable' }
+  > {
+    if (!this.deps.call?.bridge) return { refused: 'unavailable' };
+    const links = await this.deps.store.lineLinks(subject);
+    if (links.length === 0) return { refused: 'not_linked' };
+    if (links.length > 1) return { refused: 'caller_unknown' };
+    const link = links[0]!;
+    const conversationId = await this.deps.store.conversationFor(
+      link,
+      link.subject,
+      link.subject,
+      () => this.deps.conversations.start(link.tenantId, link.userId, titleOf('line')),
+    );
+    const token = await this.deps.call.bridge(link, conversationId);
+    this.#log('channel.line_call_bridged', {
+      link_id: link.id,
+      ok: token !== null,
+      identified: subject !== null,
+    });
+    return token ? { token } : { refused: 'unavailable' };
+  }
+
+  /**
+   * Genie から電話する（予約の「電話で起こして」）。トークに「電話に出る」を送る。
+   * 電話を使えなければ 'none'（呼ぶ側がいつものお知らせに切り替える）。
+   */
+  async ring(
+    tenantId: string,
+    conversationId: string,
+    opening: string,
+  ): Promise<'delivered' | 'failed' | 'unknown' | 'none'> {
+    const thread = await this.deps.store.threadForConversation(tenantId, conversationId);
+    if (!thread || !this.deps.call?.ring) return 'none';
+    const message = await this.deps.call.ring(thread.link, conversationId, opening);
+    if (!message) return 'none';
+    await this.#queueAndSend(
+      thread.link,
+      { destination: thread.destination, threadKey: thread.threadKey },
+      null,
+      null,
+      'notice',
+      message,
+      null,
+    );
+    return 'delivered';
+  }
+
+  /** 家族のグループへ送る（通話のまとめなど。グループを使い始めた本人の頼みの結果だけ）。 */
+  async postToGroupId(provider: ChannelProvider, groupId: string, text: string): Promise<void> {
+    await this.#reply(
+      provider,
+      { destination: groupId, threadKey: groupId },
+      render.notice(text),
+      null,
+    );
+  }
+
   async followTask(
     tenantId: string,
     conversationId: string,
@@ -644,11 +1341,15 @@ export class ChannelService {
    * 見回り。受け付けた task の区切りを積み、積んであるものを送る。
    * 何度呼んでも同じイベントは 1 回しか送らない（outbox の一意索引）。
    */
-  async pump(): Promise<{ queued: number; sent: number; failed: number }> {
+  async pump(
+    /** 1 つのテナントだけを見回る（試験が、同じ DB の別の試験の行を送らないように）。 */
+    only?: string,
+  ): Promise<{ queued: number; sent: number; failed: number }> {
     let queued = 0;
     let sent = 0;
     let failed = 0;
-    for (const tenantId of await this.deps.store.tenantsWithLinks()) {
+    const tenants = only ? [only] : await this.deps.store.tenantsWithLinks();
+    for (const tenantId of tenants) {
       for (const watch of await this.deps.store.watchedTasks(tenantId)) {
         try {
           queued += await this.#queueMilestones(tenantId, watch);
@@ -744,11 +1445,46 @@ export class ChannelService {
         return render.paused(typeof payload['message'] === 'string' ? payload['message'] : null);
       case 'completed': {
         const task = await this.deps.tasks.get(tenantId, watch.taskId).catch(() => null);
+        // 電話は結果カード（結果を先頭に）。報告の形で読めなければ、いつもの知らせ
+        if (task?.kind?.startsWith('phone.') && task.result_artifact_id && this.deps.artifactText) {
+          const report = parseCallReport(
+            (await this.deps.artifactText(tenantId, task.result_artifact_id).catch(() => null)) ??
+              '',
+          );
+          if (report) {
+            const homeUrl =
+              task.created_by && this.deps.homeLink
+                ? await this.deps.homeLink(tenantId, task.created_by).catch(() => null)
+                : null;
+            return render.callResult(report, homeUrl);
+          }
+        }
+        // 会話の答えは本文そのもの（本人がこのチャットで聞いたこと）。読めなければ、いつもの終わりの知らせ
+        if (watch.answerInline && task?.result_artifact_id && this.deps.artifactText) {
+          const answer = await this.deps
+            .artifactText(tenantId, task.result_artifact_id)
+            .catch(() => null);
+          if (answer?.trim()) {
+            // 答えを会話に残す。次の「で？」「それ」が、この答えの続きとして読める（仕様 v1.0 §5②）
+            void this.deps.conversations
+              .remember?.(tenantId, watch.taskId, answer)
+              .catch(() => undefined);
+            // 予定・天気・ニュースは、元の成果物からカードにする（読めなければ文だけ）
+            const card = await this.deps
+              .artifactBody?.(tenantId, task.result_artifact_id)
+              .catch(() => null);
+            return render.answer(answer, card ?? undefined);
+          }
+        }
         const body =
           watch.postingPolicy === 'full_text' && task?.result_artifact_id && this.deps.artifactText
             ? await this.deps.artifactText(tenantId, task.result_artifact_id).catch(() => null)
             : null;
-        return render.completed(task?.title ?? null, watch.postingPolicy, body);
+        const homeUrl =
+          !body && task?.created_by && this.deps.homeLink
+            ? await this.deps.homeLink(tenantId, task.created_by).catch(() => null)
+            : null;
+        return render.completed(task?.title ?? null, watch.postingPolicy, body, homeUrl);
       }
       case 'failed': {
         const error = payload['error'];
@@ -869,7 +1605,10 @@ function detailsOf(details: unknown): { label: string; value: string }[] {
 
 function errorCode(error: unknown): string {
   if (error instanceof ChannelSendError) return error.code;
+  // 名前だけ（TypeError など）では理由が分からないので、短い説明も付ける
   if (error instanceof Error)
-    return error.name === 'Error' ? error.message.slice(0, 120) : error.name;
+    return error.name === 'Error'
+      ? error.message.slice(0, 120)
+      : `${error.name}: ${error.message.slice(0, 120)}`;
   return 'unknown';
 }

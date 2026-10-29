@@ -76,6 +76,8 @@ export function classifyCurrentInfo(input: string): CurrentInfoQuery | null {
   if (NEWS.test(text)) return ASKING.test(text) || /ニュース$/.test(text) ? { kind: 'news', topic: topic(text) } : null;
   if (QUOTE.test(text) || FX.test(text)) return { kind: 'quote', subject: text };
   if ((WEATHER.test(text) && ASKING.test(text)) || PRECIP_QUESTION.test(text)) {
+    // 予報が出ていない先（来年・来月・何か月後）は取りに行かない。答えで「分からない」と言う（評価 2026-10-27）
+    if (/来年|再来年|来月|再来月|\d+\s*(?:年|か月|ヶ月|ヵ月|カ月)\s*後/.test(text)) return null;
     return { kind: 'weather', when: when(text), place: place(text) };
   }
   return null;

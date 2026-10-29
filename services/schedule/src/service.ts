@@ -24,9 +24,12 @@ export interface ScheduleServiceOptions {
   readonly now?: () => number;
 }
 
-const YES = /^\s*(?:はい|うん|ええ|お願い(?:します)?|おねがい(?:します)?|それで(?:お願い(?:します)?)?|ok|okay|yes|予約して|大丈夫|いいよ|いいです|よろしく)[。！!\s]*$/i;
-const NO = /^\s*(?:いいえ|いや|やめて|やめる|やめます|キャンセル|取り消して|取りやめて|no|ちがう|違う|いらない)[。！!\s]*$/i;
-const LIST = /^\s*(?:予約|リマインダー|リマインド|スケジュール)(?:の)?(?:一覧|リスト)?(?:を)?(?:見せて|教えて|確認して|出して)?[。？?\s]*$|^\s*(?:何|なに)(?:が|を)?予約(?:して|され)(?:る|ている|てる)[？?。\s]*$/;
+const YES =
+  /^\s*(?:はい|うん|ええ|お願い(?:します)?|おねがい(?:します)?|それで(?:お願い(?:します)?)?|ok|okay|yes|予約して|大丈夫|いいよ|いいです|よろしく)[。！!\s]*$/i;
+const NO =
+  /^\s*(?:いいえ|いや|やめて|やめる|やめます|キャンセル|取り消して|取りやめて|no|ちがう|違う|いらない)[。！!\s]*$/i;
+const LIST =
+  /^\s*(?:予約|リマインダー|リマインド|スケジュール)(?:の)?(?:一覧|リスト)?(?:を)?(?:見せて|教えて|確認して|出して)?[。？?\s]*$|^\s*(?:何|なに)(?:が|を)?予約(?:して|され)(?:る|ている|てる)[？?。\s]*$/;
 const CANCEL =
   /^\s*(?:(?<all>全部の|すべての|全ての)?(?:予約|リマインダー|リマインド)(?<n>\d{1,2})?(?:番)?|(?<last>さっきの|今の|最後の)(?:予約|リマインダー|リマインド))\s*(?:を)?\s*(?:取り消して|とりけして|キャンセルして|消して|やめて|止めて|解除して)[。！!\s]*$/;
 
@@ -37,7 +40,7 @@ const atWhen = (when: string) => (/ごと$/.test(when) ? `${when}に` : `${when}
 export function scheduleName(schedule: Schedule, payload: SchedulePayload, tz: string): string {
   const when = describeSchedule(schedule, tz);
   return payload.kind === 'reminder'
-    ? `${atWhen(when)}「${payload.text}」をお知らせ`
+    ? `${atWhen(when)}「${payload.text}」を${payload.call ? '電話で' : ''}お知らせ`
     : `${atWhen(when)}「${payload.text}」を頼む`;
 }
 
@@ -72,7 +75,8 @@ export class ScheduleService {
       await this.store.setStatus(principal.tenantId, principal.userId, proposal.id, 'cancelled');
       return { answer: '予約はやめました。', needsClarification: false };
     }
-    if (LIST.test(text)) return { answer: await this.#listText(principal), needsClarification: false };
+    if (LIST.test(text))
+      return { answer: await this.#listText(principal), needsClarification: false };
     const cancel = CANCEL.exec(text);
     if (cancel?.groups) return this.#cancel(principal, cancel.groups);
 
@@ -109,7 +113,9 @@ export class ScheduleService {
     const upcoming = upcomingRuns(schedule, this.#now(), schedule.kind === 'at' ? 1 : 3);
     const lines = [
       payload.kind === 'reminder'
-        ? `${atWhen(describeSchedule(schedule, this.#tz))}「${payload.text}」をお知らせします。`
+        ? payload.call
+          ? `${atWhen(describeSchedule(schedule, this.#tz))}「${payload.text}」を電話でお知らせします（LINE に「電話に出る」が届きます）。`
+          : `${atWhen(describeSchedule(schedule, this.#tz))}「${payload.text}」をお知らせします。`
         : `${atWhen(describeSchedule(schedule, this.#tz))}「${payload.text}」を頼みます。外への送信などは、そのときに承認カードで確かめます。`,
       ...(schedule.kind === 'at'
         ? []
@@ -167,7 +173,8 @@ export class ScheduleService {
     groups: Record<string, string | undefined>,
   ): Promise<ScheduleReply> {
     const jobs = await this.store.list(principal.tenantId, principal.userId);
-    if (jobs.length === 0) return { answer: '取り消す予約はありません。', needsClarification: false };
+    if (jobs.length === 0)
+      return { answer: '取り消す予約はありません。', needsClarification: false };
     let targets: ScheduledJob[];
     if (groups['all']) targets = jobs;
     else if (groups['n']) {

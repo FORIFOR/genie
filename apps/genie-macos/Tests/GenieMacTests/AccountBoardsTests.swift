@@ -25,6 +25,80 @@ final class AccountBoardsTests: XCTestCase {
         XCTAssertEqual(ScheduleBoard.decode(Data("nope".utf8)), [])
     }
 
+    func testPutsAgentSessionsThatNeedTheUserFirstAndSaysWhatTheyWaitFor() {
+        func row(_ id: String, _ state: String, _ attention: String, reason: String? = nil,
+                 policy: String = "watch", title: String? = "頼み", project: String? = "genie") -> String {
+            #"{"id":"\#(id)","source":"claude_code","external_session_id":"x","project":\#(project.map { "\"\($0)\"" } ?? "null"),"title":\#(title.map { "\"\($0)\"" } ?? "null"),"state":"\#(state)","waiting_reason":\#(reason.map { "\"\($0)\"" } ?? "null"),"user_policy":"\#(policy)","attention":"\#(attention)","confidence":"confirmed","last_activity_at":"2026-10-28T05:00:00.000Z"}"#
+        }
+        let body = "{\"items\":[" + [
+            row("ended", "ended", "ended"),
+            row("work", "working", "working"),
+            row("idle", "idle", "idle", title: nil),
+            row("paused", "waiting_user", "paused", reason: "permission", policy: "paused_by_user"),
+            row("stall", "working", "stalled_suspected"),
+            row("perm", "waiting_user", "needs_user", reason: "permission"),
+            row("input", "waiting_user", "needs_user", reason: "input"),
+            row("error", "error", "needs_user", project: nil),
+        ].joined(separator: ",") + "]}"
+        let items = AgentSessionsBoard.decode(Data(body.utf8))
+        XCTAssertEqual(items.map(\.id), ["perm", "input", "error", "stall", "work", "idle", "paused", "ended"])
+        let by = Dictionary(uniqueKeysWithValues: items.map { ($0.id, $0) })
+        XCTAssertEqual(by["perm"]?.stateLine, "承認を待っています")
+        XCTAssertEqual(by["input"]?.stateLine, "あなたの返事を待っています")
+        XCTAssertEqual(by["error"]?.stateLine, "うまくいかずに止まりました")
+        XCTAssertEqual(by["error"]?.origin, "Claude Code")
+        // 推した状態は「かもしれません」と言い、確かな状態と言い分ける
+        XCTAssertTrue(by["stall"]?.stateLine.contains("かもしれません") == true)
+        // 応答を終えただけ。終わった扱いにしない
+        XCTAssertEqual(by["idle"]?.stateLine, "応答を終えて、次の頼みを待っています")
+        XCTAssertEqual(by["idle"]?.name, "genie")
+        // 本人が止めたら、承認待ちでも返事が要るとは言わない
+        XCTAssertEqual(by["paused"]?.stateLine, "見守りを止めています")
+        XCTAssertFalse(by["paused"]?.needsUser == true)
+        XCTAssertEqual(by["perm"]?.origin, "Claude Code · genie")
+        XCTAssertEqual(AgentSessionsBoard.decode(Data("nope".utf8)), [])
+    }
+
+    func testSaysHeldUnknownAndCheckedSessionsApart() {
+        func row(_ id: String, _ state: String, _ attention: String, check: String? = nil,
+                 policy: String = "watch") -> String {
+            #"{"id":"\#(id)","source":"claude_code","project":"genie","title":"頼み","state":"\#(state)","waiting_reason":null,"user_policy":"\#(policy)","attention":"\#(attention)","last_activity_at":"2026-10-28T05:00:00.000Z"\#(check.map { ",\"check_state\":\"\($0)\"" } ?? "")}"#
+        }
+        let body = "{\"items\":[" + [
+            row("passed", "idle", "idle", check: "passed"),
+            row("changed", "idle", "idle", check: "changed"),
+            row("held", "waiting_user", "held", policy: "paused_by_user"),
+            row("unknown", "working", "unknown"),
+            row("failed", "idle", "idle", check: "failed"),
+            row("old", "idle", "idle"),
+        ].joined(separator: ",") + "]}"
+        let items = AgentSessionsBoard.decode(Data(body.utf8))
+        // 最後のテストが失敗したものは返事が要るものと同じく上に。保留は止めたものと並べて下に
+        XCTAssertEqual(items.map(\.id), ["failed", "unknown", "passed", "changed", "old", "held"])
+        let by = Dictionary(uniqueKeysWithValues: items.map { ($0.id, $0) })
+        XCTAssertEqual(by["passed"]?.stateLine, "応答を終えました（テストが通っています）")
+        XCTAssertEqual(by["changed"]?.stateLine, "応答を終えました（変更をまだテストで確かめていません）")
+        XCTAssertEqual(by["failed"]?.stateLine, "応答を終えましたが、最後のテストが失敗しています")
+        XCTAssertTrue(by["failed"]?.needsUser == true)
+        // 古い gateway（check_state なし）は今までどおり
+        XCTAssertEqual(by["old"]?.stateLine, "応答を終えて、次の頼みを待っています")
+        XCTAssertEqual(by["held"]?.stateLine, "保留中（知らせません）")
+        XCTAssertFalse(by["held"]?.needsUser == true)
+        XCTAssertTrue(by["held"]?.quiet == true)
+        // 何も届かなくなったものを終わったとも止まったとも言わない
+        XCTAssertEqual(by["unknown"]?.stateLine, "しばらく何も届いていないので、いまの状態は分かりません")
+    }
+
+    func testSummarisesTheWorkOverviewWithoutZeroCounts() {
+        let body = #"{"counts":{"running":3,"needs_user":2,"suspected":0,"held":1,"done_today":0},"attention":["a","b"],"text":"…"}"#
+        let overview = WorkOverviewBoard.decode(Data(body.utf8))
+        XCTAssertEqual(overview?.summary, "確かめてほしいもの 2 件 ・ 動いているもの 3 件 ・ 保留 1 件")
+        XCTAssertEqual(overview?.attention, ["a", "b"])
+        let empty = #"{"counts":{"running":0,"needs_user":0,"suspected":0,"held":0,"done_today":0},"attention":[],"text":"x"}"#
+        XCTAssertNil(WorkOverviewBoard.decode(Data(empty.utf8))?.summary)
+        XCTAssertNil(WorkOverviewBoard.decode(Data("nope".utf8)))
+    }
+
     func testReadsChannelStatusWithoutSecrets() throws {
         let body = #"{"slack":{"configured":true,"transport":"socket","socket":{"state":"open"}},"line":{"configured":false},"durableInbox":true,"approvalButtons":false}"#
         let status = try JSONDecoder().decode(ChatChannelsBoard.Status.self, from: Data(body.utf8))

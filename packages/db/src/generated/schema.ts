@@ -45,6 +45,18 @@ export interface ActionReceipts {
   tool_id: string;
 }
 
+export interface AgentConnections {
+  created_at: Generated<Timestamp>;
+  id: string;
+  label: string;
+  last_seen_at: Timestamp | null;
+  revoked_at: Timestamp | null;
+  source: string;
+  tenant_id: string;
+  token_hash: string;
+  user_id: string;
+}
+
 export interface AgentHosts {
   capabilities: Generated<Json>;
   created_at: Generated<Timestamp>;
@@ -55,6 +67,41 @@ export interface AgentHosts {
   tenant_id: string;
   updated_at: Generated<Timestamp>;
   user_id: string;
+}
+
+export interface AgentSessionMarks {
+  at: Generated<Timestamp>;
+  id: string;
+  kind: string;
+  session_id: string;
+  tenant_id: string;
+}
+
+export interface AgentSessions {
+  check_after: Timestamp | null;
+  check_state: Generated<string>;
+  checked_at: Timestamp | null;
+  connection_id: string;
+  created_at: Generated<Timestamp>;
+  end_reason: string | null;
+  ended_at: Timestamp | null;
+  external_session_id: string;
+  held_by: string | null;
+  id: string;
+  last_activity_at: Timestamp;
+  last_event: string;
+  notified_key: string | null;
+  project: string | null;
+  source: string;
+  state: Generated<string>;
+  state_since: Generated<Timestamp>;
+  tenant_id: string;
+  title: string | null;
+  turn_ended_at: Timestamp | null;
+  updated_at: Generated<Timestamp>;
+  user_id: string;
+  user_policy: Generated<string>;
+  waiting_reason: string | null;
 }
 
 export interface Approvals {
@@ -136,6 +183,53 @@ export interface AuditSequences {
   tenant_id: string;
 }
 
+export interface BrowserHandoffs {
+  created_at: Generated<Timestamp>;
+  ended_at: Timestamp | null;
+  expires_at: Timestamp;
+  host_id: string;
+  id: string;
+  reason: string;
+  request_id: string;
+  site: string;
+  state: Generated<string>;
+  task_id: string;
+  tenant_id: string;
+  token_hash: string;
+  user_id: string;
+}
+
+export interface CallSessions {
+  conversation_id: string;
+  created_at: Generated<Timestamp>;
+  end_reason: string | null;
+  ended_at: Timestamp | null;
+  expires_at: Timestamp;
+  group_id: string | null;
+  household_id: string | null;
+  id: string;
+  link_id: string;
+  opening: string | null;
+  seconds: Generated<number>;
+  started_at: Timestamp | null;
+  tenant_id: string;
+  token_hash: string;
+  user_id: string;
+}
+
+export interface ChannelGroups {
+  created_at: Generated<Timestamp>;
+  enabled_by: string;
+  group_id: string;
+  household_id: string;
+  id: string;
+  owner_user_id: string;
+  provider: string;
+  revoked_at: Timestamp | null;
+  tenant_id: string;
+  workspace_id: string;
+}
+
 export interface ChannelInbox {
   attempts: Generated<number>;
   claimed_at: Timestamp | null;
@@ -173,7 +267,18 @@ export interface ChannelLinks {
   workspace_id: string;
 }
 
+export interface ChannelMedia {
+  created_at: Generated<Timestamp>;
+  expires_at: Timestamp;
+  kind: string;
+  ref: Json;
+  source_entity_id: string;
+  tenant_id: string;
+  token_hash: string;
+}
+
 export interface ChannelOutbox {
+  answer_inline: Generated<boolean>;
   attempts: Generated<number>;
   body: Json;
   created_at: Generated<Timestamp>;
@@ -216,6 +321,17 @@ export interface ConnectorConnections {
   provider: string;
   revoked_at: Timestamp | null;
   state: string;
+  tenant_id: string;
+  updated_at: Generated<Timestamp>;
+}
+
+export interface ConversationGoals {
+  conversation_id: string;
+  expires_at: Timestamp;
+  kind: string;
+  results: Generated<Json>;
+  slots: Generated<Json>;
+  status: Generated<string>;
   tenant_id: string;
   updated_at: Generated<Timestamp>;
 }
@@ -268,6 +384,27 @@ export interface ConversationSummaries {
   summary: string;
   tenant_id: string;
   turn_count: number;
+}
+
+export interface DatePolls {
+  candidates: Json;
+  closed_at: Timestamp | null;
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  decided: string | null;
+  household_id: string;
+  id: string;
+  tenant_id: string;
+  title: string;
+}
+
+export interface DatePollVotes {
+  available: Json;
+  poll_id: string;
+  tenant_id: string;
+  updated_at: Generated<Timestamp>;
+  voter: string;
+  voter_name: string | null;
 }
 
 export interface Devices {
@@ -340,6 +477,77 @@ export interface Evidence {
   title: string | null;
 }
 
+export interface ExpenseBudgets {
+  category: string;
+  currency: string;
+  household_id: string | null;
+  monthly: Numeric;
+  tenant_id: string;
+  updated_at: Generated<Timestamp>;
+  user_id: string;
+}
+
+export interface Expenses {
+  amount: Numeric;
+  category: string;
+  created_at: Generated<Timestamp>;
+  currency: string;
+  household_id: string | null;
+  id: string;
+  image_sha256: string | null;
+  merchant: string | null;
+  receipt_key: string;
+  recorded_by: string | null;
+  source: string;
+  spent_on: Timestamp;
+  tenant_id: string;
+  user_id: string;
+  voided_at: Timestamp | null;
+}
+
+export interface GroupBoardEvents {
+  at: Generated<Timestamp>;
+  board_id: string;
+  id: string;
+  kind: string;
+  tenant_id: string;
+  text: string;
+}
+
+export interface GroupBoardLinks {
+  board_id: string;
+  created_at: Generated<Timestamp>;
+  expires_at: Timestamp;
+  tenant_id: string;
+  token_hash: string;
+}
+
+export interface GroupBoards {
+  created_at: Generated<Timestamp>;
+  household_id: string;
+  id: string;
+  kind: string;
+  state: Generated<Json>;
+  status: Generated<string>;
+  tenant_id: string;
+  title: string;
+  updated_at: Generated<Timestamp>;
+}
+
+export interface GroupMessages {
+  deleted_at: Timestamp | null;
+  expires_at: Timestamp;
+  from_genie: Generated<boolean>;
+  household_id: string;
+  message_id: string;
+  quoted_message_id: string | null;
+  sender_id: string;
+  sender_name: string | null;
+  sent_at: Timestamp;
+  tenant_id: string;
+  text: string;
+}
+
 export interface HostStepRequests {
   approval: Json | null;
   args: Generated<Json>;
@@ -357,6 +565,32 @@ export interface HostStepRequests {
   task_id: string;
   tenant_id: string;
   tool_id: string;
+}
+
+export interface Households {
+  auto_receipts: Generated<boolean>;
+  context_days: Generated<number>;
+  context_mode: Generated<string>;
+  context_paused: Generated<boolean>;
+  conversation_id: string | null;
+  created_at: Generated<Timestamp>;
+  id: string;
+  name: string;
+  owner_user_id: string;
+  tenant_id: string;
+}
+
+export interface HouseholdTodos {
+  assignee: string | null;
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  done_at: Timestamp | null;
+  done_by: string | null;
+  household_id: string | null;
+  id: string;
+  tenant_id: string;
+  title: string;
+  user_id: string;
 }
 
 export interface InitialProfiles {
@@ -453,6 +687,36 @@ export interface OnboardingStates {
   tenant_id: string;
   updated_at: Generated<Timestamp>;
   user_id: string;
+}
+
+export interface OpencodeWatches {
+  base_url: string;
+  conversation_id: string;
+  created_at: Generated<Timestamp>;
+  ended_reason: string | null;
+  expires_at: Timestamp;
+  failures: Generated<number>;
+  id: string;
+  idle_nudges: Generated<number>;
+  interval_seconds: number;
+  last_signature: string | null;
+  next_check_at: Timestamp;
+  nudges: Generated<number>;
+  session_id: string;
+  status: Generated<string>;
+  tenant_id: string;
+  updated_at: Generated<Timestamp>;
+  user_id: string;
+  waiting_notified: Generated<boolean>;
+}
+
+export interface PendingConfirmations {
+  conversation_id: string;
+  created_at: Generated<Timestamp>;
+  expires_at: Timestamp;
+  kind: string;
+  payload: Json;
+  tenant_id: string;
 }
 
 export interface PhoneConnections {
@@ -626,6 +890,18 @@ export interface Shares {
   watermark: Generated<boolean>;
 }
 
+export interface ShoppingItems {
+  added_by: string | null;
+  bought_at: Timestamp | null;
+  bought_by: string | null;
+  created_at: Generated<Timestamp>;
+  household_id: string | null;
+  id: string;
+  name: string;
+  tenant_id: string;
+  user_id: string;
+}
+
 export interface TaskEvents {
   conversation_id: string | null;
   created_at: Generated<Timestamp>;
@@ -638,6 +914,19 @@ export interface TaskEvents {
   task_id: string | null;
   tenant_id: string;
   type: string;
+}
+
+export interface TaskFollowups {
+  after_task_id: string;
+  conversation_id: string;
+  created_at: Generated<Timestamp>;
+  decided_at: Timestamp | null;
+  id: string;
+  request: string;
+  started_task_id: string | null;
+  status: Generated<string>;
+  tenant_id: string;
+  user_id: string;
 }
 
 export interface TaskInstructions {
@@ -733,6 +1022,13 @@ export interface Turns {
   tenant_id: string;
 }
 
+export interface UsageCounters {
+  count: Generated<number>;
+  kind: string;
+  month: string;
+  tenant_id: string;
+}
+
 export interface UserIdentities {
   created_at: Generated<Timestamp>;
   email: string | null;
@@ -796,6 +1092,40 @@ export interface WorkCorrections {
   item_id: string;
   note: string | null;
   tenant_id: string;
+  user_id: string;
+}
+
+export interface WorkCriteria {
+  agent_session_id: string | null;
+  created_at: Generated<Timestamp>;
+  id: string;
+  kind: string;
+  met_at: Timestamp | null;
+  task_id: string | null;
+  tenant_id: string;
+  text: string;
+  user_id: string;
+}
+
+export interface WorkHolds {
+  created_at: Generated<Timestamp>;
+  due_noticed_at: Timestamp | null;
+  id: string;
+  paused_schedule_ids: Generated<string[]>;
+  reason: string | null;
+  released_at: Timestamp | null;
+  status: Generated<string>;
+  subject: string;
+  tenant_id: string;
+  until_date: Timestamp | null;
+  user_id: string;
+}
+
+export interface WorkLinks {
+  created_at: Generated<Timestamp>;
+  expires_at: Timestamp;
+  tenant_id: string;
+  token_hash: string;
   user_id: string;
 }
 
@@ -884,29 +1214,47 @@ export interface WorldFacts {
 
 export interface DB {
   action_receipts: ActionReceipts;
+  agent_connections: AgentConnections;
   agent_hosts: AgentHosts;
+  agent_session_marks: AgentSessionMarks;
+  agent_sessions: AgentSessions;
   approvals: Approvals;
   artifact_versions: ArtifactVersions;
   artifacts: Artifacts;
   attention_feedback: AttentionFeedback;
   audit_events: AuditEvents;
   audit_sequences: AuditSequences;
+  browser_handoffs: BrowserHandoffs;
+  call_sessions: CallSessions;
+  channel_groups: ChannelGroups;
   channel_inbox: ChannelInbox;
   channel_link_codes: ChannelLinkCodes;
   channel_links: ChannelLinks;
+  channel_media: ChannelMedia;
   channel_outbox: ChannelOutbox;
   channel_threads: ChannelThreads;
   connector_connections: ConnectorConnections;
+  conversation_goals: ConversationGoals;
   conversation_requests: ConversationRequests;
   conversation_states: ConversationStates;
   conversation_summaries: ConversationSummaries;
   conversations: Conversations;
+  date_poll_votes: DatePollVotes;
+  date_polls: DatePolls;
   devices: Devices;
   domain_entities: DomainEntities;
   domain_links: DomainLinks;
   event_streams: EventStreams;
   evidence: Evidence;
+  expense_budgets: ExpenseBudgets;
+  expenses: Expenses;
+  group_board_events: GroupBoardEvents;
+  group_board_links: GroupBoardLinks;
+  group_boards: GroupBoards;
+  group_messages: GroupMessages;
   host_step_requests: HostStepRequests;
+  household_todos: HouseholdTodos;
+  households: Households;
   initial_profiles: InitialProfiles;
   job_checkpoints: JobCheckpoints;
   job_leases: JobLeases;
@@ -915,6 +1263,8 @@ export interface DB {
   meetings: Meetings;
   memberships: Memberships;
   onboarding_states: OnboardingStates;
+  opencode_watches: OpencodeWatches;
+  pending_confirmations: PendingConfirmations;
   phone_connections: PhoneConnections;
   plugin_assets: PluginAssets;
   plugin_installs: PluginInstalls;
@@ -929,7 +1279,9 @@ export interface DB {
   sessions: Sessions;
   share_access_logs: ShareAccessLogs;
   shares: Shares;
+  shopping_items: ShoppingItems;
   task_events: TaskEvents;
+  task_followups: TaskFollowups;
   task_instructions: TaskInstructions;
   tasks: Tasks;
   tenants: Tenants;
@@ -937,12 +1289,16 @@ export interface DB {
   transaction_authorizations: TransactionAuthorizations;
   translations: Translations;
   turns: Turns;
+  usage_counters: UsageCounters;
   user_identities: UserIdentities;
   user_notices: UserNotices;
   user_vocabulary: UserVocabulary;
   users: Users;
   work_artifacts: WorkArtifacts;
   work_corrections: WorkCorrections;
+  work_criteria: WorkCriteria;
+  work_holds: WorkHolds;
+  work_links: WorkLinks;
   work_profiles: WorkProfiles;
   work_sync_state: WorkSyncState;
   world_edges: WorldEdges;

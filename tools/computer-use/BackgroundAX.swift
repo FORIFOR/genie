@@ -1268,6 +1268,9 @@ final class ConsentAccessoryView: NSView {
             guard grant.expires > Date().timeIntervalSince1970 else { throw Failure("consent_expired") }
             // 明示的に取り下げられた依頼は再開しない。割り込みとは意味が違う。
             if explicitlyStopped(path) { throw Failure("session_stopped") }
+            // 本人が言葉で引き継いだ（「ここから自分で操作する」。Mac の ComputerHandoff が置く）。
+            // 「続きお願い」で印が消えるまでは、手が止まっていても本人の番
+            if FileManager.default.fileExists(atPath: path + ".handoff") { throw Failure("human_handoff") }
             // 対象が前面にある、または人の手がまだ動いている＝人の番。待つ。
             guard humanIsQuiet(path, pid: f.pid) else { throw Failure("human_active") }
             // 先に印を消して世代を進め、**進めた後にもう一度見る**。その間に人が
@@ -1917,7 +1920,7 @@ final class ConsentAccessoryView: NSView {
                     }
                     view.hide()
                     activityViews.removeValue(forKey: path)
-                    for suffix in ["", ".watching", ".interrupted", ".acting", ".pointer", ".activity", ".epoch", ".lastinput"] { try? FileManager.default.removeItem(atPath:path+suffix) }
+                    for suffix in ["", ".watching", ".interrupted", ".acting", ".pointer", ".activity", ".epoch", ".lastinput", ".handoff"] { try? FileManager.default.removeItem(atPath:path+suffix) }
                     exit(0)
                 }
             }

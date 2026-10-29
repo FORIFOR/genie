@@ -87,6 +87,7 @@ const OPERATION_FOR: Readonly<Record<string, string>> = {
   'outlook.mail.reply': 'outlook.mail.reply',
   'mail.trash': 'gmail.trash',
   'calendar.create_event': 'calendar.create',
+  'calendar.move_event': 'calendar.move',
   'computer.click': 'computer.click',
   'computer.type': 'computer.type',
   'computer.key': 'computer.key',

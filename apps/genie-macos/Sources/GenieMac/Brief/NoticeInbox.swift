@@ -85,7 +85,18 @@ final class NoticeInbox {
     /// macOS の通知に出す。許可が無ければ出さない（false。サーバに残り、次に許可されたら出る）。
     static func postSystemNotification(_ item: Item) async -> Bool {
         let center = UNUserNotificationCenter.current()
-        guard (try? await center.requestAuthorization(options: [.alert, .sound])) == true else { return false }
+        let granted: Bool
+        do {
+            granted = try await center.requestAuthorization(options: [.alert, .sound])
+        } catch {
+            noteUnavailable("authorization failed: \(error.localizedDescription)")
+            return false
+        }
+        guard granted else {
+            let settings = await center.notificationSettings()
+            noteUnavailable("not allowed: status=\(settings.authorizationStatus.rawValue)")
+            return false
+        }
         let content = UNMutableNotificationContent()
         content.title = item.title
         content.body = item.body
@@ -100,9 +111,25 @@ final class NoticeInbox {
         }
     }
 
-    /// 通知をクリックした。仕事のお知らせなら作業一覧、それ以外は Home を開く。
+    /// 出せない理由を 1 起動に 1 回だけ残す（20 秒ごとに取りに行くので、毎回は書かない）。
+    /// 黙って false を返していたので、お知らせが 1 件も出ていないことに気づけなかった（2026-10-29）。
+    private static var unavailableNoted = false
+    private static func noteUnavailable(_ reason: String) {
+        guard !unavailableNoted else { return }
+        unavailableNoted = true
+        GenieLog.write("notice", reason)
+    }
+
+    /// 通知をクリックした。仕事・ほかの AI のお知らせなら作業一覧、それ以外は Home を開く。
     static func opened(_ notification: UNNotification) {
-        let taskId = notification.request.content.userInfo["task_id"] as? String ?? ""
-        MainWindowController.shared.showSection(taskId.isEmpty ? .home : .work)
+        let info = notification.request.content.userInfo
+        MainWindowController.shared.showSection(section(kind: info["kind"] as? String ?? "",
+                                                        taskId: info["task_id"] as? String ?? ""))
+    }
+
+    /// お知らせの種類から開く面を決める。ほかの AI（Claude Code）の待ち・停滞、保留の日、
+    /// 「終わったら〇〇して」の続きは、作業一覧に出ている。
+    nonisolated static func section(kind: String, taskId: String) -> MainSection {
+        ["agent_session", "work_hold", "task_followup"].contains(kind) || !taskId.isEmpty ? .work : .home
     }
 }

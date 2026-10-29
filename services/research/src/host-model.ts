@@ -144,10 +144,14 @@ export class HostLanguageModel implements LanguageModel {
     question: string,
     context?: string,
     attachments?: readonly VisualAttachment[],
+    history?: readonly { readonly role: 'user' | 'genie'; readonly text: string }[],
   ): Promise<string> {
     const result = await this.#ask('llm.answer', {
       question,
       ...(context ? { context } : {}),
+      ...(history && history.length > 0
+        ? { history: history.map((h) => ({ role: h.role, text: h.text })) }
+        : {}),
       // 画像は id で渡す。端末が `visual-context/<id>.png` を読む。画素は cloud を通らない。
       ...(attachments && attachments.length > 0
         ? { images: attachments.map((a) => ({ id: a.id, kind: a.kind, label: a.label })) }

@@ -27,7 +27,14 @@ import {
   selectContextPack,
   type WorkContextService,
 } from '@genie/service-world-model';
-import { browserOpenRequest } from './browser-request.js';
+import { browserOpenRequest, browserReadRequest } from './browser-request.js';
+import {
+  applyChange,
+  parseCalendarIntent,
+  pickTarget,
+  rangeLabel,
+  type ListedEvent,
+} from './calendar-intent.js';
 import { accountRegistrationRequest, checkoutAssistanceRequest } from './checkout-request.js';
 import { classifyCurrentInfo, type CurrentInfoQuery } from './current-info.js';
 import { isDocumentRequest, routeLane } from './lane.js';
@@ -68,6 +75,23 @@ export interface TurnDeps {
   readonly schedules?: TurnSchedules;
   /** 個人の辞書（「辞書に登録: ジーニーは Genie」）。service-vocabulary の VocabularyService。 */
   readonly vocabulary?: TurnSchedules;
+  /**
+   * 送った写真・外国語の文のあと（service-understand）。家計簿に付けるかの「はい」、「取り消して」、
+   * 「家計簿を見せて」「食費の予算を 6 万円にして」「これに返信して」。
+   */
+  readonly understand?: TurnSchedules;
+  /** 予定の頼み（読む・ずらす・元に戻す）。無ければいつもの振り分け。 */
+  readonly calendar?: TurnCalendar;
+}
+
+/** 予定の頼みに要るもの（gateway が、仕事と成果物から引く）。 */
+export interface TurnCalendar {
+  readonly timeZone: string;
+  readonly now?: () => Date;
+  /** この会話で最後に出した予定の一覧（calendar.agenda の成果物）。無ければ null。 */
+  latestAgenda(tenantId: string, conversationId: string): Promise<readonly ListedEvent[] | null>;
+  /** この会話で最後に変えた予定（calendar.move の仕事の入力）。無ければ null。 */
+  latestMove(tenantId: string, conversationId: string): Promise<Record<string, unknown> | null>;
 }
 
 /**
@@ -79,7 +103,13 @@ export interface TurnSchedules {
     principal: { tenantId: string; userId: string },
     conversationId: string,
     text: string,
-  ): Promise<{ answer: string; needsClarification: boolean } | null>;
+  ): Promise<{
+    answer: string;
+    needsClarification: boolean;
+    request?: string;
+    card?: string;
+    choices?: readonly string[];
+  } | null>;
 }
 
 export interface HandleTurnInput {
@@ -94,9 +124,14 @@ export interface HandleTurnInput {
    * 仕事を作る直前に呼ぶ。返す予定の中身を控えに残すため（応答が届かなくても、仕事を隠さない）。
    * チャネルは控えを持たないので渡さない。
    */
-  readonly onPrepared?: (response: Record<string, unknown>, dispatchTurnId?: string) => Promise<void>;
+  readonly onPrepared?: (
+    response: Record<string, unknown>,
+    dispatchTurnId?: string,
+  ) => Promise<void>;
   /** 予約から頼んでいる（予約の言い方は読まない。予約から予約を作らない）。 */
   readonly scheduled?: boolean;
+  /** 「はい」を、確かめていた頼み（予定をカレンダーへ）に置き換えて振り分け直している。 */
+  readonly confirmed?: boolean;
 }
 
 /**
@@ -115,6 +150,10 @@ export type HandleTurnResult =
       readonly turn: Turn;
       readonly answer: Turn;
       readonly needsClarification: boolean;
+      /** 答えに添えるカード（店の候補・予約など。チャットが描く JSON）。 */
+      readonly card?: string;
+      /** 次の一手の選択肢（LINE の Quick Reply）。 */
+      readonly choices?: readonly string[];
     }
   | {
       readonly kind: 'started';
@@ -145,6 +184,11 @@ export async function handleTurn(
     await deps.conversations.interruptLastAssistantTurn(principal.tenantId, id);
   }
 
+  // 直前の会話（この発話より前）。答えと聞き返しの判断に使う（仕様 v1.0 §5②、評価 2026-10-27: 文脈を失う 36%）
+  const history = historyOf(
+    await deps.conversations.recentTurns(principal.tenantId, id, HISTORY_TURNS),
+  );
+
   const turn = await deps.conversations.append({
     tenantId: principal.tenantId,
     conversationId: id,
@@ -168,7 +212,10 @@ export async function handleTurn(
   // 場所の書かれた文書を直す依頼の「その下」「この段落」は、会話ではなく文書の中を指す。
   // 文書を読む端末のモデルが解くので、ここで聞き返さない。
   const clarification =
-    officeEditRequest(body.text) || browserOpenRequest(body.text) || workPreviewRequest(body.text)
+    officeEditRequest(body.text) ||
+    browserOpenRequest(body.text) ||
+    browserReadRequest(body.text) ||
+    workPreviewRequest(body.text)
       ? null
       : clarificationFor(resolutions);
 
@@ -191,22 +238,66 @@ export async function handleTurn(
 
   // 辞書の話（登録・一覧・削除）と予約の話（作る前の確かめ・一覧・取り消し）。
   // 予約から頼んだ発話は読まない（予約から予約・辞書を変えない）
-  const commands = input.scheduled ? [] : [deps.vocabulary, deps.schedules];
+  const commands =
+    input.scheduled || input.confirmed ? [] : [deps.understand, deps.vocabulary, deps.schedules];
   for (const command of commands) {
     if (!command) continue;
     const scheduled = await command.handle(principal, id, body.text);
     if (scheduled) {
       log.info(
-        { command: command === deps.schedules ? 'schedule' : 'vocabulary' },
+        {
+          command:
+            command === deps.schedules
+              ? 'schedule'
+              : command === deps.understand
+                ? 'understand'
+                : 'vocabulary',
+        },
         'turn command',
       );
+      // 確かめていた頼みに「はい」と答えた。その頼みの文で、いつもどおり振り分け直す
+      // （発話の id は「はい」の行のもの。振り分け直す頼みは新しい行にする）
+      if (scheduled.request) {
+        const { turnId: _answered, ...rest } = input;
+        return handleTurn(deps, {
+          ...rest,
+          body: { ...body, text: scheduled.request },
+          confirmed: true,
+        });
+      }
       return {
         kind: 'answered',
         turn,
         answer: await answerWith(scheduled.answer),
         needsClarification: scheduled.needsClarification,
+        ...(scheduled.card ? { card: scheduled.card } : {}),
+        ...(scheduled.choices?.length ? { choices: scheduled.choices } : {}),
       };
     }
+  }
+
+  // 予定を読む・ずらす・元に戻す（仕様 v1.0 §11）。対象は直前に出した一覧から、変えるときは承認つきの仕事
+  const calendar = deps.calendar
+    ? await calendarTurn(deps.calendar, principal, id, body.text)
+    : null;
+  if (calendar?.kind === 'answer') {
+    return {
+      kind: 'answered',
+      turn,
+      answer: await answerWith(calendar.text),
+      needsClarification: calendar.clarify,
+    };
+  }
+  if (calendar?.kind === 'task') {
+    const started = await createTask(deps, principal, id, turn.id, calendar.request);
+    return {
+      kind: 'started',
+      turn,
+      intent: calendar.intent,
+      taskId: started.taskId,
+      notice: started.notice,
+      reply: null,
+    };
   }
 
   // Slot answers can be ordinary chat. Keep them with the durable order rather than
@@ -330,7 +421,12 @@ export async function handleTurn(
    * 指示語が解けないまま先へ進めない。
    * 進めると、利用者が指したものとは別のものに対して動く。
    */
-  if (clarification) {
+  // 「それ」「さっきの」が指示対象から解けなくても、直前の会話があれば、話の流れから答えに解かせる。
+  // 会話と調べものだけ（操作の頼みは対象が決まらないまま進めない）
+  if (
+    clarification &&
+    !(history.length > 0 && (decision.lane === 'chat' || decision.lane === 'research'))
+  ) {
     return { kind: 'clarification', turn, answer: await answerWith(clarification) };
   }
 
@@ -403,6 +499,7 @@ export async function handleTurn(
     replyDraft: replyMeta ? { meta: replyMeta, instruction: replyInstructionText } : null,
     info,
     turnId: turn.id,
+    history,
   });
 
   return {
@@ -452,6 +549,37 @@ export interface LaneTaskInput {
   readonly info?: CurrentInfoQuery | null;
   /** 模擬注文の冪等キー（`turn:<id>`）に使う。 */
   readonly turnId?: string;
+  /** 直前の会話（古い順）。汎用の答えだけに渡す（調べもの・画面操作・外の提供元には渡さない）。 */
+  readonly history?: readonly ConversationLine[];
+}
+
+/** 答えに渡す直前の会話の 1 行。 */
+export interface ConversationLine {
+  readonly role: 'user' | 'genie';
+  readonly text: string;
+}
+
+/** 渡す発話の数（本人と Genie の合計）と、1 行・全体の上限。長い会話でも答えの指示を押し流さない。 */
+const HISTORY_TURNS = 6;
+const HISTORY_LINE_CHARS = 300;
+const HISTORY_TOTAL_CHARS = 1_500;
+
+/** 会話の行から、答えに渡す直前の会話を作る（新しいものを優先して上限に収める）。 */
+export function historyOf(turns: readonly Turn[]): ConversationLine[] {
+  const lines: ConversationLine[] = [];
+  let total = 0;
+  for (const t of [...turns].reverse()) {
+    const text = String(t.text ?? '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (!text || (t.role !== 'user' && t.role !== 'assistant')) continue;
+    const clipped =
+      text.length > HISTORY_LINE_CHARS ? `${text.slice(0, HISTORY_LINE_CHARS - 1)}…` : text;
+    if (total + clipped.length > HISTORY_TOTAL_CHARS) break;
+    total += clipped.length;
+    lines.unshift({ role: t.role === 'user' ? 'user' : 'genie', text: clipped });
+  }
+  return lines;
 }
 
 /** `TaskService.create` に渡す依頼の中身（conversation_id は呼ぶ側が足す）。 */
@@ -506,6 +634,14 @@ export function taskRequestForLane(input: LaneTaskInput): LaneTaskRequest | null
         ...(preview.folder ? { folder: preview.folder } : {}),
       },
     };
+  // 「<URL> を読んで要約して」: 端末が Genie 専用のブラウザ（画面に出さない）で読み、端末のモデルで答える。
+  const page = lane === 'meeting' || office || checkout ? null : browserReadRequest(text);
+  if (page)
+    return {
+      kind: 'browser.read',
+      title: `ページを読む（${new URL(page.url).hostname}）`,
+      input: { url: page.url, question: page.question },
+    };
   // 「〇〇の公式サイトを開いて」: 端末が検索し、公式と見極めたページを既定のブラウザで開く。
   const browser = lane === 'meeting' || office || checkout ? null : browserOpenRequest(text);
   if (browser)
@@ -547,6 +683,7 @@ export function taskRequestForLane(input: LaneTaskInput): LaneTaskRequest | null
         ...(replyDraft ? { instruction: replyDraft.instruction, reply: replyDraft.meta } : {}),
         ...(attachments.length > 0 ? { attachments: [...attachments] } : {}),
         ...(workContext ? { context: workContext } : {}),
+        ...(input.history && input.history.length > 0 ? { history: [...input.history] } : {}),
         // 渡した量の事実。何を知っているかではなく、何を渡したか。
         ...(contextStats ? { context_meta: contextStats } : {}),
       },
@@ -571,6 +708,128 @@ export function taskRequestForLane(input: LaneTaskInput): LaneTaskRequest | null
  * 作れなかった理由（plugin が入っていない等）は `notice` で返す。
  * 例外で 500 にすると、利用者には「送れなかった」としか見えない。
  */
+/** 予定の頼みを、答え（聞き返し）か仕事にする。予定の頼みでなければ null。 */
+async function calendarTurn(
+  calendar: TurnCalendar,
+  principal: { tenantId: string; userId: string },
+  conversationId: string,
+  text: string,
+): Promise<
+  | { readonly kind: 'answer'; readonly text: string; readonly clarify: boolean }
+  | { readonly kind: 'task'; readonly request: LaneTaskRequest; readonly intent: string }
+  | null
+> {
+  const tz = calendar.timeZone;
+  const intent = parseCalendarIntent(text, calendar.now?.() ?? new Date(), tz);
+  if (!intent) return null;
+  if (intent.kind === 'agenda')
+    return {
+      kind: 'task',
+      // チャットでは受付を送らず、一覧そのものを答えにする（talking = 答えを本文で返す）
+      intent: 'talking',
+      request: {
+        kind: 'calendar.agenda',
+        title: `${intent.label}の予定`,
+        input: {
+          time_min: intent.timeMin,
+          time_max: intent.timeMax,
+          label: intent.label,
+          time_zone: tz,
+        },
+      },
+    };
+  if (intent.kind === 'undo') {
+    const last = await calendar.latestMove(principal.tenantId, conversationId);
+    // 元に戻す予定の変更が無ければ、ほかの「やっぱなし」（グループ送信の取り消しなど）に任せる
+    if (!last) return null;
+    return {
+      kind: 'task',
+      // 承認カードが受付の代わり。変えたあとは「〜に変更しました」を本文で返す
+      intent: 'talking',
+      request: {
+        kind: 'calendar.move',
+        title: `予定を元に戻す: ${String(last['title'] ?? '')}`,
+        input: {
+          event_id: last['event_id'],
+          title: last['title'],
+          time_zone: tz,
+          before_start: last['after_start'],
+          before_end: last['after_end'],
+          after_start: last['before_start'],
+          after_end: last['before_end'],
+          before_label: last['after_label'],
+          after_label: last['before_label'],
+          undo: true,
+        },
+      },
+    };
+  }
+  const listed = await calendar.latestAgenda(principal.tenantId, conversationId);
+  if (!listed || listed.length === 0)
+    return {
+      kind: 'answer',
+      clarify: true,
+      text: 'どの予定を変えるか分かりません。先に「明日の予定を教えて」のように、その日の予定を確かめてください。',
+    };
+  const picked = pickTarget(intent.target, listed, tz);
+  if ('candidates' in picked) {
+    if (picked.candidates.length === 0)
+      return {
+        kind: 'answer',
+        clarify: true,
+        text: '変える予定が見つかりませんでした。予定の名前か時刻を教えてください。',
+      };
+    const names = picked.candidates
+      .slice(0, 4)
+      .map((e) => `・${rangeLabel(e.start, e.end, tz)} ${e.title || '（題名なし）'}`)
+      .join('\n');
+    return { kind: 'answer', clarify: true, text: `どの予定を変えますか？\n${names}` };
+  }
+  const event = picked.event;
+  const next = applyChange(event, intent.change, tz);
+  return {
+    kind: 'task',
+    // 承認カードが受付の代わり。変えたあとは「〜に変更しました」を本文で返す
+    intent: 'talking',
+    request: {
+      kind: 'calendar.move',
+      title: `予定の変更: ${event.title || '（題名なし）'}`,
+      input: {
+        event_id: event.id,
+        title: event.title,
+        time_zone: tz,
+        before_start: event.start,
+        before_end: event.end,
+        after_start: next.start,
+        after_end: next.end,
+        before_label: rangeLabel(event.start, event.end, tz),
+        after_label: rangeLabel(next.start, next.end, tz),
+      },
+    },
+  };
+}
+
+/** 決まった依頼を仕事にする（同じ発話を二度仕事にしない）。 */
+async function createTask(
+  deps: TurnDeps,
+  principal: { tenantId: string; userId: string },
+  conversationId: string,
+  turnId: string,
+  request: LaneTaskRequest,
+): Promise<{ taskId: string | null; notice: string | null }> {
+  try {
+    const { task } = await deps.tasks.create({
+      tenantId: principal.tenantId,
+      userId: principal.userId,
+      request: { ...request, conversation_id: conversationId as never },
+      idempotencyKey: `turn:${turnId}`,
+    });
+    return { taskId: task.id, notice: null };
+  } catch {
+    return { taskId: null, notice: '仕事を始められませんでした。' };
+  }
+}
+
 async function startWork(
   deps: TurnDeps,
   principal: { tenantId: string; userId: string },

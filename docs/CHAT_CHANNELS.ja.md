@@ -4,12 +4,19 @@ Slack の DM、Slack のメンション、LINE の 1 対 1 のトークで頼ん
 
 ## できること
 
-|                  | Slack                                                | LINE                                 |
-| ---------------- | ---------------------------------------------------- | ------------------------------------ |
-| 頼む             | Bot との DM、またはチャンネルでのメンション          | 公式アカウントとの 1 対 1 のトーク   |
-| 返ってくるもの   | 受付、承認待ち、一時停止、終わり（完了・失敗・中止） | 同じ                                 |
-| チャットでの承認 | ボタン（外部への送信だけ）                           | ボタン（postback、外部への送信だけ） |
-| 会話の単位       | スレッド 1 つが Genie の会話 1 つ                    | 相手ごとに会話 1 つ                  |
+|                  | Slack                                                | LINE                                                                                   |
+| ---------------- | ---------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| 頼む             | Bot との DM、またはチャンネルでのメンション          | 公式アカウントとの 1 対 1 のトーク                                                     |
+| 返ってくるもの   | 受付、承認待ち、一時停止、終わり（完了・失敗・中止） | 同じ                                                                                   |
+| チャットでの承認 | ボタン（外部への送信だけ）                           | ボタン（postback、外部への送信だけ）                                                   |
+| 会話の単位       | スレッド 1 つが Genie の会話 1 つ                    | 相手ごとに会話 1 つ                                                                    |
+| 答えの見た目     | 文（見出し・太字の記号を外す）                       | 見出し・太字・箇条書き・リンクのある答えは暗い吹き出し（Flex Message）。一言の答えは文 |
+
+写真や外国語の文は、送るだけで Genie が中身を読んで判断します（レシートは家計簿へ、料理は目安、案内は予定の確かめ、外国語は日本語に）。[UNDERSTAND.ja.md](UNDERSTAND.ja.md) を見てください。
+
+LINE の吹き出しは `services/channels/src/rich.ts` が答えの Markdown から作ります。太字は span、箇条書きは記号と字下げ、リンクは下のボタン（4 つまで）、長い答えは横にめくる 5 枚までに分けます。それより長い・作れないときは文で送ります。
+
+**「承知しました」は依頼にだけ。**「〜して」のような依頼は「承知しました：<仕事の名前>。終わったらお知らせします。」と受け、終わったら知らせます。あいさつ・質問（「〜ましたか？」）には受付を送らず、答えだけを返します。調べて答える質問が 12 秒で終わらなければ「調べています。分かりしだい…」とだけ先に伝えます（2026-10-26）。
 
 途中経過は流しません。チャットへの返信は外部への送信なので、既定では要約と「Genie の作業一覧で開けます」だけを送ります。本文まで送るには、連携ごとに `full_text` を選びます（`PATCH /v1/channels/links/:id`）。
 
@@ -25,7 +32,7 @@ Slack の DM、Slack のメンション、LINE の 1 対 1 のトークで頼ん
    - Event Subscriptions に `message.im` と `app_mention` を登録します。Events API のときは、Request URL を `https://<gateway>/v1/channels/slack/events` にします。Socket Mode のときは URL は要りません（Socket Mode を有効にするだけ）。
    - Interactivity: Events API のときだけ `https://<gateway>/v1/channels/slack/interactions`。Socket Mode では URL は要りません。
    - Bot のスコープ: `chat:write`, `im:history`, `app_mentions:read`, `im:write`（メンションの結果を DM に返すため）
-3. LINE の設定: Messaging API の Webhook URL を `https://<gateway>/v1/channels/line/webhook` にして、Webhook を有効にします。
+3. LINE の設定: Messaging API の Webhook URL を `https://<gateway>/v1/channels/line/webhook` にして、Webhook を有効にします。手元の Mac で動かすときは、トンネルと LINE の Webhook だけを通す中継を挟みます（[LINE_SETUP.ja.md](LINE_SETUP.ja.md)）。
 4. Events API と LINE の受け口は、公開 HTTPS で届く場所に置きます。受け口は認証の代わりに署名で守っていて、署名が合わない配信は 403 で断ります。Socket Mode の Slack だけは、gateway から Slack へ繋ぐので公開 URL が要りません。
 5. つながり具合は `GET /v1/channels/status` で見られます（Slack の受け方、Socket Mode の接続状態と再接続までの時間、受信箱に保存するか。トークンは返しません）。
 
@@ -60,4 +67,4 @@ Slack の DM、Slack のメンション、LINE の 1 対 1 のトークで頼ん
 - 実際の Slack ワークスペースと LINE 公式アカウントでは、まだ確認していません。Socket Mode も、WebSocket の代役で確かめただけです。署名、本文の形、送信の API は、提供者の仕様どおりに作ったうえで、代役（fetch の差し替え）を使った結合テストで確かめています。
 - Slack のスレッドの他の発言を、材料として読むことはしていません（`conversations.replies` は使っていません）。
 - 連携コードは、Mac の「アプリ連携」の「Slack・LINE」の札から出せます（設定済みの提供者だけ。結んだチャットの解除もここ。DESIGN.md §8.2）。API（`POST /v1/channels/link-codes`）でも出せます。Slack も LINE も設定していないときも、`GET /v1/channels/status` は「未設定」を返します。
-- 音声メッセージ、画像、スタンプは受けません。テキストだけです。
+- LINE の写真は受けます（読み方は [送るだけで Genie が判断する](UNDERSTAND.ja.md)）。音声・動画・ファイルは受け取ったうえで「まだ読めません」と答えます。スタンプと位置は受けません。Slack の添付ファイルはまだ読みません。

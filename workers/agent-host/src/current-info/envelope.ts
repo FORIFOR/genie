@@ -37,11 +37,20 @@ export interface NewsItem {
   readonly source: string | null;
   /** ISO 8601 */
   readonly published_at: string | null;
+  /** 配信元が RSS に載せたリード文（NHK のみ。長ければ切る）。Genie が書いた要約ではない。 */
+  readonly summary?: string | null;
+  /** 分野（配信元の RSS の category。国際のフィードは「国際」）。推し量ったものは入れない。 */
+  readonly category?: string | null;
+  /** 記事の画像（利用条件の台帳で許されたときだけ写真で出す。いまは付けない）。 */
+  readonly media?: import('@genie/contracts').NewsMedia | null;
 }
 
 export interface NewsData {
   readonly topic: string | null;
   readonly items: readonly NewsItem[];
+  /** 公式のデータ（地震の話題なら気象庁の最近の地震）。カードの図はここの数字だけから作る。 */
+  readonly official?:
+    import('./quakes.js').OfficialQuakes | import('./typhoons.js').OfficialTyphoons;
 }
 
 export interface MarketsData {

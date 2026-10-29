@@ -96,6 +96,8 @@ export interface LanguageModel {
     question: string,
     context?: string,
     attachments?: readonly VisualAttachment[],
+    /** 直前の会話（古い順）。「で？」「それ」を話の流れで解くため。使わない実装は無視してよい。 */
+    history?: readonly { readonly role: 'user' | 'genie'; readonly text: string }[],
   ): Promise<string>;
 
   /** 文章を書く。下書きまでで、送りはしない。画像（端末内）について書くときは attachments。 */

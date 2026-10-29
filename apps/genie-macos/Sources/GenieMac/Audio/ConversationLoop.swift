@@ -80,6 +80,10 @@ struct ConversationLoop: Equatable {
     var firstSpeechLimit: TimeInterval?
     private(set) var listeningSince: Date?
     private(set) var heardAny = false
+    /// 欄に打ちかけの文がある（声ではなく文字で頼もうとしている）。
+    private(set) var drafting = false
+    /// 一度でも欄に文字を打った（呼びかけの誤検出として数えない）。
+    private(set) var typedAny = false
 
     var isActive: Bool { phase != .inactive }
 
@@ -103,6 +107,8 @@ struct ConversationLoop: Equatable {
         warned = false
         cued = false
         heardAny = false
+        drafting = false
+        typedAny = false
         listeningSince = now
         phase = .preparing
         return [.openMicrophone(generation: generation)]
@@ -134,7 +140,7 @@ struct ConversationLoop: Equatable {
         switch reply {
         case .settled(let text): spoken = text
         // 受け付けた（仕事が作られた）ときだけ。受け付けられなかったものは .failed で理由を言う。
-        case .working: spoken = "かしこまりました。進めています。結果は Work に届きます。"
+        case .working: spoken = "承知しました。進めています。結果は Work に届きます。"
         case .failed(let reason): spoken = reason
         case .held: spoken = "前の依頼に答えている途中です。いまの内容はまだ送っていません。"
         }
@@ -170,7 +176,8 @@ struct ConversationLoop: Equatable {
         // 聞いている間だけ数える（考え中・読み上げ中は数えない）。
         if phase == .listening || phase == .preparing {
             if listeningSince == nil { listeningSince = now }
-            let base = heardAny ? idleLimit : (firstSpeechLimit ?? idleLimit)
+            let spoken = heardAny ? idleLimit : (firstSpeechLimit ?? idleLimit)
+            let base = drafting ? spoken.map { max($0, Self.typingLimit) } : spoken
             let limit = waitingForWork ? base.map { max($0, Self.workWaitLimit) } : base
             if let limit, let since = listeningSince, now.timeIntervalSince(since) >= limit { return end(.idle) }
         } else {
@@ -181,6 +188,19 @@ struct ConversationLoop: Equatable {
             return [.warnEnding]
         }
         return []
+    }
+
+    /// 欄に文字を打っている間の、黙っている時間の上限（打つたびに数え直す）。
+    /// 声を出さずに文字で頼もうとすると、最初の言葉までの 10 秒で会話が閉じ、打ちかけの文ごと消えていた
+    /// （2026-10-24 本人の報告）。打つのをやめて置いたままなら、ここで閉じる（声を送り続けない）。
+    static let typingLimit: TimeInterval = 60
+
+    /// 欄の文字が変わった（本人が打った）。黙っている時間をそこから数え直す。
+    mutating func typed(hasDraft: Bool, now: Date) {
+        guard isActive else { return }
+        drafting = hasDraft
+        if hasDraft { typedAny = true }
+        if phase == .listening || phase == .preparing { listeningSince = now }
     }
 
     /// 頼んだ仕事の結果を会話へ渡した。黙っている時間をそこから数え直す（Gemini が伝え終えるまで閉じない）。

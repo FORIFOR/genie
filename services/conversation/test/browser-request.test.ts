@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { browserOpenRequest } from '../src/browser-request.js';
+import { browserOpenRequest, browserReadRequest } from '../src/browser-request.js';
 
 describe('asking to open an official site', () => {
   it.each([
@@ -63,5 +63,29 @@ describe('asking to open an official site', () => {
       subject: 'ユニクロ',
       browser: 'safari',
     });
+  });
+});
+
+describe('asking Genie to read a page in its own browser', () => {
+  it.each([
+    ['https://example.com/news/1 を読んで要約して', 'このページを読んで要約して'],
+    ['このページ何が書いてある？ https://example.com/a?b=1', 'このページ何が書いてある？'],
+    ['https://example.com/a の内容を教えて', 'このページの内容を教えて'],
+    ['https://example.com/a、まとめて。', 'このページ、まとめて。'],
+  ])('%s', (text, question) => {
+    const found = browserReadRequest(text);
+    expect(found?.question).toBe(question);
+    expect(found?.url).toMatch(/^https:\/\/example\.com\//);
+  });
+
+  it.each([
+    'https://example.com を開いて',
+    'https://example.com',
+    'https://a.example と https://b.example を読んで比べて',
+    'http://localhost:3000 を読んで',
+    'http://192.168.1.1/ の内容を教えて',
+    '資料を読んで要約して',
+  ])('leaves %s alone', (text) => {
+    expect(browserReadRequest(text)).toBeNull();
   });
 });

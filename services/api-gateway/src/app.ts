@@ -28,6 +28,13 @@ import type { JwtTokens } from './auth/tokens.js';
 import { registerTaskRoutes, type EvidenceReader } from './routes/tasks.js';
 import { registerTransactionAuthorizationRoutes } from './routes/transaction-authorizations.js';
 import { registerAgentHostRoutes } from './routes/agent-host.js';
+import { registerAgentSessionRoutes } from './routes/agent-sessions.js';
+import { registerWorkDeskRoutes } from './routes/work-desk.js';
+import { registerWorkHomeRoutes } from './routes/work-home.js';
+import {
+  registerHandoffHostRoutes,
+  registerHandoffViewerRoutes,
+} from './routes/browser-handoff.js';
 import { registerArtifactRoutes } from './routes/artifacts.js';
 import { registerPluginRoutes } from './routes/plugins.js';
 import { registerShareRoutes } from './routes/shares.js';
@@ -45,6 +52,9 @@ import type { TurnDeps } from '@genie/service-conversation';
 import { registerPhoneRoutes, type PhoneRouteDeps } from './routes/phone.js';
 import { registerOnboardingRoutes } from './routes/onboarding.js';
 import { registerVoiceRoutes, type VoiceRouteDeps } from './routes/voice.js';
+import { registerCallRoutes } from './routes/call.js';
+import { registerBoardRoutes } from './routes/board.js';
+import { registerMediaRoutes } from './routes/media.js';
 import type { ConversationService } from '@genie/service-conversation';
 import type { WorkContextService, WorldModelService } from '@genie/service-world-model';
 import { localArtifacts, registerWorkRoutes } from './routes/work.js';
@@ -100,8 +110,25 @@ export interface AppDeps {
    * （`onTurnDeps`）。
    */
   readonly schedules?: import('@genie/service-schedule').ScheduleService;
+  /** 仕事の見通し（Task Dock の件数と、「今の作業どうなってる？」の答え）。 */
+  readonly workDesk?: import('./work-desk.js').WorkDesk;
+  /** 仕事のホームのリンク（LINE から開くページ）。 */
+  readonly workLinks?: import('./work-home.js').WorkLinkStore;
+  /** ブラウザの引き継ぎ（つまずいた Genie 専用のブラウザを、本人が LINE から操作する）。 */
+  readonly handoffs?: Omit<
+    import('./routes/browser-handoff.js').HandoffRouteDeps,
+    'bridge' | 'tasks'
+  >;
   /** 個人の辞書。会話で登録し、Mac の音声入力が取りに来る（GET /v1/vocabulary）。 */
   readonly vocabulary?: import('@genie/service-vocabulary').VocabularyService;
+  /** グループの計画（Action Board）のページ。リンクで開く（読むだけ）。 */
+  readonly boards?: import('./board.js').BoardStore;
+  /** カードの画像（店の写真・地図）の中継。 */
+  readonly media?: import('./media.js').MediaResolver;
+  /** 送った写真・外国語の文のあと（「はい」「取り消して」「家計簿を見せて」「これに返信して」）。 */
+  readonly understand?: import('@genie/service-conversation').TurnSchedules;
+  /** 予定を読む・ずらす・元に戻す（calendar-turn.ts）。 */
+  readonly calendar?: import('@genie/service-conversation').TurnCalendar;
   /** 組み上がった TurnDeps を受け取る（予約の見回りが、同じ入口で頼むため）。 */
   readonly onTurnDeps?: (turnDeps: TurnDeps) => void;
   /** 利用者ごとの電話の接続（PUT / GET / DELETE /v1/phone/connection）。 */
@@ -178,6 +205,16 @@ export function buildApp(deps: AppDeps): App {
     ...(deps.ssePollIntervalMs === undefined ? {} : { ssePollIntervalMs: deps.ssePollIntervalMs }),
   });
   registerTransactionAuthorizationRoutes(app, { db: deps.db, tasks: deps.tasks });
+  // ほかの AI（Claude Code）に頼んだ仕事の見守り。hooks の受け口と Task Dock の一覧
+  registerAgentSessionRoutes(app, { db: deps.db });
+  if (deps.workDesk) registerWorkDeskRoutes(app, deps.workDesk);
+  if (deps.workDesk && deps.workLinks)
+    registerWorkHomeRoutes(app, { desk: deps.workDesk, links: deps.workLinks });
+  const handoffs =
+    deps.handoffs && deps.hostBridge
+      ? { ...deps.handoffs, bridge: deps.hostBridge, tasks: deps.tasks }
+      : null;
+  if (handoffs) registerHandoffHostRoutes(app, handoffs);
   if (deps.agentHosts) {
     registerAgentHostRoutes(app, {
       hosts: deps.agentHosts,
@@ -196,6 +233,8 @@ export function buildApp(deps: AppDeps): App {
   });
   if (deps.domain) registerDomainRoutes(app, deps.domain);
   if (deps.phoneConnections) registerPhoneRoutes(app, deps.phoneConnections);
+  // 通話のページ（WebSocket）。チャネルを組んだあと、websocket のスコープで登録する
+  let callRoutes: import('./routes/call.js').CallRouteDeps | null = null;
   if (deps.conversations) {
     /*
      * 発話から仕事へ（handleTurn）の依存。Task Dock（HTTP）とチャットで**同じものを使う。**
@@ -207,6 +246,8 @@ export function buildApp(deps: AppDeps): App {
       ...(deps.phone ? { phone: deps.phone } : {}),
       ...(deps.schedules ? { schedules: deps.schedules } : {}),
       ...(deps.vocabulary ? { vocabulary: deps.vocabulary } : {}),
+      ...(deps.understand ? { understand: deps.understand } : {}),
+      ...(deps.calendar ? { calendar: deps.calendar } : {}),
       ...(deps.work
         ? {
             work: deps.work,
@@ -233,9 +274,12 @@ export function buildApp(deps: AppDeps): App {
     const channels = deps.channels?.(turnDeps) ?? null;
     if (channels) registerChannelRoutes(app, channels);
     else registerUnconfiguredChannelStatus(app);
+    callRoutes = channels?.call ?? null;
     deps.onTurnDeps?.(turnDeps);
   }
   if (deps.schedules) registerScheduleRoutes(app, { schedules: deps.schedules });
+  if (deps.boards) registerBoardRoutes(app, { boards: deps.boards });
+  if (deps.media) registerMediaRoutes(app, { media: deps.media });
   if (deps.vocabulary) registerVocabularyRoutes(app, { vocabulary: deps.vocabulary });
   if (deps.work) {
     registerWorkRoutes(app, {
@@ -285,6 +329,8 @@ export function buildApp(deps: AppDeps): App {
       tokens: deps.tokens,
       logger: deps.logger,
     });
+    if (callRoutes) registerCallRoutes(instance as unknown as App, callRoutes);
+    if (handoffs) registerHandoffViewerRoutes(instance as unknown as App, handoffs);
     if (deps.meetings) {
       registerMeetingAudioRoute(instance as unknown as App, {
         ...deps.meetings,

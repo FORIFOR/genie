@@ -10,6 +10,8 @@
  *     二通目を作るより、一通欠ける方を選ぶ（openclaw の Slack 送信と同じ考え）
  */
 import type { ChannelProvider } from '@genie/contracts';
+import { approvalCard, cardFor } from './cards.js';
+import { answerFlex } from './rich.js';
 
 export interface OutgoingButton {
   readonly label: string;
@@ -21,6 +23,20 @@ export interface OutgoingButton {
 export interface OutgoingMessage {
   readonly text: string;
   readonly buttons?: readonly OutgoingButton[];
+  /** 開くだけのリンクのボタン（通話を開始など）。LINE はボタン、Slack は文のリンクにする。 */
+  readonly link?: { readonly label: string; readonly url: string };
+  /** 答えの元の Markdown。LINE は見出し・太字・箇条書き・リンクがあれば Flex Message で描く。 */
+  readonly markdown?: string;
+  /** 答えの元の成果物（予定の一覧・天気・ニュースの JSON）。LINE はカードで描く（cards.ts）。 */
+  readonly card?: string;
+  /** 次の一手の選択肢（LINE の Quick Reply）。無ければ文の終わりの「はい / いいえ」から読む。 */
+  readonly quickReplies?: readonly string[];
+  /** 承認の中身。LINE は、変わるところとボタンを並べた確認カードで描く。 */
+  readonly approval?: {
+    readonly summary: string;
+    readonly details: readonly { readonly label: string; readonly value: string }[];
+    readonly note: string;
+  };
 }
 
 export interface SendTarget {
@@ -44,7 +60,19 @@ export interface ChannelSender {
   ): Promise<{ providerMessageId: string | null }>;
   /** 考えている間の表示（LINE の読み込み中）。出せなくても仕事は続ける。 */
   typing?(target: SendTarget): Promise<void>;
+  /** 送られた写真などの本体（LINE の message content）。大きすぎるものは取らない。 */
+  content?(id: string): Promise<ReceivedContent>;
+  /** グループの中の人の表示名（LINE の group / room member profile）。取れなければ null。 */
+  memberName?(groupId: string, userId: string): Promise<string | null>;
 }
+
+export interface ReceivedContent {
+  readonly mediaType: string;
+  readonly data: Uint8Array;
+}
+
+/** 取りに行く本体の上限。写真を読むには十分で、動画まるごとは取らない。 */
+export const MAX_CONTENT_BYTES = 10 * 1024 * 1024;
 
 export class ChannelSendError extends Error {
   constructor(
@@ -136,6 +164,20 @@ export class SlackSender implements ChannelSender {
     const blocks: unknown[] = [
       { type: 'section', text: { type: 'plain_text', text, emoji: false } },
     ];
+    if (message.link) {
+      // 開くだけのボタン（値は持たない。押しても Genie には何も届かない）
+      blocks.push({
+        type: 'actions',
+        elements: [
+          {
+            type: 'button',
+            action_id: 'genie_link',
+            text: { type: 'plain_text', text: message.link.label.slice(0, 75) },
+            url: message.link.url,
+          },
+        ],
+      });
+    }
     if (message.buttons?.length) {
       blocks.push({
         type: 'actions',
@@ -227,7 +269,7 @@ export class LineSender implements ChannelSender {
         // 届いたか分からない。reply は再送を 1 通にできないので、送り直さない
         throw new ChannelSendError('line_reply_uncertain', false);
       }
-      if (replied.ok) return { providerMessageId: null };
+      if (replied.ok) return { providerMessageId: await sentIdOf(replied) };
       // 断られた（届いていない）ものだけ送り直す。期限切れ・使用済みの token（400）は push で、
       // 429 は後で。5xx は受け付けられたかもしれないので、push で二通目を作らない
       // （openclaw extensions/line の canFallbackAfterLineReplyFailure と同じ考え）
@@ -246,7 +288,8 @@ export class LineSender implements ChannelSender {
       // 同じ送信の再試行は、LINE の側でも 1 通になる（409 は「もう送った」）
       { 'X-Line-Retry-Key': options.retryKey },
     );
-    if (pushed.ok || pushed.status === 409) return { providerMessageId: null };
+    if (pushed.ok) return { providerMessageId: await sentIdOf(pushed) };
+    if (pushed.status === 409) return { providerMessageId: null };
     // push は X-Line-Retry-Key があるので、5xx でも送り直して二通にならない
     throw new ChannelSendError(
       `line_http_${String(pushed.status)}`,
@@ -255,8 +298,63 @@ export class LineSender implements ChannelSender {
     );
   }
 
-  /** 1:1 のトークに「読み込み中」を出す（最長 60 秒、次の返信で消える）。 */
+  /** 送られた写真などの本体。LINE は一定の期間だけ持っているので、受け取ったらすぐ取りに行く。 */
+  async content(id: string): Promise<ReceivedContent> {
+    if (!/^[0-9A-Za-z]+$/.test(id)) throw new ChannelSendError('line_content_bad_id', false);
+    let response: Response;
+    try {
+      response = await this.fetchImpl(`https://api-data.line.me/v2/bot/message/${id}/content`, {
+        headers: { authorization: `Bearer ${this.accessToken}` },
+        signal: AbortSignal.timeout(20_000),
+      });
+    } catch {
+      throw new ChannelSendError('line_unreachable', true);
+    }
+    if (!response.ok) {
+      throw new ChannelSendError(
+        `line_http_${String(response.status)}`,
+        retryableStatus(response.status),
+      );
+    }
+    const length = Number(response.headers.get('content-length'));
+    if (Number.isFinite(length) && length > MAX_CONTENT_BYTES) {
+      await response.body?.cancel();
+      throw new ChannelSendError('line_content_too_large', false);
+    }
+    const data = new Uint8Array(await response.arrayBuffer());
+    if (data.byteLength > MAX_CONTENT_BYTES)
+      throw new ChannelSendError('line_content_too_large', false);
+    return {
+      mediaType: (response.headers.get('content-type') ?? 'application/octet-stream')
+        .split(';')[0]!
+        .trim(),
+      data,
+    };
+  }
+
+  async memberName(groupId: string, userId: string): Promise<string | null> {
+    if (!/^[A-Za-z0-9]+$/.test(groupId) || !/^[A-Za-z0-9]+$/.test(userId)) return null;
+    // グループの ID は C、複数人トークは R で始まる
+    const kind = groupId.startsWith('R') ? 'room' : 'group';
+    try {
+      const response = await this.fetchImpl(
+        `https://api.line.me/v2/bot/${kind}/${groupId}/member/${userId}`,
+        {
+          headers: { authorization: `Bearer ${this.accessToken}` },
+          signal: AbortSignal.timeout(10_000),
+        },
+      );
+      if (!response.ok) return null;
+      const body = (await response.json()) as { displayName?: unknown };
+      return typeof body.displayName === 'string' ? body.displayName.slice(0, 50) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** 1:1 のトークに「読み込み中」を出す（最長 60 秒、次の返信で消える）。グループには出せない。 */
   async typing(target: SendTarget): Promise<void> {
+    if (!target.destination.startsWith('U')) return;
     const response = await this.#post('chat/loading/start', {
       chatId: target.destination,
       loadingSeconds: LINE_LOADING_SECONDS,
@@ -273,9 +371,75 @@ export class LineSender implements ChannelSender {
 /** 読み込み中を出す秒数（5 秒刻み、5〜60）。返信が先に届けばそこで消える。 */
 export const LINE_LOADING_SECONDS = 20;
 
-/** 本文と、ボタンがあればボタンのテンプレート（本文 160 字・ラベル 20 字・最大 4 つ）。 */
+/**
+ * 確かめの選択肢（文の終わりの「はい / いいえ」「はい / 修正する / いいえ」）。LINE ではタップで送れるボタン（Quick Reply）にする。
+ * 入力欄に打たなくても答えられる（仕様 v1.0 §6.2）。無ければ null。
+ */
+export function choicesOf(text: string): string[] | null {
+  const m = /(?:^|[\s（(])(はい(?:\s*[\/／]\s*[^\s\/／）)]{1,10}){1,3})[）)]?[。\s]*$/.exec(
+    text.trim(),
+  );
+  if (!m) return null;
+  const choices = m[1]!
+    .split(/[\/／]/)
+    .map((c) => c.trim())
+    .filter(Boolean);
+  return choices.length >= 2 ? choices.slice(0, 4) : null;
+}
+
+const withQuickReply = (message: unknown, choices: readonly string[] | null): unknown =>
+  choices
+    ? {
+        ...(message as object),
+        quickReply: {
+          items: choices.map((label) => ({
+            type: 'action',
+            action: { type: 'message', label: label.slice(0, 20), text: label },
+          })),
+        },
+      }
+    : message;
+
+/** 本文（構造のある答えは Flex Message）と、ボタンがあればボタンのテンプレート（本文 160 字・ラベル 20 字・最大 4 つ）。 */
 export function lineMessages(message: OutgoingMessage): unknown[] {
-  const messages: unknown[] = [{ type: 'text', text: message.text.slice(0, 4900) }];
+  const messages = lineMessagesWithoutChoices(message);
+  // 押すボタン（承認）があるときは、そちらで答える。選択肢のボタンは足さない
+  if (message.buttons?.length || message.link) return messages;
+  const last = messages.length - 1;
+  const choices = message.quickReplies?.length
+    ? message.quickReplies.slice(0, 13)
+    : choicesOf(message.text);
+  return messages.map((m, i) => (i === last ? withQuickReply(m, choices) : m));
+}
+
+function lineMessagesWithoutChoices(message: OutgoingMessage): unknown[] {
+  if (message.link) {
+    // 本文（160 字まで）と、開くボタン 1 つ。URL を文に出さない
+    return [
+      {
+        type: 'template',
+        altText: message.text.slice(0, 400),
+        template: {
+          type: 'buttons',
+          text: message.text.slice(0, 160),
+          actions: [{ type: 'uri', label: message.link.label.slice(0, 20), uri: message.link.url }],
+        },
+      },
+    ];
+  }
+  // 承認は確認カード（変わるところとボタン）。作れなければ、これまでの文とボタンのテンプレート
+  if (message.approval && message.buttons?.length) {
+    const card = approvalCard(message.approval, message.buttons, message.approval.note);
+    if (card) return [card];
+  }
+  // 予定・天気・ニュースはカード。構造のある答えは暗い吹き出し（Flex Message）。作れなければ文のまま
+  const card = message.card ? cardFor(message.card) : null;
+  // 店の候補・予約は、問いかけ（「何時ごろ行く？」）の文を先に、カードをあとに。予定・天気はカードだけ（同じ文）
+  if (card && /"schema":"genie\.(?:places|booking)\/v1"/.test(message.card ?? ''))
+    return [{ type: 'text', text: message.text.slice(0, 4900) }, card];
+  if (card) return [card];
+  const rich = message.markdown ? answerFlex(message.markdown, message.text) : null;
+  const messages: unknown[] = [rich ?? { type: 'text', text: message.text.slice(0, 4900) }];
   if (message.buttons?.length) {
     messages.push({
       type: 'template',
@@ -293,4 +457,18 @@ export function lineMessages(message: OutgoingMessage): unknown[] {
     });
   }
   return messages;
+}
+
+/**
+ * LINE が付けた送信の ID（応答の sentMessages の最初、ふつうは本文）。グループで Genie の返事への
+ * 引用返信（quotedMessageId）を見分けるのに使う。取れなければ null。
+ */
+async function sentIdOf(res: Response): Promise<string | null> {
+  try {
+    const body = (await res.json()) as { sentMessages?: { id?: unknown }[] };
+    const id = body.sentMessages?.[0]?.id;
+    return typeof id === 'string' ? id : null;
+  } catch {
+    return null;
+  }
 }

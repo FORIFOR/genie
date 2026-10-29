@@ -151,7 +151,13 @@ describe('parseScheduleRequest', () => {
 
 describe('nextRunAfter', () => {
   it('walks weekly schedules in the given time zone', () => {
-    const weekdays: Schedule = { kind: 'weekly', days: [1, 2, 3, 4, 5], hour: 9, minute: 0, tz: TZ };
+    const weekdays: Schedule = {
+      kind: 'weekly',
+      days: [1, 2, 3, 4, 5],
+      hour: 9,
+      minute: 0,
+      tz: TZ,
+    };
     // 金曜 9:00 の次は月曜 9:00
     expect(nextRunAfter(weekdays, jst('2026-10-23T09:00'))).toBe(jst('2026-10-26T09:00'));
     expect(upcomingRuns(weekdays, NOW, 3)).toEqual([
@@ -162,7 +168,13 @@ describe('nextRunAfter', () => {
   });
 
   it('keeps wall-clock time across daylight saving changes', () => {
-    const ny: Schedule = { kind: 'weekly', days: [0, 1, 2, 3, 4, 5, 6], hour: 9, minute: 0, tz: 'America/New_York' };
+    const ny: Schedule = {
+      kind: 'weekly',
+      days: [0, 1, 2, 3, 4, 5, 6],
+      hour: 9,
+      minute: 0,
+      tz: 'America/New_York',
+    };
     // 2026-11-01 に夏時間が終わる。前後とも 9:00（UTC では 13:00 → 14:00）
     expect(nextRunAfter(ny, Date.parse('2026-10-31T14:00:00Z'))).toBe(
       Date.parse('2026-11-01T14:00:00Z'),
@@ -186,7 +198,11 @@ describe('nextRunAfter', () => {
   });
 
   it('counts intervals from the anchor and ends one-shot schedules', () => {
-    const every: Schedule = { kind: 'every', everyMs: 15 * 60_000, anchorMs: jst('2026-10-21T10:30') };
+    const every: Schedule = {
+      kind: 'every',
+      everyMs: 15 * 60_000,
+      anchorMs: jst('2026-10-21T10:30'),
+    };
     expect(nextRunAfter(every, jst('2026-10-21T10:30'))).toBe(jst('2026-10-21T10:45'));
     expect(nextRunAfter(every, jst('2026-10-21T13:01'))).toBe(jst('2026-10-21T13:15'));
     const once: Schedule = { kind: 'at', at: new Date(jst('2026-10-21T11:00')).toISOString() };
@@ -195,13 +211,15 @@ describe('nextRunAfter', () => {
   });
 
   it('says the schedule back in plain words', () => {
-    expect(describeSchedule({ kind: 'weekly', days: [1, 2, 3, 4, 5], hour: 9, minute: 0, tz: TZ }, TZ)).toBe(
-      '平日の 9:00',
+    expect(
+      describeSchedule({ kind: 'weekly', days: [1, 2, 3, 4, 5], hour: 9, minute: 0, tz: TZ }, TZ),
+    ).toBe('平日の 9:00');
+    expect(
+      describeSchedule({ kind: 'weekly', days: [1, 4], hour: 10, minute: 5, tz: TZ }, TZ),
+    ).toBe('毎週月・木曜 10:05');
+    expect(describeSchedule({ kind: 'every', everyMs: 7_200_000, anchorMs: 0 }, TZ)).toBe(
+      '2 時間ごと',
     );
-    expect(describeSchedule({ kind: 'weekly', days: [1, 4], hour: 10, minute: 5, tz: TZ }, TZ)).toBe(
-      '毎週月・木曜 10:05',
-    );
-    expect(describeSchedule({ kind: 'every', everyMs: 7_200_000, anchorMs: 0 }, TZ)).toBe('2 時間ごと');
     expect(formatWhen(jst('2026-10-22T09:00'), TZ)).toBe('10/22（木）9:00');
   });
 });
@@ -211,10 +229,44 @@ describe('scheduleName', () => {
     const { scheduleName } = await import('../src/service.js');
     const tz = 'Asia/Tokyo';
     expect(
-      scheduleName({ kind: 'at', at: '2026-10-21T02:51:00.000Z' }, { kind: 'reminder', text: '動作確認' }, tz),
+      scheduleName(
+        { kind: 'at', at: '2026-10-21T02:51:00.000Z' },
+        { kind: 'reminder', text: '動作確認' },
+        tz,
+      ),
     ).toBe('10/21（水）11:51 に「動作確認」をお知らせ');
     expect(
-      scheduleName({ kind: 'every', everyMs: 15 * 60_000, anchorMs: 0 }, { kind: 'task', text: 'メールを確認して' }, tz),
+      scheduleName(
+        { kind: 'every', everyMs: 15 * 60_000, anchorMs: 0 },
+        { kind: 'task', text: 'メールを確認して' },
+        tz,
+      ),
     ).toBe('15 分ごとに「メールを確認して」を頼む');
+  });
+});
+
+describe('call reminders', () => {
+  it('marks 「電話で起こして」「電話で教えて」 as a reminder by call', () => {
+    const at = Date.parse('2026-10-23T03:00:00Z');
+    const payload = (text: string) => ok(text, at).payload;
+    expect(payload('明日7時に電話で起こして')).toEqual({
+      kind: 'reminder',
+      text: '時間です',
+      call: true,
+    });
+    expect(payload('30分後に会議だって電話で教えて')).toEqual({
+      kind: 'reminder',
+      text: '会議',
+      call: true,
+    });
+    expect(payload('30分後に会議だって教えて')).toEqual({ kind: 'reminder', text: '会議' });
+  });
+
+  // 評価 2026-10-27: 予定を入れる頼みを、知らせの予約にしていた
+  it('leaves calendar entries to the calendar, but still takes reminders that say 教えて', () => {
+    const ctx = { now: Date.parse('2026-10-27T00:30:00Z'), tz: 'Asia/Tokyo' };
+    expect(parseScheduleRequest('来週火曜10時に歯医者入れといて', ctx)).toBeNull();
+    expect(parseScheduleRequest('明日の15時に会議を予定に追加して', ctx)).toBeNull();
+    expect(parseScheduleRequest('明日の10時に歯医者って教えて', ctx)).not.toBeNull();
   });
 });

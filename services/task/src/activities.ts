@@ -5,6 +5,7 @@ import { boundedTaskTitle } from './task-title.js';
  * すべて冪等。Temporal は activity を再実行し得るので、
  * 「2 回走っても結果が変わらない」ことを DB の制約で担保する。
  */
+import { formatCalendarArtifact } from './calendar-plan.js';
 import { ApplicationFailure } from '@temporalio/common';
 import {
   canonicalSha256,
@@ -33,6 +34,7 @@ import { formatCheckoutArtifact } from './checkout-artifact.js';
 import { formatOfficeArtifact } from './office-artifact.js';
 import { formatWorkPreviewArtifact } from './work-preview-artifact.js';
 import { formatBrowserArtifact } from './browser-artifact.js';
+import { formatBrowserReadArtifact } from './browser-read-artifact.js';
 import { formatTransactionArtifact } from './transaction-artifact.js';
 import { TransactionAuthorizationService } from './transaction-authorizations.js';
 import {
@@ -974,7 +976,9 @@ export function createTaskActivities(deps: ActivityDeps): TaskActivities {
         formatCheckoutArtifact(input.kind, input.input, results) ??
         formatOfficeArtifact(input.kind, results) ??
         formatBrowserArtifact(input.kind, results) ??
+        formatBrowserReadArtifact(input.kind, results) ??
         formatWorkPreviewArtifact(input.kind, results) ??
+        formatCalendarArtifact(input.kind, input.input, results) ??
         transaction ??
         results
           .map((value) => (value as { artifact?: { title: string; markdown: string } })?.artifact)

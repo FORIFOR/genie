@@ -4,6 +4,8 @@
  * 拾うのは**開く言葉があるときだけ**。「〇〇の公式サイトはどこ？」は答えを求めているので
  * 普通の会話に任せる。URL を書いた依頼も拾わない（書かれた URL を確かめずに開かない）。
  */
+import { isPublicWebUrl } from '@genie/contracts';
+
 export interface BrowserOpenRequest {
   readonly subject: string;
   /** 「Safari で」「Chrome で」と言われたら、そのブラウザ。 */
@@ -47,4 +49,36 @@ export function browserOpenRequest(text: string): BrowserOpenRequest | null {
   if (!subject || subject.length > 60 || /^(?:これ|それ|あれ|この|その)$/u.test(subject))
     return null;
   return named ? { subject, browser: named } : { subject };
+}
+
+/**
+ * 「<URL> を読んで要約して」「このページ何が書いてある？ <URL>」を見つける（Genie 専用のブラウザで読む）。
+ *
+ * 拾うのは、**公開の URL が 1 つだけ**あり、読む・まとめる・中身を聞く言葉があるときだけ。
+ * 「<URL> を開いて」（本人のブラウザで開く）や、URL だけの発言は拾わない。
+ */
+export interface BrowserReadRequest {
+  readonly url: string;
+  /** 端末のモデルへの問い（URL は「このページ」に置き換える）。 */
+  readonly question: string;
+}
+
+const URL_IN_TEXT = /https?:\/\/[^\s<>"'「」『』（）()、。]+/giu;
+const READ =
+  /(?:読んで|よんで|要約|まとめて|まとめると|何が書いて|なにが書いて|何て書いて|内容|要点|教えて|について)/u;
+
+export function browserReadRequest(text: string): BrowserReadRequest | null {
+  const urls = text.match(URL_IN_TEXT) ?? [];
+  if (urls.length !== 1) return null;
+  const url = urls[0]!.replace(/[.,!?！？]+$/u, '');
+  if (!isPublicWebUrl(url)) return null;
+  // URL は「このページ」に置き換える（「このページ何が書いてある？ <URL>」なら URL を外すだけ）
+  const named = /(?:この|その|あの)(?:ページ|サイト|記事)/u.test(text);
+  const rest = text
+    .replace(urls[0]!, named ? ' ' : ' このページ ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!READ.test(rest)) return null;
+  const question = rest.replace(/このページ\s+/gu, 'このページ').slice(0, 500);
+  return { url, question };
 }

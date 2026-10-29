@@ -80,6 +80,11 @@ export function parseOptions(args) {
      * どちらを使ったかは起動時の記録（`unattendedTest`）に残る。
      */
     '--computer-helper': 'computerHelper',
+    /*
+     * チャット（LINE / Slack）と、送った写真を読む鍵の置き場所（0600 のファイル）。
+     * **明示したときだけ読み、CHANNEL_ENV_KEYS の名前だけを gateway に渡す。**
+     */
+    '--channels-env': 'channelsEnv',
   };
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
@@ -97,6 +102,7 @@ export function parseOptions(args) {
   }
   result.stateDir = resolve(result.stateDir);
   if (result.computerHelper !== undefined) result.computerHelper = resolve(result.computerHelper);
+  if (result.channelsEnv !== undefined) result.channelsEnv = resolve(result.channelsEnv);
   if (result.port !== undefined) result.port = portNumber(result.port);
   if (result.model !== undefined) validateModel(result.model);
   if (result.computerVisionModel !== undefined) {
@@ -117,6 +123,48 @@ export function parseOptions(args) {
   if (result.allowExternalScreen === true && !result.computerUse)
     throw new Error('--allow-external-screen には --computer-use が必要です。');
   return result;
+}
+
+/**
+ * `--channels-env` のファイルに書いてよい名前（鍵ではない設定だけ）。
+ * **鍵（トークン・API キー）はファイルに置かない。**キーチェーン 1 か所に置き、起動時に Genie.app から読む
+ * （local-preview/secrets.mjs、docs/SECRETS.ja.md）。
+ */
+export const CHANNEL_ENV_KEYS = Object.freeze([
+  'GENIE_UNDERSTAND_MODEL',
+  'GENIE_TIMEZONE',
+  // LINE から声で話す（docs/LINE_CALL.ja.md）。キーはキーチェーン（Mac の「会話」と同じ Gemini のキー）
+  'GENIE_CALL_MONTHLY_MINUTES',
+  'GENIE_CALL_MODEL',
+  'GENIE_PUBLIC_URL',
+  // 計画のボードを LINE の中で開く LIFF アプリの ID（公開の値。docs/LINE_GROUPS.ja.md）
+  'GENIE_LINE_LIFF_ID',
+  // LINE の中継（公式アカウント 1 つ）の場所。鍵（GENIE_LINE_HUB_CREDENTIAL）はキーチェーン
+  'GENIE_LINE_HUB_URL',
+]);
+
+/**
+ * `KEY=VALUE` の行を読み、CHANNEL_ENV_KEYS の名前だけを返す。
+ * 値の入った鍵の行があれば `secrets` に名前を返す（呼ぶ側が断る）。ほかの名前は `ignored`（値は返さない）。
+ */
+export function channelEnvironment(text, secretNames = []) {
+  const env = {};
+  const ignored = [];
+  const secrets = [];
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line || line.startsWith('#')) continue;
+    const match = /^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/.exec(line);
+    if (!match) throw new Error('--channels-env のファイルは KEY=VALUE の行だけにしてください。');
+    const [, key, value] = match;
+    const unquoted = value.replace(/^(['"])(.*)\1$/, '$2');
+    if (CHANNEL_ENV_KEYS.includes(key)) {
+      if (unquoted) env[key] = unquoted;
+    } else if (secretNames.includes(key)) {
+      if (unquoted) secrets.push(key);
+    } else ignored.push(key);
+  }
+  return { env, ignored, secrets };
 }
 
 export function validateDockerContextName(name) {

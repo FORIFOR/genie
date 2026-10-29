@@ -43,6 +43,8 @@ import { OfficeEditRuntime } from './office/runtime.js';
 import { WorkPreviewRuntime } from './workpreview/runtime.js';
 import { BriefRuntime } from './brief/runtime.js';
 import { BrowserOpenRuntime } from './browser-open.js';
+import { BrowserReadRuntime } from './browser-read.js';
+import { httpHandoffApi } from './browser-handoff.js';
 import { TransactionRuntime } from './transaction-runtime.js';
 import { SimulationOrders } from './simulation-orders.js';
 import { nativeSimulationConfirmation } from './simulation-native-checkout.js';
@@ -167,6 +169,7 @@ async function main(): Promise<void> {
           : undefined;
   const llm = new LlmRuntime({
     ...(allowedKinds ? { allowedKinds } : {}),
+    log: (event, detail) => logger.warn(detail, event),
     ...(!preferredCli || preferredCli === 'codex'
       ? {
           codex: new CodexCli({
@@ -418,6 +421,25 @@ async function main(): Promise<void> {
             logger.info(
               { tool: toolId, ms: Date.now() - started, ok: outcome.ok },
               'official site lookup step',
+            );
+            if (!outcome.ok) throw new Error(outcome.error?.message ?? 'model failed');
+            return outcome.result;
+          },
+        }),
+        // 「<URL> を読んで要約して」: Genie 専用のブラウザ（画面に出さない）で読み、端末のモデルで答える。
+        new BrowserReadRuntime({
+          // ログインの壁に当たったら、本人に LINE で画面を見せて操作してもらう（済んだら続きを読む）
+          handoff: { api: httpHandoffApi({ baseUrl, hostId: id, fetch: apiSession.fetch }) },
+          ask: async (toolId, args, signal) => {
+            const started = Date.now();
+            const outcome = await llm.run(
+              { id: `browser-read-${randomUUID()}`, toolId, args, approval: null },
+              signal,
+            );
+            // 何を・何秒で・結果の種類だけ（ページの中身・アドレスは残さない）
+            logger.info(
+              { tool: toolId, ms: Date.now() - started, ok: outcome.ok },
+              'page read step',
             );
             if (!outcome.ok) throw new Error(outcome.error?.message ?? 'model failed');
             return outcome.result;

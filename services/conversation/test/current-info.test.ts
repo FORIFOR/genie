@@ -73,4 +73,12 @@ describe('classifyCurrentInfo', () => {
     expect(classifyCurrentInfo('Googleで天気を検索して')).toEqual({ kind: 'weather', when: 'today', place: null });
     expect(classifyCurrentInfo('ネットで明日の天気を調べて')).toEqual({ kind: 'weather', when: 'tomorrow', place: null });
   });
+
+  // 評価 2026-10-27: 「来年の今日の天気」を取りに行っていた（予報は無い）
+  it('does not fetch weather for dates that have no forecast', () => {
+    expect(classifyCurrentInfo('来年の今日の天気教えて')).toBeNull();
+    expect(classifyCurrentInfo('3か月後の天気は？')).toBeNull();
+    expect(classifyCurrentInfo('明日の天気は？')).toMatchObject({ kind: 'weather' });
+  });
 });
+

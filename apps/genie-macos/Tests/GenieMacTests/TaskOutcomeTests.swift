@@ -103,6 +103,28 @@ import GenieCore
         }
     }
 
+    /// 予定の一覧（calendar.agenda）は JSON の成果物。読む文だけを出す（仕様 v1.0 §11）。
+    func testAnAgendaShowsItsTextNotJSON() throws {
+        let body = #"{"schema":"genie.agenda/v1","text":"明日の予定は 1 件です。\n・10:00〜11:00 定例ミーティング","label":"明日","events":[]}"#
+        let reply = VoiceHUDState.taskReply(status: "COMPLETED", artifactID: "a1") { body }
+        XCTAssertEqual(reply.phase, .complete)
+        XCTAssertEqual(reply.text, "明日の予定は 1 件です。\n・10:00〜11:00 定例ミーティング")
+        XCTAssertNil(VoiceHUDState.agendaText(#"{"schema":"other","text":"x"}"#))
+    }
+
+    /// 2026-10-24: 画面操作が無効で失敗したのに「処理を完了できませんでした」しか出なかった。理由を見せる。
+    func testAFailureShowsItsReason() throws {
+        let json = #"{"kind":"computer.run","status":"FAILED","error":{"code":"task.step_failed","message":"画面操作を停止しました。権限・対象画面・モデル設定を確認してください。"}}"#
+        let context = try XCTUnwrap(TaskOutcomeContext.decode(json))
+        let reply = VoiceHUDState.taskReply(status: "FAILED", artifactID: "", context: context) { "unused" }
+        XCTAssertEqual(reply.phase, .failed)
+        XCTAssertEqual(reply.text, "できませんでした。画面操作を停止しました。権限・対象画面・モデル設定を確認してください。")
+        // 理由が無ければ、これまでどおり
+        let bare = VoiceHUDState.taskReply(status: "FAILED", artifactID: "",
+                                           context: TaskOutcomeContext(kind: "llm.answer", transactionResultUnknown: false)) { "unused" }
+        XCTAssertEqual(bare.text, "処理を完了できませんでした。依頼を見直すか、接続を確認してください。")
+    }
+
     func testUnknownTransactionStopPersistsAndLateRunningReadCannotEraseIt() throws {
         let store = LocalStore(path: ":memory:")
         defer { store.close() }

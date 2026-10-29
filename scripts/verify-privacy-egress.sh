@@ -161,7 +161,7 @@ info_check=$(python3 - "$ROOT" <<'CHECK'
 import pathlib, re, sys
 root = pathlib.Path(sys.argv[1])
 d = root / 'workers/agent-host/src/current-info'
-expected = ['api.open-meteo.com', 'geocoding-api.open-meteo.com', 'news.web.nhk', 'news.google.com', 'query1.finance.yahoo.com']
+expected = ['api.open-meteo.com', 'geocoding-api.open-meteo.com', 'news.web.nhk', 'news.google.com', 'query1.finance.yahoo.com', 'www.jma.go.jp']
 hosts_ts = (d / 'hosts.ts').read_text()
 listed = re.findall(r"^\s*'([a-z0-9.-]+)',", hosts_ts.split('CURRENT_INFO_HOSTS')[1].split('] as const')[0], re.M)
 problems = []
@@ -330,6 +330,79 @@ if [ "$?" -eq 0 ]; then
   row "nearby places require key, limit, request" "PASS"
 else
   bad "nearby places require key, limit, request" "FAIL" "$places_check"
+fi
+
+# 10. 送った写真・外国語の文は、gateway に ANTHROPIC_API_KEY があるときだけ Claude へ出る。
+#    - Anthropic の SDK を使ってよいのは services/understand/src/model.ts だけ
+#    - AnthropicUnderstander を作るのは services/api-gateway/src/understand.ts だけで、キーを確かめた後
+#    - 日本語の文は送らない（looksForeign で外国語らしい文と写真だけを読む）
+understand_check=$(python3 - "$ROOT" <<'CHECK'
+import pathlib, re, sys
+root = pathlib.Path(sys.argv[1])
+problems = []
+skip = ('node_modules', 'dist', '.build', 'build.noindex')
+for base in ('services', 'workers', 'packages', 'apps'):
+    for f in (root / base).rglob('*.ts'):
+        if any(part in skip for part in f.parts) or '/test/' in str(f):
+            continue
+        rel = str(f.relative_to(root)); text = f.read_text(errors='ignore')
+        if '@anthropic-ai/sdk' in text and rel != 'services/understand/src/model.ts':
+            problems.append(f'{rel}: Anthropic SDK outside services/understand/src/model.ts')
+        if re.search(r'new AnthropicUnderstander\(', text) and rel not in ('services/api-gateway/src/understand.ts',):
+            problems.append(f'{rel}: AnthropicUnderstander created outside the gateway factory')
+factory = (root / 'services/api-gateway/src/understand.ts').read_text()
+if not re.search(r"apiKey\s*\?\s*new AnthropicUnderstander", factory):
+    problems.append('services/api-gateway/src/understand.ts: create AnthropicUnderstander only when ANTHROPIC_API_KEY is set')
+service = (root / 'services/understand/src/service.ts').read_text()
+if 'if (!hasImages && !looksForeign(input.text)) return null;' not in service:
+    problems.append('services/understand/src/service.ts: Japanese text must not reach the model (looksForeign guard)')
+doc = (root / 'docs/privacy-egress.md').read_text()
+for word in ('api.anthropic.com', 'services/understand'):
+    if word not in doc:
+        problems.append(f'docs/privacy-egress.md: {word} missing')
+print('; '.join(problems))
+sys.exit(1 if problems else 0)
+CHECK
+)
+if [ "$?" -eq 0 ]; then
+  row "photos/foreign text need key and a send" "PASS"
+else
+  bad "photos/foreign text need key and a send" "FAIL" "$understand_check"
+fi
+
+# 11. LINE から声で話す（通話のページ）は、キーと月の上限があり、本人がリンクを開いて話すときだけ Gemini Live へ出る。
+#    - Gemini Live の接続先を TypeScript で書いてよいのは services/api-gateway/src/call.ts だけ
+#    - キーはヘッダー（x-goog-api-key）。月の上限が 0 なら始めない。差し替え先はループバックだけ
+call_check=$(python3 - "$ROOT" <<'CHECK'
+import pathlib, re, sys
+root = pathlib.Path(sys.argv[1])
+problems = []
+skip = ('node_modules', 'dist', '.build', 'build.noindex')
+for base in ('services', 'workers', 'packages', 'apps'):
+    for f in (root / base).rglob('*.ts'):
+        if any(part in skip for part in f.parts) or '/test/' in str(f):
+            continue
+        rel = str(f.relative_to(root)); text = f.read_text(errors='ignore')
+        if 'generativelanguage.googleapis.com' in text and rel != 'services/api-gateway/src/call.ts':
+            problems.append(f'{rel}: Gemini endpoint outside services/api-gateway/src/call.ts')
+call = (root / 'services/api-gateway/src/call.ts').read_text()
+if "'x-goog-api-key'" not in call or re.search(r'[?&]key=', call):
+    problems.append('call.ts: the key must go in the x-goog-api-key header, not the URL')
+if 'config.monthlyMinutes <= 0' not in call or 'if (!config.apiKey)' not in call:
+    problems.append('call.ts: refuse calls without a key or a monthly limit')
+if '127\\.0\\.0\\.1' not in call:
+    problems.append('call.ts: the endpoint override must be loopback-only')
+doc = (root / 'docs/privacy-egress.md').read_text()
+if 'services/api-gateway/src/call.ts' not in doc:
+    problems.append('docs/privacy-egress.md: the LINE call row is missing')
+print('; '.join(problems))
+sys.exit(1 if problems else 0)
+CHECK
+)
+if [ "$?" -eq 0 ]; then
+  row "LINE call needs key, limit, a call" "PASS"
+else
+  bad "LINE call needs key, limit, a call" "FAIL" "$call_check"
 fi
 
 # Runtime: use the selected signed app's Speech identity. Missing permission or

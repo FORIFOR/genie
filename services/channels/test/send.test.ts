@@ -61,8 +61,7 @@ describe('SlackSender', () => {
         new ChannelSendError('slack_unreachable', true),
       ],
       [
-        () =>
-          Promise.resolve(new Response('{}', { status: 429, headers: { 'retry-after': '7' } })),
+        () => Promise.resolve(new Response('{}', { status: 429, headers: { 'retry-after': '7' } })),
         new ChannelSendError('slack_http_429', true, 7000),
       ],
       [
@@ -147,6 +146,29 @@ describe('LineSender', () => {
     expect(JSON.parse(String(init!.body))).toEqual({ chatId: 'Uline', loadingSeconds: 20 });
   });
 
+  it('fetches a sent photo from the content endpoint, and refuses one that is too large', async () => {
+    const fetchImpl = vi.fn(
+      async (_url: string, _init?: RequestInit) =>
+        new Response(new Uint8Array([9, 8, 7]), { headers: { 'content-type': 'image/jpeg' } }),
+    );
+    const sender = new LineSender('token', fetchImpl as unknown as typeof fetch);
+    await expect(sender.content('5550001')).resolves.toEqual({
+      mediaType: 'image/jpeg',
+      data: new Uint8Array([9, 8, 7]),
+    });
+    expect(fetchImpl.mock.calls[0]![0]).toBe(
+      'https://api-data.line.me/v2/bot/message/5550001/content',
+    );
+    await expect(sender.content('../x')).rejects.toMatchObject({ code: 'line_content_bad_id' });
+
+    const big = vi.fn(
+      async () => new Response('x', { headers: { 'content-length': String(11 * 1024 * 1024) } }),
+    );
+    await expect(
+      new LineSender('token', big as unknown as typeof fetch).content('1'),
+    ).rejects.toMatchObject({ code: 'line_content_too_large', retryable: false });
+  });
+
   it('treats a repeated retry key as already sent', async () => {
     const fetchImpl = vi.fn(async () => new Response('{}', { status: 409 }));
     const sender = new LineSender('token', fetchImpl as unknown as typeof fetch);
@@ -176,5 +198,18 @@ describe('messages', () => {
   it('sends the result body only when the link allows it', () => {
     expect(completed('調査', 'summary_and_link', '本文').text).not.toContain('本文');
     expect(completed('調査', 'full_text', '本文').text).toContain('本文');
+  });
+
+  it('points the end notice at the work home when there is a link, and at the Mac otherwise', () => {
+    const url = 'https://liff.line.me/1-a/w/' + 'T'.repeat(32);
+    expect(completed('調査', 'summary_and_link', null, url)).toEqual({
+      text: `終わりました：調査。経過と確かめた結果は仕事のホームで開けます。\n${url}`,
+      markdown: `終わりました：調査。経過と確かめた結果は仕事のホームで開けます。\n\n[仕事のホームを開く](${url})`,
+    });
+    expect(completed('調査', 'summary_and_link', null).text).toBe(
+      '終わりました：調査。結果は Genie の作業一覧で開けます。',
+    );
+    // 本文を送る設定なら本文（リンクより本文が先）
+    expect(completed('調査', 'full_text', '本文', url).text).not.toContain(url);
   });
 });

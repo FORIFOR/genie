@@ -134,6 +134,19 @@ describe('info.lookup news', () => {
 
   it('parses a Google headline without a source tag', () => {
     expect(parseRss('<item><title>見出し - 共同</title><link>https://x.example/a</link></item>', null)[0]).toMatchObject({ title: '見出し', source: '共同' });
+    // 配信元のリード文（NHK）だけを残す。タグは外し、長ければ切る。Google ニュースの description（リンクの一覧）は使わない
+    const lead = 'あ'.repeat(120);
+    expect(parseRss(`<item><title>t</title><link>https://news.web.nhk/a</link><description>${lead}</description></item>`, 'NHK')[0]!.summary).toBe(`${'あ'.repeat(90)}…`);
+    expect(parseRss('<item><title>t</title><link>https://news.web.nhk/a</link><description>&lt;b&gt;短い&lt;/b&gt; 文</description></item>', 'NHK')[0]!.summary).toBe('短い 文');
+    expect(parseRss('<item><title>t - 日経</title><link>https://news.google.com/a</link><description>&lt;a href="x"&gt;t&lt;/a&gt;</description></item>', null)[0]!.summary).toBeNull();
+  });
+
+  it('keeps the category the feed wrote, labels the world feed, and never guesses from the headline', () => {
+    expect(parseRss('<item><title>t</title><link>https://x.example/a</link><category>経済</category></item>', 'NHK')[0]!.category).toBe('経済');
+    expect(parseRss('<item><title>株価が下落</title><link>https://x.example/a</link></item>', 'NHK')[0]!.category).toBeUndefined();
+    expect(parseRss('<item><title>t</title><link>https://x.example/a</link></item>', 'NHK', '国際')[0]!.category).toBe('国際');
+    // 画像は付けない（利用条件の台帳で許されたものだけを出す。いまは配信が無い）
+    expect(parseRss('<item><title>t</title><link>https://x.example/a</link><enclosure url="https://x.example/a.jpg"/></item>', 'NHK')[0]!.media).toBeUndefined();
   });
 });
 
@@ -143,7 +156,7 @@ describe('information sources', () => {
     await expect(fetch('https://example.com/')).rejects.toThrow(/not an allowed/);
     await expect(fetch('http://api.open-meteo.com/v1/forecast')).rejects.toThrow(/not an allowed/);
     await expect(fetch('https://api.open-meteo.com/v1/forecast')).resolves.toBe('ok');
-    expect(CURRENT_INFO_HOSTS).toEqual(['api.open-meteo.com', 'geocoding-api.open-meteo.com', 'news.web.nhk', 'news.google.com', 'query1.finance.yahoo.com']);
+    expect(CURRENT_INFO_HOSTS).toEqual(['api.open-meteo.com', 'geocoding-api.open-meteo.com', 'news.web.nhk', 'news.google.com', 'query1.finance.yahoo.com', 'www.jma.go.jp']);
   });
 
   it('does not follow redirects', async () => {

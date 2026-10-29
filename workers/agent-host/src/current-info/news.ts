@@ -1,11 +1,16 @@
 /**
- * ニュース。見出しとリンクだけを出す（本文は載せない）。
+ * ニュース。見出しとリンクと、配信元が RSS に載せたリード文だけを出す（記事の本文は取りに行かない）。
+ * 写真は出さない（使ってよいと示された記事画像の配信が無いため。記事の画像を勝手に取って配り直さない）。
+ * 画像を出すかは、利用条件の台帳で決める（@genie/contracts の resolveNewsImage。無ければ分野のアイコン）。
+ * 分野は配信元が書いたもの（RSS の category）か、国際のフィードなら「国際」。見出しから推し量らない。
  *
  * 話題が無ければ NHK の主要・国際ニュース（何も送らない）。話題があれば Google ニュースの
  * 検索 RSS（話題の語だけを送る）。
  */
 import { INFO_SCHEMA, type InfoEnvelope, type NewsItem } from './envelope.js';
 import type { InfoFetch } from './hosts.js';
+import { QUAKE_TOPIC, lookupQuakes } from './quakes.js';
+import { TYPHOON_TOPIC, lookupTyphoons } from './typhoons.js';
 
 export const NHK_TOP = 'https://news.web.nhk/n-data/conf/na/rss/cat0.xml';
 /** NHK の国際ニュース（何も送らない）。 */
@@ -30,7 +35,11 @@ function tag(item: string, name: string): string | null {
 }
 
 /** RSS 2.0 の item を読む。https のリンクだけ残す。 */
-export function parseRss(xml: string, sourceFallback: string | null): NewsItem[] {
+export function parseRss(
+  xml: string,
+  sourceFallback: string | null,
+  categoryFallback: string | null = null,
+): NewsItem[] {
   const items: NewsItem[] = [];
   for (const [, body] of xml.matchAll(/<item>([\s\S]*?)<\/item>/g)) {
     let title = tag(body!, 'title');
@@ -46,6 +55,15 @@ export function parseRss(xml: string, sourceFallback: string | null): NewsItem[]
         title = title.slice(0, dash);
       }
     }
+    // リード文は NHK の RSS のものだけ（Google ニュースの description はリンクの一覧）
+    const lead =
+      sourceFallback !== null
+        ? (tag(body!, 'description') ?? '')
+            .replace(/<[^>]*>/g, '')
+            .replace(/\s+/g, ' ')
+            .trim()
+        : '';
+    const category = (tag(body!, 'category') ?? categoryFallback)?.slice(0, 20) || null;
     const date = tag(body!, 'pubDate');
     const published = date ? new Date(date) : null;
     items.push({
@@ -54,6 +72,8 @@ export function parseRss(xml: string, sourceFallback: string | null): NewsItem[]
       source,
       published_at:
         published && !Number.isNaN(published.valueOf()) ? published.toISOString() : null,
+      summary: lead ? (lead.length > 90 ? `${lead.slice(0, 90).replace(/…$/, '')}…` : lead) : null,
+      ...(category ? { category } : {}),
     });
     if (items.length >= MAX_ITEMS) break;
   }
@@ -64,7 +84,7 @@ export async function lookupNews(
   query: { readonly topic: string | null; readonly feed?: 'top' | 'world' },
   get: InfoFetch,
   now: () => Date = () => new Date(),
-): Promise<InfoEnvelope> {
+): Promise<Extract<InfoEnvelope, { kind: 'news' }>> {
   const topic = query.topic?.trim() || null;
   const source = topic
     ? {
@@ -72,7 +92,11 @@ export async function lookupNews(
         url: `https://news.google.com/rss/search?${new URLSearchParams({ q: topic, hl: 'ja', gl: 'JP', ceid: 'JP:ja' }).toString()}`,
       }
     : { name: 'NHK', url: query.feed === 'world' ? NHK_WORLD : NHK_TOP };
-  const items = parseRss(await get(source.url), topic ? null : 'NHK');
+  const items = parseRss(
+    await get(source.url),
+    topic ? null : 'NHK',
+    !topic && query.feed === 'world' ? '国際' : null,
+  );
   const base = {
     schema: INFO_SCHEMA,
     kind: 'news',
@@ -89,12 +113,20 @@ export async function lookupNews(
         : 'いまはニュースを取得できませんでした。',
       data: null,
     };
+  // 地震・台風の話題なら、気象庁の発表を添える（Genie が作る図の元。取れなくてもニュースは返す）
+  const official = !topic
+    ? null
+    : QUAKE_TOPIC.test(topic)
+      ? await lookupQuakes(get, now()).catch(() => null)
+      : TYPHOON_TOPIC.test(topic)
+        ? await lookupTyphoons(get, now()).catch(() => null)
+        : null;
   const heading = topic ? `「${topic}」のニュース` : '主なニュース';
   const lines = items.slice(0, 3).map((item, i) => `${i + 1}. ${item.title}`);
   return {
     ...base,
     text: `${heading}（${source.name}）: ${lines.join(' ')}`,
-    data: { topic, items },
+    data: { topic, items, ...(official ? { official } : {}) },
   };
 }
 

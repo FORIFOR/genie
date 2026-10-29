@@ -56,6 +56,92 @@ struct ScheduleSection: View {
     }
 }
 
+/// 作業一覧の「ほかの AI に頼んだ仕事」。セッションがあるときだけ出す（無ければ作業一覧はこれまでどおり）。
+/// 返事が要るものを上に。操作は見守りを止める・戻すだけ（Claude Code 自体は止めない）。
+struct AgentSessionsSection: View {
+    @ObservedObject var board: AgentSessionsBoard
+    let dark: Bool
+
+    var body: some View {
+        if !board.items.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("ほかの AI に頼んだ仕事").font(.system(size: TypeScale.secondarySize, weight: .semibold))
+                    .foregroundStyle(Palette.muted(dark))
+                VStack(spacing: 0) {
+                    ForEach(Array(board.items.enumerated()), id: \.element.id) { index, item in
+                        if index > 0 { Divider() }
+                        row(item)
+                    }
+                }
+                .padding(.horizontal, Space.cardPadding)
+                .background(Palette.surface(dark), in: RoundedRectangle(cornerRadius: Metrics.paletteRadius))
+                .overlay(RoundedRectangle(cornerRadius: Metrics.paletteRadius).stroke(Palette.border(dark)))
+                if let problem = board.problem {
+                    Text(problem).font(.system(size: TypeScale.secondarySize)).foregroundStyle(Palette.danger(dark))
+                }
+            }
+            .accessibilityElement(children: .contain).accessibilityIdentifier("agentSessionsSection")
+        }
+    }
+
+    private func row(_ item: AgentSessionsBoard.Item) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Image(systemName: item.needsUser ? "exclamationmark.circle" : item.attention == "held" ? "pause.circle" : "terminal")
+                .foregroundStyle(item.needsUser ? Palette.warning(dark) : Palette.muted(dark)).frame(width: 18)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(item.name).font(.system(size: TypeScale.bodySize)).lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text("\(item.origin) ・ \(item.stateLine)").font(.system(size: TypeScale.microSize))
+                    .foregroundStyle(item.needsUser ? Palette.warning(dark) : Palette.muted(dark))
+            }
+            Spacer(minLength: 12)
+            if item.attention != "ended" {
+                // 保留中のものを戻すと、このセッションだけ保留から外れる（保留そのものは言葉で解除する）
+                let paused = item.quiet
+                Button(paused ? "見守りを戻す" : "見守りを止める") {
+                    Task { await board.set(item, policy: paused ? "watch" : "paused_by_user") }
+                }
+                .accessibilityIdentifier("agentSessionPolicy-\(item.id)")
+            }
+        }
+        .buttonStyle(.borderless).font(.system(size: TypeScale.secondarySize))
+        .foregroundStyle(Palette.text(dark))
+        .padding(.vertical, 10)
+        .accessibilityElement(children: .contain)
+    }
+}
+
+/// 作業一覧の先頭の札。返事が要るものを 3 行まで（文は gateway。声の答えと同じ）。何も無ければ出さない。
+struct WorkOverviewCard: View {
+    @ObservedObject var board: WorkOverviewBoard
+    let dark: Bool
+
+    var body: some View {
+        if let overview = board.overview, let summary = overview.summary {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(summary).font(.system(size: TypeScale.secondarySize, weight: .semibold))
+                    .foregroundStyle(Palette.muted(dark))
+                    .accessibilityIdentifier("workOverviewSummary")
+                ForEach(Array(overview.attention.prefix(3).enumerated()), id: \.offset) { _, line in
+                    HStack(alignment: .firstTextBaseline, spacing: 12) {
+                        Image(systemName: "exclamationmark.circle").foregroundStyle(Palette.warning(dark)).frame(width: 18)
+                        Text(line).font(.system(size: TypeScale.bodySize)).fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                if overview.attention.count > 3 {
+                    Text("ほか \(overview.attention.count - 3) 件").font(.system(size: TypeScale.microSize))
+                        .foregroundStyle(Palette.muted(dark))
+                }
+            }
+            .padding(Space.cardPadding)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Palette.surface(dark), in: RoundedRectangle(cornerRadius: Metrics.paletteRadius))
+            .overlay(RoundedRectangle(cornerRadius: Metrics.paletteRadius).stroke(Palette.border(dark)))
+            .accessibilityElement(children: .contain).accessibilityIdentifier("workOverviewCard")
+        }
+    }
+}
+
 /// アプリ連携の「Slack・LINE」。gateway が答えたときだけ出す（オフラインや検査では出さない）。
 struct ChatChannelsCard: View {
     @ObservedObject var board: ChatChannelsBoard

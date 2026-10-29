@@ -16,6 +16,17 @@ final class NoticeInboxTests: XCTestCase {
         XCTAssertEqual(items[1].task_id, "t1")
     }
 
+    func testOpensTheWorkListForAgentSessionNotices() {
+        let body = #"{"items":[{"id":"n1","kind":"agent_session","title":"Claude Code が承認を待っています","body":"決済を直す（api）。ターミナルで確かめてください。","task_id":null}]}"#
+        let item = NoticeInbox.decode(Data(body.utf8)).first
+        XCTAssertEqual(item?.kind, "agent_session")
+        XCTAssertEqual(NoticeInbox.section(kind: "agent_session", taskId: ""), .work)
+        XCTAssertEqual(NoticeInbox.section(kind: "work_hold", taskId: ""), .work)
+        XCTAssertEqual(NoticeInbox.section(kind: "task_followup", taskId: ""), .work)
+        XCTAssertEqual(NoticeInbox.section(kind: "scheduled_task", taskId: "t1"), .work)
+        XCTAssertEqual(NoticeInbox.section(kind: "reminder", taskId: ""), .home)
+    }
+
     func testIgnoresBrokenBodies() {
         XCTAssertEqual(NoticeInbox.decode(Data("not json".utf8)), [])
         XCTAssertEqual(NoticeInbox.decode(Data("{\"items\":[{\"id\":1}]}".utf8)), [])

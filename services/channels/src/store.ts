@@ -39,6 +39,16 @@ export interface OutboxRow {
   readonly attempts: number;
 }
 
+/** 共有スペースにしたグループ。 */
+export interface ChannelGroup {
+  readonly id: string;
+  readonly tenantId: string;
+  readonly householdId: string;
+  readonly ownerUserId: string;
+  /** 使い始めた人（LINE userId）。やめられるのはこの人だけ。 */
+  readonly enabledBy: string;
+}
+
 export interface WatchedTask {
   readonly taskId: string;
   readonly linkId: string;
@@ -48,6 +58,8 @@ export interface WatchedTask {
   readonly postingPolicy: PostingPolicy;
   /** チャットへ送ったところまでの task_events の sequence（受付は 0）。 */
   readonly lastSequence: number;
+  /** 会話の答え。終わったら答えの本文をそのまま送る（受付は送っていない）。 */
+  readonly answerInline: boolean;
 }
 
 export type RedeemResult =
@@ -289,6 +301,135 @@ export class ChannelStore {
     });
   }
 
+  /**
+   * 有効な LINE の連携。subject（LINE の利用者 ID）を渡せばその人だけ、null なら全部。
+   * 公式アカウントへの電話（管理画面で受けたもの）を、かけた人の Genie につなぐために引く。
+   */
+  async lineLinks(subject: string | null): Promise<ChannelLink[]> {
+    return withIdentity(this.db, async (tx) => {
+      let query = tx
+        .selectFrom('channel_links')
+        .selectAll()
+        .where('provider', '=', 'line')
+        .where('revoked_at', 'is', null);
+      if (subject) query = query.where('subject', '=', subject);
+      return (await query.limit(2).execute()).map(toLink);
+    });
+  }
+
+  /** LINE のグループ → 共有スペース。受信時はテナントが分からないので astra_identity で引く。 */
+  async findGroup(
+    provider: ChannelProvider,
+    workspaceId: string,
+    groupId: string,
+  ): Promise<ChannelGroup | null> {
+    return withIdentity(this.db, async (tx) => {
+      const row = await tx
+        .selectFrom('channel_groups')
+        .select(['id', 'tenant_id', 'household_id', 'owner_user_id', 'enabled_by'])
+        .where('provider', '=', provider)
+        .where('workspace_id', '=', workspaceId)
+        .where('group_id', '=', groupId)
+        .where('revoked_at', 'is', null)
+        .executeTakeFirst();
+      return row
+        ? {
+            id: row.id,
+            tenantId: row.tenant_id,
+            householdId: row.household_id,
+            ownerUserId: row.owner_user_id,
+            enabledBy: row.enabled_by,
+          }
+        : null;
+    });
+  }
+
+  /**
+   * 止められた（「@Genie このグループをやめる」）グループ。招き直しでは勝手に再開しないために引く。
+   * 使っている行があるときは呼ばない（呼び手が findGroup を先に見る）。
+   */
+  async stoppedGroup(
+    provider: ChannelProvider,
+    workspaceId: string,
+    groupId: string,
+  ): Promise<ChannelGroup | null> {
+    return withIdentity(this.db, async (tx) => {
+      const row = await tx
+        .selectFrom('channel_groups')
+        .select(['id', 'tenant_id', 'household_id', 'owner_user_id', 'enabled_by'])
+        .where('provider', '=', provider)
+        .where('workspace_id', '=', workspaceId)
+        .where('group_id', '=', groupId)
+        .where('revoked_at', 'is not', null)
+        .orderBy('revoked_at', 'desc')
+        .executeTakeFirst();
+      return row
+        ? {
+            id: row.id,
+            tenantId: row.tenant_id,
+            householdId: row.household_id,
+            ownerUserId: row.owner_user_id,
+            enabledBy: row.enabled_by,
+          }
+        : null;
+    });
+  }
+
+  /**
+   * この公式アカウントにつないでいる人が 1 人だけなら、その人（グループに招かれたときの持ち主）。
+   * 0 人・2 人以上なら null（そのグループで連携済みの人が話したときに決める）。
+   */
+  async soleLink(provider: ChannelProvider, workspaceId: string): Promise<ChannelLink | null> {
+    return withIdentity(this.db, async (tx) => {
+      const rows = await tx
+        .selectFrom('channel_links')
+        .selectAll()
+        .where('provider', '=', provider)
+        .where('workspace_id', '=', workspaceId)
+        .where('revoked_at', 'is', null)
+        .limit(2)
+        .execute();
+      return rows.length === 1 ? toLink(rows[0]!) : null;
+    });
+  }
+
+  /** グループを共有スペースにする（持ち主のテナントの中で書く）。 */
+  async createGroup(input: {
+    tenantId: string;
+    householdId: string;
+    ownerUserId: string;
+    provider: ChannelProvider;
+    workspaceId: string;
+    groupId: string;
+    enabledBy: string;
+  }): Promise<void> {
+    await withTenant(this.db, input.tenantId, (tx) =>
+      tx
+        .insertInto('channel_groups')
+        .values({
+          id: uuidv7(),
+          tenant_id: input.tenantId,
+          household_id: input.householdId,
+          owner_user_id: input.ownerUserId,
+          provider: input.provider as 'line',
+          workspace_id: input.workspaceId,
+          group_id: input.groupId,
+          enabled_by: input.enabledBy,
+        })
+        .execute(),
+    );
+  }
+
+  async revokeGroup(tenantId: string, id: string): Promise<void> {
+    await withTenant(this.db, tenantId, (tx) =>
+      tx
+        .updateTable('channel_groups')
+        .set({ revoked_at: new Date() })
+        .where('id', '=', id)
+        .execute(),
+    );
+  }
+
   /** 本人が Genie の中で出すコード。平文は返すだけで、残すのはハッシュ。 */
   async issueLinkCode(
     tenantId: string,
@@ -506,6 +647,51 @@ export class ChannelStore {
     });
   }
 
+  /**
+   * その会話のトークで、Genie が最後に送った答え（受付・承認待ちではなく、答えや知らせの本文）。
+   * 「さっきの結果をグループに送って」の「さっきの結果」に使う。
+   */
+  async lastSaid(tenantId: string, conversationId: string): Promise<string | null> {
+    const thread = await this.threadForConversation(tenantId, conversationId);
+    if (!thread) return null;
+    return withTenant(this.db, tenantId, async (tx) => {
+      const row = await tx
+        .selectFrom('channel_outbox')
+        .select('body')
+        .where('link_id', '=', thread.link.id)
+        .where('thread_key', '=', thread.threadKey)
+        .where('status', '=', 'SENT')
+        .where('kind', 'in', ['completed', 'notice'])
+        .orderBy('created_at', 'desc')
+        .executeTakeFirst();
+      const body = row?.body as { text?: unknown; link?: unknown } | undefined;
+      // 通話のリンクのような、開くだけの知らせは「結果」ではない
+      return body && typeof body.text === 'string' && !body.link ? body.text : null;
+    });
+  }
+
+  /** 本人が使い始めた LINE のグループ（共有スペース）。新しい順。 */
+  async groupsForOwner(
+    tenantId: string,
+    ownerUserId: string,
+  ): Promise<{ id: string; groupId: string; householdId: string; provider: ChannelProvider }[]> {
+    return withTenant(this.db, tenantId, async (tx) => {
+      const rows = await tx
+        .selectFrom('channel_groups')
+        .select(['id', 'group_id', 'household_id', 'provider'])
+        .where('owner_user_id', '=', ownerUserId)
+        .where('revoked_at', 'is', null)
+        .orderBy('created_at', 'desc')
+        .execute();
+      return rows.map((r) => ({
+        id: r.id,
+        groupId: r.group_id,
+        householdId: r.household_id,
+        provider: r.provider as ChannelProvider,
+      }));
+    });
+  }
+
   /** 送るものを積む。task のイベント 1 つにつき 1 行（一意索引）。積めたら id を返す。 */
   async enqueue(input: {
     tenantId: string;
@@ -516,6 +702,8 @@ export class ChannelStore {
     destination: string;
     threadKey: string;
     body: OutgoingMessage;
+    /** 会話の答えとして見回る（受付の行だけに付ける）。 */
+    answerInline?: boolean;
   }): Promise<string | null> {
     return withTenant(this.db, input.tenantId, async (tx) => {
       const id = uuidv7();
@@ -531,6 +719,7 @@ export class ChannelStore {
           destination: input.destination,
           thread_key: input.threadKey,
           body: JSON.stringify(input.body),
+          answer_inline: input.answerInline ?? false,
         })
         .onConflict((oc) =>
           oc
@@ -569,8 +758,10 @@ export class ChannelStore {
         thread_key: string;
         posting_policy: string;
         last_sequence: string;
+        answer_inline: boolean;
       }>`
         select o.task_id, o.link_id, l.provider, o.destination, o.thread_key, l.posting_policy,
+               o.answer_inline,
                (select coalesce(max(x.event_sequence), 0) from channel_outbox x
                  where x.link_id = o.link_id and x.task_id = o.task_id)::text as last_sequence
           from channel_outbox o
@@ -593,6 +784,7 @@ export class ChannelStore {
         threadKey: r.thread_key,
         postingPolicy: r.posting_policy as PostingPolicy,
         lastSequence: Number(r.last_sequence),
+        answerInline: r.answer_inline,
       }));
     });
   }

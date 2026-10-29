@@ -5,7 +5,7 @@ import XCTest
 final class DockAnnouncerTests: XCTestCase {
     func testAnnouncesTheTurningPointsOnly() {
         XCTAssertEqual(DockAnnouncer.text(for: .ack(DockAck(id: UUID(), title: "要約")), previous: .thinking, activeCount: 1),
-                       "かしこまりました。要約")
+                       "承知しました。要約")
         XCTAssertEqual(DockAnnouncer.text(for: .ack(DockAck(id: UUID(), title: "要約", rejected: "保存先がありません。")), previous: .thinking, activeCount: 0),
                        "この依頼は実行できません。保存先がありません。")
         XCTAssertEqual(DockAnnouncer.text(for: .result(AgentResult(title: "移行ガイド", actions: [], kind: "下書き")), previous: .agent, activeCount: 0),

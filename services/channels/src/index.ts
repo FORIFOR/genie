@@ -33,6 +33,12 @@ export {
 } from './line.js';
 export { MemoryChannelInbox, type ChannelInbox } from './inbox.js';
 export {
+  LineHubClient,
+  type LineHubDeps,
+  type LineHubEvent,
+  type LineHubState,
+} from './hub-client.js';
+export {
   SLACK_SOCKET_BACKOFF,
   SlackSocketMode,
   slackSocketBackoffMs,
@@ -47,6 +53,7 @@ export {
   LineSender,
   SlackSender,
   lineMessages,
+  choicesOf,
   type ChannelSender,
   type OutgoingButton,
   type OutgoingMessage,
@@ -54,6 +61,7 @@ export {
   type SendTarget,
 } from './send.js';
 export * as channelMessages from './render.js';
+export { answerFlex, parseAnswer, type ParsedAnswer } from './rich.js';
 export type { PostingPolicy } from './render.js';
 export {
   LINK_CODE_LENGTH,
@@ -80,6 +88,8 @@ export {
 } from './store.js';
 export {
   ChannelService,
+  isQuestion,
+  CALL as CALL_REQUEST,
   type ChannelEvent,
   type ChannelInbound,
   type InboundSealer,
@@ -87,3 +97,10 @@ export {
   type ChannelTaskView,
   type TurnOutcome,
 } from './service.js';
+export {
+  RICH_MENU_BUTTONS,
+  RICH_MENU_NAME,
+  RICH_MENU_SIZE,
+  richMenuBody,
+  type RichMenuButton,
+} from './rich-menu.js';

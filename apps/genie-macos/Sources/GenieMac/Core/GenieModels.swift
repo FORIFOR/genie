@@ -42,7 +42,7 @@ enum DockPresentation: Equatable {
     case contextDetail
     /// 旧 Quick Actions（Dock を押したとき）。
     case quickActions
-    /// 受付の応答（「かしこまりました」/ 受け付けられません）。受け付けた後にだけ出す。
+    /// 受付の応答（「承知しました」/ 受け付けられません）。受け付けた後にだけ出す。
     case ack(DockAck)
     /// 音声入力で言い淀みを消して入れた。数秒だけ「元の文に戻す」を出す。
     case dictated(DictatedText)

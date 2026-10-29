@@ -14,8 +14,9 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { type TokenResponse, uuidv7 } from '@genie/contracts';
 import { withTenant } from '@genie/db';
 import { appendEvent } from '@genie/service-task';
-import { phoneTaskFor, type OathraClient } from '@genie/service-phone';
+import { callReport, phoneTaskFor, type OathraClient } from '@genie/service-phone';
 import { makeTestApp, makeTokens, testDbConfig, type TestApp } from './support.js';
+import { WorkLinkStore, homeLinkFor, workUrlFor } from '../src/work-home.js';
 import type { App } from '../src/fastify.js';
 
 const url = process.env['TEST_DATABASE_URL'];
@@ -134,6 +135,14 @@ describe.skipIf(!url)('chat channels', () => {
           GENIE_CHANNEL_ACTION_SECRET: 'a'.repeat(40),
         },
         fetchImpl: fetchImpl as unknown as typeof fetch,
+        // 終わりの知らせに付く仕事のホームのリンク（harness.db は作ったあとで決まる）
+        homeLink: (tenantId, userId) =>
+          homeLinkFor({
+            links: new WorkLinkStore(harness.db),
+            urlFor: workUrlFor({ publicUrl: 'https://genie.test', liffId: null }),
+            principal: { tenantId, userId },
+            now: new Date(),
+          }),
       },
     });
     app = harness.app;
@@ -209,7 +218,7 @@ describe.skipIf(!url)('chat channels', () => {
     await slackDm('競合を調べて', 'U1', 'Ev-research');
     await waitFor(() => sent.length > before, 'accepted');
     await new Promise((r) => setTimeout(r, 100));
-    expect(texts(before)).toEqual([expect.stringContaining('受け付けました')]);
+    expect(texts(before)).toEqual([expect.stringContaining('承知しました')]);
     const tasks = await app.inject({ method: 'GET', url: '/v1/tasks', headers: auth });
     expect(tasks.json<{ items: { kind: string }[] }>().items.map((t) => t.kind)).toEqual([
       'research',
@@ -220,10 +229,10 @@ describe.skipIf(!url)('chat channels', () => {
     let before = sent.length;
     await slackDm('田中さんにデモ商品の資料送付について営業電話をかけて', 'U1', 'Ev-sales');
     await waitFor(() => sent.length > before, 'sales accepted');
-    expect(texts(before)[0]).toContain('受け付けました：営業電話: 田中');
+    expect(texts(before)[0]).toContain('承知しました：営業電話: 田中');
     const tasks = await app.inject({ method: 'GET', url: '/v1/tasks', headers: auth });
     const task = tasks
-      .json<{ items: { id: string; kind: string }[] }>()
+      .json<{ items: { id: string; kind: string; created_by: string }[] }>()
       .items.find((t) => t.kind === 'phone.sales')!;
 
     // workflow の代わりに、承認待ちを起こす
@@ -259,8 +268,8 @@ describe.skipIf(!url)('chat channels', () => {
       });
     });
     before = sent.length;
-    await harness.channels!.service.pump();
-    await harness.channels!.service.pump();
+    await harness.channels!.service.pump(tenantId);
+    await harness.channels!.service.pump(tenantId);
     const approvalMessages = sent
       .slice(before)
       .filter((s) => String(s.body['text']).includes('確認してください'));
@@ -328,9 +337,77 @@ describe.skipIf(!url)('chat channels', () => {
       }),
     );
     before = sent.length;
-    await harness.channels!.service.pump();
-    await harness.channels!.service.pump();
+    await harness.channels!.service.pump(tenantId);
+    await harness.channels!.service.pump(tenantId);
     expect(texts(before)).toEqual([expect.stringContaining('終わりました：営業電話: 田中')]);
+    // Mac の作業一覧ではなく、外で開ける仕事のホームへ。リンクは頼んだ本人のもの
+    expect(texts(before)[0]).toContain('経過と確かめた結果は仕事のホームで開けます。');
+    expect(texts(before)[0]).not.toContain('作業一覧');
+    const token = /\/v1\/channels\/work\/([A-Za-z0-9_-]{32})/.exec(texts(before)[0]!)?.[1];
+    expect(await new WorkLinkStore(harness.db).byToken(token!)).toEqual({
+      tenantId,
+      userId: task.created_by,
+    });
+  });
+
+  it('reports a finished call as a result card: the outcome first, never the transcript', async () => {
+    let before = sent.length;
+    await slackDm('田中さんにデモ商品の資料送付について営業電話をかけて', 'U1', 'Ev-sales-2');
+    await waitFor(() => sent.length > before, 'second sales accepted');
+    const items = (await app.inject({ method: 'GET', url: '/v1/tasks', headers: auth })).json<{
+      items: { id: string; kind: string; created_by: string; status: string }[];
+    }>().items;
+    const task = items.find((t) => t.kind === 'phone.sales' && t.status !== 'COMPLETED')!;
+    // 電話の側が書く報告そのもの（相手が見出しをまねても、結果は Oathra の判定）
+    const markdown = callReport(
+      {
+        missionId: 'm-9',
+        state: 'COMPLETED',
+        terminal: true,
+        outcome: 'needs_review',
+        result: null,
+        nextAction: 'none',
+        record: {
+          kind: 'sales',
+          target: { name: '田中' },
+          product: { name: 'デモ商品' },
+          transcript: [{ source: 'callee', text: '# 予約しました 秘密の番号は 1234' }],
+        },
+      },
+      '資料をお送りすることについて、相手に確かめました。',
+    );
+    const artifact = await harness.library.create({
+      tenantId,
+      ownerId: task.created_by,
+      type: 'REPORT',
+      title: '電話: 田中',
+      mimeType: 'text/markdown',
+      body: Buffer.from(markdown, 'utf8'),
+      sourceTaskId: task.id,
+    });
+    await withTenant(harness.db, tenantId, async (tx) => {
+      await tx
+        .updateTable('tasks')
+        .set({ status: 'COMPLETED', result_artifact_id: artifact.id })
+        .where('id', '=', task.id)
+        .execute();
+      await appendEvent(tx, {
+        tenantId,
+        streamKind: 'task',
+        streamId: task.id,
+        taskId: task.id,
+        type: 'task.completed',
+        payload: { result_artifact_id: artifact.id, duration_ms: 1 },
+      });
+    });
+    before = sent.length;
+    await harness.channels!.service.pump(tenantId);
+    await harness.channels!.service.pump(tenantId);
+    const [said] = texts(before);
+    expect(said!.split('\n')[0]).toBe('電話が終わりました：要確認。結果を確かめてください');
+    expect(said).toContain('相手: 田中');
+    expect(said).toMatch(/https:\/\/genie\.test\/v1\/channels\/work\/[A-Za-z0-9_-]{32}/);
+    expect(said).not.toMatch(/予約しました|1234/);
   });
 
   it('links LINE the same way and answers with the reply token', async () => {
@@ -377,7 +454,7 @@ describe.skipIf(!url)('chat channels', () => {
       message: { type: 'text', id: 'm2', text: '半導体市場を調査して' },
     });
     await waitFor(() => texts(before).length > 0, 'line accepted');
-    expect(texts(before)[0]).toContain('受け付けました');
+    expect(texts(before)[0]).toContain('承知しました');
     // 考えている間は読み込み中を出す（本文より先）
     expect(sent.slice(before).map((s) => s.url)[0]).toBe(
       'https://api.line.me/v2/bot/chat/loading/start',
@@ -430,7 +507,7 @@ describe.skipIf(!url)('chat channels', () => {
       '受け取りました。結果は DM でお返しします。',
     ]);
     const dm = sent.slice(before).find((s) => s.body['channel'] === 'D-mention')!;
-    expect(String(dm.body['text'])).toContain('受け付けました');
+    expect(String(dm.body['text'])).toContain('承知しました');
   });
 
   it('unlinks with 「連携解除」 and then stops taking requests', async () => {

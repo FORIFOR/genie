@@ -16,7 +16,12 @@ import { MIN_EVERY_MS, isValidTimeZone, wallClock, zonedTime, type Schedule } fr
 
 export type SchedulePayload =
   /** 時間になったら知らせるだけ（仕事にしない）。 */
-  | { readonly kind: 'reminder'; readonly text: string }
+  | {
+      readonly kind: 'reminder';
+      readonly text: string;
+      /** 「電話で起こして」「電話で教えて」: 時間になったら Genie から電話する（LINE に「電話に出る」）。 */
+      readonly call?: boolean;
+    }
   /** 時間になったら、この文で頼む（Task Dock で頼んだのと同じ入口）。 */
   | { readonly kind: 'task'; readonly text: string };
 
@@ -103,9 +108,15 @@ export interface ParseContext {
 /**
  * 予約の頼みなら読む。予約の頼みでなければ null（いつもの振り分けに任せる）。
  */
+/** 予定を入れる言い方（カレンダー）。 */
+const CALENDAR_ENTRY = /(?:入れ|いれ)(?:て|と(?:い)?て|ておいて|とく)|(?:予定|カレンダー)(?:に|へ)\s*(?:追加|登録)/;
+
 export function parseScheduleRequest(rawText: string, context: ParseContext): ParseResult | null {
   const tz = isValidTimeZone(context.tz) ? context.tz : 'Asia/Tokyo';
   const text = normalizeNumbers(rawText.trim());
+  // 「来週火曜10時に歯医者入れといて」はカレンダーの予定で、知らせの予約ではない（評価 2026-10-27: 予約にしていた）。
+  // 予約にせず、予定の側へ回す（「〜って教えて」「〜を知らせて」はこれまでどおり予約）
+  if (CALENDAR_ENTRY.test(text) && !/(教えて|知らせて|おしえて|リマインド|通知|起こして|電話して)/.test(text)) return null;
 
   const relative = RELATIVE.exec(text);
   if (relative?.groups) {
@@ -155,8 +166,7 @@ export function parseScheduleRequest(rawText: string, context: ParseContext): Pa
   if (pm && hour < 12) hour += 12;
   else if (g['mod'] === '昼' && hour < 6) hour += 12;
   // 「明日 3 時」「毎日 5 時」の 1〜6 時は午後と読む（言い直しで確かめる）
-  else if (!am && !pm && g['h'] !== undefined && hour >= 1 && hour <= 6 && (day || rec))
-    hour += 12;
+  else if (!am && !pm && g['h'] !== undefined && hour >= 1 && hour <= 6 && (day || rec)) hour += 12;
   if (hour === 24) hour = 0;
   if (hour > 23) return { ok: false, reason: 'invalid_time' };
 
@@ -249,21 +259,32 @@ function remainder(text: string, match: RegExpExecArray): string | null {
   return rest;
 }
 
+/** 「電話で」「電話して」（お知らせを電話で）。 */
+const BY_CALL = /(?:^|\s|、)?(?:電話|でんわ)\s*(?:で|して)\s*/u;
+
 function finish(schedule: Schedule, action: string): ParseResult {
   const reminder = REMINDER_ENDING.test(action);
-  const text = reminder
+  const stripped = reminder
     ? action
         .replace(REMINDER_ENDING, '')
         .replace(/(?:の|を|って|と)$/u, '')
         .trim()
     : action.replace(/[。．.！!\s]+$/, '');
+  const call = reminder && BY_CALL.test(stripped);
+  const text = call
+    ? stripped
+        .replace(BY_CALL, ' ')
+        .trim()
+        .replace(/(?:(?:だ|だよ)?って|と|を|の)$/u, '')
+        .trim()
+    : stripped;
   return {
     ok: true,
     request: {
       schedule,
       action,
       payload: reminder
-        ? { kind: 'reminder', text: text || '時間です' }
+        ? { kind: 'reminder', text: text || '時間です', ...(call ? { call: true } : {}) }
         : { kind: 'task', text },
     },
   };

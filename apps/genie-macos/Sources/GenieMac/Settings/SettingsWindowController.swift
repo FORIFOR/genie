@@ -8,7 +8,9 @@ final class SettingsWindowController {
     private var window: NSWindow?
     /// 検査専用: 設定の窓（キー入力を受けられるかを確かめる）。
     var windowForTest: NSWindow? { window }
-    func show(settingsView: SettingsView? = nil) {
+    /// `pane` を渡すと、その面を開く（許可の案内は .permissions）。渡さなければ開いていた面のまま。
+    func show(settingsView: SettingsView? = nil, pane: SettingsPane? = nil) {
+        if let pane { SettingsPaneSelection.shared.pane = pane }
         if window == nil {
             let win = NSWindow(
                 contentRect: NSRect(x: 0, y: 0, width: 460, height: 540),
@@ -23,6 +25,7 @@ final class SettingsWindowController {
             win.setContentSize(content.fittingSize)
             window = win
         }
+        resizeToContent()
         window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
         NotificationCenter.default.post(name: Self.didShow, object: nil)

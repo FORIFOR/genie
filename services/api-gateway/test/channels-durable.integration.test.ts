@@ -188,7 +188,7 @@ describe.skipIf(!url)('chat channels (durable inbox, Socket Mode)', () => {
     before = sent.length;
     deliver(dmEvent('競合を調べて', 'Ev-work', '1760000002.000100'));
     await waitFor(() => sent.length > before, 'accepted');
-    expect(texts(before)[0]).toContain('受け付けました');
+    expect(texts(before)[0]).toContain('承知しました');
     await waitFor(async () => (await inboxRow('Ev-work'))?.status === 'done', 'done');
     expect(await inboxRow('Ev-work')).toMatchObject({ status: 'done', payload: null });
     expect((await tasks()).map((t) => t.kind)).toEqual(['research']);
@@ -207,7 +207,7 @@ describe.skipIf(!url)('chat channels (durable inbox, Socket Mode)', () => {
     });
     await waitFor(() => sent.length > before, 'accepted');
     await new Promise((r) => setTimeout(r, 200));
-    expect(texts(before).filter((t) => t.includes('受け付けました'))).toHaveLength(1);
+    expect(texts(before).filter((t) => t.includes('承知しました'))).toHaveLength(1);
     expect(await tasks()).toHaveLength(2);
   });
 
@@ -244,7 +244,7 @@ describe.skipIf(!url)('chat channels (durable inbox, Socket Mode)', () => {
 
     const before = sent.length;
     await harness.channels!.service.drain();
-    expect(texts(before)[0]).toContain('受け付けました');
+    expect(texts(before)[0]).toContain('承知しました');
     expect(await inboxRow('Ev-crash')).toMatchObject({ status: 'done', payload: null });
     expect(await tasks()).toHaveLength(3);
   });
@@ -318,7 +318,7 @@ describe.skipIf(!url)('chat channels (durable inbox, Socket Mode)', () => {
           .executeTakeFirstOrThrow(),
       );
     // 受付の返事は 429 で断られた。2 分は送り直さない
-    await harness.channels!.service.pump();
+    await harness.channels!.service.pump(tenantId);
     const waiting = await outbox();
     expect(waiting).toMatchObject({ status: 'PENDING', attempts: 1, last_error: 'slack_http_429' });
     expect(Number(waiting.wait_s)).toBeGreaterThan(100);
@@ -330,8 +330,8 @@ describe.skipIf(!url)('chat channels (durable inbox, Socket Mode)', () => {
         .where('status', '=', 'PENDING')
         .execute(),
     );
-    await harness.channels!.service.pump();
-    await harness.channels!.service.pump();
+    await harness.channels!.service.pump(tenantId);
+    await harness.channels!.service.pump(tenantId);
     expect(await outbox()).toMatchObject({ status: 'SENT', attempts: 2 });
   });
 

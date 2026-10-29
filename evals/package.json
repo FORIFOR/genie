@@ -3,38 +3,40 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "\u6b63\u672c \u00a725 \u306e\u53d7\u3051\u5165\u308c\u30b9\u30a4\u30fc\u30c8\u3002Phase 0 \u306f actions/phase0 \u306e\u307f blocking\u3002",
+  "description": "正本 §25 の受け入れスイート。Phase 0 は actions/phase0 のみ blocking。",
   "scripts": {
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
     "@genie/contracts": "workspace:*",
     "@genie/db": "workspace:*",
-    "@genie/telemetry": "workspace:*",
-    "@genie/service-api-gateway": "workspace:*",
-    "@genie/service-task": "workspace:*",
-    "@genie/service-library": "workspace:*",
-    "@genie/service-plugin-registry": "workspace:*",
+    "@genie/oauth": "workspace:*",
     "@genie/plugin-sdk": "workspace:*",
+    "@genie/policy": "workspace:*",
+    "@genie/service-agent-host": "workspace:*",
+    "@genie/service-agent-runtime": "workspace:*",
+    "@genie/service-api-gateway": "workspace:*",
+    "@genie/service-connectors": "workspace:*",
+    "@genie/service-context": "workspace:*",
+    "@genie/service-conversation": "workspace:*",
+    "@genie/service-library": "workspace:*",
+    "@genie/service-meeting": "workspace:*",
+    "@genie/service-plugin-registry": "workspace:*",
     "@genie/service-research": "workspace:*",
     "@genie/service-share": "workspace:*",
-    "@genie/service-meeting": "workspace:*",
-    "@genie/service-agent-runtime": "workspace:*",
+    "@genie/service-task": "workspace:*",
     "@genie/service-world-model": "workspace:*",
-    "@genie/service-conversation": "workspace:*",
-    "@genie/service-context": "workspace:*",
-    "@genie/policy": "workspace:*",
-    "yaml": "^2.9.0",
-    "@genie/service-agent-host": "workspace:*",
-    "@genie/service-connectors": "workspace:*",
+    "@genie/telemetry": "workspace:*",
     "@genie/worker-agent-host": "workspace:*",
-    "@genie/oauth": "workspace:*"
+    "yaml": "^2.9.0"
   },
   "devDependencies": {
+    "@anthropic-ai/sdk": "1.1.0",
     "@temporalio/testing": "^1.22.0",
     "@temporalio/worker": "^1.22.0",
+    "@types/ws": "^8.18.0",
     "vitest": "catalog:",
     "ws": "^8.18.0",
-    "@types/ws": "^8.18.0"
+    "zod": "catalog:"
   }
 }

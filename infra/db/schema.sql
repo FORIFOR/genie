@@ -95,6 +95,27 @@ ALTER TABLE ONLY public.action_receipts FORCE ROW LEVEL SECURITY;
 
 
 --
+-- Name: agent_connections; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.agent_connections (
+    id uuid NOT NULL,
+    tenant_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    source text NOT NULL,
+    label text NOT NULL,
+    token_hash text NOT NULL,
+    last_seen_at timestamp with time zone,
+    revoked_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT agent_connections_label_check CHECK (((length(label) >= 1) AND (length(label) <= 80))),
+    CONSTRAINT agent_connections_source_check CHECK ((source = 'claude_code'::text))
+);
+
+ALTER TABLE ONLY public.agent_connections FORCE ROW LEVEL SECURITY;
+
+
+--
 -- Name: agent_hosts; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -112,6 +133,67 @@ CREATE TABLE public.agent_hosts (
 );
 
 ALTER TABLE ONLY public.agent_hosts FORCE ROW LEVEL SECURITY;
+
+
+--
+-- Name: agent_session_marks; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.agent_session_marks (
+    id uuid NOT NULL,
+    tenant_id uuid NOT NULL,
+    session_id uuid NOT NULL,
+    kind text NOT NULL,
+    at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT agent_session_marks_kind_check CHECK ((kind = ANY (ARRAY['request'::text, 'instruction'::text, 'waiting_permission'::text, 'waiting_input'::text, 'changed'::text, 'test_passed'::text, 'test_failed'::text, 'turn_ended'::text, 'error'::text, 'ended'::text])))
+);
+
+ALTER TABLE ONLY public.agent_session_marks FORCE ROW LEVEL SECURITY;
+
+
+--
+-- Name: agent_sessions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.agent_sessions (
+    id uuid NOT NULL,
+    tenant_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    connection_id uuid NOT NULL,
+    source text NOT NULL,
+    external_session_id text NOT NULL,
+    project text,
+    title text,
+    state text DEFAULT 'idle'::text NOT NULL,
+    waiting_reason text,
+    user_policy text DEFAULT 'watch'::text NOT NULL,
+    last_event text NOT NULL,
+    last_activity_at timestamp with time zone NOT NULL,
+    turn_ended_at timestamp with time zone,
+    ended_at timestamp with time zone,
+    end_reason text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    state_since timestamp with time zone DEFAULT now() NOT NULL,
+    check_after timestamp with time zone,
+    notified_key text,
+    held_by uuid,
+    check_state text DEFAULT 'none'::text NOT NULL,
+    checked_at timestamp with time zone,
+    CONSTRAINT agent_sessions_check_state_check CHECK ((check_state = ANY (ARRAY['none'::text, 'changed'::text, 'passed'::text, 'failed'::text]))),
+    CONSTRAINT agent_sessions_end_reason_check CHECK ((length(end_reason) <= 40)),
+    CONSTRAINT agent_sessions_external_session_id_check CHECK (((length(external_session_id) >= 1) AND (length(external_session_id) <= 128))),
+    CONSTRAINT agent_sessions_last_event_check CHECK ((length(last_event) <= 40)),
+    CONSTRAINT agent_sessions_notified_key_check CHECK ((length(notified_key) <= 80)),
+    CONSTRAINT agent_sessions_project_check CHECK ((length(project) <= 120)),
+    CONSTRAINT agent_sessions_source_check CHECK ((source = 'claude_code'::text)),
+    CONSTRAINT agent_sessions_state_check CHECK ((state = ANY (ARRAY['working'::text, 'waiting_user'::text, 'idle'::text, 'error'::text, 'ended'::text]))),
+    CONSTRAINT agent_sessions_title_check CHECK ((length(title) <= 120)),
+    CONSTRAINT agent_sessions_user_policy_check CHECK ((user_policy = ANY (ARRAY['watch'::text, 'paused_by_user'::text]))),
+    CONSTRAINT agent_sessions_waiting_reason_check CHECK ((length(waiting_reason) <= 60))
+);
+
+ALTER TABLE ONLY public.agent_sessions FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -253,6 +335,85 @@ ALTER TABLE ONLY public.audit_sequences FORCE ROW LEVEL SECURITY;
 
 
 --
+-- Name: browser_handoffs; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.browser_handoffs (
+    id uuid NOT NULL,
+    tenant_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    task_id uuid NOT NULL,
+    request_id uuid NOT NULL,
+    host_id uuid NOT NULL,
+    reason text NOT NULL,
+    site text NOT NULL,
+    token_hash text NOT NULL,
+    state text DEFAULT 'waiting'::text NOT NULL,
+    expires_at timestamp with time zone NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    ended_at timestamp with time zone,
+    CONSTRAINT browser_handoffs_check CHECK (((state = 'waiting'::text) = (ended_at IS NULL))),
+    CONSTRAINT browser_handoffs_reason_check CHECK ((reason = 'login_required'::text)),
+    CONSTRAINT browser_handoffs_site_check CHECK (((length(site) >= 1) AND (length(site) <= 253))),
+    CONSTRAINT browser_handoffs_state_check CHECK ((state = ANY (ARRAY['waiting'::text, 'resumed'::text, 'timed_out'::text, 'cancelled'::text, 'failed'::text])))
+);
+
+ALTER TABLE ONLY public.browser_handoffs FORCE ROW LEVEL SECURITY;
+
+
+--
+-- Name: call_sessions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.call_sessions (
+    id uuid NOT NULL,
+    tenant_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    link_id uuid NOT NULL,
+    conversation_id uuid NOT NULL,
+    token_hash text NOT NULL,
+    expires_at timestamp with time zone NOT NULL,
+    started_at timestamp with time zone,
+    ended_at timestamp with time zone,
+    seconds integer DEFAULT 0 NOT NULL,
+    end_reason text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    opening text,
+    household_id uuid,
+    group_id text,
+    CONSTRAINT call_sessions_group_id_check CHECK (((group_id IS NULL) OR ((length(group_id) >= 1) AND (length(group_id) <= 128)))),
+    CONSTRAINT call_sessions_opening_check CHECK (((opening IS NULL) OR (length(opening) <= 1000))),
+    CONSTRAINT call_sessions_seconds_check CHECK ((seconds >= 0))
+);
+
+ALTER TABLE ONLY public.call_sessions FORCE ROW LEVEL SECURITY;
+
+
+--
+-- Name: channel_groups; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.channel_groups (
+    id uuid NOT NULL,
+    tenant_id uuid NOT NULL,
+    household_id uuid NOT NULL,
+    owner_user_id uuid NOT NULL,
+    provider text NOT NULL,
+    workspace_id text NOT NULL,
+    group_id text NOT NULL,
+    enabled_by text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    revoked_at timestamp with time zone,
+    CONSTRAINT channel_groups_enabled_by_check CHECK (((length(enabled_by) >= 1) AND (length(enabled_by) <= 128))),
+    CONSTRAINT channel_groups_group_id_check CHECK (((length(group_id) >= 1) AND (length(group_id) <= 128))),
+    CONSTRAINT channel_groups_provider_check CHECK ((provider = 'line'::text)),
+    CONSTRAINT channel_groups_workspace_id_check CHECK (((length(workspace_id) >= 1) AND (length(workspace_id) <= 128)))
+);
+
+ALTER TABLE ONLY public.channel_groups FORCE ROW LEVEL SECURITY;
+
+
+--
 -- Name: channel_inbox; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -320,6 +481,25 @@ ALTER TABLE ONLY public.channel_links FORCE ROW LEVEL SECURITY;
 
 
 --
+-- Name: channel_media; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.channel_media (
+    token_hash text NOT NULL,
+    tenant_id uuid NOT NULL,
+    kind text NOT NULL,
+    ref jsonb NOT NULL,
+    source_entity_id text NOT NULL,
+    expires_at timestamp with time zone NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT channel_media_kind_check CHECK ((kind = ANY (ARRAY['place_photo'::text, 'static_map'::text]))),
+    CONSTRAINT channel_media_source_entity_id_check CHECK (((length(source_entity_id) >= 1) AND (length(source_entity_id) <= 200)))
+);
+
+ALTER TABLE ONLY public.channel_media FORCE ROW LEVEL SECURITY;
+
+
+--
 -- Name: channel_outbox; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -340,6 +520,7 @@ CREATE TABLE public.channel_outbox (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     sent_at timestamp with time zone,
     next_attempt_at timestamp with time zone DEFAULT now() NOT NULL,
+    answer_inline boolean DEFAULT false NOT NULL,
     CONSTRAINT channel_outbox_attempts_check CHECK ((attempts >= 0)),
     CONSTRAINT channel_outbox_destination_check CHECK (((length(destination) >= 1) AND (length(destination) <= 128))),
     CONSTRAINT channel_outbox_kind_check CHECK ((kind = ANY (ARRAY['accepted'::text, 'waiting_approval'::text, 'paused'::text, 'completed'::text, 'failed'::text, 'cancelled'::text, 'notice'::text]))),
@@ -398,6 +579,26 @@ CREATE TABLE public.connector_connections (
 );
 
 ALTER TABLE ONLY public.connector_connections FORCE ROW LEVEL SECURITY;
+
+
+--
+-- Name: conversation_goals; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.conversation_goals (
+    tenant_id uuid NOT NULL,
+    conversation_id uuid NOT NULL,
+    kind text NOT NULL,
+    status text DEFAULT 'active'::text NOT NULL,
+    slots jsonb DEFAULT '{}'::jsonb NOT NULL,
+    results jsonb DEFAULT '[]'::jsonb NOT NULL,
+    expires_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT conversation_goals_kind_check CHECK ((kind = 'restaurant'::text)),
+    CONSTRAINT conversation_goals_status_check CHECK ((status = ANY (ARRAY['active'::text, 'done'::text, 'cancelled'::text])))
+);
+
+ALTER TABLE ONLY public.conversation_goals FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -481,6 +682,43 @@ CREATE TABLE public.conversations (
 );
 
 ALTER TABLE ONLY public.conversations FORCE ROW LEVEL SECURITY;
+
+
+--
+-- Name: date_poll_votes; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.date_poll_votes (
+    poll_id uuid NOT NULL,
+    tenant_id uuid NOT NULL,
+    voter text NOT NULL,
+    voter_name text,
+    available jsonb NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT date_poll_votes_voter_check CHECK (((length(voter) >= 1) AND (length(voter) <= 128)))
+);
+
+ALTER TABLE ONLY public.date_poll_votes FORCE ROW LEVEL SECURITY;
+
+
+--
+-- Name: date_polls; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.date_polls (
+    id uuid NOT NULL,
+    tenant_id uuid NOT NULL,
+    household_id uuid NOT NULL,
+    title text NOT NULL,
+    candidates jsonb NOT NULL,
+    created_by text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    decided text,
+    closed_at timestamp with time zone,
+    CONSTRAINT date_polls_title_check CHECK (((length(title) >= 1) AND (length(title) <= 200)))
+);
+
+ALTER TABLE ONLY public.date_polls FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -594,6 +832,131 @@ ALTER TABLE ONLY public.evidence FORCE ROW LEVEL SECURITY;
 
 
 --
+-- Name: expense_budgets; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.expense_budgets (
+    tenant_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    category text NOT NULL,
+    currency text NOT NULL,
+    monthly numeric(12,2) NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    household_id uuid,
+    CONSTRAINT expense_budgets_currency_check CHECK ((currency ~ '^[A-Z]{3}$'::text)),
+    CONSTRAINT expense_budgets_monthly_check CHECK ((monthly > (0)::numeric))
+);
+
+ALTER TABLE ONLY public.expense_budgets FORCE ROW LEVEL SECURITY;
+
+
+--
+-- Name: expenses; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.expenses (
+    id uuid NOT NULL,
+    tenant_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    amount numeric(12,2) NOT NULL,
+    currency text NOT NULL,
+    category text NOT NULL,
+    merchant text,
+    spent_on date NOT NULL,
+    source text NOT NULL,
+    receipt_key text NOT NULL,
+    image_sha256 text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    voided_at timestamp with time zone,
+    household_id uuid,
+    recorded_by text,
+    CONSTRAINT expenses_amount_check CHECK ((amount > (0)::numeric)),
+    CONSTRAINT expenses_currency_check CHECK ((currency ~ '^[A-Z]{3}$'::text))
+);
+
+ALTER TABLE ONLY public.expenses FORCE ROW LEVEL SECURITY;
+
+
+--
+-- Name: group_board_events; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.group_board_events (
+    id uuid NOT NULL,
+    tenant_id uuid NOT NULL,
+    board_id uuid NOT NULL,
+    kind text NOT NULL,
+    text text NOT NULL,
+    at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT group_board_events_kind_check CHECK ((kind = ANY (ARRAY['searched'::text, 'chosen'::text, 'decided'::text, 'condition'::text, 'opened'::text, 'closed'::text]))),
+    CONSTRAINT group_board_events_text_check CHECK (((length(text) >= 1) AND (length(text) <= 200)))
+);
+
+ALTER TABLE ONLY public.group_board_events FORCE ROW LEVEL SECURITY;
+
+
+--
+-- Name: group_board_links; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.group_board_links (
+    token_hash text NOT NULL,
+    tenant_id uuid NOT NULL,
+    board_id uuid NOT NULL,
+    expires_at timestamp with time zone NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+ALTER TABLE ONLY public.group_board_links FORCE ROW LEVEL SECURITY;
+
+
+--
+-- Name: group_boards; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.group_boards (
+    id uuid NOT NULL,
+    tenant_id uuid NOT NULL,
+    household_id uuid NOT NULL,
+    kind text NOT NULL,
+    title text NOT NULL,
+    status text DEFAULT 'planning'::text NOT NULL,
+    state jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT group_boards_kind_check CHECK ((kind = 'outing'::text)),
+    CONSTRAINT group_boards_status_check CHECK ((status = ANY (ARRAY['planning'::text, 'decided'::text, 'closed'::text]))),
+    CONSTRAINT group_boards_title_check CHECK (((length(title) >= 1) AND (length(title) <= 80)))
+);
+
+ALTER TABLE ONLY public.group_boards FORCE ROW LEVEL SECURITY;
+
+
+--
+-- Name: group_messages; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.group_messages (
+    tenant_id uuid NOT NULL,
+    household_id uuid NOT NULL,
+    message_id text NOT NULL,
+    sender_id text NOT NULL,
+    sender_name text,
+    text text NOT NULL,
+    quoted_message_id text,
+    from_genie boolean DEFAULT false NOT NULL,
+    sent_at timestamp with time zone NOT NULL,
+    expires_at timestamp with time zone NOT NULL,
+    deleted_at timestamp with time zone,
+    CONSTRAINT group_messages_message_id_check CHECK (((length(message_id) >= 1) AND (length(message_id) <= 64))),
+    CONSTRAINT group_messages_sender_id_check CHECK (((length(sender_id) >= 1) AND (length(sender_id) <= 64))),
+    CONSTRAINT group_messages_text_check CHECK ((length(text) <= 2000))
+);
+
+ALTER TABLE ONLY public.group_messages FORCE ROW LEVEL SECURITY;
+
+
+--
 -- Name: host_step_requests; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -622,6 +985,50 @@ CREATE TABLE public.host_step_requests (
 );
 
 ALTER TABLE ONLY public.host_step_requests FORCE ROW LEVEL SECURITY;
+
+
+--
+-- Name: household_todos; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.household_todos (
+    id uuid NOT NULL,
+    tenant_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    household_id uuid,
+    title text NOT NULL,
+    assignee text,
+    created_by text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    done_at timestamp with time zone,
+    done_by text,
+    CONSTRAINT household_todos_title_check CHECK (((length(title) >= 1) AND (length(title) <= 200)))
+);
+
+ALTER TABLE ONLY public.household_todos FORCE ROW LEVEL SECURITY;
+
+
+--
+-- Name: households; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.households (
+    id uuid NOT NULL,
+    tenant_id uuid NOT NULL,
+    owner_user_id uuid NOT NULL,
+    name text NOT NULL,
+    auto_receipts boolean DEFAULT false NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    context_mode text DEFAULT 'mentions'::text NOT NULL,
+    context_days integer DEFAULT 7 NOT NULL,
+    conversation_id uuid,
+    context_paused boolean DEFAULT false NOT NULL,
+    CONSTRAINT households_context_days_check CHECK ((context_days = ANY (ARRAY[1, 7, 30]))),
+    CONSTRAINT households_context_mode_check CHECK ((context_mode = ANY (ARRAY['context'::text, 'mentions'::text]))),
+    CONSTRAINT households_name_check CHECK (((length(name) >= 1) AND (length(name) <= 100)))
+);
+
+ALTER TABLE ONLY public.households FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -790,6 +1197,58 @@ CREATE TABLE public.onboarding_states (
 );
 
 ALTER TABLE ONLY public.onboarding_states FORCE ROW LEVEL SECURITY;
+
+
+--
+-- Name: opencode_watches; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.opencode_watches (
+    id uuid NOT NULL,
+    tenant_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    conversation_id uuid NOT NULL,
+    base_url text NOT NULL,
+    session_id text NOT NULL,
+    interval_seconds integer NOT NULL,
+    status text DEFAULT 'active'::text NOT NULL,
+    next_check_at timestamp with time zone NOT NULL,
+    expires_at timestamp with time zone NOT NULL,
+    last_signature text,
+    nudges integer DEFAULT 0 NOT NULL,
+    idle_nudges integer DEFAULT 0 NOT NULL,
+    failures integer DEFAULT 0 NOT NULL,
+    waiting_notified boolean DEFAULT false NOT NULL,
+    ended_reason text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT opencode_watches_base_url_check CHECK (((length(base_url) >= 8) AND (length(base_url) <= 300))),
+    CONSTRAINT opencode_watches_failures_check CHECK ((failures >= 0)),
+    CONSTRAINT opencode_watches_idle_nudges_check CHECK ((idle_nudges >= 0)),
+    CONSTRAINT opencode_watches_interval_seconds_check CHECK (((interval_seconds >= 300) AND (interval_seconds <= 7200))),
+    CONSTRAINT opencode_watches_nudges_check CHECK ((nudges >= 0)),
+    CONSTRAINT opencode_watches_session_id_check CHECK ((session_id ~ '^ses_[A-Za-z0-9]{1,64}$'::text)),
+    CONSTRAINT opencode_watches_status_check CHECK ((status = ANY (ARRAY['active'::text, 'done'::text, 'stalled'::text, 'unreachable'::text, 'expired'::text, 'stopped'::text])))
+);
+
+ALTER TABLE ONLY public.opencode_watches FORCE ROW LEVEL SECURITY;
+
+
+--
+-- Name: pending_confirmations; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.pending_confirmations (
+    tenant_id uuid NOT NULL,
+    conversation_id uuid NOT NULL,
+    kind text NOT NULL,
+    payload jsonb NOT NULL,
+    expires_at timestamp with time zone NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT pending_confirmations_kind_check CHECK ((kind = ANY (ARRAY['expense'::text, 'event'::text])))
+);
+
+ALTER TABLE ONLY public.pending_confirmations FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -1083,6 +1542,26 @@ ALTER TABLE ONLY public.shares FORCE ROW LEVEL SECURITY;
 
 
 --
+-- Name: shopping_items; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.shopping_items (
+    id uuid NOT NULL,
+    tenant_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    household_id uuid,
+    name text NOT NULL,
+    added_by text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    bought_at timestamp with time zone,
+    bought_by text,
+    CONSTRAINT shopping_items_name_check CHECK (((length(name) >= 1) AND (length(name) <= 100)))
+);
+
+ALTER TABLE ONLY public.shopping_items FORCE ROW LEVEL SECURITY;
+
+
+--
 -- Name: task_events; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1102,6 +1581,28 @@ CREATE TABLE public.task_events (
 );
 
 ALTER TABLE ONLY public.task_events FORCE ROW LEVEL SECURITY;
+
+
+--
+-- Name: task_followups; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.task_followups (
+    id uuid NOT NULL,
+    tenant_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    conversation_id uuid NOT NULL,
+    after_task_id uuid NOT NULL,
+    request text NOT NULL,
+    status text DEFAULT 'waiting'::text NOT NULL,
+    started_task_id uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    decided_at timestamp with time zone,
+    CONSTRAINT task_followups_request_check CHECK (((length(request) >= 1) AND (length(request) <= 2000))),
+    CONSTRAINT task_followups_status_check CHECK ((status = ANY (ARRAY['waiting'::text, 'started'::text, 'skipped'::text, 'held'::text, 'cancelled'::text])))
+);
+
+ALTER TABLE ONLY public.task_followups FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -1266,6 +1767,23 @@ ALTER TABLE ONLY public.turns FORCE ROW LEVEL SECURITY;
 
 
 --
+-- Name: usage_counters; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.usage_counters (
+    tenant_id uuid NOT NULL,
+    kind text NOT NULL,
+    month text NOT NULL,
+    count integer DEFAULT 0 NOT NULL,
+    CONSTRAINT usage_counters_count_check CHECK ((count >= 0)),
+    CONSTRAINT usage_counters_kind_check CHECK (((length(kind) >= 1) AND (length(kind) <= 40))),
+    CONSTRAINT usage_counters_month_check CHECK ((month ~ '^\d{4}-\d{2}$'::text))
+);
+
+ALTER TABLE ONLY public.usage_counters FORCE ROW LEVEL SECURITY;
+
+
+--
 -- Name: user_identities; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1296,7 +1814,7 @@ CREATE TABLE public.user_notices (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     delivered_at timestamp with time zone,
     CONSTRAINT user_notices_body_check CHECK ((length(body) <= 2000)),
-    CONSTRAINT user_notices_kind_check CHECK ((kind = ANY (ARRAY['reminder'::text, 'scheduled_task'::text, 'schedule_problem'::text]))),
+    CONSTRAINT user_notices_kind_check CHECK ((kind = ANY (ARRAY['reminder'::text, 'scheduled_task'::text, 'schedule_problem'::text, 'agent_session'::text, 'work_hold'::text, 'task_followup'::text]))),
     CONSTRAINT user_notices_title_check CHECK (((length(title) >= 1) AND (length(title) <= 200)))
 );
 
@@ -1375,6 +1893,68 @@ CREATE TABLE public.work_corrections (
 );
 
 ALTER TABLE ONLY public.work_corrections FORCE ROW LEVEL SECURITY;
+
+
+--
+-- Name: work_criteria; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.work_criteria (
+    id uuid NOT NULL,
+    tenant_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    task_id uuid,
+    agent_session_id uuid,
+    text text NOT NULL,
+    kind text NOT NULL,
+    met_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT work_criteria_check CHECK ((num_nonnulls(task_id, agent_session_id) = 1)),
+    CONSTRAINT work_criteria_check1 CHECK (((kind = 'manual'::text) OR (met_at IS NULL))),
+    CONSTRAINT work_criteria_kind_check CHECK ((kind = ANY (ARRAY['tests'::text, 'manual'::text]))),
+    CONSTRAINT work_criteria_text_check CHECK (((length(text) >= 1) AND (length(text) <= 200)))
+);
+
+ALTER TABLE ONLY public.work_criteria FORCE ROW LEVEL SECURITY;
+
+
+--
+-- Name: work_holds; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.work_holds (
+    id uuid NOT NULL,
+    tenant_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    subject text NOT NULL,
+    reason text,
+    until_date date,
+    status text DEFAULT 'active'::text NOT NULL,
+    paused_schedule_ids uuid[] DEFAULT '{}'::uuid[] NOT NULL,
+    due_noticed_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    released_at timestamp with time zone,
+    CONSTRAINT work_holds_reason_check CHECK ((length(reason) <= 200)),
+    CONSTRAINT work_holds_status_check CHECK ((status = ANY (ARRAY['active'::text, 'released'::text]))),
+    CONSTRAINT work_holds_subject_check CHECK (((length(subject) >= 1) AND (length(subject) <= 80)))
+);
+
+ALTER TABLE ONLY public.work_holds FORCE ROW LEVEL SECURITY;
+
+
+--
+-- Name: work_links; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.work_links (
+    token_hash text NOT NULL,
+    tenant_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    expires_at timestamp with time zone NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+ALTER TABLE ONLY public.work_links FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -1508,11 +2088,43 @@ ALTER TABLE ONLY public.action_receipts
 
 
 --
+-- Name: agent_connections agent_connections_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_connections
+    ADD CONSTRAINT agent_connections_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: agent_connections agent_connections_token_hash_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_connections
+    ADD CONSTRAINT agent_connections_token_hash_key UNIQUE (token_hash);
+
+
+--
 -- Name: agent_hosts agent_hosts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.agent_hosts
     ADD CONSTRAINT agent_hosts_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: agent_session_marks agent_session_marks_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_session_marks
+    ADD CONSTRAINT agent_session_marks_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: agent_sessions agent_sessions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_sessions
+    ADD CONSTRAINT agent_sessions_pkey PRIMARY KEY (id);
 
 
 --
@@ -1564,6 +2176,46 @@ ALTER TABLE ONLY public.audit_sequences
 
 
 --
+-- Name: browser_handoffs browser_handoffs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.browser_handoffs
+    ADD CONSTRAINT browser_handoffs_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: browser_handoffs browser_handoffs_token_hash_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.browser_handoffs
+    ADD CONSTRAINT browser_handoffs_token_hash_key UNIQUE (token_hash);
+
+
+--
+-- Name: call_sessions call_sessions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.call_sessions
+    ADD CONSTRAINT call_sessions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: call_sessions call_sessions_token_hash_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.call_sessions
+    ADD CONSTRAINT call_sessions_token_hash_key UNIQUE (token_hash);
+
+
+--
+-- Name: channel_groups channel_groups_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.channel_groups
+    ADD CONSTRAINT channel_groups_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: channel_inbox channel_inbox_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1588,6 +2240,14 @@ ALTER TABLE ONLY public.channel_links
 
 
 --
+-- Name: channel_media channel_media_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.channel_media
+    ADD CONSTRAINT channel_media_pkey PRIMARY KEY (token_hash);
+
+
+--
 -- Name: channel_outbox channel_outbox_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1609,6 +2269,14 @@ ALTER TABLE ONLY public.channel_threads
 
 ALTER TABLE ONLY public.connector_connections
     ADD CONSTRAINT connector_connections_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: conversation_goals conversation_goals_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.conversation_goals
+    ADD CONSTRAINT conversation_goals_pkey PRIMARY KEY (tenant_id, conversation_id);
 
 
 --
@@ -1641,6 +2309,22 @@ ALTER TABLE ONLY public.conversation_summaries
 
 ALTER TABLE ONLY public.conversations
     ADD CONSTRAINT conversations_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: date_poll_votes date_poll_votes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.date_poll_votes
+    ADD CONSTRAINT date_poll_votes_pkey PRIMARY KEY (poll_id, voter);
+
+
+--
+-- Name: date_polls date_polls_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.date_polls
+    ADD CONSTRAINT date_polls_pkey PRIMARY KEY (id);
 
 
 --
@@ -1684,11 +2368,67 @@ ALTER TABLE ONLY public.evidence
 
 
 --
+-- Name: expenses expenses_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.expenses
+    ADD CONSTRAINT expenses_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: group_board_events group_board_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.group_board_events
+    ADD CONSTRAINT group_board_events_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: group_board_links group_board_links_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.group_board_links
+    ADD CONSTRAINT group_board_links_pkey PRIMARY KEY (token_hash);
+
+
+--
+-- Name: group_boards group_boards_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.group_boards
+    ADD CONSTRAINT group_boards_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: group_messages group_messages_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.group_messages
+    ADD CONSTRAINT group_messages_pkey PRIMARY KEY (tenant_id, household_id, message_id);
+
+
+--
 -- Name: host_step_requests host_step_requests_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.host_step_requests
     ADD CONSTRAINT host_step_requests_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: household_todos household_todos_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.household_todos
+    ADD CONSTRAINT household_todos_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: households households_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.households
+    ADD CONSTRAINT households_pkey PRIMARY KEY (id);
 
 
 --
@@ -1753,6 +2493,22 @@ ALTER TABLE ONLY public.memberships
 
 ALTER TABLE ONLY public.onboarding_states
     ADD CONSTRAINT onboarding_states_pkey PRIMARY KEY (tenant_id, user_id);
+
+
+--
+-- Name: opencode_watches opencode_watches_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.opencode_watches
+    ADD CONSTRAINT opencode_watches_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: pending_confirmations pending_confirmations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.pending_confirmations
+    ADD CONSTRAINT pending_confirmations_pkey PRIMARY KEY (tenant_id, conversation_id);
 
 
 --
@@ -1868,11 +2624,27 @@ ALTER TABLE ONLY public.shares
 
 
 --
+-- Name: shopping_items shopping_items_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.shopping_items
+    ADD CONSTRAINT shopping_items_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: task_events task_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.task_events
     ADD CONSTRAINT task_events_pkey PRIMARY KEY (event_id);
+
+
+--
+-- Name: task_followups task_followups_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.task_followups
+    ADD CONSTRAINT task_followups_pkey PRIMARY KEY (id);
 
 
 --
@@ -1972,6 +2744,14 @@ ALTER TABLE ONLY public.turns
 
 
 --
+-- Name: usage_counters usage_counters_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.usage_counters
+    ADD CONSTRAINT usage_counters_pkey PRIMARY KEY (tenant_id, kind, month);
+
+
+--
 -- Name: user_identities user_identities_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2017,6 +2797,30 @@ ALTER TABLE ONLY public.work_artifacts
 
 ALTER TABLE ONLY public.work_corrections
     ADD CONSTRAINT work_corrections_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: work_criteria work_criteria_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.work_criteria
+    ADD CONSTRAINT work_criteria_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: work_holds work_holds_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.work_holds
+    ADD CONSTRAINT work_holds_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: work_links work_links_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.work_links
+    ADD CONSTRAINT work_links_pkey PRIMARY KEY (token_hash);
 
 
 --
@@ -2089,6 +2893,13 @@ CREATE INDEX action_receipts_task_executed_idx ON public.action_receipts USING b
 
 
 --
+-- Name: agent_connections_owner; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX agent_connections_owner ON public.agent_connections USING btree (tenant_id, user_id);
+
+
+--
 -- Name: agent_hosts_alive; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2100,6 +2911,34 @@ CREATE INDEX agent_hosts_alive ON public.agent_hosts USING btree (tenant_id, las
 --
 
 CREATE UNIQUE INDEX agent_hosts_device ON public.agent_hosts USING btree (tenant_id, user_id, device_label);
+
+
+--
+-- Name: agent_session_marks_session; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX agent_session_marks_session ON public.agent_session_marks USING btree (session_id, at);
+
+
+--
+-- Name: agent_sessions_due; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX agent_sessions_due ON public.agent_sessions USING btree (check_after) WHERE (check_after IS NOT NULL);
+
+
+--
+-- Name: agent_sessions_external; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX agent_sessions_external ON public.agent_sessions USING btree (tenant_id, user_id, source, external_session_id);
+
+
+--
+-- Name: agent_sessions_recent; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX agent_sessions_recent ON public.agent_sessions USING btree (tenant_id, user_id, last_activity_at DESC);
 
 
 --
@@ -2187,6 +3026,34 @@ CREATE UNIQUE INDEX audit_events_prev ON public.audit_events USING btree (tenant
 
 
 --
+-- Name: browser_handoffs_task; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX browser_handoffs_task ON public.browser_handoffs USING btree (tenant_id, task_id);
+
+
+--
+-- Name: browser_handoffs_user; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX browser_handoffs_user ON public.browser_handoffs USING btree (tenant_id, user_id, created_at DESC);
+
+
+--
+-- Name: call_sessions_month; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX call_sessions_month ON public.call_sessions USING btree (tenant_id, user_id, started_at);
+
+
+--
+-- Name: channel_groups_active; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX channel_groups_active ON public.channel_groups USING btree (provider, workspace_id, group_id) WHERE (revoked_at IS NULL);
+
+
+--
 -- Name: channel_inbox_by_age; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2219,6 +3086,13 @@ CREATE UNIQUE INDEX channel_links_active_subject ON public.channel_links USING b
 --
 
 CREATE INDEX channel_links_by_user ON public.channel_links USING btree (tenant_id, user_id) WHERE (revoked_at IS NULL);
+
+
+--
+-- Name: channel_media_expiry; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX channel_media_expiry ON public.channel_media USING btree (expires_at);
 
 
 --
@@ -2271,6 +3145,13 @@ CREATE INDEX conversations_recent ON public.conversations USING btree (tenant_id
 
 
 --
+-- Name: date_polls_open; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX date_polls_open ON public.date_polls USING btree (tenant_id, household_id, created_at) WHERE (closed_at IS NULL);
+
+
+--
 -- Name: devices_by_user; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2320,6 +3201,55 @@ CREATE UNIQUE INDEX evidence_dedupe ON public.evidence USING btree (research_run
 
 
 --
+-- Name: expense_budgets_scope; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX expense_budgets_scope ON public.expense_budgets USING btree (tenant_id, user_id, COALESCE(household_id, '00000000-0000-0000-0000-000000000000'::uuid), category, currency);
+
+
+--
+-- Name: expenses_image; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX expenses_image ON public.expenses USING btree (tenant_id, user_id, COALESCE(household_id, '00000000-0000-0000-0000-000000000000'::uuid), image_sha256) WHERE ((voided_at IS NULL) AND (image_sha256 IS NOT NULL));
+
+
+--
+-- Name: expenses_month; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX expenses_month ON public.expenses USING btree (tenant_id, user_id, spent_on);
+
+
+--
+-- Name: expenses_receipt_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX expenses_receipt_key ON public.expenses USING btree (tenant_id, user_id, COALESCE(household_id, '00000000-0000-0000-0000-000000000000'::uuid), receipt_key) WHERE (voided_at IS NULL);
+
+
+--
+-- Name: group_board_events_board; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX group_board_events_board ON public.group_board_events USING btree (tenant_id, board_id, at);
+
+
+--
+-- Name: group_boards_open; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX group_boards_open ON public.group_boards USING btree (tenant_id, household_id) WHERE (status <> 'closed'::text);
+
+
+--
+-- Name: group_messages_recent; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX group_messages_recent ON public.group_messages USING btree (tenant_id, household_id, sent_at DESC);
+
+
+--
 -- Name: host_step_requests_queue; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2331,6 +3261,20 @@ CREATE INDEX host_step_requests_queue ON public.host_step_requests USING btree (
 --
 
 CREATE UNIQUE INDEX host_step_requests_step ON public.host_step_requests USING btree (task_id, step_index, request_key);
+
+
+--
+-- Name: household_todos_open; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX household_todos_open ON public.household_todos USING btree (tenant_id, household_id, created_at) WHERE (done_at IS NULL);
+
+
+--
+-- Name: households_by_owner; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX households_by_owner ON public.households USING btree (tenant_id, owner_user_id);
 
 
 --
@@ -2380,6 +3324,20 @@ CREATE INDEX meetings_live ON public.meetings USING btree (tenant_id) WHERE (sta
 --
 
 CREATE INDEX meetings_recent ON public.meetings USING btree (tenant_id, started_at DESC);
+
+
+--
+-- Name: opencode_watches_due; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX opencode_watches_due ON public.opencode_watches USING btree (next_check_at) WHERE (status = 'active'::text);
+
+
+--
+-- Name: opencode_watches_one_active; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX opencode_watches_one_active ON public.opencode_watches USING btree (tenant_id, user_id, base_url, session_id) WHERE (status = 'active'::text);
 
 
 --
@@ -2509,6 +3467,13 @@ CREATE UNIQUE INDEX shares_token ON public.shares USING btree (token_hash);
 
 
 --
+-- Name: shopping_items_open; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX shopping_items_open ON public.shopping_items USING btree (tenant_id, household_id, created_at) WHERE (bought_at IS NULL);
+
+
+--
 -- Name: task_events_idem; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2520,6 +3485,13 @@ CREATE UNIQUE INDEX task_events_idem ON public.task_events USING btree (stream_k
 --
 
 CREATE UNIQUE INDEX task_events_stream_seq ON public.task_events USING btree (stream_kind, stream_id, sequence);
+
+
+--
+-- Name: task_followups_waiting; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX task_followups_waiting ON public.task_followups USING btree (tenant_id, after_task_id) WHERE (status = 'waiting'::text);
 
 
 --
@@ -2625,6 +3597,41 @@ CREATE INDEX work_artifacts_recent ON public.work_artifacts USING btree (tenant_
 --
 
 CREATE INDEX work_corrections_user ON public.work_corrections USING btree (tenant_id, user_id, created_at DESC);
+
+
+--
+-- Name: work_criteria_session; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX work_criteria_session ON public.work_criteria USING btree (agent_session_id) WHERE (agent_session_id IS NOT NULL);
+
+
+--
+-- Name: work_criteria_task; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX work_criteria_task ON public.work_criteria USING btree (task_id) WHERE (task_id IS NOT NULL);
+
+
+--
+-- Name: work_holds_due; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX work_holds_due ON public.work_holds USING btree (until_date) WHERE ((status = 'active'::text) AND (due_noticed_at IS NULL) AND (until_date IS NOT NULL));
+
+
+--
+-- Name: work_holds_one_active; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX work_holds_one_active ON public.work_holds USING btree (tenant_id, user_id, lower(subject)) WHERE (status = 'active'::text);
+
+
+--
+-- Name: work_links_user; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX work_links_user ON public.work_links USING btree (tenant_id, user_id);
 
 
 --
@@ -2785,6 +3792,22 @@ ALTER TABLE ONLY public.action_receipts
 
 
 --
+-- Name: agent_connections agent_connections_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_connections
+    ADD CONSTRAINT agent_connections_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: agent_connections agent_connections_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_connections
+    ADD CONSTRAINT agent_connections_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
 -- Name: agent_hosts agent_hosts_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2798,6 +3821,54 @@ ALTER TABLE ONLY public.agent_hosts
 
 ALTER TABLE ONLY public.agent_hosts
     ADD CONSTRAINT agent_hosts_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: agent_session_marks agent_session_marks_session_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_session_marks
+    ADD CONSTRAINT agent_session_marks_session_id_fkey FOREIGN KEY (session_id) REFERENCES public.agent_sessions(id) ON DELETE CASCADE;
+
+
+--
+-- Name: agent_session_marks agent_session_marks_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_session_marks
+    ADD CONSTRAINT agent_session_marks_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: agent_sessions agent_sessions_connection_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_sessions
+    ADD CONSTRAINT agent_sessions_connection_id_fkey FOREIGN KEY (connection_id) REFERENCES public.agent_connections(id);
+
+
+--
+-- Name: agent_sessions agent_sessions_held_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_sessions
+    ADD CONSTRAINT agent_sessions_held_by_fkey FOREIGN KEY (held_by) REFERENCES public.work_holds(id);
+
+
+--
+-- Name: agent_sessions agent_sessions_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_sessions
+    ADD CONSTRAINT agent_sessions_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: agent_sessions agent_sessions_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_sessions
+    ADD CONSTRAINT agent_sessions_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
 
 
 --
@@ -2921,6 +3992,94 @@ ALTER TABLE ONLY public.audit_sequences
 
 
 --
+-- Name: browser_handoffs browser_handoffs_task_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.browser_handoffs
+    ADD CONSTRAINT browser_handoffs_task_id_fkey FOREIGN KEY (task_id) REFERENCES public.tasks(id) ON DELETE CASCADE;
+
+
+--
+-- Name: browser_handoffs browser_handoffs_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.browser_handoffs
+    ADD CONSTRAINT browser_handoffs_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: browser_handoffs browser_handoffs_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.browser_handoffs
+    ADD CONSTRAINT browser_handoffs_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: call_sessions call_sessions_conversation_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.call_sessions
+    ADD CONSTRAINT call_sessions_conversation_id_fkey FOREIGN KEY (conversation_id) REFERENCES public.conversations(id);
+
+
+--
+-- Name: call_sessions call_sessions_household_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.call_sessions
+    ADD CONSTRAINT call_sessions_household_id_fkey FOREIGN KEY (household_id) REFERENCES public.households(id);
+
+
+--
+-- Name: call_sessions call_sessions_link_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.call_sessions
+    ADD CONSTRAINT call_sessions_link_id_fkey FOREIGN KEY (link_id) REFERENCES public.channel_links(id);
+
+
+--
+-- Name: call_sessions call_sessions_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.call_sessions
+    ADD CONSTRAINT call_sessions_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: call_sessions call_sessions_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.call_sessions
+    ADD CONSTRAINT call_sessions_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: channel_groups channel_groups_household_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.channel_groups
+    ADD CONSTRAINT channel_groups_household_id_fkey FOREIGN KEY (household_id) REFERENCES public.households(id);
+
+
+--
+-- Name: channel_groups channel_groups_owner_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.channel_groups
+    ADD CONSTRAINT channel_groups_owner_user_id_fkey FOREIGN KEY (owner_user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: channel_groups channel_groups_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.channel_groups
+    ADD CONSTRAINT channel_groups_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: channel_link_codes channel_link_codes_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2958,6 +4117,14 @@ ALTER TABLE ONLY public.channel_links
 
 ALTER TABLE ONLY public.channel_links
     ADD CONSTRAINT channel_links_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: channel_media channel_media_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.channel_media
+    ADD CONSTRAINT channel_media_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
 
 
 --
@@ -3030,6 +4197,22 @@ ALTER TABLE ONLY public.connector_connections
 
 ALTER TABLE ONLY public.connector_connections
     ADD CONSTRAINT connector_connections_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: conversation_goals conversation_goals_conversation_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.conversation_goals
+    ADD CONSTRAINT conversation_goals_conversation_id_fkey FOREIGN KEY (conversation_id) REFERENCES public.conversations(id);
+
+
+--
+-- Name: conversation_goals conversation_goals_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.conversation_goals
+    ADD CONSTRAINT conversation_goals_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
 
 
 --
@@ -3145,6 +4328,38 @@ ALTER TABLE ONLY public.conversations
 
 
 --
+-- Name: date_poll_votes date_poll_votes_poll_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.date_poll_votes
+    ADD CONSTRAINT date_poll_votes_poll_id_fkey FOREIGN KEY (poll_id) REFERENCES public.date_polls(id);
+
+
+--
+-- Name: date_poll_votes date_poll_votes_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.date_poll_votes
+    ADD CONSTRAINT date_poll_votes_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: date_polls date_polls_household_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.date_polls
+    ADD CONSTRAINT date_polls_household_id_fkey FOREIGN KEY (household_id) REFERENCES public.households(id);
+
+
+--
+-- Name: date_polls date_polls_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.date_polls
+    ADD CONSTRAINT date_polls_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: devices devices_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3249,6 +4464,118 @@ ALTER TABLE ONLY public.evidence
 
 
 --
+-- Name: expense_budgets expense_budgets_household_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.expense_budgets
+    ADD CONSTRAINT expense_budgets_household_id_fkey FOREIGN KEY (household_id) REFERENCES public.households(id);
+
+
+--
+-- Name: expense_budgets expense_budgets_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.expense_budgets
+    ADD CONSTRAINT expense_budgets_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: expense_budgets expense_budgets_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.expense_budgets
+    ADD CONSTRAINT expense_budgets_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: expenses expenses_household_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.expenses
+    ADD CONSTRAINT expenses_household_id_fkey FOREIGN KEY (household_id) REFERENCES public.households(id);
+
+
+--
+-- Name: expenses expenses_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.expenses
+    ADD CONSTRAINT expenses_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: expenses expenses_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.expenses
+    ADD CONSTRAINT expenses_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: group_board_events group_board_events_board_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.group_board_events
+    ADD CONSTRAINT group_board_events_board_id_fkey FOREIGN KEY (board_id) REFERENCES public.group_boards(id) ON DELETE CASCADE;
+
+
+--
+-- Name: group_board_events group_board_events_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.group_board_events
+    ADD CONSTRAINT group_board_events_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: group_board_links group_board_links_board_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.group_board_links
+    ADD CONSTRAINT group_board_links_board_id_fkey FOREIGN KEY (board_id) REFERENCES public.group_boards(id) ON DELETE CASCADE;
+
+
+--
+-- Name: group_board_links group_board_links_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.group_board_links
+    ADD CONSTRAINT group_board_links_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: group_boards group_boards_household_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.group_boards
+    ADD CONSTRAINT group_boards_household_id_fkey FOREIGN KEY (household_id) REFERENCES public.households(id);
+
+
+--
+-- Name: group_boards group_boards_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.group_boards
+    ADD CONSTRAINT group_boards_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: group_messages group_messages_household_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.group_messages
+    ADD CONSTRAINT group_messages_household_id_fkey FOREIGN KEY (household_id) REFERENCES public.households(id);
+
+
+--
+-- Name: group_messages group_messages_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.group_messages
+    ADD CONSTRAINT group_messages_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: host_step_requests host_step_requests_host_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3270,6 +4597,54 @@ ALTER TABLE ONLY public.host_step_requests
 
 ALTER TABLE ONLY public.host_step_requests
     ADD CONSTRAINT host_step_requests_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: household_todos household_todos_household_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.household_todos
+    ADD CONSTRAINT household_todos_household_id_fkey FOREIGN KEY (household_id) REFERENCES public.households(id);
+
+
+--
+-- Name: household_todos household_todos_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.household_todos
+    ADD CONSTRAINT household_todos_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: household_todos household_todos_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.household_todos
+    ADD CONSTRAINT household_todos_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: households households_conversation_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.households
+    ADD CONSTRAINT households_conversation_id_fkey FOREIGN KEY (conversation_id) REFERENCES public.conversations(id);
+
+
+--
+-- Name: households households_owner_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.households
+    ADD CONSTRAINT households_owner_user_id_fkey FOREIGN KEY (owner_user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: households households_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.households
+    ADD CONSTRAINT households_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
 
 
 --
@@ -3446,6 +4821,46 @@ ALTER TABLE ONLY public.onboarding_states
 
 ALTER TABLE ONLY public.onboarding_states
     ADD CONSTRAINT onboarding_states_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: opencode_watches opencode_watches_conversation_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.opencode_watches
+    ADD CONSTRAINT opencode_watches_conversation_id_fkey FOREIGN KEY (conversation_id) REFERENCES public.conversations(id);
+
+
+--
+-- Name: opencode_watches opencode_watches_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.opencode_watches
+    ADD CONSTRAINT opencode_watches_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: opencode_watches opencode_watches_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.opencode_watches
+    ADD CONSTRAINT opencode_watches_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: pending_confirmations pending_confirmations_conversation_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.pending_confirmations
+    ADD CONSTRAINT pending_confirmations_conversation_id_fkey FOREIGN KEY (conversation_id) REFERENCES public.conversations(id);
+
+
+--
+-- Name: pending_confirmations pending_confirmations_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.pending_confirmations
+    ADD CONSTRAINT pending_confirmations_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
 
 
 --
@@ -3697,6 +5112,30 @@ ALTER TABLE ONLY public.shares
 
 
 --
+-- Name: shopping_items shopping_items_household_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.shopping_items
+    ADD CONSTRAINT shopping_items_household_id_fkey FOREIGN KEY (household_id) REFERENCES public.households(id);
+
+
+--
+-- Name: shopping_items shopping_items_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.shopping_items
+    ADD CONSTRAINT shopping_items_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: shopping_items shopping_items_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.shopping_items
+    ADD CONSTRAINT shopping_items_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
 -- Name: task_events task_events_conversation_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3726,6 +5165,46 @@ ALTER TABLE ONLY public.task_events
 
 ALTER TABLE ONLY public.task_events
     ADD CONSTRAINT task_events_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: task_followups task_followups_after_task_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.task_followups
+    ADD CONSTRAINT task_followups_after_task_id_fkey FOREIGN KEY (after_task_id) REFERENCES public.tasks(id);
+
+
+--
+-- Name: task_followups task_followups_conversation_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.task_followups
+    ADD CONSTRAINT task_followups_conversation_id_fkey FOREIGN KEY (conversation_id) REFERENCES public.conversations(id);
+
+
+--
+-- Name: task_followups task_followups_started_task_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.task_followups
+    ADD CONSTRAINT task_followups_started_task_id_fkey FOREIGN KEY (started_task_id) REFERENCES public.tasks(id);
+
+
+--
+-- Name: task_followups task_followups_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.task_followups
+    ADD CONSTRAINT task_followups_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: task_followups task_followups_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.task_followups
+    ADD CONSTRAINT task_followups_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
 
 
 --
@@ -3881,6 +5360,14 @@ ALTER TABLE ONLY public.turns
 
 
 --
+-- Name: usage_counters usage_counters_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.usage_counters
+    ADD CONSTRAINT usage_counters_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: user_identities user_identities_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3950,6 +5437,70 @@ ALTER TABLE ONLY public.work_artifacts
 
 ALTER TABLE ONLY public.work_corrections
     ADD CONSTRAINT work_corrections_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: work_criteria work_criteria_agent_session_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.work_criteria
+    ADD CONSTRAINT work_criteria_agent_session_id_fkey FOREIGN KEY (agent_session_id) REFERENCES public.agent_sessions(id) ON DELETE CASCADE;
+
+
+--
+-- Name: work_criteria work_criteria_task_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.work_criteria
+    ADD CONSTRAINT work_criteria_task_id_fkey FOREIGN KEY (task_id) REFERENCES public.tasks(id) ON DELETE CASCADE;
+
+
+--
+-- Name: work_criteria work_criteria_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.work_criteria
+    ADD CONSTRAINT work_criteria_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: work_criteria work_criteria_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.work_criteria
+    ADD CONSTRAINT work_criteria_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: work_holds work_holds_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.work_holds
+    ADD CONSTRAINT work_holds_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: work_holds work_holds_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.work_holds
+    ADD CONSTRAINT work_holds_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: work_links work_links_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.work_links
+    ADD CONSTRAINT work_links_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: work_links work_links_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.work_links
+    ADD CONSTRAINT work_links_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
 
 
 --
@@ -4046,6 +5597,19 @@ CREATE POLICY action_receipts_tenant_isolation ON public.action_receipts USING (
 
 
 --
+-- Name: agent_connections; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.agent_connections ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: agent_connections agent_connections_tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY agent_connections_tenant_isolation ON public.agent_connections USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
+
+
+--
 -- Name: agent_hosts; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -4056,6 +5620,32 @@ ALTER TABLE public.agent_hosts ENABLE ROW LEVEL SECURITY;
 --
 
 CREATE POLICY agent_hosts_tenant_isolation ON public.agent_hosts USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
+
+
+--
+-- Name: agent_session_marks; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.agent_session_marks ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: agent_session_marks agent_session_marks_tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY agent_session_marks_tenant_isolation ON public.agent_session_marks USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
+
+
+--
+-- Name: agent_sessions; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.agent_sessions ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: agent_sessions agent_sessions_tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY agent_sessions_tenant_isolation ON public.agent_sessions USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
 
 
 --
@@ -4137,6 +5727,45 @@ CREATE POLICY audit_sequences_tenant_isolation ON public.audit_sequences USING (
 
 
 --
+-- Name: browser_handoffs; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.browser_handoffs ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: browser_handoffs browser_handoffs_tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY browser_handoffs_tenant_isolation ON public.browser_handoffs USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
+
+
+--
+-- Name: call_sessions; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.call_sessions ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: call_sessions call_sessions_tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY call_sessions_tenant_isolation ON public.call_sessions USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
+
+
+--
+-- Name: channel_groups; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.channel_groups ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: channel_groups channel_groups_tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY channel_groups_tenant_isolation ON public.channel_groups USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
+
+
+--
 -- Name: channel_link_codes; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -4160,6 +5789,19 @@ ALTER TABLE public.channel_links ENABLE ROW LEVEL SECURITY;
 --
 
 CREATE POLICY channel_links_tenant_isolation ON public.channel_links USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
+
+
+--
+-- Name: channel_media; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.channel_media ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: channel_media channel_media_tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY channel_media_tenant_isolation ON public.channel_media USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
 
 
 --
@@ -4199,6 +5841,19 @@ ALTER TABLE public.connector_connections ENABLE ROW LEVEL SECURITY;
 --
 
 CREATE POLICY connector_connections_tenant_isolation ON public.connector_connections USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
+
+
+--
+-- Name: conversation_goals; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.conversation_goals ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: conversation_goals conversation_goals_tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY conversation_goals_tenant_isolation ON public.conversation_goals USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
 
 
 --
@@ -4251,6 +5906,32 @@ ALTER TABLE public.conversations ENABLE ROW LEVEL SECURITY;
 --
 
 CREATE POLICY conversations_tenant_isolation ON public.conversations USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
+
+
+--
+-- Name: date_poll_votes; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.date_poll_votes ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: date_poll_votes date_poll_votes_tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY date_poll_votes_tenant_isolation ON public.date_poll_votes USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
+
+
+--
+-- Name: date_polls; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.date_polls ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: date_polls date_polls_tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY date_polls_tenant_isolation ON public.date_polls USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
 
 
 --
@@ -4319,6 +6000,84 @@ CREATE POLICY evidence_tenant_isolation ON public.evidence USING ((tenant_id = p
 
 
 --
+-- Name: expense_budgets; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.expense_budgets ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: expense_budgets expense_budgets_tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY expense_budgets_tenant_isolation ON public.expense_budgets USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
+
+
+--
+-- Name: expenses; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.expenses ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: expenses expenses_tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY expenses_tenant_isolation ON public.expenses USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
+
+
+--
+-- Name: group_board_events; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.group_board_events ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: group_board_events group_board_events_tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY group_board_events_tenant_isolation ON public.group_board_events USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
+
+
+--
+-- Name: group_board_links; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.group_board_links ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: group_board_links group_board_links_tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY group_board_links_tenant_isolation ON public.group_board_links USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
+
+
+--
+-- Name: group_boards; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.group_boards ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: group_boards group_boards_tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY group_boards_tenant_isolation ON public.group_boards USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
+
+
+--
+-- Name: group_messages; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.group_messages ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: group_messages group_messages_tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY group_messages_tenant_isolation ON public.group_messages USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
+
+
+--
 -- Name: host_step_requests; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -4329,6 +6088,32 @@ ALTER TABLE public.host_step_requests ENABLE ROW LEVEL SECURITY;
 --
 
 CREATE POLICY host_step_requests_tenant_isolation ON public.host_step_requests USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
+
+
+--
+-- Name: household_todos; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.household_todos ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: household_todos household_todos_tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY household_todos_tenant_isolation ON public.household_todos USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
+
+
+--
+-- Name: households; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.households ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: households households_tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY households_tenant_isolation ON public.households USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
 
 
 --
@@ -4433,6 +6218,32 @@ ALTER TABLE public.onboarding_states ENABLE ROW LEVEL SECURITY;
 --
 
 CREATE POLICY onboarding_states_tenant_isolation ON public.onboarding_states USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
+
+
+--
+-- Name: opencode_watches; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.opencode_watches ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: opencode_watches opencode_watches_tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY opencode_watches_tenant_isolation ON public.opencode_watches USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
+
+
+--
+-- Name: pending_confirmations; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.pending_confirmations ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: pending_confirmations pending_confirmations_tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY pending_confirmations_tenant_isolation ON public.pending_confirmations USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
 
 
 --
@@ -4553,6 +6364,19 @@ CREATE POLICY shares_tenant_isolation ON public.shares USING ((tenant_id = publi
 
 
 --
+-- Name: shopping_items; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.shopping_items ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: shopping_items shopping_items_tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY shopping_items_tenant_isolation ON public.shopping_items USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
+
+
+--
 -- Name: task_events; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -4563,6 +6387,19 @@ ALTER TABLE public.task_events ENABLE ROW LEVEL SECURITY;
 --
 
 CREATE POLICY task_events_tenant_isolation ON public.task_events USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
+
+
+--
+-- Name: task_followups; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.task_followups ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: task_followups task_followups_tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY task_followups_tenant_isolation ON public.task_followups USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
 
 
 --
@@ -4657,6 +6494,19 @@ CREATE POLICY turns_tenant_isolation ON public.turns USING ((tenant_id = public.
 
 
 --
+-- Name: usage_counters; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.usage_counters ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: usage_counters usage_counters_tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY usage_counters_tenant_isolation ON public.usage_counters USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
+
+
+--
 -- Name: user_notices; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -4723,6 +6573,45 @@ ALTER TABLE public.work_corrections ENABLE ROW LEVEL SECURITY;
 --
 
 CREATE POLICY work_corrections_tenant ON public.work_corrections USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
+
+
+--
+-- Name: work_criteria; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.work_criteria ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: work_criteria work_criteria_tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY work_criteria_tenant_isolation ON public.work_criteria USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
+
+
+--
+-- Name: work_holds; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.work_holds ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: work_holds work_holds_tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY work_holds_tenant_isolation ON public.work_holds USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
+
+
+--
+-- Name: work_links; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.work_links ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: work_links work_links_tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY work_links_tenant_isolation ON public.work_links USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
 
 
 --
@@ -4851,3 +6740,22 @@ INSERT INTO schema_migrations (version) VALUES ('20261018120000');
 INSERT INTO schema_migrations (version) VALUES ('20261021090000');
 INSERT INTO schema_migrations (version) VALUES ('20261021100000');
 INSERT INTO schema_migrations (version) VALUES ('20261021110000');
+INSERT INTO schema_migrations (version) VALUES ('20261023090000');
+INSERT INTO schema_migrations (version) VALUES ('20261023100000');
+INSERT INTO schema_migrations (version) VALUES ('20261023110000');
+INSERT INTO schema_migrations (version) VALUES ('20261023120000');
+INSERT INTO schema_migrations (version) VALUES ('20261023130000');
+INSERT INTO schema_migrations (version) VALUES ('20261023140000');
+INSERT INTO schema_migrations (version) VALUES ('20261025090000');
+INSERT INTO schema_migrations (version) VALUES ('20261027090000');
+INSERT INTO schema_migrations (version) VALUES ('20261028090000');
+INSERT INTO schema_migrations (version) VALUES ('20261028100000');
+INSERT INTO schema_migrations (version) VALUES ('20261028110000');
+INSERT INTO schema_migrations (version) VALUES ('20261028120000');
+INSERT INTO schema_migrations (version) VALUES ('20261028130000');
+INSERT INTO schema_migrations (version) VALUES ('20261028140000');
+INSERT INTO schema_migrations (version) VALUES ('20261029090000');
+INSERT INTO schema_migrations (version) VALUES ('20261029120000');
+INSERT INTO schema_migrations (version) VALUES ('20261030090000');
+INSERT INTO schema_migrations (version) VALUES ('20261030120000');
+INSERT INTO schema_migrations (version) VALUES ('20261030150000');

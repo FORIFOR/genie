@@ -6,8 +6,10 @@
  * （uuidv7 が Web Crypto を触るため、ワークフローのサンドボックスに持ち込めない）。
  * 例外は副作用の無い契約だけを切り出した research / checkout-assistance subpath。
  */
+import { planCalendarAgenda, planCalendarMove } from './calendar-plan.js';
 import { asksForJudgment } from '@genie/contracts/research';
 import { CHECKOUT_SERVICES, CheckoutPrepareArgs } from '@genie/contracts/checkout-assistance';
+import { isPublicWebUrl } from '@genie/contracts/browser-read';
 
 export type StepRisk =
   'READ' | 'REVERSIBLE_WRITE' | 'EXTERNAL_COMMIT' | 'DESTRUCTIVE' | 'REGULATED' | 'FINANCIAL';
@@ -42,6 +44,8 @@ export function isMeteredStep(step: { readonly toolId: string }): boolean {
       'office.edit',
       // 端末のモデルで検索し、公式を見極める。
       'browser.open_official',
+      // 端末のモデルが、読んだページの本文で答える。
+      'browser.read_page',
     ].includes(step.toolId)
   );
 }
@@ -271,8 +275,12 @@ export const KNOWN_TASK_KINDS = [
   'account.registration.prepare',
   'office.edit',
   'browser.open_official',
+  'browser.read',
   'work.preview',
   'brief.today',
+  // 予定を読む・時間を変える（calendar-plan.ts。仕様 v1.0 §11）
+  'calendar.agenda',
+  'calendar.move',
   'transaction.order',
   'transaction.reconcile',
   'phone.call',
@@ -806,6 +814,10 @@ export function planTask(kind: string, input: Record<string, unknown>): TaskPlan
       return planComputerAction(input);
     case 'computer.run':
       return planComputerRun(input);
+    case 'calendar.agenda':
+      return planCalendarAgenda(input);
+    case 'calendar.move':
+      return planCalendarMove(input);
     case 'info.lookup':
       return planInfoLookup(input);
     case 'office.edit': {
@@ -848,6 +860,29 @@ export function planTask(kind: string, input: Record<string, unknown>): TaskPlan
           },
         ],
         artifact: { type: 'OTHER', title: '公式サイト', mimeType: 'text/markdown' },
+      };
+    }
+    case 'browser.read': {
+      // 中身の検査は端末（BrowserReadArgs）。ここでは公開のアドレスかだけ先に見る。
+      const url = input['url'];
+      const question = input['question'];
+      if (typeof url !== 'string' || !isPublicWebUrl(url))
+        throw new UnknownTaskKindError('browser.read needs a public http(s) url');
+      if (typeof question !== 'string' || !question.trim() || question.length > 500)
+        throw new UnknownTaskKindError('browser.read needs a question');
+      return {
+        steps: [
+          {
+            index: 0,
+            toolId: 'browser.read_page',
+            // 専用のブラウザで開いて本文を読むだけ。押す・入力する・ログインすることはしない。
+            risk: 'READ',
+            surface: 'local',
+            message: 'Genie 専用のブラウザでページを読んでいます',
+            args: { url, question: question.trim() },
+          },
+        ],
+        artifact: { type: 'OTHER', title: 'ページを読んだ結果', mimeType: 'text/markdown' },
       };
     }
     case 'brief.today': {
@@ -1086,6 +1121,21 @@ export interface ApprovalCard {
 export function approvalSummaryFor(step: TaskStep): ApprovalCard {
   if (step.toolId === 'computer.run') return computerRunApproval(step);
   if (step.toolId === 'transaction.submit') return transactionApproval(step);
+  // 予定の変更は、変更前と変更後だけを見せる（予定の id や ISO の時刻は見せない）。元に戻すのも同じ道で、承認が要る
+  if (step.toolId === 'calendar.move_event')
+    return {
+      summary: step.message,
+      details: ['変更前', '変更後'].flatMap((label) =>
+        typeof step.args[label] === 'string' ? [{ label, value: String(step.args[label]) }] : [],
+      ),
+      impact: {
+        primary_action_label: '変更する',
+        affected_count: 1,
+        scope: 'external',
+        reversible: false,
+        recovery_note: '変えたあとも「元に戻して」で、元の時間に戻せます（もう一度確認します）',
+      },
+    };
   const external =
     step.risk === 'EXTERNAL_COMMIT' ||
     step.risk === 'DESTRUCTIVE' ||

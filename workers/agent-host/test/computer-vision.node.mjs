@@ -1059,6 +1059,61 @@ test('人が割り込んだら、人を止めずにこちらだけ待ち、手�
   assert.ok(resumes >= 3, `resume は待ち直すこと: ${resumes}`);
 });
 
+test('本人が言葉で引き継いだ間は、回数に数えず「続きお願い」まで待ち、撮り直してから続ける', async () => {
+  let attempts = 0,
+    resumes = 0,
+    handing = 30;
+  const h = harness(
+    (s) => {
+      const f = s.args.observation;
+      if (s.toolId === 'llm.verify_computer_action') return { ok: true, result: verdict(f) };
+      return { ok: true, result: s.args.turn === 0 ? click(f) : done(f) };
+    },
+    {
+      apply: async () => {
+        // 「ここから自分で操作する」で送りかけの入力が失効した
+        if (++attempts === 1) throw new VisionFailure('human_takeover');
+      },
+      resume: async () => {
+        resumes++;
+        // 「続きお願い」まで本人の番（人の手が止まっていても）。待つ回数（20）を超えても止めない
+        if (handing-- > 0) throw new VisionFailure('human_handoff');
+      },
+      config: { timeoutMs: 60_000, resumePollMs: 1 },
+    },
+  );
+  const out = await h.runtime.run(step());
+  assert.equal(out.ok, true);
+  assert.equal(out.result.completed, true);
+  // 本人の番の間は何も送っていない
+  assert.equal(attempts, 2);
+  assert.ok(resumes > 30, `本人の番の間は訊き直し続けること: ${resumes}`);
+});
+
+test('引き継いだまま走行の上限が来たら、入力を送らずに「引き継いだまま終えた」と言う', async () => {
+  let attempts = 0;
+  const h = harness(
+    (s) => {
+      const f = s.args.observation;
+      if (s.toolId === 'llm.verify_computer_action') return { ok: true, result: verdict(f) };
+      return { ok: true, result: click(f) };
+    },
+    {
+      apply: async () => {
+        if (++attempts === 1) throw new VisionFailure('human_takeover');
+      },
+      resume: async () => {
+        throw new VisionFailure('human_handoff');
+      },
+      config: { timeoutMs: 1000, resumePollMs: 20 },
+    },
+  );
+  const out = await h.runtime.run(step());
+  assert.equal(out.error.code, 'computer.vision.human_handoff_timeout');
+  assert.equal(out.result.completed, false);
+  assert.equal(attempts, 1);
+});
+
 test('再開できない装置では、割り込みはこれまでどおりその場で停止する', async () => {
   const h = harness(
     (s) => {

@@ -24,9 +24,22 @@ import {
 } from '@genie/service-meeting';
 import { buildApp } from '../src/app.js';
 import { channelsFromEnv } from '../src/channels.js';
+import { HandoffStore } from '../src/browser-handoff.js';
 import { scheduleRunner } from '../src/schedules.js';
+import { householdChannels, personalCommands, sharedSpaceService } from '../src/understand.js';
+import { calendarTurnDeps } from '../src/calendar-turn.js';
+import { PlacesSearch } from '../src/places.js';
+import { BoardStore } from '../src/board.js';
+import { MediaResolver } from '../src/media.js';
+import { RestaurantGoals } from '../src/restaurant.js';
 import { ScheduleService, ScheduleStore } from '@genie/service-schedule';
 import { VocabularyService, VocabularyStore } from '@genie/service-vocabulary';
+import {
+  ExpenseStore,
+  PendingStore,
+  ScriptedUnderstander,
+  UnderstandService,
+} from '@genie/service-understand';
 import type { HostBridge } from '../src/host/bridge.js';
 import { MemoryRateLimiter } from '../src/rate-limit/memory.js';
 import { loadSigningKeys } from '../src/auth/keys.js';
@@ -76,6 +89,8 @@ export interface TestApp {
   readonly channels: import('../src/channels.js').GatewayChannels | null;
   /** 予約の見回りを手で回すため。schedules を渡したときだけ。 */
   readonly schedules: import('@genie/service-schedule').ScheduleRunner | null;
+  /** 台本どおりに読む代役（グループの答え groupAnswer を差し替える）。understand を渡したときだけ。 */
+  readonly understander: ScriptedUnderstander | null;
   close(): Promise<void>;
 }
 
@@ -92,8 +107,16 @@ export interface MakeAppOptions {
   readonly allowedOrigins?: readonly string[];
   /** 個人の辞書を有効にする。 */
   readonly vocabulary?: boolean;
+  /** 写真・外国語の文を読む。モデルの代わりに、この答えを順に返す。 */
+  readonly understand?: import('@genie/service-understand').Understanding[];
   /** 予約を有効にする（時計は差し替えられる）。 */
   readonly schedules?: { readonly tz?: string; readonly now?: () => number };
+  /** お店探し（restaurant.ts）。Google Places の代役。 */
+  readonly restaurants?: { readonly fetchImpl: typeof fetch; readonly now?: () => Date };
+  /** カードの画像の中継（Google の代役）。渡したときだけ、地図・写真をリンクで出す。 */
+  readonly media?: { readonly fetchImpl: typeof fetch; readonly monthlyPhotos?: number };
+  /** 予定を読む・ずらす・元に戻す（calendar-turn.ts）。now は予定の「明日」を決める時計。 */
+  readonly calendar?: { readonly now?: () => Date };
   /** 外部 IdP の検証を差し替える（実物の鍵を持たないテストのため）。 */
   readonly identityVerifier?: import('../src/auth/idp.js').IdentityVerifier;
   /** live STT の代役に読ませる台本。省略すると録音だけになる。 */
@@ -107,7 +130,16 @@ export interface MakeAppOptions {
     readonly env: NodeJS.ProcessEnv;
     readonly fetchImpl: typeof fetch;
     readonly connectSocket?: (url: string) => import('@genie/service-channels').SocketLike;
+    /** 通話の Gemini Live の代役（ループバック）。 */
+    readonly callEndpoint?: string;
+    /** 仕事のホームのリンク（終わりの知らせに付ける）。 */
+    readonly homeLink?: import('@genie/service-channels').ChannelServiceDeps['homeLink'];
   };
+  /** ブラウザの引き継ぎ（store はここで作る）。省略すると /v1/browser-handoffs は生えない。 */
+  readonly handoffs?: Omit<
+    import('../src/routes/browser-handoff.js').HandoffRouteDeps,
+    'bridge' | 'tasks' | 'store'
+  >;
   /** 電話の接続の預かり先。省略すると /v1/phone/connection は生えない。 */
   readonly phoneConnections?: import('../src/app.js').AppDeps['phoneConnections'];
 }
@@ -157,6 +189,62 @@ export async function makeTestApp(options: MakeAppOptions): Promise<TestApp> {
   };
 
   const chat: { current: import('../src/channels.js').GatewayChannels | null } = { current: null };
+  const understander = options.understand
+    ? new ScriptedUnderstander(options.understand, 'Sure, see you then.')
+    : null;
+  const understandService = understander
+    ? new UnderstandService({
+        understander,
+        expenses: new ExpenseStore(db),
+        timeZone: 'Asia/Tokyo',
+        lists: sharedSpaceService(db, 'Asia/Tokyo'),
+        // 本番と同じく確かめ中のことを DB に置く（会話の ID は UUID。2026-10-28 グループで失敗したのはここ）
+        pending: new PendingStore(db),
+      })
+    : null;
+  const groupsRef: Parameters<typeof personalCommands>[0]['groups'] = { current: null };
+  // グループの計画（Action Board）。リンクの先頭は試験用の固定の名前
+  const boards = new BoardStore(db);
+  const boardUrl = (token: string) => `https://genie.test/v1/channels/board/${token}`;
+  const media = options.media
+    ? new MediaResolver({
+        db,
+        apiKey: 'test-key',
+        publicUrl: 'https://genie.test',
+        monthlyPhotos: options.media.monthlyPhotos ?? 900,
+        monthlyMaps: 300,
+        fetchImpl: options.media.fetchImpl,
+      })
+    : null;
+  const restaurants = options.restaurants
+    ? {
+        goals: new RestaurantGoals(db),
+        ...(media ? { media } : {}),
+        places: new PlacesSearch({
+          ...(media
+            ? {
+                photoLink: (tenantId: string, placeId: string, photoName: string) =>
+                  media.link(tenantId, { kind: 'place_photo', placeId, photoName }),
+              }
+            : {}),
+          apiKey: 'test-key',
+          monthlySearches: 300,
+          db,
+          fetchImpl: options.restaurants.fetchImpl,
+        }),
+        timeZone: 'Asia/Tokyo',
+        ...(options.restaurants.now ? { now: options.restaurants.now } : {}),
+      }
+    : null;
+  const personal = understandService
+    ? personalCommands({
+        db,
+        understand: understandService,
+        timeZone: 'Asia/Tokyo',
+        groups: groupsRef,
+        ...(restaurants ? { restaurants } : {}),
+      })
+    : null;
   const scheduleService = options.schedules
     ? new ScheduleService(new ScheduleStore(db), {
         tz: options.schedules.tz ?? 'Asia/Tokyo',
@@ -183,6 +271,9 @@ export async function makeTestApp(options: MakeAppOptions): Promise<TestApp> {
     agentHosts: new AgentHostService({ db }),
     // 受け渡しも繋ぐ。繋がない harness だと、経路の欠落を試験が見逃す。
     hostBridge: new HostStepBridge({ db }),
+    ...(options.handoffs === undefined
+      ? {}
+      : { handoffs: { ...options.handoffs, store: new HandoffStore(db) } }),
     ...(options.dataSources === undefined ? {} : { dataSources: options.dataSources }),
     ...(options.phone === undefined ? {} : { phone: options.phone }),
     ...(options.channels === undefined
@@ -200,7 +291,34 @@ export async function makeTestApp(options: MakeAppOptions): Promise<TestApp> {
               ...(options.channels!.connectSocket
                 ? { connectSocket: options.channels!.connectSocket }
                 : {}),
+              ...(options.channels!.callEndpoint
+                ? { callEndpoint: options.channels!.callEndpoint }
+                : {}),
+              ...(options.channels!.homeLink ? { homeLink: options.channels!.homeLink } : {}),
+              ...(understandService
+                ? {
+                    understand: understandService,
+                    shared: householdChannels({
+                      db,
+                      understand: understandService,
+                      timeZone: 'Asia/Tokyo',
+                      conversations,
+                      ...(restaurants ? { restaurants } : {}),
+                      boards: { store: boards, urlFor: boardUrl },
+                      ...(options.restaurants?.now ? { now: options.restaurants.now } : {}),
+                    }),
+                    onSpoken: (conversationId: string, text: string) =>
+                      personal?.rememberSpoken(conversationId, text),
+                  }
+                : {}),
             });
+            if (chat.current) {
+              const { service, routes } = chat.current;
+              groupsRef.current = {
+                postToGroup: (t, u, text) => service.postToGroup(t, u, text),
+                lastSaid: (t, c) => routes.store.lastSaid(t, c),
+              };
+            }
             return chat.current?.routes ?? null;
           },
         }),
@@ -215,8 +333,19 @@ export async function makeTestApp(options: MakeAppOptions): Promise<TestApp> {
     world,
     work,
     ...(options.bridge === undefined ? {} : { bridge: options.bridge }),
-    ...(options.vocabulary
-      ? { vocabulary: new VocabularyService(new VocabularyStore(db)) }
+    ...(options.vocabulary ? { vocabulary: new VocabularyService(new VocabularyStore(db)) } : {}),
+    ...(personal ? { understand: personal } : {}),
+    boards,
+    ...(media ? { media } : {}),
+    ...(options.calendar
+      ? {
+          calendar: calendarTurnDeps({
+            tasks,
+            library,
+            timeZone: 'Asia/Tokyo',
+            ...(options.calendar.now ? { now: options.calendar.now } : {}),
+          }),
+        }
       : {}),
     ...(scheduleService
       ? {
@@ -255,6 +384,7 @@ export async function makeTestApp(options: MakeAppOptions): Promise<TestApp> {
     recordings,
     channels: chat.current,
     schedules,
+    understander,
     async close() {
       await app.close();
       if (owned) await db.close();

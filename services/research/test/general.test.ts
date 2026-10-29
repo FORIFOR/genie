@@ -56,6 +56,36 @@ describe('answering', () => {
     expect(answer).toHaveBeenCalledWith('q', '前提です');
   });
 
+  // 仕様 v1.0 §5②: 「で？」は直前の会話の続きとして答える
+  it('passes the recent conversation from the task, and drops malformed lines', async () => {
+    const answer = vi.fn().mockResolvedValue('ok');
+    const executors = generalExecutors(model({ answer }));
+    await executors['general.answer']!.execute(
+      {
+        ...task,
+        input: {
+          question: 'で？',
+          history: [
+            { role: 'user', text: '明日の天気は？' },
+            { role: 'genie', text: '明日は晴れ、最高 22℃です。' },
+            { role: 'system', text: '捨てる' },
+            { role: 'user' },
+          ],
+        },
+      },
+      { toolId: 'general.answer', args: {} },
+    );
+    expect(answer).toHaveBeenCalledWith(
+      'で？',
+      undefined,
+      [],
+      [
+        { role: 'user', text: '明日の天気は？' },
+        { role: 'genie', text: '明日は晴れ、最高 22℃です。' },
+      ],
+    );
+  });
+
   it('reads the question from the task when the step did not carry one', async () => {
     const executors = generalExecutors(model());
     const outcome = await executors['general.answer']!.execute(

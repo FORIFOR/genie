@@ -61,6 +61,8 @@ export function scheduleRunner(deps: {
           channels: {
             notify: (tenantId, conversationId, text) =>
               deps.channels!.notifyConversation(tenantId, conversationId, text),
+            ring: (tenantId, conversationId, text) =>
+              deps.channels!.ring(tenantId, conversationId, text),
             followTask: (tenantId, conversationId, taskId, title) =>
               deps.channels!.followTask(tenantId, conversationId, taskId, title),
           },

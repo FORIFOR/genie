@@ -23,7 +23,7 @@ import {
 } from '@genie/service-agent-runtime';
 import { AgentHostService, HostBridge, HostStepExecutor } from '@genie/service-agent-host';
 import { WorkContextService, WorldModelService } from '@genie/service-world-model';
-import { ConversationService } from '@genie/service-conversation';
+import { ConversationService, handleTurn } from '@genie/service-conversation';
 import {
   ResearchLedgerService,
   researchDataSources,
@@ -38,18 +38,31 @@ import {
   meetingProvidersFromEnv,
 } from '@genie/service-meeting';
 // 代役の判定は contracts が正。service ごとに数えると、片方だけ見落とす。
-import { assertReadyForProduction } from '@genie/contracts';
+import { SendTurnRequest, assertReadyForProduction } from '@genie/contracts';
 import { capabilityReport, capabilitySummary } from '@genie/service-capabilities';
 import { buildApp } from './app.js';
 import { phoneFromEnv } from './phone.js';
 import { channelsFromEnv, type GatewayChannels } from './channels.js';
 import { scheduleRunner, scheduleServiceFromEnv } from './schedules.js';
+import { householdChannels, personalCommands, understandServiceFromEnv } from './understand.js';
+import { OpencodeWatchService } from './opencode-watch.js';
+import { WorkDesk, WorkDeskWatch } from './work-desk.js';
+import { AgentSessionWatch } from './agent-session-watch.js';
+import { calendarTurnDeps } from './calendar-turn.js';
+import { PlacesSearch } from './places.js';
+import { RestaurantGoals } from './restaurant.js';
+import { CallStore, callConfigFromEnv } from './call.js';
 import type { ScheduleRunner } from '@genie/service-schedule';
 import { VocabularyService, VocabularyStore } from '@genie/service-vocabulary';
 import type { TurnDeps } from '@genie/service-conversation';
 import { assertPathsExist, gatewayConfigFromEnv } from './config.js';
 import { keyConfigFromEnv, loadSigningKeys } from './auth/keys.js';
 import { JwtTokens } from './auth/tokens.js';
+import { BoardStore } from './board.js';
+import { boardUrlFor } from './routes/board.js';
+import { WorkLinkStore, homeLinkFor, openHomeAnswer, workUrlFor } from './work-home.js';
+import { HandoffHub, HandoffStore, handoffUrlFor } from './browser-handoff.js';
+import { MediaResolver } from './media.js';
 import { MemoryRateLimiter, RedisRateLimiter, type RateLimiter } from './rate-limit/index.js';
 
 async function main(): Promise<void> {
@@ -175,6 +188,96 @@ async function main(): Promise<void> {
   const chat: { current: GatewayChannels | null } = { current: null };
   // 予約: 会話で作り、時間になったら同じ入口（handleTurn）で頼む
   const schedules = scheduleServiceFromEnv(process.env, db);
+  // 写真・外国語の文を読む（家計簿・料理の目安・予定・訳）。チャットと handleTurn で同じものを使う
+  const understand = understandServiceFromEnv(process.env, { db, logger, timeZone: schedules.tz });
+  // 1:1・通話・Task Dock の決まった言い方（家族の家計簿・グループへ送る）。グループへの口はチャネルを組んだあとで入る
+  const groups: Parameters<typeof personalCommands>[0]['groups'] = { current: null };
+  // opencode のセッションの見守り。知らせはチャット（無ければ本人の LINE）へ。チャネルを組んだあとで口が入る
+  const watches = new OpencodeWatchService({
+    db,
+    notify: async (tenantId, userId, conversationId, text) => {
+      await chat.current?.service.notifyUser(tenantId, userId, conversationId, text);
+    },
+    log: (event, detail) => logger.info(detail, event),
+  });
+  // ほかの AI（Claude Code）の承認待ち・停滞の知らせ。Mac の通知と、つないでいれば本人の LINE へ
+  const agentWatch = new AgentSessionWatch({
+    db,
+    notifyChat: async (tenantId, userId, text) => {
+      await chat.current?.service.notifyUser(tenantId, userId, null, text);
+    },
+    log: (event, detail) => logger.info(detail, event),
+  });
+  // カードの画像（店の写真・地図）は gateway が中継する（キーを外へ出さない・写真を保存しない）
+  const placesKey = process.env['GENIE_PLACES_API_KEY']?.trim() || null;
+  const media = new MediaResolver({
+    db,
+    apiKey: placesKey,
+    publicUrl: callConfigFromEnv(process.env).publicUrl,
+    monthlyPhotos: Number(process.env['GENIE_PLACES_MONTHLY_PHOTOS'] ?? '900') || 900,
+    monthlyMaps: Number(process.env['GENIE_MAPS_MONTHLY_STATIC'] ?? '300') || 300,
+  });
+  // お店探し（Google Places。キーはキーチェーンの google-maps を preview が渡す。無ければ「探せない」と言う）
+  const restaurants = {
+    goals: new RestaurantGoals(db),
+    ...(media.available ? { media } : {}),
+    places: new PlacesSearch({
+      ...(media.available
+        ? {
+            photoLink: (tenantId: string, placeId: string, photoName: string) =>
+              media.link(tenantId, { kind: 'place_photo', placeId, photoName }),
+          }
+        : {}),
+      apiKey: placesKey,
+      monthlySearches: Number(process.env['GENIE_PLACES_MONTHLY_SEARCHES'] ?? '300') || 300,
+      monthlyPhotos: Number(process.env['GENIE_PLACES_MONTHLY_PHOTOS'] ?? '900') || 900,
+      db,
+    }),
+    timeZone: schedules.tz,
+  };
+  const callConfig = callConfigFromEnv(process.env);
+  const callStore = new CallStore(db);
+  // グループの計画（Action Board）。LIFF の ID があれば LINE の中で開くリンク、無ければ公開の先頭（GENIE_PUBLIC_URL）の直のリンク
+  const boards = new BoardStore(db);
+  const boardUrl = boardUrlFor({
+    publicUrl: callConfig.publicUrl,
+    liffId: process.env['GENIE_LINE_LIFF_ID'] ?? null,
+  });
+  // 仕事の見通し（「今の作業どうなってる？」・保留・「これが終わったら〇〇して」）
+  // 仕事のホーム（LINE から開くページ）。計画ボードと同じ LIFF の入口・公開の先頭を使う
+  const workLinks = new WorkLinkStore(db);
+  const workUrl = workUrlFor({
+    publicUrl: callConfig.publicUrl,
+    liffId: process.env['GENIE_LINE_LIFF_ID'] ?? null,
+  });
+  const desk = new WorkDesk({
+    db,
+    tasks,
+    library,
+    schedules: schedules.store,
+    tz: schedules.tz,
+    openHome: (principal) =>
+      openHomeAnswer({ links: workLinks, urlFor: workUrl, principal, now: new Date() }),
+    // 「今の作業どうなってる？」のカードのボタン
+    homeLink: (principal) =>
+      homeLinkFor({ links: workLinks, urlFor: workUrl, principal, now: new Date() }),
+  });
+  const personal = personalCommands({
+    db,
+    understand,
+    timeZone: schedules.tz,
+    groups,
+    watches,
+    desk,
+    restaurants,
+    callUsage: async ({ tenantId, userId }) =>
+      callConfig.monthlyMinutes > 0
+        ? {
+            usedSeconds: await callStore.usedSeconds(tenantId, userId),
+            monthlyMinutes: callConfig.monthlyMinutes,
+          }
+        : null,
+  });
   const turnDepsRef: { current: TurnDeps | null } = { current: null };
 
   const app = buildApp({
@@ -214,12 +317,57 @@ async function main(): Promise<void> {
         library,
         turnDeps,
         logger,
+        understand,
+        // グループ: 会話を覚え、呼ばれたら流れを踏まえて答える。場所・お店は実際に探す（個人の予定・メールは使わない）
+        shared: householdChannels({
+          db,
+          understand,
+          timeZone: schedules.tz,
+          conversations,
+          restaurants,
+          boards: { store: boards, urlFor: boardUrl },
+        }),
+        onSpoken: (conversationId, text) => personal.rememberSpoken(conversationId, text),
+        // 終わりの知らせから仕事のホームを開ける（公開の場所が無ければ Mac の作業一覧へ案内する）
+        homeLink: (tenantId, userId) =>
+          homeLinkFor({
+            links: workLinks,
+            urlFor: workUrl,
+            principal: { tenantId, userId },
+            now: new Date(),
+          }),
       });
+      if (chat.current) {
+        const { service, routes } = chat.current;
+        groups.current = {
+          postToGroup: (tenantId, ownerUserId, text) =>
+            service.postToGroup(tenantId, ownerUserId, text),
+          lastSaid: (tenantId, conversationId) => routes.store.lastSaid(tenantId, conversationId),
+        };
+      }
       return chat.current?.routes ?? null;
     },
     phoneConnections: { store: phone.store, clientOf: phone.clientOf },
     schedules,
     vocabulary: new VocabularyService(new VocabularyStore(db)),
+    boards,
+    media,
+    understand: personal,
+    workDesk: desk,
+    workLinks,
+    // ブラウザの引き継ぎ（Genie 専用のブラウザがログインの壁で止まったら、本人が LINE から操作する）
+    handoffs: {
+      store: new HandoffStore(db),
+      hub: new HandoffHub(),
+      urlFor: handoffUrlFor({
+        publicUrl: callConfig.publicUrl,
+        liffId: process.env['GENIE_LINE_LIFF_ID'] ?? null,
+      }),
+      notify: async (tenantId, userId, text) =>
+        (await chat.current?.service.notifyUser(tenantId, userId, null, text)) === 'delivered',
+    },
+    // 予定を読む・ずらす・元に戻す（直前の一覧と変更は、この会話の仕事と成果物から引く）
+    calendar: calendarTurnDeps({ tasks, library, timeZone: schedules.tz }),
     onTurnDeps: (turnDeps) => {
       turnDepsRef.current = turnDeps;
     },
@@ -241,9 +389,36 @@ async function main(): Promise<void> {
       })
     : null;
 
+  // 保留の日の知らせと、前の仕事が終わった頼みを始める見回り。頼むときは予約と同じ入口（handleTurn）
+  const deskWatch: WorkDeskWatch | null = turnDepsRef.current
+    ? new WorkDeskWatch({
+        db,
+        tz: schedules.tz,
+        run: async ({ tenantId, userId, conversationId, text, turnId }) => {
+          const result = await handleTurn(turnDepsRef.current!, {
+            principal: { tenantId, userId },
+            conversationId,
+            body: SendTurnRequest.parse({ text: text.slice(0, 8_000), modality: 'text' }),
+            turnId,
+            scheduled: true,
+          });
+          return result.kind === 'clarification' || result.kind === 'answered'
+            ? { taskId: null, answer: result.answer.text }
+            : { taskId: result.taskId ?? null, answer: null };
+        },
+        notifyChat: async (tenantId, userId, conversationId, text) => {
+          await chat.current?.service.notifyUser(tenantId, userId, conversationId, text);
+        },
+        log: (event, detail) => logger.info(detail, event),
+      })
+    : null;
+
   const shutdown = async (signal: string): Promise<void> => {
     logger.info({ signal }, 'shutting down');
     runner?.stop();
+    deskWatch?.stop();
+    watches.stop();
+    agentWatch.stop();
     phone.inbound?.stop();
     chat.current?.stop();
     await app.close();
@@ -262,6 +437,12 @@ async function main(): Promise<void> {
   chat.current?.start(5_000);
   // 予約の見回り。15 秒ごと（寝ていた Mac が起きたら、最初の見回りで追いつく）
   runner?.start(15_000);
+  // opencode の見守り。30 秒ごとに、時間が来たものだけ見る
+  watches.start(30_000);
+  // ほかの AI の知らせ。15 秒ごとに、見る時刻が来たセッションだけ見る
+  agentWatch.start(15_000);
+  // 保留の日・前の仕事を待つ頼み。15 秒ごと
+  deskWatch?.start(15_000);
   logger.info({ schedules: runner ? 'on' : 'off', tz: schedules.tz }, 'schedules');
   logger.info({ channels: chat.current ? 'on' : 'off' }, 'chat channels');
   logger.info(

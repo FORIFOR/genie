@@ -110,10 +110,7 @@ export function zonedTime(
   const guess = Date.UTC(year, month - 1, day, hour, minute);
   // 切り替えの前と後のずれで 1 つずつ候補を作り、壁時計が合うものを取る
   const day_ = 24 * 60 * 60 * 1000;
-  const candidates = [
-    guess - offsetMs(guess - day_, tz),
-    guess - offsetMs(guess + day_, tz),
-  ];
+  const candidates = [guess - offsetMs(guess - day_, tz), guess - offsetMs(guess + day_, tz)];
   const valid = candidates.filter((t) => t + offsetMs(t, tz) === guess);
   // 二度ある時刻（夏時間の終わり）は前、無い時刻（始まり）は後ろへ
   return valid.length > 0 ? Math.min(...valid) : Math.max(...candidates);
@@ -217,9 +214,7 @@ export function describeSchedule(schedule: Schedule, tz: string): string {
       return formatWhen(Date.parse(schedule.at), tz);
     case 'every': {
       const minutes = Math.round(schedule.everyMs / 60_000);
-      return minutes % 60 === 0
-        ? `${String(minutes / 60)} 時間ごと`
-        : `${String(minutes)} 分ごと`;
+      return minutes % 60 === 0 ? `${String(minutes / 60)} 時間ごと` : `${String(minutes)} 分ごと`;
     }
     case 'weekly': {
       const time = `${String(schedule.hour)}:${pad(schedule.minute)}`;

@@ -96,6 +96,8 @@ export interface VisionConfig {
   now?: () => number;
   /** 本人のサインインを待つ上限（既定 2 分）。 */
   signinWaitMs?: number;
+  /** 人の番のあいだ、再開してよいかを訊き直す間隔（既定 1 秒。検査で縮める）。 */
+  resumePollMs?: number;
   /**
    * 端末の外のモデルを使うときの歯止め。端末の中のモデル（`local`）には掛からない。
    * 渡さないときは歯止め無しではなく、**端末の外を使わない**設定でのみ成り立つ。
@@ -329,15 +331,29 @@ export class ComputerVisionRuntime {
       let pauseLimit = 3;
       const pauseForHuman = async (code: string) => {
         if (!device!.resume || ++pauses > pauseLimit) throw new VisionFailure(code);
-        for (let attempt = 0; attempt < 20; attempt++) {
-          check(signal);
-          await sleep(1000, signal);
+        /*
+         * 本人が言葉で引き継いだ（「ここから自分で操作する」→ helper が `human_handoff` を返す）間は、
+         * 「続きお願い」まで待つ。回数に数えず、走行の上限（#timeout）まで。上限が来たら、
+         * 引き継いだまま終わったと言う（入力は何も送っていない）。
+         */
+        let handing = false;
+        for (let attempt = 0; attempt < 20;) {
           try {
+            check(signal);
+            await sleep(this.config.resumePollMs ?? 1000, signal);
             await wait(device!.resume(initial, signal), signal);
             return;
           } catch (error) {
+            if (handing && signal.aborted && !parent?.aborted)
+              throw new VisionFailure('human_handoff_timeout');
+            if (error instanceof VisionFailure && error.code === 'human_handoff') {
+              handing = true;
+              continue;
+            }
             // まだ人の番。急かさずにもう一度待つ。それ以外の断りは持ち上げる。
             if (!(error instanceof VisionFailure) || error.code !== 'human_active') throw error;
+            handing = false;
+            attempt++;
           }
         }
         throw new VisionFailure(code);
@@ -399,6 +415,7 @@ export class ComputerVisionRuntime {
       const UNSENT_FAILURES = new Set([
         ...UNSENT_REFUSALS,
         'human_takeover',
+        'human_handoff_timeout',
         'stale_generation',
         'stale_frame',
         'policy_secure_field',
@@ -862,13 +879,17 @@ export class ComputerVisionRuntime {
         current = after;
       }
     } catch (error) {
-      const code = signal.aborted
-        ? controller.signal.aborted
-          ? 'timeout'
-          : 'cancelled'
-        : error instanceof VisionFailure
+      // 引き継いだまま上限が来たときは、ただの時間切れと言わない（本人の番のまま終えた）
+      const code =
+        error instanceof VisionFailure && error.code === 'human_handoff_timeout'
           ? error.code
-          : 'failed';
+          : signal.aborted
+            ? controller.signal.aborted
+              ? 'timeout'
+              : 'cancelled'
+            : error instanceof VisionFailure
+              ? error.code
+              : 'failed';
       await device?.stopped?.(step.id, code, audit).catch(() => undefined);
       /*
        * 止まった時点で**もう送ってしまった入力**があるなら、それを先に言う。
@@ -1028,6 +1049,9 @@ function failure(code: string): VisionOutcome {
     stale_generation:
       '利用者の操作が入ったため、それ以前の画面にもとづく操作を破棄しました。送信はしていません。',
     human_active: '対象アプリを利用者が操作中のため、再開していません。',
+    human_handoff: '本人が操作を引き継いでいるため、再開していません。',
+    human_handoff_timeout:
+      '操作を引き継いだまま時間が来たので、画面操作を終えました。Genie からの入力は送っていません。続けるなら、もう一度頼んでください。',
     /*
      * 以前はこの符号が一覧に無く、既定の「権限・対象画面・モデル設定を確認」に
      * 落ちていた。実測では状態ディレクトリの置き場所が原因だったのに、

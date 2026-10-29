@@ -34,7 +34,7 @@ enum UserFacingFacts {
     /// 止めた仕事の結果の 2 行目。
     static let taskStoppedDetail = "仕事を取り消しました。途中までの内容は使いません。"
     /// 受付の応答。**受け付けた（仕事ができた）ときだけ**言う・出す。
-    static let taskAccepted = "かしこまりました"
+    static let taskAccepted = "承知しました"
     static let taskAcceptedSub = "作業中も元のアプリを使えます"
     static let taskRejected = "この依頼は実行できません"
     /// 結果の種類（「<種類>ができました」）。
@@ -61,6 +61,7 @@ enum UserFacingFacts {
     static let projectNone = "なし"
     /// 録音は続いているが、この Mac ではオンデバイス STT の資産が無い。サーバへは落とさない（`SpeechTranscriber`）。
     static let transcriptionOnDeviceUnavailable = "この Mac ではオンデバイス文字起こしを使えません。音声は保存されています"
+    static let transcriptionInterrupted = "文字起こしが途中で止まりました（ほかの音声認識と重なった可能性があります）。少し待って再開します。音声は保存されています"
     static let taskOpenWorkspace = "作業画面で続ける"
     /// 確認の実行ボタンは依頼ごとに**結果の語**（「切断する」「3 件を捨てる」）が入る
     /// （`ActionConfirmation.confirmLabel`）。固定の語ではない。これは demo と説明書が
@@ -329,6 +330,7 @@ enum UserFacingFacts {
             f("captions.empty", captionsEmpty, false),
             f("sheet.project.none", projectNone, false),
             f("transcription.onDeviceUnavailable", transcriptionOnDeviceUnavailable),
+            f("transcription.interrupted", transcriptionInterrupted),
             f("task.openWorkspace", taskOpenWorkspace),
             f("confirmation.confirm.example", confirmationConfirmExample, false),
             f("confirmation.cancel", confirmationCancel),

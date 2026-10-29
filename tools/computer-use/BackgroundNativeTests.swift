@@ -561,6 +561,21 @@ import ScreenCaptureKit
         let (fGenB, _) = try await frame(sessionGen)
         evidence["freshFrameCarriesNewEpoch"] = (fGenB.backgroundEpoch ?? -1) == BackgroundAX.epoch(pathGen)
 
+        // 本人が言葉で引き継いだ間（「ここから自分で操作する」→ Mac が .handoff を置く）は、手が止まっていても再開しない。
+        // 「続きお願い」で印が消えたら、世代を進めて再開する
+        try BackgroundAX.privateFile(Data("handoff".utf8), pathGen + ".handoff")
+        try BackgroundAX.privateFile(Data("human_takeover:handoff".utf8), pathGen + ".interrupted")
+        var handoffCode = ""
+        do { _ = try await resume(fGenB, pGen) } catch let error as Failure { handoffCode = error.code }
+        evidence["handoffHoldsResume"] = handoffCode == "human_handoff"
+        guard handoffCode == "human_handoff" else { throw Failure("resumed_during_handoff_\(handoffCode)") }
+        unlink(pathGen + ".handoff")
+        let epochBeforeGiveBack = BackgroundAX.epoch(pathGen)
+        let givenBack = try await resume(fGenB, pGen)
+        evidence["giveBackResumesWithNewEpoch"] = givenBack.contains("\"status\":\"resumed\"")
+            && BackgroundAX.epoch(pathGen) > epochBeforeGiveBack
+        guard givenBack.contains("\"status\":\"resumed\"") else { throw Failure("give_back_failed") }
+
         // 明示的な取り下げは再開しない。割り込み（順番の交代）とは意味が違う。
         try BackgroundAX.privateFile(Data("session_stopped".utf8), pathGen + ".interrupted")
         var stoppedCode = ""

@@ -24,7 +24,22 @@ export const CALENDAR_OPERATIONS = {
     risk: 'EXTERNAL_COMMIT',
     requiresApproval: true,
   },
+  move: {
+    id: 'calendar.move',
+    scope: 'calendar.write',
+    // 予定の時間を変える。同席者の予定にも影響する（通知は送らないが、相手のカレンダーの表示は変わる）。
+    risk: 'EXTERNAL_COMMIT',
+    requiresApproval: true,
+  },
 } as const satisfies Record<string, OperationDecl>;
+
+/** 予定の時間を変える。終日予定は日付、時刻つきは日時。**形を混ぜない**（終日を時刻つきにしない）。 */
+export interface MoveEventInput {
+  readonly calendarId?: string;
+  readonly eventId: string;
+  readonly start: { dateTime: string; timeZone?: string } | { date: string };
+  readonly end: { dateTime: string; timeZone?: string } | { date: string };
+}
 
 export interface CalendarAttendee {
   readonly email: string;
@@ -198,5 +213,48 @@ export class GoogleCalendarConnector {
       signal,
     );
     return toEvent(raw);
+  }
+
+  /**
+   * 予定の時間を変える。**人の承認が要る。**変える前の予定も返す（「元に戻して」に使う）。
+   *
+   * 通知は送らない（`sendUpdates=none`）。作るときと同じく、送るかどうかは承認で見せた内容と一致させる。
+   */
+  async move(
+    input: MoveEventInput,
+    proof: ApprovalProof | undefined,
+    signal?: AbortSignal,
+  ): Promise<{ before: CalendarEvent; after: CalendarEvent }> {
+    requireScope(CALENDAR_OPERATIONS.move, this.#deps.grantedScopes);
+    requireApproval(CALENDAR_OPERATIONS.move, proof, (this.#deps.now ?? (() => new Date()))());
+    const allDay = 'date' in input.start;
+    if (allDay !== 'date' in input.end) {
+      throw new ConnectorError(
+        'provider_error',
+        'start and end must both be dates or both be times',
+      );
+    }
+    const before = await this.get(
+      { ...(input.calendarId ? { calendarId: input.calendarId } : {}), eventId: input.eventId },
+      signal,
+    );
+    if (before.status === 'cancelled') {
+      throw new ConnectorError('provider_error', 'the event has been cancelled');
+    }
+    const path = `${BASE}/calendars/${encodeURIComponent(input.calendarId ?? 'primary')}/events/${encodeURIComponent(input.eventId)}?sendUpdates=none`;
+    const raw = await callJson<RawEvent>(
+      path,
+      // 終日と時刻つきを入れ替えるときに、古い側の欄が残らないよう null で消す
+      {
+        method: 'PATCH',
+        body: {
+          start: allDay ? { ...input.start, dateTime: null } : { ...input.start, date: null },
+          end: allDay ? { ...input.end, dateTime: null } : { ...input.end, date: null },
+        },
+      },
+      this.#deps,
+      signal,
+    );
+    return { before, after: toEvent(raw) };
   }
 }

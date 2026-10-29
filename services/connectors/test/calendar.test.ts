@@ -191,4 +191,85 @@ describe('GoogleCalendarConnector', () => {
     await calendar.list({ timeMin: 'a', timeMax: 'b', maxResults: 10_000 });
     expect(calls[0]!.url).toContain('maxResults=250');
   });
+
+  // 仕様 v1.0 §11: 「午後にずらして」→ 承認 → 変更。変える前を返し、「元に戻して」に使う
+  describe('moving an event', () => {
+    const moveProof: ApprovalProof = { ...proof, operationId: 'calendar.move' };
+    const sequenced = () => {
+      const calls: { url: string; method: string; body: unknown }[] = [];
+      const fetch = (async (url: string, init: RequestInit) => {
+        const method = init.method ?? 'GET';
+        calls.push({ url, method, body: init.body ? JSON.parse(init.body as string) : undefined });
+        const event = (start: string, end: string) => ({
+          id: 'e1',
+          summary: '定例ミーティング',
+          status: 'confirmed',
+          start: { dateTime: start, timeZone: 'Asia/Tokyo' },
+          end: { dateTime: end, timeZone: 'Asia/Tokyo' },
+        });
+        return new Response(
+          JSON.stringify(
+            method === 'GET'
+              ? event('2026-10-28T10:00:00+09:00', '2026-10-28T11:00:00+09:00')
+              : event('2026-10-28T14:00:00+09:00', '2026-10-28T15:00:00+09:00'),
+          ),
+        );
+      }) as unknown as typeof globalThis.fetch;
+      return { fetch, calls };
+    };
+
+    it('changes the time with approval, without notifying, and returns before and after', async () => {
+      const { fetch, calls } = sequenced();
+      const calendar = new GoogleCalendarConnector({
+        token: async () => 't',
+        fetch,
+        grantedScopes: READ_WRITE,
+        now: NOW,
+      });
+      const moved = await calendar.move(
+        {
+          eventId: 'e1',
+          start: { dateTime: '2026-10-28T14:00:00+09:00', timeZone: 'Asia/Tokyo' },
+          end: { dateTime: '2026-10-28T15:00:00+09:00', timeZone: 'Asia/Tokyo' },
+        },
+        moveProof,
+      );
+      expect(moved.before.start.dateTime).toBe('2026-10-28T10:00:00+09:00');
+      expect(moved.after.start.dateTime).toBe('2026-10-28T14:00:00+09:00');
+      expect(calls.map((c) => c.method)).toEqual(['GET', 'PATCH']);
+      expect(calls[1]!.url).toContain('/events/e1?sendUpdates=none');
+      expect(calls[1]!.body).toEqual({
+        start: { dateTime: '2026-10-28T14:00:00+09:00', timeZone: 'Asia/Tokyo', date: null },
+        end: { dateTime: '2026-10-28T15:00:00+09:00', timeZone: 'Asia/Tokyo', date: null },
+      });
+    });
+
+    it('refuses without approval, with an approval for another operation, or mixing all-day and timed', async () => {
+      const { fetch, calls } = sequenced();
+      const calendar = new GoogleCalendarConnector({
+        token: async () => 't',
+        fetch,
+        grantedScopes: READ_WRITE,
+        now: NOW,
+      });
+      const input = {
+        eventId: 'e1',
+        start: { dateTime: '2026-10-28T14:00:00+09:00' },
+        end: { dateTime: '2026-10-28T15:00:00+09:00' },
+      };
+      await expect(calendar.move(input, undefined)).rejects.toBeInstanceOf(ApprovalRequired);
+      await expect(calendar.move(input, proof)).rejects.toBeInstanceOf(ApprovalRequired);
+      await expect(
+        calendar.move(
+          {
+            eventId: 'e1',
+            start: { date: '2026-10-28' },
+            end: { dateTime: '2026-10-28T15:00:00+09:00' },
+          },
+          moveProof,
+        ),
+      ).rejects.toMatchObject({ reason: 'provider_error' });
+      expect(calls).toHaveLength(0);
+    });
+  });
 });

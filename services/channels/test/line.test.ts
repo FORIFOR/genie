@@ -1,5 +1,5 @@
 /**
- * LINE の入口。署名が合わないものは読まない。1:1 の text だけを受ける。
+ * LINE の入口。署名が合わないものは読まない。1:1 の text と写真などの添付だけを受ける。
  */
 import { createHmac } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
@@ -85,6 +85,8 @@ describe('normalizeLineWebhook', () => {
       webhook([
         textEvent({ webhookEventId: 'g', source: { type: 'group', groupId: 'G1', userId: 'U' } }),
         textEvent({ webhookEventId: 's', message: { type: 'sticker', id: '2' } }),
+        textEvent({ webhookEventId: 'img', message: { type: 'image', id: '5550001' } }),
+        textEvent({ webhookEventId: 'loc', message: { type: 'location', id: '6' } }),
         textEvent({ webhookEventId: 'f', type: 'unfollow' }),
         textEvent({
           webhookEventId: 'fg',
@@ -97,10 +99,23 @@ describe('normalizeLineWebhook', () => {
         { type: 'message' },
       ]),
     );
-    expect(result.messages.map((m) => m.eventId)).toEqual(['ok']);
+    expect(result.messages.map((m) => m.eventId)).toEqual(['g', 'img', 'ok']);
+    // グループの発言も受ける（メンションが無いので、読むかは service が決める）
+    expect(result.messages[0]).toMatchObject({
+      destination: 'G1',
+      threadKey: 'G1',
+      subject: 'U',
+      group: { id: 'G1', mentioned: false },
+    });
+    // 写真は ID だけ持つ（本体は処理するときに取りに行く）
+    expect(result.messages[1]).toMatchObject({
+      text: '',
+      attachments: [{ kind: 'image', id: '5550001' }],
+    });
+    expect(result.messages[2]!.attachments).toBeUndefined();
     expect(result.ignored).toEqual([
-      { eventId: 'g', reason: 'not_direct_message' },
       { eventId: 's', reason: 'not_text' },
+      { eventId: 'loc', reason: 'not_text' },
       { eventId: 'f', reason: 'unsupported_event' },
       { eventId: 'fg', reason: 'not_direct_message' },
       { eventId: 'w', reason: 'standby_mode' },
@@ -157,5 +172,84 @@ describe('MemoryChannelInbox', () => {
     expect(await inbox.claim('slack', 'ev1')).toBe(false);
     now = 2001;
     expect(await inbox.claim('slack', 'ev1')).toBe(true);
+  });
+});
+
+describe('normalizeLineWebhook groups', () => {
+  it('marks a mention of Genie, strips it from the text, and reads an empty mention as 使い方', () => {
+    const group = { type: 'group', groupId: 'Cgroup1', userId: 'Umama' };
+    const result = normalizeLineWebhook(
+      webhook([
+        textEvent({
+          webhookEventId: 'm1',
+          source: group,
+          message: {
+            type: 'text',
+            id: '1',
+            text: '@Genie 牛乳を追加',
+            mention: { mentionees: [{ index: 0, length: 6, type: 'user', isSelf: true }] },
+          },
+        }),
+        textEvent({
+          webhookEventId: 'm2',
+          source: group,
+          message: {
+            type: 'text',
+            id: '2',
+            text: '@パパ 牛乳ある？',
+            mention: { mentionees: [{ index: 0, length: 3, type: 'user', userId: 'Upapa' }] },
+          },
+        }),
+        textEvent({
+          webhookEventId: 'm3',
+          source: group,
+          message: {
+            type: 'text',
+            id: '3',
+            text: '@Genie',
+            mention: { mentionees: [{ index: 0, length: 6, type: 'user', isSelf: true }] },
+          },
+        }),
+        {
+          type: 'join',
+          webhookEventId: 'j1',
+          replyToken: 'r',
+          source: { type: 'group', groupId: 'Cgroup1' },
+        },
+      ]),
+    );
+    expect(result.messages.map((m) => [m.text, m.group])).toEqual([
+      ['牛乳を追加', { id: 'Cgroup1', mentioned: true, messageId: '1' }],
+      ['@パパ 牛乳ある？', { id: 'Cgroup1', mentioned: false, messageId: '2' }],
+      ['使い方', { id: 'Cgroup1', mentioned: true, messageId: '3' }],
+    ]);
+    expect(result.follows).toEqual([
+      expect.objectContaining({ eventId: 'j1', destination: 'Cgroup1', group: { id: 'Cgroup1' } }),
+    ]);
+  });
+
+  it('keeps the quoted message id, and turns an unsend into an empty message naming what to forget', () => {
+    const group = { type: 'group', groupId: 'Cgroup1', userId: 'Umama' };
+    const result = normalizeLineWebhook(
+      webhook([
+        textEvent({
+          webhookEventId: 'q1',
+          source: group,
+          message: { type: 'text', id: '11', text: 'これにして', quotedMessageId: '900' },
+        }),
+        {
+          type: 'unsend',
+          mode: 'active',
+          timestamp: 1,
+          webhookEventId: 'u1',
+          source: group,
+          unsend: { messageId: '11' },
+        },
+      ]),
+    );
+    expect(result.messages.map((m) => [m.text, m.group])).toEqual([
+      ['これにして', { id: 'Cgroup1', mentioned: false, messageId: '11', quotedId: '900' }],
+      ['', expect.objectContaining({ id: 'Cgroup1', unsent: '11' })],
+    ]);
   });
 });

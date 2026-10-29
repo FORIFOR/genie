@@ -164,7 +164,9 @@ describe('SlackSocketMode', () => {
       onEvent: async () => {},
       onInteractive: async () => {},
       fetchImpl: (async () =>
-        new Response(JSON.stringify({ ok: false, error: 'invalid_auth' }))) as unknown as typeof fetch,
+        new Response(
+          JSON.stringify({ ok: false, error: 'invalid_auth' }),
+        )) as unknown as typeof fetch,
       connect: () => new FakeSocket(),
       setTimer: (fn) => timers.push(fn),
     });

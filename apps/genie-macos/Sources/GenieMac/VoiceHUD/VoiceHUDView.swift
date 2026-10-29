@@ -554,6 +554,7 @@ struct ListeningDock: View {
                 textInput = held
             }
             isFieldFocused = true
+            voice.noteTyping(textInput == partial ? "" : textInput)
         }
         .onChange(of: partial) { old, new in
             // 音声入力では、欄はいまの区切り（まだ入れていない文）だけを映す。入れた文を残すと、
@@ -563,6 +564,10 @@ struct ListeningDock: View {
             } else if !new.isEmpty && (textInput.isEmpty || textInput == old) {
                 textInput = new
             }
+        }
+        // 本人が打った文字だけ（話した言葉の書き起こしが入った変化は数えない）。打っている間は閉じない
+        .onChange(of: textInput) { _, new in
+            if new != partial { voice.noteTyping(new) }
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("dockListening")

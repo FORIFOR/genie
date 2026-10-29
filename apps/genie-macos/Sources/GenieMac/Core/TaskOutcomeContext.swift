@@ -5,6 +5,9 @@ import Foundation
 struct TaskOutcomeContext: Equatable {
     let kind: String?
     let transactionResultUnknown: Bool
+    /// 失敗の理由（error.message）。「処理を完了できませんでした」だけでは何を直せばよいか分からない
+    /// （2026-10-24: 画面操作が無効だったのに、理由が出なかった）。
+    var failure: String? = nil
     var isTransaction: Bool { kind?.hasPrefix("transaction.") == true || transactionResultUnknown }
 
     static let stoppingTransaction = "操作の停止を依頼しました。注文の受付結果は未確認です。再注文せず履歴を確認してください。"
@@ -24,7 +27,9 @@ struct TaskOutcomeContext: Equatable {
         let payload = object["payload"] as? [String: Any] ?? object
         let error = payload["error"] as? [String: Any]
         let result = error?["transaction_result"] as? [String: Any]
+        let message = (error?["message"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
         return Self(kind: kind,
-                    transactionResultUnknown: result?["status"] as? String == "unknown")
+                    transactionResultUnknown: result?["status"] as? String == "unknown",
+                    failure: message?.isEmpty == false ? String(message!.prefix(300)) : nil)
     }
 }

@@ -322,6 +322,9 @@ final class VoiceHUDState: ObservableObject {
         mode = .idle
     }
 
+    /// 聞いている画面の欄に、本人が打ちかけの文を置いている。
+    private(set) var typedDraft = false
+
     /// 30 秒話さなければ音声入力を終える（マイクを開いたままにしない）。
     private func armDictationIdle() {
         dictationIdleGeneration += 1
@@ -332,7 +335,7 @@ final class VoiceHUDState: ObservableObject {
             // 以前は会話中にこれが働き、黙って 30 秒で会話が終わっていた（genie.log 2026-10-04）。
             guard let self, self.dictationIdleGeneration == generation, self.listenPurpose == .dictation,
                   !self.conversation.isActive,
-                  case .listening(let partial) = self.mode, partial.isEmpty else { return }
+                  case .listening(let partial) = self.mode, partial.isEmpty, !self.typedDraft else { return }
             self.cancelListening()
         }
     }
@@ -382,6 +385,15 @@ final class VoiceHUDState: ObservableObject {
             listeningAwaitingAudio = true
             if conversation.isActive { openConversationMicrophone() } else { openMicrophone() }
         }
+    }
+
+    /// 聞いている画面の欄に、本人が文字を打った（話した言葉の書き起こしではなく）。
+    /// 会話中なら、黙っている時間の数え直しに使う（打っている間に閉じない）。
+    func noteTyping(_ text: String, now: Date = Date()) {
+        let hasDraft = !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        typedDraft = hasDraft
+        if conversation.isActive { conversation.typed(hasDraft: hasDraft, now: now) }
+        if listenPurpose == .dictation { armDictationIdle() }
     }
 
     /// テキストを直接送信してタスクを実行する。
@@ -952,7 +964,7 @@ final class VoiceHUDState: ObservableObject {
                 // 呼びかけで始まり、一言も無いまま終わった = 誤検出。学び直しの材料に残す。
                 let wake = WakeController.shared
                 if wake.startedByWake {
-                    if reason == .idle, !conversation.heardAny { wake.noteFalseWake() }
+                    if reason == .idle, !conversation.heardAny, !conversation.typedAny { wake.noteFalseWake() }
                     // 起きてすぐ本人が閉じ、日本語が一言も無かった（動画の英語など）= 誤検出。
                     else if reason == .user, let at = wake.wokeAt, Date().timeIntervalSince(at) < 20,
                             !heardThisConversation.contains(where: { $0.range(of: "[ぁ-んァ-ン一-龯]", options: .regularExpression) != nil }) {
@@ -1299,6 +1311,13 @@ final class VoiceHUDState: ObservableObject {
             showNearby(nearby)
             return true
         }
+        // 「ここから自分で操作する」「続きお願い」: 画面操作の引き継ぎ（端末の中だけで行う。gateway・モデルは通さない）。
+        if visualContext?.isEmpty != false,
+           let handoff = ComputerHandoff.intent(text, handing: ComputerHandoff.handing) {
+            let count = handoff == .take ? ComputerHandoff.take() : ComputerHandoff.giveBack()
+            showAnswer(ComputerHandoff.answer(for: handoff, sessions: count))
+            return true
+        }
         // 「今日の予定は？」: 声と同じ今日のまとめで答える（予定は Mac と Google カレンダーから読み直す）。
         if visualContext?.isEmpty != false, TodayBriefIntent.detect(text) {
             showTodayBrief()
@@ -1396,7 +1415,7 @@ final class VoiceHUDState: ObservableObject {
                         // すぐ答えが出た依頼は、答えの面で見せる（一覧の行にはしない）。
                         self?.dropFromDock(task.id)
                     } else if !rejected {
-                        // 受け付けた（仕事ができて動いている）ときだけ「かしこまりました」。
+                        // 受け付けた（仕事ができて動いている）ときだけ「承知しました」。
                         GenieStateStore.shared.showAck(DockAck(id: task.id, title: task.title))
                         if first.leftPending { self?.dockEvent(task.id, .awaitingApproval) }
                         else if !followed.pendingApprovals.isEmpty { self?.dockEvent(task.id, .step(Facts.taskWorking)) }
@@ -1670,6 +1689,18 @@ final class VoiceHUDState: ObservableObject {
         return .answer(reply.text)
     }
 
+    /// 予定の一覧の成果物（`genie.agenda/v1`）の、読む文。違う形なら nil。
+    nonisolated static func agendaText(_ body: String) -> String? {
+        let trimmed = body.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.hasPrefix("{"), trimmed.contains("genie.agenda/v1"),
+              let data = trimmed.data(using: .utf8),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              object["schema"] as? String == "genie.agenda/v1",
+              let text = object["text"] as? String,
+              !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+        return text
+    }
+
     nonisolated static func taskReply(status: String, artifactID: String, context: TaskOutcomeContext? = nil,
                                     content: () throws -> String) rethrows -> TaskReply {
         // A workflow terminal state alone cannot establish an external order's outcome.
@@ -1689,8 +1720,17 @@ final class VoiceHUDState: ObservableObject {
             if let card = DockCard.decode(body) {
                 return TaskReply(text: card.text, phase: .complete, artifactID: artifactID, card: card)
             }
+            // 予定の一覧（calendar.agenda）は JSON。添えてある読む文（text）だけを出す（JSON をそのまま見せない）
+            if let agenda = agendaText(body) {
+                return TaskReply(text: agenda, phase: .complete, artifactID: artifactID)
+            }
             return TaskReply(text: body, phase: .complete, artifactID: artifactID)
-        case "FAILED": return TaskReply(text: "処理を完了できませんでした。依頼を見直すか、接続を確認してください。", phase: .failed)
+        case "FAILED":
+            // 理由が分かれば、その理由を見せる（何を直せばよいかが分かる）
+            if let failure = context?.failure {
+                return TaskReply(text: "できませんでした。\(failure)", phase: .failed)
+            }
+            return TaskReply(text: "処理を完了できませんでした。依頼を見直すか、接続を確認してください。", phase: .failed)
         case "CANCELLED": return TaskReply(text: "この仕事は取り消されました。", phase: .cancelled)
         case "PAUSED_HOST_OFFLINE":
             return TaskReply(text: "実行する端末に接続できません。Genie の実行サービスが起動すると続行できます。", phase: .waiting)

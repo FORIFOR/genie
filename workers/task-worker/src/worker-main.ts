@@ -243,6 +243,9 @@ async function main(): Promise<void> {
   );
 
   const shutdown = (signal: string): void => {
+    // Temporal の SDK も同じシグナルで止める。止まった後に呼ぶと IllegalStateError で落ちる
+    // （2026-10-28: プレビューを止めるたびに worker.log に 121 回残っていた）
+    if (worker.getState() !== 'RUNNING') return;
     logger.info({ signal }, 'shutting down the task worker');
     worker.shutdown();
   };

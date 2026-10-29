@@ -21,7 +21,7 @@
 
   ],
   "product" : "Genie",
-  "startedAt" : "2026-10-22T08:02:41Z",
+  "startedAt" : "2026-10-29T22:42:27Z",
   "steps" : [
     {
       "front" : "com.apple.finder",
@@ -32,26 +32,26 @@
       },
       "interactions" : 1,
       "keyWindow" : true,
-      "ms" : 1039,
+      "ms" : 1037,
       "name" : "マイクの説明",
       "surface" : {
         "h" : 189,
         "key" : true,
         "w" : 312,
         "x" : 1392,
-        "y" : 94
+        "y" : 86
       },
-      "transitionMs" : 64,
+      "transitionMs" : 58,
       "windows" : 2
     },
     {
       "front" : "com.apple.finder",
       "ids" : {
-        "session" : "meeting-f6a5eba9-e605-4a0f-aeef-7622354d7a9c"
+        "session" : "meeting-ac6b1300-0c63-4724-add6-9b702c5ea9ec"
       },
       "interactions" : 1,
       "keyWindow" : true,
-      "ms" : 1173,
+      "ms" : 1163,
       "name" : "回復",
       "surface" : {
         "h" : 108,
@@ -70,7 +70,7 @@
       },
       "interactions" : 0,
       "keyWindow" : false,
-      "ms" : 1442,
+      "ms" : 1497,
       "name" : "共有のあと",
       "surface" : {
         "h" : 108,
@@ -89,7 +89,7 @@
       },
       "interactions" : 1,
       "keyWindow" : false,
-      "ms" : 1272,
+      "ms" : 1274,
       "name" : "確認（やめる）",
       "surface" : {
         "h" : 108,
@@ -108,19 +108,19 @@
       },
       "interactions" : 1,
       "keyWindow" : false,
-      "ms" : 2329,
+      "ms" : 2278,
       "name" : "落ちて再開",
       "surface" : {
         "h" : 820,
         "key" : false,
         "w" : 1240,
         "x" : 244,
-        "y" : 215
+        "y" : 213
       },
       "windows" : 2
     }
   ],
   "success" : true,
-  "totalMs" : 7266,
+  "totalMs" : 7260,
   "windowsOpened" : 0
 }

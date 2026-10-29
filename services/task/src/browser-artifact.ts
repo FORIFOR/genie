@@ -13,7 +13,7 @@ export function formatBrowserArtifact(kind: string, results: readonly unknown[])
       result.opened && result.url
         ? [
             result.shown === true
-              ? `かしこまりました。${result.subject}の公式サイトをブラウザで開き、表示されたのを確認しました。`
+              ? `承知しました。${result.subject}の公式サイトをブラウザで開き、表示されたのを確認しました。`
               : result.shown === false
                 ? `${result.subject}の公式サイトを開きましたが、いま前に出ているのは別のページです。ブラウザを確認してください。`
                 : `${result.subject}の公式サイトをブラウザで開いています。表示まではまだ確認できていません。`,

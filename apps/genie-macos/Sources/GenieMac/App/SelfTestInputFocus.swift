@@ -52,8 +52,8 @@ extension SelfTest {
         VoiceHUDState.shared.endConversation(.user)
         await pause(0.5)
 
-        // 2. 設定の API キーの欄
-        SettingsWindowController.shared.show()
+        // 2. 設定の API キーの欄（外部サービスの面）
+        SettingsWindowController.shared.show(pane: .services)
         await pause(1.0)
         let settings = SettingsWindowController.shared.windowForTest
         var secure: NSSecureTextField?

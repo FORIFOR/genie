@@ -19,6 +19,7 @@ import {
   type ChannelService,
   type ChannelStore,
 } from '@genie/service-channels';
+import { timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
 import type { App } from '../fastify.js';
 import { requirePrincipal } from '../auth/middleware.js';
@@ -32,6 +33,16 @@ export interface ChannelRouteDeps {
   readonly lineChannelSecret: string | null;
   /** 繋がり具合（設定画面・doctor 用）。 */
   readonly status?: () => import('../channels.js').ChannelsStatus;
+  /** 中継（公式アカウント 1 つ）を通すとき、出した連携コードを中継に知らせる。知らせられなければ false。 */
+  readonly onLinkCode?: (
+    provider: 'slack' | 'line',
+    code: string,
+    expiresAt: Date,
+  ) => Promise<boolean>;
+  /** 管理画面の LINE の電話をつなぐ道具（tools/line-call-bridge）の合言葉。無ければ道を開かない。 */
+  readonly lineCallBridgeKey?: string | null;
+  /** LINE から声で話す（通話のページ）。WebSocket のルートなので app.ts が websocket のスコープで登録する。 */
+  readonly call?: import('./call.js').CallRouteDeps;
 }
 
 /** 受け口は IP ごと。提供者の再送の束でも詰まらない幅にする。 */
@@ -51,7 +62,7 @@ export function registerUnconfiguredChannelStatus(app: App): void {
     requirePrincipal();
     return {
       slack: { configured: false, transport: null, socket: null },
-      line: { configured: false },
+      line: { configured: false, transport: null, hub: null },
       durableInbox: false,
       approvalButtons: false,
     } satisfies import('../channels.js').ChannelsStatus;
@@ -163,6 +174,45 @@ export function registerChannelRoutes(app: App, deps: ChannelRouteDeps): void {
     return deps.status?.() ?? null;
   });
 
+  /**
+   * 管理画面で受けた LINE の電話を、かけた人の Genie の声につなぐ鍵（tools/line-call-bridge が呼ぶ）。
+   * この Mac の中からだけ（公開の中継はこの道を通さない）。合言葉は受けた本文を封じる鍵から作ったもの。
+   * かけた人の LINE の利用者 ID（subject）が分からなければ null。そのときは連携が 1 つだけの Genie に限る。
+   */
+  const bridgeKey = deps.lineCallBridgeKey ?? null;
+  if (bridgeKey) {
+    app.post(
+      '/v1/channels/line-oa-call',
+      {
+        config: {
+          auth: false,
+          rateLimit: { limit: 30, windowMs: 60_000, by: 'ip', bucket: 'line-oa-call' },
+        },
+      },
+      async (request, reply) => {
+        const loopback = ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(request.ip);
+        const given = Buffer.from(
+          String(request.headers['authorization'] ?? '').replace(/^Bearer /, ''),
+        );
+        const want = Buffer.from(bridgeKey);
+        if (!loopback || given.length !== want.length || !timingSafeEqual(given, want))
+          return reply.status(403).send({ error: 'forbidden' });
+        const body = z
+          .object({
+            subject: z
+              .string()
+              .regex(/^U[0-9A-Za-z]{6,64}$/)
+              .nullable()
+              .default(null),
+          })
+          .parse(request.body ?? {});
+        const result = await deps.service.lineCallKey(body.subject);
+        if ('refused' in result) return reply.status(409).send({ refused: result.refused });
+        return reply.status(201).send({ ws: `/v1/channels/call/${result.token}/ws` });
+      },
+    );
+  }
+
   /** 連携コードを出す。チャットで「連携 <コード>」と送ると結ばれる（10 分・1 回）。 */
   app.post('/v1/channels/link-codes', async (request, reply) => {
     const principal = requirePrincipal();
@@ -172,6 +222,10 @@ export function registerChannelRoutes(app: App, deps: ChannelRouteDeps): void {
       principal.userId,
       body.provider,
     );
+    // 中継に「このコードはこの Genie のもの」と知らせる（知らせないと、コードを送っても届かない）
+    if (deps.onLinkCode && !(await deps.onLinkCode(body.provider, code, expiresAt))) {
+      throw new GenieError('common.unavailable', 'LINE の中継につながっていません');
+    }
     return reply.status(201).send({
       provider: body.provider,
       code,

@@ -238,6 +238,43 @@ export class TaskService {
     });
   }
 
+  /** この仕事の承認の履歴（答え済みも含む）。仕事の記録で読む。 */
+  async approvalHistory(
+    tenantId: string,
+    taskId: string,
+  ): Promise<{ summary: string; status: string; created_at: Date; decided_at: Date | null }[]> {
+    return withTenant(this.#db, tenantId, (tx) =>
+      tx
+        .selectFrom('approvals')
+        .select(['summary', 'status', 'created_at', 'decided_at'])
+        .where('task_id', '=', taskId)
+        .orderBy('created_at')
+        .execute(),
+    );
+  }
+
+  /** その会話で since より後に終わった、その種類のいちばん新しい仕事。無ければ null。 */
+  async latestCompleted(
+    tenantId: string,
+    conversationId: string,
+    kind: string,
+    since: Date,
+  ): Promise<{ input: unknown; result_artifact_id: string | null } | null> {
+    const row = await withTenant(this.#db, tenantId, (tx) =>
+      tx
+        .selectFrom('tasks')
+        .select(['input', 'result_artifact_id'])
+        .where('conversation_id', '=', conversationId)
+        .where('kind', '=', kind)
+        .where('status', '=', 'COMPLETED')
+        .where('created_at', '>', since)
+        .orderBy('created_at', 'desc')
+        .limit(1)
+        .executeTakeFirst(),
+    );
+    return row ?? null;
+  }
+
   async list(
     tenantId: string,
     limit: number,

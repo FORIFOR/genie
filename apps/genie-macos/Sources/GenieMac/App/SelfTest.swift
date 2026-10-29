@@ -6295,7 +6295,7 @@ enum SelfTest {
             let record = current()
             // Settled short answers remain visible in the TaskDock so the user
             // can read them immediately; older builds returned to idle here.
-            // 12 秒で終わらない答えは、受付（かしこまりました）→ 結果の面になる（One Continuous Surface）。
+            // 12 秒で終わらない答えは、受付（承知しました）→ 結果の面になる（One Continuous Surface）。
             let settled = switch hud.mode {
             case .idle, .answer, .ack: true
             case .result(let r): r.taskID != nil && !r.failed

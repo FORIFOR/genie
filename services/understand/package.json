@@ -1,0 +1,34 @@
+{
+  "name": "@genie/service-understand",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Understand what a user sends (photos, foreign text): receipts to the household book, meals, events, translation.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "tsc -b --clean",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "1.1.0",
+    "@genie/contracts": "workspace:*",
+    "@genie/db": "workspace:*",
+    "@genie/telemetry": "workspace:*",
+    "kysely": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "vitest": "catalog:"
+  }
+}

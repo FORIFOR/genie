@@ -93,6 +93,156 @@ final class ScheduleBoard: ObservableObject {
     }
 }
 
+/// ほかの AI（Claude Code）に頼んだ仕事（作業一覧の予約の下に出す。docs/AGENT_SESSIONS.ja.md）。
+/// 状態は hooks の出来事から gateway が決める。ここでは見るのと、見守りを止める・戻すだけ。
+@MainActor
+final class AgentSessionsBoard: ObservableObject {
+    static let shared = AgentSessionsBoard()
+
+    struct Item: Decodable, Identifiable, Equatable {
+        let id: String
+        let source: String
+        let project: String?
+        let title: String?
+        let state: String
+        let waiting_reason: String?
+        let user_policy: String
+        /// needs_user / stalled_suspected / working / idle / paused / held / unknown / ended（gateway が決める）
+        let attention: String
+        let last_activity_at: String
+        /// none / changed（変えたが確かめていない）/ passed / failed。古い gateway は送らない
+        var check_state: String? = nil
+
+        var name: String { title ?? project ?? "名前のないセッション" }
+
+        /// 「Claude Code · genie」
+        var origin: String {
+            let tool = source == "claude_code" ? "Claude Code" : source
+            return project.map { "\(tool) · \($0)" } ?? tool
+        }
+
+        /// いまどうなっているか。推した状態（止まっているかも）は確かな状態と言い分ける。
+        var stateLine: String {
+            switch attention {
+            case "needs_user":
+                if state == "error" { return "うまくいかずに止まりました" }
+                return waiting_reason == "permission" ? "承認を待っています" : "あなたの返事を待っています"
+            case "stalled_suspected": return "止まっているかもしれません（15 分以上動きがありません）"
+            case "unknown": return "しばらく何も届いていないので、いまの状態は分かりません"
+            case "working": return "作業中"
+            case "paused": return "見守りを止めています"
+            case "held": return "保留中（知らせません）"
+            case "ended": return "セッションを閉じました"
+            default:
+                // 応答を終えただけでは完了と言わない。変えたあとテストが通ったときだけ「通っています」
+                switch check_state {
+                case "passed": return "応答を終えました（テストが通っています）"
+                case "changed": return "応答を終えました（変更をまだテストで確かめていません）"
+                case "failed": return "応答を終えましたが、最後のテストが失敗しています"
+                default: return "応答を終えて、次の頼みを待っています"
+                }
+            }
+        }
+
+        /// 並び順。返事が要るものを上に。
+        var rank: Int {
+            if testFailed { return 0 }
+            return ["needs_user", "stalled_suspected", "unknown", "working", "idle", "held", "paused", "ended"]
+                .firstIndex(of: attention) ?? 8
+        }
+
+        var needsUser: Bool { attention == "needs_user" || testFailed }
+        private var testFailed: Bool { attention == "idle" && check_state == "failed" }
+        /// 止めている（本人が止めた・保留）。ボタンは「見守りを戻す」
+        var quiet: Bool { user_policy == "paused_by_user" || attention == "held" }
+    }
+
+    @Published private(set) var items: [Item] = []
+    @Published private(set) var problem: String?
+    private var api: GatewayJSON?
+
+    func configureBackend(base: String, token: String) {
+        api = GatewayJSON(base: base, token: token)
+        Task { await refresh() }
+    }
+
+    func refresh() async {
+        guard let api, let result = await api.call("GET", "/v1/agent-sessions"), result.status == 200 else { return }
+        items = Self.decode(result.data)
+    }
+
+    /// 検査の撮影用（サーバに行かない）。
+    func installForTesting(_ items: [Item]) { self.items = Self.sorted(items); problem = nil }
+
+    /// watch / paused_by_user。止めても Claude Code 自体は止まらない（Genie が知らせないだけ）。
+    func set(_ item: Item, policy: String) async {
+        guard let api else { return }
+        let result = await api.call("PATCH", "/v1/agent-sessions/\(item.id)", body: ["user_policy": policy])
+        problem = result?.status == 200 ? nil : "見守りを変えられませんでした。時間をおいて試してください。"
+        await refresh()
+    }
+
+    nonisolated static func decode(_ data: Data) -> [Item] {
+        struct Response: Decodable { let items: [Item] }
+        return sorted((try? JSONDecoder().decode(Response.self, from: data))?.items ?? [])
+    }
+
+    /// 返事が要るもの → 止まっているかも → 作業中 → 待機 → 止めた → 閉じた。同じ段は新しい順（gateway の順を保つ）。
+    nonisolated static func sorted(_ items: [Item]) -> [Item] {
+        items.enumerated().sorted { ($0.element.rank, $0.offset) < ($1.element.rank, $1.offset) }.map(\.element)
+    }
+}
+
+/// 仕事の見通し（作業一覧の先頭の札。docs/AGENT_SESSIONS.ja.md）。文は gateway が決める（「今の作業どうなってる？」と同じ）。
+@MainActor
+final class WorkOverviewBoard: ObservableObject {
+    static let shared = WorkOverviewBoard()
+
+    struct Overview: Decodable, Equatable {
+        struct Counts: Decodable, Equatable {
+            let running: Int
+            let needs_user: Int
+            let suspected: Int
+            let held: Int
+            let done_today: Int
+        }
+        let counts: Counts
+        let attention: [String]
+
+        /// 「確かめてほしいもの 2 件 ・ 動いているもの 3 件 ・ 保留 1 件」（0 の項目は書かない）。何も無ければ nil
+        var summary: String? {
+            let parts = [
+                counts.needs_user > 0 ? "確かめてほしいもの \(counts.needs_user) 件" : nil,
+                counts.suspected > 0 ? "止まっているかもしれないもの \(counts.suspected) 件" : nil,
+                counts.running > 0 ? "動いているもの \(counts.running) 件" : nil,
+                counts.done_today > 0 ? "今日終わったもの \(counts.done_today) 件" : nil,
+                counts.held > 0 ? "保留 \(counts.held) 件" : nil,
+            ].compactMap { $0 }
+            return parts.isEmpty ? nil : parts.joined(separator: " ・ ")
+        }
+    }
+
+    @Published private(set) var overview: Overview?
+    private var api: GatewayJSON?
+
+    func configureBackend(base: String, token: String) {
+        api = GatewayJSON(base: base, token: token)
+        Task { await refresh() }
+    }
+
+    func refresh() async {
+        guard let api, let result = await api.call("GET", "/v1/work/overview"), result.status == 200 else { return }
+        overview = Self.decode(result.data)
+    }
+
+    /// 検査の撮影用（サーバに行かない）。
+    func installForTesting(_ overview: Overview?) { self.overview = overview }
+
+    nonisolated static func decode(_ data: Data) -> Overview? {
+        try? JSONDecoder().decode(Overview.self, from: data)
+    }
+}
+
 /// Slack・LINE とのつながり（アプリ連携に出す）。トークンや外の利用者 ID は受け取らない。
 @MainActor
 final class ChatChannelsBoard: ObservableObject {

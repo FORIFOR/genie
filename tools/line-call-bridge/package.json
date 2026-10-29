@@ -1,0 +1,13 @@
+{
+  "name": "@genie/line-call-bridge",
+  "private": true,
+  "type": "module",
+  "description": "LINE 公式アカウントの通話（ブラウザの管理画面）を Genie の声につなぐ。まだ検証段階。",
+  "scripts": {
+    "probe": "node probe.mjs",
+    "test": "node --test test/*.test.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.63.0"
+  }
+}

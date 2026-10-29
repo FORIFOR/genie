@@ -118,7 +118,7 @@ describe.skipIf(!url)('personal vocabulary', () => {
     expect(res.statusCode).toBe(200);
     expect(res.json()).toEqual({
       slack: { configured: false, transport: null, socket: null },
-      line: { configured: false },
+      line: { configured: false, transport: null, hub: null },
       durableInbox: false,
       approvalButtons: false,
     });

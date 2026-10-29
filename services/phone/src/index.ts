@@ -31,6 +31,7 @@ export {
   PhoneUnavailableError,
   operationKeyFor,
   phoneExecutors,
+  report as callReport,
   type PhoneExecutorDeps,
   type PhoneExecutorResult,
 } from './executor.js';

@@ -35,7 +35,7 @@ connectors:
     provider: google
     grants:
       - calendar.write
-    purpose: あなたが承認した予定を作る（招待が同席者へ届く）
+    purpose: あなたが承認した予定を作る・時間を変える（作ると招待が同席者へ届く。変えるときは通知を送らない）
     scopes:
       - https://www.googleapis.com/auth/calendar.events
 tools:
@@ -47,6 +47,11 @@ tools:
     risk: READ
   # 招待が同席者へ届く。取り消しても「取り消し通知」が届く。
   - id: calendar.create_event
+    surface: local
+    risk: EXTERNAL_COMMIT
+    requires_confirmation: true
+  # 予定の時間を変える。同席者のカレンダーの表示も変わる（通知は送らない）。変える前は結果に残す（「元に戻して」）。
+  - id: calendar.move_event
     surface: local
     risk: EXTERNAL_COMMIT
     requires_confirmation: true

@@ -39,5 +39,5 @@ import AppKit
     }
 
     @objc private func showSettings() { SettingsWindowController.shared.show() }
-    @objc private func showPermissionGuide() { SettingsWindowController.shared.show() }
+    @objc private func showPermissionGuide() { SettingsWindowController.shared.show(pane: .permissions) }
 }

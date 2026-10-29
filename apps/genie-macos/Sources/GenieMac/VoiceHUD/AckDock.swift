@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 受付の応答（One Continuous Surface の 3）。**受け付けた（仕事ができた）ときだけ**「かしこまりました」。
+/// 受付の応答（One Continuous Surface の 3）。**受け付けた（仕事ができた）ときだけ**「承知しました」。
 /// 受け付けられなかった依頼は、同じ面で理由と「閉じる」を出す（受け付けたようには見せない）。
 struct AckDock: View {
     @Environment(\.colorScheme) private var scheme

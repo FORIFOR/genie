@@ -153,7 +153,7 @@ final class StatusBarController {
     @objc private func toggleRecording() { WindowCoordinator.shared.toggleRecording() }
     @objc private func openSettings() { SettingsWindowController.shared.show() }
     @objc private func openGuide() { NSWorkspace.shared.open(Self.guideURL) }
-    @objc private func startGuidedSetup() { SettingsWindowController.shared.show() }
+    @objc private func startGuidedSetup() { SettingsWindowController.shared.show(pane: .permissions) }
     @objc private func checkUpdates() {
         guard let reason = SoftwareUpdate.shared.checkNow() else { return }
         Self.presentUpdateUnavailable(reason: reason)

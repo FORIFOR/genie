@@ -41,6 +41,32 @@ export interface InboundChannelMessage {
    * event_id だけでは二度仕事になるので、これでも重複を捨てる。
    */
   readonly dedupeKey?: string;
+  /**
+   * 写真などの添付（LINE の image / audio / video / file）。本体は ID だけ持ち、処理するときに取りに行く
+   * （受信箱に写真を置かない）。写真だけの発言では `text` は空。
+   */
+  readonly attachments?: readonly InboundAttachment[];
+  /**
+   * LINE のグループ・複数人トーク。返す先（destination / threadKey）はグループの ID。
+   * `mentioned` は Genie へのメンションがあったか（グループでは、メンションのある発言だけを頼みとして読む）。
+   * メンションの文字は `text` から取り除いてある。
+   */
+  readonly group?: {
+    readonly id: string;
+    readonly mentioned: boolean;
+    /** LINE のメッセージ ID（会話を覚えるとき・引用返信を辿るとき）。 */
+    readonly messageId?: string;
+    /** 引用返信の元のメッセージ ID（LINE の quotedMessageId）。元の本文は LINE から後で取れない。 */
+    readonly quotedId?: string;
+    /** 送信の取り消し（unsend）。このメッセージを覚えた文脈から外す。本文は空。 */
+    readonly unsent?: string;
+  };
+}
+
+export interface InboundAttachment {
+  readonly kind: 'image' | 'audio' | 'video' | 'file';
+  /** 提供者のメッセージ ID（LINE の message.id）。本体はこれで取りに行く。 */
+  readonly id: string;
 }
 
 /**
@@ -69,6 +95,8 @@ export interface InboundChannelFollow {
   readonly destination: string;
   readonly threadKey: string;
   readonly replyToken: string | null;
+  /** グループ・複数人トークに招かれた（LINE の join）。そのときは返す先がグループ。 */
+  readonly group?: { readonly id: string };
 }
 
 /** 受けなかった理由。黙って捨てずに、記録できる形で返す。 */

@@ -137,6 +137,8 @@ export const TOOL_CONNECTOR: Readonly<Record<string, ConnectorKey>> = {
   'calendar.list_events': 'google-calendar',
   'calendar.get_event': 'google-calendar',
   'calendar.create_event': 'google-calendar-actions',
+  // 予定の時間を変える（承認つき。「元に戻して」も同じ道）
+  'calendar.move_event': 'google-calendar-actions',
   'outlook.mail.search': 'outlook',
   'outlook.mail.read': 'outlook',
   'outlook.calendar.list_events': 'outlook',
@@ -292,6 +294,23 @@ export class ConnectorRuntime {
           step.approval ?? undefined,
           signal,
         );
+      case 'calendar.move_event': {
+        const timeZone = typeof args['time_zone'] === 'string' ? args['time_zone'] : undefined;
+        // 日付だけなら終日、それ以外は日時（eventFrom の when と同じ読み方）
+        const at = (value: string) =>
+          /^\d{4}-\d{2}-\d{2}$/.test(value)
+            ? { date: value }
+            : { dateTime: value, ...(timeZone ? { timeZone } : {}) };
+        return this.googleCalendarActions().move(
+          {
+            eventId: requireString(args, 'event_id'),
+            start: at(requireString(args, 'start')),
+            end: at(requireString(args, 'end')),
+          },
+          step.approval ?? undefined,
+          signal,
+        );
+      }
       case 'outlook.mail.search':
         return this.outlookMail().list(
           {

@@ -25,7 +25,12 @@ export const LATE_NOTE_MS = 2 * 60 * 1000;
 
 /** handleTurn を予約の持ち主として呼んだ結果。 */
 export type ScheduledTurnOutcome =
-  | { readonly kind: 'started'; readonly taskId: string | null; readonly notice: string | null; readonly title: string | null }
+  | {
+      readonly kind: 'started';
+      readonly taskId: string | null;
+      readonly notice: string | null;
+      readonly title: string | null;
+    }
   | { readonly kind: 'answered'; readonly answer: string };
 
 export interface ScheduleRunnerDeps {
@@ -34,16 +39,14 @@ export interface ScheduleRunnerDeps {
    * 頼む（Task Dock と同じ入口）。`turnId` は 1 回分の id（同じ回で仕事を二つ作らない）。
    * 予約の言い方の読み取りは飛ばす（予約から予約を作らない）。
    */
-  readonly turn: (
-    job: ScheduledJob,
-    text: string,
-    turnId: string,
-  ) => Promise<ScheduledTurnOutcome>;
+  readonly turn: (job: ScheduledJob, text: string, turnId: string) => Promise<ScheduledTurnOutcome>;
   /**
    * 頼まれた会話がチャット（Slack / LINE）なら、そこへ返す。チャットでなければ 'none'。
    */
   readonly channels?: {
     notify(tenantId: string, conversationId: string, text: string): Promise<DeliveryStatus>;
+    /** Genie から電話する（LINE に「電話に出る」）。チャットでなければ 'none'。 */
+    ring?(tenantId: string, conversationId: string, text: string): Promise<DeliveryStatus>;
     followTask(
       tenantId: string,
       conversationId: string,
@@ -165,7 +168,7 @@ export class ScheduleRunner {
     try {
       const outcome =
         job.payload.kind === 'reminder'
-          ? await this.#remind(job, job.payload.text, lateNote)
+          ? await this.#remind(job, job.payload.text, lateNote, job.payload.call === true)
           : await this.#ask(job, job.payload.text, runId, lateNote);
       await this.#deps.store.finishRun(
         job.tenantId,
@@ -229,8 +232,18 @@ export class ScheduleRunner {
     job: ScheduledJob,
     text: string,
     lateNote: string,
+    call = false,
   ): Promise<{ delivery: DeliveryStatus; taskId: string | null }> {
     const body = `⏰ ${text}${lateNote}`;
+    // 電話で、と頼まれていれば Genie から電話する（できなければ、いつものお知らせ）
+    const rung = call
+      ? ((await this.#deps.channels?.ring?.(
+          job.tenantId,
+          job.conversationId,
+          `${text}${lateNote}`,
+        )) ?? 'none')
+      : 'none';
+    if (rung !== 'none') return { delivery: rung, taskId: null };
     const channel =
       (await this.#deps.channels?.notify(job.tenantId, job.conversationId, body)) ?? 'none';
     if (channel !== 'none') return { delivery: channel, taskId: null };
@@ -291,7 +304,9 @@ function lateText(ms: number): string {
   const minutes = Math.round(ms / 60_000);
   if (minutes < 60) return `${String(minutes)} 分`;
   const hours = Math.floor(minutes / 60);
-  return minutes % 60 === 0 ? `${String(hours)} 時間` : `${String(hours)} 時間 ${String(minutes % 60)} 分`;
+  return minutes % 60 === 0
+    ? `${String(hours)} 時間`
+    : `${String(hours)} 時間 ${String(minutes % 60)} 分`;
 }
 
 function errorCode(error: unknown): string {

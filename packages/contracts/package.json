@@ -19,6 +19,10 @@
     "./checkout-assistance": {
       "types": "./dist/checkout-assistance.d.ts",
       "default": "./dist/checkout-assistance.js"
+    },
+    "./browser-read": {
+      "types": "./dist/browser-read.d.ts",
+      "default": "./dist/browser-read.js"
     }
   },
   "files": [

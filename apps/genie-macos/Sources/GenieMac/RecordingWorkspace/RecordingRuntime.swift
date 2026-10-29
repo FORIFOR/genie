@@ -51,7 +51,6 @@ final class RecordingRuntime {
     private var micGeneration = 0
     private var sysAudio: AnyObject?
     private var speech: SpeechTranscriber?
-    private var remoteSpeech: SpeechTranscriber?
     private var googleMic: GoogleLiveTranscriber?
     private var googleRemote: GoogleLiveTranscriber?
     private(set) var liveTranscriptionFailure: String?
@@ -149,19 +148,24 @@ final class RecordingRuntime {
     /// この録音で文字起こしを頼まれているか（許可の答えが遅れて来たときに始めるため）。
     private var speechWanted = false
     /// 診断: 確定した発話の数 / 受け取った partial の数（REAL_MEETING の result.json）。録音中だけ意味を持つ。
-    var sttFinals: Int { (googleMic?.finals ?? 0) + (googleRemote?.finals ?? 0) + (speech?.finalsEmitted ?? 0) + (remoteSpeech?.finalsEmitted ?? 0) }
-    var sttPartials: Int { (googleMic?.partials ?? 0) + (googleRemote?.partials ?? 0) + (speech?.partialsSeen ?? 0) + (remoteSpeech?.partialsSeen ?? 0) }
+    var sttFinals: Int { (googleMic?.finals ?? 0) + (googleRemote?.finals ?? 0) + (speech?.finalsEmitted ?? 0) }
+    var sttPartials: Int { (googleMic?.partials ?? 0) + (googleRemote?.partials ?? 0) + (speech?.partialsSeen ?? 0) }
 
     /// オンデバイス STT を始める。録音の開始時、または音声認識の許可が下りた瞬間に呼ぶ。
+    ///
+    /// オンデバイスの認識は**この Mac で同時に 1 本だけ**（2026-10-27 実測: 2 本目を開くと 1 本目が 0.2 秒で
+    /// `kAFAssistantErrorDomain 1110 No speech detected` で切れる。以前はマイクと相手の音を別々に開き、
+    /// 互いに切り合って 3 回で「この Mac では使えません」と出していた）。相手の音も録るときは、
+    /// 話している方の音を 1 本に流し、発話ごとに「あなた / 相手」を付ける（`receiveAudio`）。
     private func startSpeech() {
         guard !cloudRequestedForRecording, speech == nil, session != nil else { return }
         let st = SpeechTranscriber()
-        st.onFailure = { [weak self] _ in self?.transcriptionUnavailable = true }
+        st.onFailure = { [weak self] error in self?.speechFailed(error) }
         do {
             try st.start { [weak self] live in
                 // §12 partial は final を待たずに UI へ。出るまでの時間を実測しておく。
                 let started = self?.speechStartedAt
-                let channel = SpeakerChannel.localUser
+                let channel = self?.speechOwner ?? .localUser
                 let deliver = {
                     if let started { self?.lastPartialLatencyMs = Date().timeIntervalSince(started) * 1000 }
                     self?.lastTranscriptChannel = channel
@@ -172,24 +176,43 @@ final class RecordingRuntime {
                 if Thread.isMainThread { deliver() } else { DispatchQueue.main.async(execute: deliver) }
             }
             self.speech = st
-            if systemAudioWanted {
-                let remote = SpeechTranscriber()
-                remote.onFailure = { [weak self] _ in self?.transcriptionUnavailable = true }
-                try remote.start { [weak self] live in
-                    let deliver = {
-                        self?.lastTranscriptChannel = .remoteAudio
-                        self?.onTranscript?(live.text, live.isFinal)
-                    }
-                    if Thread.isMainThread { deliver() } else { DispatchQueue.main.async(execute: deliver) }
-                }
-                remoteSpeech = remote
-            }
         } catch {
             // オンデバイス資産が無い / 認識器が無い。録音だけ続け、画面に理由を出す。
             // ここで `requiresOnDeviceRecognition = false` にして取り直すことはしない。
             transcriptionUnavailable = true
             NSLog("on-device STT unavailable (recording continues, no server fallback): \(error)")
         }
+    }
+
+    /// 録音の途中で認識が続けて失敗した（ほかのアプリの音声入力と重なった等）。この Mac で使えないのとは
+    /// 別なので、そう言い分け、少し待って開き直す（3 回まで）。サーバへは落とさない。
+    private var speechRestarts = 0
+    private func speechFailed(_ error: Error) {
+        let ns = error as NSError
+        NSLog("on-device STT stopped mid-recording: \(ns.domain) \(ns.code) \(ns.localizedDescription)")
+        speech?.finish()
+        speech = nil
+        speechOwner = nil
+        liveTranscriptionFailure = Facts.transcriptionInterrupted
+        transcriptionUnavailable = true
+        guard speechRestarts < 3 else { return }
+        speechRestarts += 1
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
+            guard let self, self.session != nil, self.speech == nil, self.speechWanted,
+                  !self.cloudRequestedForRecording else { return }
+            self.transcriptionUnavailable = false
+            self.liveTranscriptionFailure = nil
+            self.startSpeech()
+        }
+    }
+
+    /// いま認識の 1 本を使っている話し手と、その最後の声。別の話し手は、この間（秒）黙ったら引き継ぐ。
+    private var speechOwner: SpeakerChannel?
+    private var speechOwnerVoiceAt = Date.distantPast
+    nonisolated static let speakerHandoff: TimeInterval = 1.2
+    /// この声を 1 本の認識に流すか。誰も使っていない・同じ話し手・今の話し手が `speakerHandoff` 秒黙った、のどれか。
+    nonisolated static func takesSpeech(_ channel: SpeakerChannel, owner: SpeakerChannel?, ownerVoiceAt: Date, now: Date) -> Bool {
+        owner == nil || owner == channel || now.timeIntervalSince(ownerVoiceAt) > speakerHandoff
     }
 
     /// 音声認識の許可の答えが来た（会議または Voice HUD の許可要求の完了）。
@@ -301,6 +324,8 @@ final class RecordingRuntime {
         }
         self.activeMeetingId = id
         transcriptionUnavailable = false
+        speechRestarts = 0
+        speechOwner = nil
         resetListening()
         speechWanted = transcribe
         if transcribe, cloudRequestedForRecording { startGoogleLive() }
@@ -373,11 +398,16 @@ final class RecordingRuntime {
         currentChannel = channel
         if channel == .localUser { googleMic?.append(frame) }
         else { googleRemote?.append(frame) }
-        if channel == .localUser, vad.accept(frame) {
-            if speechStartedAt == nil { speechStartedAt = Date() }
-            speech?.append(frame, sampleRate: 16_000)
-        } else if channel == .remoteAudio, remoteVad.accept(frame) {
-            remoteSpeech?.append(frame, sampleRate: 16_000)
+        // 認識は 1 本（`startSpeech`）。声のある方を流し、もう一方は今の話し手が黙るまで待つ
+        let voiced = channel == .localUser ? vad.accept(frame) : remoteVad.accept(frame)
+        if voiced {
+            let now = Date()
+            if Self.takesSpeech(channel, owner: speechOwner, ownerVoiceAt: speechOwnerVoiceAt, now: now) {
+                speechOwner = channel
+                speechOwnerVoiceAt = now
+                if channel == .localUser, speechStartedAt == nil { speechStartedAt = now }
+                speech?.append(frame, sampleRate: 16_000)
+            }
         }
     }
 
@@ -514,11 +544,9 @@ final class RecordingRuntime {
         googleMic?.setPaused(paused); googleRemote?.setPaused(paused)
         if paused {
             speech?.pause()
-            remoteSpeech?.pause()
         } else {
             do {
                 try speech?.resume()
-                try remoteSpeech?.resume()
             } catch {
                 transcriptionUnavailable = true
                 NSLog("on-device STT resume unavailable: \(error)")
@@ -542,7 +570,7 @@ final class RecordingRuntime {
             // 止めたあと次の録音のために資源だけ確保し直す（IO は始めない）。
             micQueue.async { [micCapture] in micCapture.stop(); micCapture.prewarm() }
         }
-        let transcribers = [speech, remoteSpeech].compactMap { $0 }
+        let transcribers = [speech].compactMap { $0 }
         transcriptionUnavailable = false
         if #available(macOS 13.0, *), let sys = sysAudio as? SystemAudioCapture {
             Task { await sys.stop() }
@@ -550,7 +578,7 @@ final class RecordingRuntime {
         sysAudio = nil
         let finishSession = { [self] in
             speech = nil
-            remoteSpeech = nil
+            speechOwner = nil
             try? session?.finish()
             session = nil
             let id = activeMeetingId
