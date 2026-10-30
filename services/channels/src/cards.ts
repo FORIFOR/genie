@@ -1004,7 +1004,8 @@ export function approvalCard(
     ...approval.details.slice(0, 8).map((d) => row(d.label, d.value.slice(0, 200))),
     text(note, { size: 'xs', color: C.muted, margin: 'lg' }),
   ];
-  const footer = buttons.slice(0, 3).map((b) => ({
+  // Claude Code の承認は 5 つ（今回だけ・拒否・指示・セッション・プロジェクト）。Genie の仕事は 2 つ
+  const footer = buttons.slice(0, 5).map((b) => ({
     type: 'button',
     style: b.style === 'primary' ? 'primary' : 'secondary',
     height: 'sm',

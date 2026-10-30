@@ -95,6 +95,78 @@ ALTER TABLE ONLY public.action_receipts FORCE ROW LEVEL SECURITY;
 
 
 --
+-- Name: agent_approval_rules; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.agent_approval_rules (
+    id uuid NOT NULL,
+    tenant_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    connection_id uuid NOT NULL,
+    scope text NOT NULL,
+    project_root text NOT NULL,
+    session_id text,
+    tool_name text NOT NULL,
+    operation text NOT NULL,
+    match_value text,
+    label text NOT NULL,
+    from_approval_id uuid,
+    use_count integer DEFAULT 0 NOT NULL,
+    last_used_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    revoked_at timestamp with time zone,
+    CONSTRAINT agent_approval_rules_check CHECK (((scope = 'session'::text) = (session_id IS NOT NULL))),
+    CONSTRAINT agent_approval_rules_label_check CHECK (((length(label) >= 1) AND (length(label) <= 200))),
+    CONSTRAINT agent_approval_rules_match_value_check CHECK (((match_value IS NULL) OR (length(match_value) <= 300))),
+    CONSTRAINT agent_approval_rules_operation_check CHECK (((length(operation) >= 1) AND (length(operation) <= 40))),
+    CONSTRAINT agent_approval_rules_project_root_check CHECK (((length(project_root) >= 1) AND (length(project_root) <= 4096))),
+    CONSTRAINT agent_approval_rules_scope_check CHECK ((scope = ANY (ARRAY['session'::text, 'project'::text]))),
+    CONSTRAINT agent_approval_rules_session_id_check CHECK (((session_id IS NULL) OR ((length(session_id) >= 1) AND (length(session_id) <= 128)))),
+    CONSTRAINT agent_approval_rules_tool_name_check CHECK (((length(tool_name) >= 1) AND (length(tool_name) <= 80)))
+);
+
+ALTER TABLE ONLY public.agent_approval_rules FORCE ROW LEVEL SECURITY;
+
+
+--
+-- Name: agent_approvals; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.agent_approvals (
+    id uuid NOT NULL,
+    tenant_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    connection_id uuid NOT NULL,
+    external_session_id text NOT NULL,
+    tool_name text NOT NULL,
+    input_hash text NOT NULL,
+    state text DEFAULT 'pending'::text NOT NULL,
+    with_instruction boolean DEFAULT false NOT NULL,
+    expires_at timestamp with time zone NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    decided_at timestamp with time zone,
+    operation text,
+    risk text,
+    rule_id uuid,
+    prompt_id text,
+    delivered_at timestamp with time zone,
+    result text,
+    result_at timestamp with time zone,
+    CONSTRAINT agent_approvals_check CHECK (((state = 'pending'::text) = (decided_at IS NULL))),
+    CONSTRAINT agent_approvals_external_session_id_check CHECK (((length(external_session_id) >= 1) AND (length(external_session_id) <= 128))),
+    CONSTRAINT agent_approvals_input_hash_check CHECK ((input_hash ~ '^[0-9a-f]{64}$'::text)),
+    CONSTRAINT agent_approvals_operation_check CHECK (((operation IS NULL) OR (length(operation) <= 40))),
+    CONSTRAINT agent_approvals_prompt_id_check CHECK (((prompt_id IS NULL) OR (length(prompt_id) <= 128))),
+    CONSTRAINT agent_approvals_result_check CHECK (((result IS NULL) OR (result = ANY (ARRAY['executed'::text, 'failed'::text])))),
+    CONSTRAINT agent_approvals_risk_check CHECK (((risk IS NULL) OR (risk = ANY (ARRAY['low'::text, 'medium'::text, 'high'::text])))),
+    CONSTRAINT agent_approvals_state_check CHECK ((state = ANY (ARRAY['pending'::text, 'allowed'::text, 'denied'::text, 'auto_allowed'::text, 'answered_on_mac'::text, 'expired'::text, 'ended'::text]))),
+    CONSTRAINT agent_approvals_tool_name_check CHECK (((length(tool_name) >= 1) AND (length(tool_name) <= 80)))
+);
+
+ALTER TABLE ONLY public.agent_approvals FORCE ROW LEVEL SECURITY;
+
+
+--
 -- Name: agent_connections; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2088,6 +2160,22 @@ ALTER TABLE ONLY public.action_receipts
 
 
 --
+-- Name: agent_approval_rules agent_approval_rules_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_approval_rules
+    ADD CONSTRAINT agent_approval_rules_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: agent_approvals agent_approvals_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_approvals
+    ADD CONSTRAINT agent_approvals_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: agent_connections agent_connections_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2890,6 +2978,27 @@ CREATE UNIQUE INDEX action_receipts_idem ON public.action_receipts USING btree (
 --
 
 CREATE INDEX action_receipts_task_executed_idx ON public.action_receipts USING btree (tenant_id, task_id, executed_at DESC);
+
+
+--
+-- Name: agent_approval_rules_active; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX agent_approval_rules_active ON public.agent_approval_rules USING btree (tenant_id, connection_id) WHERE (revoked_at IS NULL);
+
+
+--
+-- Name: agent_approvals_session; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX agent_approvals_session ON public.agent_approvals USING btree (tenant_id, connection_id, external_session_id) WHERE (state = 'pending'::text);
+
+
+--
+-- Name: agent_approvals_user; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX agent_approvals_user ON public.agent_approvals USING btree (tenant_id, user_id, created_at DESC);
 
 
 --
@@ -3789,6 +3898,62 @@ ALTER TABLE ONLY public.action_receipts
 
 ALTER TABLE ONLY public.action_receipts
     ADD CONSTRAINT action_receipts_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: agent_approval_rules agent_approval_rules_connection_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_approval_rules
+    ADD CONSTRAINT agent_approval_rules_connection_id_fkey FOREIGN KEY (connection_id) REFERENCES public.agent_connections(id) ON DELETE CASCADE;
+
+
+--
+-- Name: agent_approval_rules agent_approval_rules_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_approval_rules
+    ADD CONSTRAINT agent_approval_rules_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: agent_approval_rules agent_approval_rules_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_approval_rules
+    ADD CONSTRAINT agent_approval_rules_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: agent_approvals agent_approvals_connection_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_approvals
+    ADD CONSTRAINT agent_approvals_connection_id_fkey FOREIGN KEY (connection_id) REFERENCES public.agent_connections(id) ON DELETE CASCADE;
+
+
+--
+-- Name: agent_approvals agent_approvals_rule_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_approvals
+    ADD CONSTRAINT agent_approvals_rule_id_fkey FOREIGN KEY (rule_id) REFERENCES public.agent_approval_rules(id) ON DELETE SET NULL;
+
+
+--
+-- Name: agent_approvals agent_approvals_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_approvals
+    ADD CONSTRAINT agent_approvals_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: agent_approvals agent_approvals_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_approvals
+    ADD CONSTRAINT agent_approvals_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
 
 
 --
@@ -5597,6 +5762,32 @@ CREATE POLICY action_receipts_tenant_isolation ON public.action_receipts USING (
 
 
 --
+-- Name: agent_approval_rules; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.agent_approval_rules ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: agent_approval_rules agent_approval_rules_tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY agent_approval_rules_tenant_isolation ON public.agent_approval_rules USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
+
+
+--
+-- Name: agent_approvals; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.agent_approvals ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: agent_approvals agent_approvals_tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY agent_approvals_tenant_isolation ON public.agent_approvals USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
+
+
+--
 -- Name: agent_connections; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -6759,3 +6950,5 @@ INSERT INTO schema_migrations (version) VALUES ('20261029120000');
 INSERT INTO schema_migrations (version) VALUES ('20261030090000');
 INSERT INTO schema_migrations (version) VALUES ('20261030120000');
 INSERT INTO schema_migrations (version) VALUES ('20261030150000');
+INSERT INTO schema_migrations (version) VALUES ('20261030180000');
+INSERT INTO schema_migrations (version) VALUES ('20261030200000');

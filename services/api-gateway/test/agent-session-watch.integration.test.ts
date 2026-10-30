@@ -26,6 +26,8 @@ describe.skipIf(!url)('agent session notices (Claude Code)', () => {
   let clock = Date.now();
   const now = () => new Date(clock);
   const chats: { tenantId: string; userId: string; text: string }[] = [];
+  /** LINE に承認のカードを出しているセッション。 */
+  const onLine = new Set<string>();
   let store: AgentSessionStore;
   let watch: AgentSessionWatch;
 
@@ -74,6 +76,7 @@ describe.skipIf(!url)('agent session notices (Claude Code)', () => {
       notifyChat: async (tenantId, userId, text) => {
         chats.push({ tenantId, userId, text });
       },
+      approvalOnChat: (_tenantId, sessionId) => onLine.has(sessionId),
     });
   });
 
@@ -129,6 +132,17 @@ describe.skipIf(!url)('agent session notices (Claude Code)', () => {
     expect(listed.json<{ items: { kind: string; title: string }[] }>().items).toEqual([
       expect.objectContaining({ kind: 'agent_session', title: 'Claude Code が承認を待っています' }),
     ]);
+  });
+
+  it('does not repeat "check the terminal" in chat while the approval card is already on LINE', async () => {
+    const { connection } = await signIn();
+    onLine.add('w-line');
+    await store.record(connection, { event: 'UserPromptSubmit', sessionId: 'w-line', prompt: 'x' });
+    await store.record(connection, { event: 'PermissionRequest', sessionId: 'w-line' });
+    later(NEEDS_USER_NOTIFY_MS + 1000);
+    // Mac の通知は出す。チャットへはカードが知らせになっているので重ねない
+    expect(await tickFor(connection.tenantId)).toBe(1);
+    expect(chats.filter((c) => c.tenantId === connection.tenantId)).toEqual([]);
   });
 
   it('says nothing about an approval answered at the terminal right away', async () => {

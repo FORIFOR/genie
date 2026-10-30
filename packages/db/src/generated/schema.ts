@@ -45,6 +45,47 @@ export interface ActionReceipts {
   tool_id: string;
 }
 
+export interface AgentApprovalRules {
+  connection_id: string;
+  created_at: Generated<Timestamp>;
+  from_approval_id: string | null;
+  id: string;
+  label: string;
+  last_used_at: Timestamp | null;
+  match_value: string | null;
+  operation: string;
+  project_root: string;
+  revoked_at: Timestamp | null;
+  scope: string;
+  session_id: string | null;
+  tenant_id: string;
+  tool_name: string;
+  use_count: Generated<number>;
+  user_id: string;
+}
+
+export interface AgentApprovals {
+  connection_id: string;
+  created_at: Generated<Timestamp>;
+  decided_at: Timestamp | null;
+  delivered_at: Timestamp | null;
+  expires_at: Timestamp;
+  external_session_id: string;
+  id: string;
+  input_hash: string;
+  operation: string | null;
+  prompt_id: string | null;
+  result: string | null;
+  result_at: Timestamp | null;
+  risk: string | null;
+  rule_id: string | null;
+  state: Generated<string>;
+  tenant_id: string;
+  tool_name: string;
+  user_id: string;
+  with_instruction: Generated<boolean>;
+}
+
 export interface AgentConnections {
   created_at: Generated<Timestamp>;
   id: string;
@@ -1214,6 +1255,8 @@ export interface WorldFacts {
 
 export interface DB {
   action_receipts: ActionReceipts;
+  agent_approval_rules: AgentApprovalRules;
+  agent_approvals: AgentApprovals;
   agent_connections: AgentConnections;
   agent_hosts: AgentHosts;
   agent_session_marks: AgentSessionMarks;

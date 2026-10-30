@@ -61,6 +61,8 @@ import { JwtTokens } from './auth/tokens.js';
 import { BoardStore } from './board.js';
 import { boardUrlFor } from './routes/board.js';
 import { WorkLinkStore, homeLinkFor, openHomeAnswer, workUrlFor } from './work-home.js';
+import { AgentApprovals } from './agent-approvals.js';
+import { projectOf } from './project-info.js';
 import { HandoffHub, HandoffStore, handoffUrlFor } from './browser-handoff.js';
 import { MediaResolver } from './media.js';
 import { MemoryRateLimiter, RedisRateLimiter, type RateLimiter } from './rate-limit/index.js';
@@ -201,11 +203,30 @@ async function main(): Promise<void> {
     log: (event, detail) => logger.info(detail, event),
   });
   // ほかの AI（Claude Code）の承認待ち・停滞の知らせ。Mac の通知と、つないでいれば本人の LINE へ
+  // Claude Code の承認を LINE から（カードの署名と送り先はチャットの側。Genie は自分では承認しない）
+  const agentApprovals = new AgentApprovals({
+    db,
+    available: () => chat.current !== null,
+    ask: async (tenantId, userId, view) =>
+      (await chat.current?.service.askAgentApproval(
+        tenantId,
+        userId,
+        view.id,
+        view,
+        schedules.tz,
+      )) ?? false,
+    tell: async (tenantId, userId, text) => {
+      await chat.current?.service.notifyUser(tenantId, userId, null, text);
+    },
+    projectOf,
+    log: (event, detail) => logger.info(detail, event),
+  });
   const agentWatch = new AgentSessionWatch({
     db,
     notifyChat: async (tenantId, userId, text) => {
       await chat.current?.service.notifyUser(tenantId, userId, null, text);
     },
+    approvalOnChat: (tenantId, sessionId) => agentApprovals.hasPending(tenantId, sessionId),
     log: (event, detail) => logger.info(detail, event),
   });
   // カードの画像（店の写真・地図）は gateway が中継する（キーを外へ出さない・写真を保存しない）
@@ -329,6 +350,12 @@ async function main(): Promise<void> {
         }),
         onSpoken: (conversationId, text) => personal.rememberSpoken(conversationId, text),
         // 終わりの知らせから仕事のホームを開ける（公開の場所が無ければ Mac の作業一覧へ案内する）
+        agentApprovals: {
+          decide: (tenantId, userId, id, choice) =>
+            agentApprovals.decide(tenantId, userId, id, choice),
+          instruct: (tenantId, userId, text) => agentApprovals.instruct(tenantId, userId, text),
+          command: (tenantId, userId, text) => agentApprovals.command(tenantId, userId, text),
+        },
         homeLink: (tenantId, userId) =>
           homeLinkFor({
             links: workLinks,
@@ -355,6 +382,7 @@ async function main(): Promise<void> {
     understand: personal,
     workDesk: desk,
     workLinks,
+    agentApprovals,
     // ブラウザの引き継ぎ（Genie 専用のブラウザがログインの壁で止まったら、本人が LINE から操作する）
     handoffs: {
       store: new HandoffStore(db),

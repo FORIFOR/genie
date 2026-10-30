@@ -22,6 +22,7 @@ import {
   ScriptedStreamingTranscriber,
   type ScriptLine,
 } from '@genie/service-meeting';
+import { AgentApprovals } from '../src/agent-approvals.js';
 import { buildApp } from '../src/app.js';
 import { channelsFromEnv } from '../src/channels.js';
 import { HandoffStore } from '../src/browser-handoff.js';
@@ -91,6 +92,8 @@ export interface TestApp {
   readonly schedules: import('@genie/service-schedule').ScheduleRunner | null;
   /** 台本どおりに読む代役（グループの答え groupAnswer を差し替える）。understand を渡したときだけ。 */
   readonly understander: ScriptedUnderstander | null;
+  /** Claude Code の承認を LINE から。agentApprovals を渡したときだけ。 */
+  readonly agentApprovals: AgentApprovals | null;
   close(): Promise<void>;
 }
 
@@ -134,6 +137,11 @@ export interface MakeAppOptions {
     readonly callEndpoint?: string;
     /** 仕事のホームのリンク（終わりの知らせに付ける）。 */
     readonly homeLink?: import('@genie/service-channels').ChannelServiceDeps['homeLink'];
+  };
+  /** Claude Code の承認を LINE から（本番と同じくチャットの service へつなぐ）。 */
+  readonly agentApprovals?: {
+    readonly now?: () => Date;
+    readonly projectOf?: import('../src/agent-approvals.js').AgentApprovalDeps['projectOf'];
   };
   /** ブラウザの引き継ぎ（store はここで作る）。省略すると /v1/browser-handoffs は生えない。 */
   readonly handoffs?: Omit<
@@ -252,6 +260,27 @@ export async function makeTestApp(options: MakeAppOptions): Promise<TestApp> {
       })
     : null;
   let turnDepsSeen: import('@genie/service-conversation').TurnDeps | null = null;
+  const agentApprovals = options.agentApprovals
+    ? new AgentApprovals({
+        db,
+        available: () => chat.current !== null,
+        ask: async (tenantId, userId, view) =>
+          (await chat.current?.service.askAgentApproval(
+            tenantId,
+            userId,
+            view.id,
+            view,
+            'Asia/Tokyo',
+          )) ?? false,
+        tell: async (tenantId, userId, text) => {
+          await chat.current?.service.notifyUser(tenantId, userId, null, text);
+        },
+        ...(options.agentApprovals.projectOf
+          ? { projectOf: options.agentApprovals.projectOf }
+          : {}),
+        ...(options.agentApprovals.now ? { now: options.agentApprovals.now } : {}),
+      })
+    : null;
   const app = buildApp({
     config,
     db,
@@ -271,6 +300,7 @@ export async function makeTestApp(options: MakeAppOptions): Promise<TestApp> {
     agentHosts: new AgentHostService({ db }),
     // 受け渡しも繋ぐ。繋がない harness だと、経路の欠落を試験が見逃す。
     hostBridge: new HostStepBridge({ db }),
+    ...(agentApprovals ? { agentApprovals } : {}),
     ...(options.handoffs === undefined
       ? {}
       : { handoffs: { ...options.handoffs, store: new HandoffStore(db) } }),
@@ -295,6 +325,15 @@ export async function makeTestApp(options: MakeAppOptions): Promise<TestApp> {
                 ? { callEndpoint: options.channels!.callEndpoint }
                 : {}),
               ...(options.channels!.homeLink ? { homeLink: options.channels!.homeLink } : {}),
+              ...(agentApprovals
+                ? {
+                    agentApprovals: {
+                      decide: (t, u, id, choice) => agentApprovals.decide(t, u, id, choice),
+                      instruct: (t, u, text) => agentApprovals.instruct(t, u, text),
+                      command: (t, u, text) => agentApprovals.command(t, u, text),
+                    },
+                  }
+                : {}),
               ...(understandService
                 ? {
                     understand: understandService,
@@ -385,6 +424,7 @@ export async function makeTestApp(options: MakeAppOptions): Promise<TestApp> {
     channels: chat.current,
     schedules,
     understander,
+    agentApprovals,
     async close() {
       await app.close();
       if (owned) await db.close();

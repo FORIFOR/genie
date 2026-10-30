@@ -288,12 +288,31 @@ test('passes the read-only work home, its state and ledgers, and nothing else', 
       (await fetch(`${base}/v1/channels/board?liff.state=%2Fw%2F${token}&access_token=secret`)).status,
       200,
     );
+    // 承認ルール: 一覧は読むだけ。変えられるのは取り消しだけ（本文は渡さない）
+    assert.equal((await fetch(`${base}/v1/channels/work/${token}/rules`)).status, 200);
+    assert.equal(
+      (
+        await fetch(`${base}/v1/channels/work/${token}/rules/${id}/revoke`, {
+          method: 'POST',
+          body: '{"all":true}',
+        })
+      ).status,
+      200,
+    );
+    for (const path of [`/rules`, `/rules/${id}`, `/rules/all/revoke`, `/rules/${id}/revoke/x`])
+      assert.equal(
+        (await fetch(`${base}/v1/channels/work/${token}${path}`, { method: 'POST' })).status,
+        404,
+        path,
+      );
     assert.deepEqual(seen, [
       `GET /v1/channels/work/${token}`,
       `GET /v1/channels/work/${token}/state`,
       `GET /v1/channels/work/${token}/item/s/${id}`,
       `GET /v1/channels/work/${token}/item/t/${id}`,
       `GET /v1/channels/board?liff.state=%2Fw%2F${token}`,
+      `GET /v1/channels/work/${token}/rules`,
+      `POST /v1/channels/work/${token}/rules/${id}/revoke`,
     ]);
   } finally {
     await new Promise((r) => relay.close(r));

@@ -50,6 +50,10 @@ const STYLE = `
   .back { display:inline-block; color:var(--accent); text-decoration:none; font-size:15px; margin:4px 0 6px; }
   .hint { color:var(--muted); font-size:13px; margin-top:14px; }
   .empty { color:var(--muted); font-size:14px; }
+  .rule { display:flex; gap:10px; align-items:flex-start; }
+  .rule .body { flex:1; min-width:0; }
+  .rule button { flex:none; font:inherit; font-size:14px; padding:6px 12px; border-radius:999px;
+                 border:1px solid var(--line); background:transparent; color:var(--warn); }
 `;
 
 const SCRIPT = `
@@ -104,7 +108,33 @@ const SCRIPT = `
     $('i-artifacts-section').hidden = !l.artifacts.length; list($('i-artifacts'), l.artifacts.map((a) => a.title), '');
     $('i-notes').textContent = l.notes.join(' ');
   }
-  function gone() { $('gone').hidden = false; $('home').hidden = true; $('item').hidden = true; }
+  function renderRules(r) {
+    const ul = $('r-rules'); ul.replaceChildren();
+    if (!r.rules.length) ul.append(el('li', 'empty', 'ありません。Claude Code の承認カードで「同種を許可」を選ぶと、ここに並びます。'));
+    for (const rule of r.rules) {
+      const li = el('li', 'rule');
+      const body = el('div', 'body');
+      const where = rule.scope === 'project' ? 'プロジェクト ' + rule.project : 'セッションの間（' + rule.project + '）';
+      body.append(el('div', 'name', rule.label + (rule.match && rule.label === '同じコマンド' ? '「' + rule.match + '」' : '')),
+        el('div', 'how', where + ' · ' + rule.tool + ' · 自動で許可 ' + rule.useCount + ' 回'));
+      const b = el('button', '', '取り消す');
+      b.onclick = async () => {
+        b.disabled = true;
+        const res = await fetch(base + '/rules/' + rule.id + '/revoke', { method: 'POST', cache: 'no-store' });
+        if (res.status === 410) { gone(); return; }
+        load();
+      };
+      li.append(body, b); ul.append(li);
+    }
+    const hl = $('r-history'); hl.replaceChildren();
+    if (!r.history.length) hl.append(el('li', 'empty', 'まだありません'));
+    for (const h of r.history) {
+      const li = el('li');
+      li.append(el('span', 'time', timeOf(h.at)), document.createTextNode(h.operation + '（' + h.tool + '）— ' + h.answer + (h.result ? ' · ' + h.result : '')));
+      hl.append(li);
+    }
+  }
+  function gone() { $('gone').hidden = false; $('home').hidden = true; $('item').hidden = true; $('rules').hidden = true; }
   async function get(path) {
     const res = await fetch(base + path, { cache: 'no-store' });
     if (res.status === 410) { gone(); return null; }
@@ -113,8 +143,10 @@ const SCRIPT = `
   async function load() {
     try {
       const m = /^#([st])\\/([0-9a-f-]{36})$/.exec(location.hash);
-      $('home').hidden = !!m; $('item').hidden = !m;
-      if (m) { const l = await get('/item/' + m[1] + '/' + m[2]); if (l) renderItem(l); }
+      const rules = location.hash === '#rules';
+      $('home').hidden = !!m || rules; $('item').hidden = !m; $('rules').hidden = !rules;
+      if (rules) { const r = await get('/rules'); if (r) renderRules(r); }
+      else if (m) { const l = await get('/item/' + m[1] + '/' + m[2]); if (l) renderItem(l); }
       else { const h = await get('/state'); if (h) renderHome(h); }
     } catch {}
   }
@@ -147,7 +179,8 @@ export function workPage(): string {
     <section><h2>仕事</h2><ul id="items"></ul></section>
     <section id="holds-section" hidden><h2>保留中（進めません）</h2><ul id="holds"></ul></section>
     <section id="follow-section" hidden><h2>前の仕事が終わったら始めるもの</h2><ul id="follows"></ul></section>
-    <p class="hint">このページは読むだけです。頼む・保留にする・完了条件を決めるのは LINE の会話で送ってください。「止まっているかも」は届いた時刻からの推測です。</p>
+    <section><ul><li><a class="row" href="#rules"><div><div class="name">Claude Code の承認ルール</div><div class="state">確認なしで進める操作の一覧・取り消し・承認の記録</div></div><span class="chev">›</span></a></li></ul></section>
+    <p class="hint">このページで変えられるのは承認ルールの取り消しだけです。頼む・保留にする・完了条件を決めるのは LINE の会話で送ってください。「止まっているかも」は届いた時刻からの推測です。</p>
     <p class="hint" id="updated"></p>
   </div>
   <div id="item" hidden>
@@ -161,6 +194,13 @@ export function workPage(): string {
     <section id="i-decisions-section" hidden><h2>あなたの判断</h2><ul id="i-decisions"></ul></section>
     <section id="i-artifacts-section" hidden><h2>成果物</h2><ul id="i-artifacts"></ul></section>
     <p class="hint" id="i-notes"></p>
+  </div>
+  <div id="rules" hidden>
+    <a class="back" href="#">‹ 仕事のホーム</a>
+    <h1>承認ルール</h1>
+    <section><h2>確認なしで進める操作</h2><ul id="r-rules"></ul></section>
+    <section><h2>最近の承認</h2><ul id="r-history"></ul></section>
+    <p class="hint">秘密・外への送信・本番・消す操作・権限・決済・プロジェクトの外は、ルールがあっても毎回確認します。ルールは問いが来るたびに確かめ直します。</p>
   </div>
   <div id="gone" hidden><h1>このリンクは使えません</h1><p class="hint">期限が切れました。LINE で「仕事のホームを開いて」と送ると、新しいリンクを出します。</p></div>
 </main>

@@ -20,6 +20,11 @@ import { desktopEmail } from './start-local-host.mjs';
 
 const run = promisify(execFile);
 const HOOK = resolve(dirname(fileURLToPath(import.meta.url)), 'claude-code-hook.sh');
+/** 許可の問いを LINE からも答える（同期。答えを Claude Code へ返す。claude-code-permission.sh）。 */
+const PERMISSION_HOOK = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  'claude-code-permission.sh',
+);
 const KEYCHAIN_SERVICE = 'com.astra.agent-hook';
 /** 見守りに要る出来事だけ。PreToolUse は PostToolUse と重なるので入れない（道具 1 回で 1 通）。 */
 export const HOOK_EVENTS = Object.freeze([
@@ -54,7 +59,11 @@ function parseArgs(argv) {
 /** この Genie の hooks か（コマンドが同じ送り口を指している）。 */
 const ours = (entry) =>
   Array.isArray(entry?.hooks) &&
-  entry.hooks.some((h) => typeof h?.command === 'string' && h.command.includes(HOOK));
+  entry.hooks.some(
+    (h) =>
+      typeof h?.command === 'string' &&
+      (h.command.includes(HOOK) || h.command.includes(PERMISSION_HOOK)),
+  );
 
 /** settings に hooks を足す。同じものが既にあれば置き換える。ほかの hooks は残す。 */
 export function withHooks(settings, base) {
@@ -65,6 +74,17 @@ export function withHooks(settings, base) {
     const kept = (next.hooks[event] ?? []).filter((entry) => !ours(entry));
     next.hooks[event] = [...kept, { hooks: [{ type: 'command', command, async: true }] }];
   }
+  // 許可の問いは、知らせ（非同期）に加えて、LINE の答えを待って返す同期の hooks を足す。
+  // 待つのは本人が LINE で答えるまで（最大 9 分）。Mac の画面でも同時に答えられる
+  next.hooks.PermissionRequest.push({
+    hooks: [
+      {
+        type: 'command',
+        command: `${JSON.stringify(PERMISSION_HOOK)} ${base}`,
+        timeout: 600,
+      },
+    ],
+  });
   return next;
 }
 

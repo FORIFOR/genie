@@ -112,3 +112,67 @@ export function verifyApprovalAction(
 function sign(secret: string, body: string): string {
   return createHmac('sha256', secret).update(body).digest().subarray(0, 16).toString('base64url');
 }
+
+/** Claude Code の承認のボタン（agent-approvals）。承認・拒否・指示を添える・同種を許可。 */
+export interface AgentApprovalAction {
+  readonly approvalId: string;
+  readonly linkId: string;
+  readonly choice: 'allow' | 'deny' | 'instruct' | 'allow_session' | 'allow_project';
+  /** ms */
+  readonly expiresAt: number;
+}
+
+const CHOICE_CODE = {
+  allow: 'A',
+  deny: 'R',
+  instruct: 'I',
+  // 今回を許可して、同種の操作を続けて許可する（このセッション / このプロジェクト）
+  allow_session: 'S',
+  allow_project: 'P',
+} as const;
+
+/** `c1.<approvalId>.<linkId>.<A|R|I|S|P>.<expires(36進)>.<sig>`（Genie の仕事の承認 a1 とは別の形）。 */
+export function signAgentApprovalAction(secret: string, action: AgentApprovalAction): string {
+  const body = [
+    'c1',
+    action.approvalId,
+    action.linkId,
+    CHOICE_CODE[action.choice],
+    action.expiresAt.toString(36),
+  ].join('.');
+  return `${body}.${sign(secret, body)}`;
+}
+
+export function isAgentApprovalAction(value: string): boolean {
+  return value.startsWith('c1.');
+}
+
+export function verifyAgentApprovalAction(
+  secret: string,
+  value: string,
+  now = Date.now(),
+):
+  | { readonly ok: true; readonly action: AgentApprovalAction }
+  | { readonly ok: false; readonly reason: 'malformed' | 'bad_signature' | 'expired' } {
+  const parts = value.split('.');
+  if (parts.length !== 6 || parts[0] !== 'c1') return { ok: false, reason: 'malformed' };
+  const [, approvalId, linkId, code, expires, signature] = parts as [
+    string,
+    string,
+    string,
+    string,
+    string,
+    string,
+  ];
+  const uuid = /^[0-9a-f-]{36}$/i;
+  const choice = (Object.keys(CHOICE_CODE) as (keyof typeof CHOICE_CODE)[]).find(
+    (k) => CHOICE_CODE[k] === code,
+  );
+  if (![approvalId, linkId].every((id) => uuid.test(id)) || !choice)
+    return { ok: false, reason: 'malformed' };
+  if (!constantTimeEqual(sign(secret, parts.slice(0, 5).join('.')), signature))
+    return { ok: false, reason: 'bad_signature' };
+  const expiresAt = parseInt(expires, 36);
+  if (!Number.isFinite(expiresAt) || expiresAt <= now) return { ok: false, reason: 'expired' };
+  return { ok: true, action: { approvalId, linkId, choice, expiresAt } };
+}

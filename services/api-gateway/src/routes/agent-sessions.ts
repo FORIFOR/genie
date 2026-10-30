@@ -5,6 +5,8 @@
  *   GET    /v1/agent-connections               発行した鍵の一覧（平文は出さない）
  *   DELETE /v1/agent-connections/:id           鍵を取り消す
  *   POST   /v1/agent-events/claude-code        Claude Code の hooks の受け口（鍵で名乗る。ログインは要らない）
+ *   POST   /v1/agent-approvals/claude-code     Claude Code が許可を求めた → 本人の LINE にカード（agent-approvals.ts）
+ *   POST   /v1/agent-approvals/:id/wait        hooks が LINE の答えを取りに来る（長く待つ問い合わせ）
  *   GET    /v1/agent-sessions                  Task Dock が見る一覧
  *   PATCH  /v1/agent-sessions/:id              本人が止める（paused_by_user）・見守りに戻す（watch）
  *
@@ -18,11 +20,24 @@ import type { App } from '../fastify.js';
 import { requirePrincipal } from '../auth/middleware.js';
 import { bearerToken } from '../auth/tokens.js';
 import { AgentSessionStore, attentionFor, type AgentSession } from '../agent-sessions.js';
+import { hookOutput, type AgentApprovals } from '../agent-approvals.js';
 
 export interface AgentSessionRouteDeps {
   readonly db: DbHandle;
+  /** LINE からの承認（チャットをつないでいなければ無い。hooks は Mac の問いに任せる）。 */
+  readonly approvals?: AgentApprovals;
   readonly now?: () => Date;
 }
+
+const PermissionAsk = z.object({
+  hook_event_name: z.literal('PermissionRequest'),
+  session_id: z.string().min(1).max(128),
+  cwd: z.string().max(4096).optional(),
+  tool_name: z.string().min(1).max(80),
+  tool_input: z.unknown(),
+  prompt_id: z.string().max(128).optional(),
+});
+const Wait = z.object({ wait_ms: z.number().int().min(0).max(25_000) });
 
 const Connect = z.object({
   source: z.literal('claude_code'),
@@ -149,8 +164,80 @@ export function registerAgentSessionRoutes(app: App, deps: AgentSessionRouteDeps
           ? { command: commandOf(h.tool_input)! }
           : {}),
       });
+      // LINE に出した承認のうち、Mac で答え済みになったものを取り下げる
+      await deps.approvals
+        ?.observe(connection, {
+          event: h.hook_event_name,
+          sessionId: h.session_id,
+          ...(h.tool_name === undefined ? {} : { toolName: h.tool_name }),
+          toolInput: h.tool_input,
+        })
+        .catch(() => undefined);
       reply.code(202);
       return { accepted: true };
+    },
+  );
+
+  /** hooks の鍵で名乗る（ログインは要らない）。 */
+  const hookConnection = async (authorization: string | undefined) => {
+    const token = bearerToken(authorization);
+    const connection = token ? await store.identify(token) : null;
+    if (!connection || connection.source !== 'claude_code')
+      throw new GenieError('auth.invalid_token', 'unknown agent connection');
+    return connection;
+  };
+
+  // 許可を求められた。
+  //   本人の継続許可に当たれば 200 と、Claude Code へそのまま渡す JSON（その場で許可）
+  //   LINE にカードを出せたら 201 と id（hooks は答えを待つ）
+  //   出さないなら 204（Mac の問いだけ）
+  app.post(
+    '/v1/agent-approvals/claude-code',
+    { config: { auth: false, rateLimit: false }, bodyLimit: HOOK_BODY_LIMIT },
+    async (request, reply) => {
+      const connection = await hookConnection(request.headers.authorization);
+      const parsed = PermissionAsk.safeParse(request.body);
+      if (!parsed.success || !deps.approvals) {
+        request.log.info(
+          { reason: parsed.success ? 'no_approvals' : 'malformed' },
+          'agent_approval.not_asked',
+        );
+        return reply.code(204).send();
+      }
+      const made = await deps.approvals.request(connection, {
+        sessionId: parsed.data.session_id,
+        toolName: parsed.data.tool_name,
+        toolInput: parsed.data.tool_input,
+        ...(parsed.data.cwd === undefined ? {} : { cwd: parsed.data.cwd }),
+        ...(parsed.data.prompt_id === undefined ? {} : { promptId: parsed.data.prompt_id }),
+      });
+      if (made.kind === 'none') return reply.code(204).send();
+      if (made.kind === 'auto' && made.decision.behavior !== 'none')
+        return reply
+          .code(200)
+          .header('content-type', 'application/json; charset=utf-8')
+          .send(hookOutput(made.decision));
+      if (made.kind !== 'asked') return reply.code(204).send();
+      return reply.code(201).send({ id: made.id, expires_at: made.expiresAt.toISOString() });
+    },
+  );
+
+  // 答え: 200 は Claude Code へそのまま渡す JSON。202 はまだ。204 はもう待たない（何も返さずに終える）
+  app.post<{ Params: { id: string } }>(
+    '/v1/agent-approvals/:id/wait',
+    { config: { auth: false, rateLimit: false } },
+    async (request, reply) => {
+      const connection = await hookConnection(request.headers.authorization);
+      const id = z.uuid().safeParse(request.params.id);
+      const body = Wait.safeParse(request.body ?? {});
+      if (!id.success || !body.success || !deps.approvals) return reply.code(204).send();
+      const decision = await deps.approvals.wait(connection, id.data, body.data.wait_ms);
+      if (decision === 'pending') return reply.code(202).send({ pending: true });
+      if (decision.behavior === 'none') return reply.code(204).send();
+      return reply
+        .code(200)
+        .header('content-type', 'application/json; charset=utf-8')
+        .send(hookOutput(decision));
     },
   );
 

@@ -238,3 +238,122 @@ export const actionRefused = (
           ? 'この操作はチャットでは承認できません。Genie の承認カードで確認してください。'
           : 'このボタンは操作できません。',
 });
+
+/** Claude Code の承認（gateway の agent-approvals.ts の写し。秘密は向こうで伏せてある）。取れないものは null。 */
+export interface AgentApprovalCardView {
+  readonly number: string;
+  readonly agent: string;
+  readonly project: string | null;
+  readonly branch: string | null;
+  readonly workdir: string | null;
+  readonly task: string | null;
+  readonly genieTask: string | null;
+  readonly tool: string;
+  readonly summary: string;
+  readonly details: readonly { readonly label: string; readonly value: string }[];
+  readonly operation: string;
+  readonly risk: 'low' | 'medium' | 'high';
+  readonly ruleable: boolean;
+  readonly notRuleableReason: string | null;
+  readonly expiresAt: Date;
+}
+
+const RISK_TEXT = { low: '低', medium: '中', high: '高' } as const;
+
+/**
+ * 「Claude Code が承認を待っています」のカード。何のプロジェクトの・何の作業の・何の操作か・リスク・期限。
+ * ボタン: 今回だけ承認・拒否・指示を添える と、継続許可にしてよい操作なら このセッション / このプロジェクトで同種を許可。
+ */
+export function agentApproval(
+  view: AgentApprovalCardView,
+  buttons: {
+    allow: string;
+    deny: string;
+    instruct: string;
+    allowSession: string | null;
+    allowProject: string | null;
+  },
+  timeZone: string,
+): OutgoingMessage {
+  const until = view.expiresAt.toLocaleTimeString('ja-JP', {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone,
+  });
+  const summary = `${view.agent}が承認を待っています（#${view.number}）：${view.summary}`;
+  const context = [
+    {
+      label: 'プロジェクト',
+      value: view.project ? `${view.project}${view.branch ? `（${view.branch}）` : ''}` : '未確認',
+    },
+    { label: '作業', value: view.task ?? '未確認' },
+    { label: 'タスク', value: view.genieTask ?? 'タスク未紐付け' },
+    { label: '実行する場所', value: view.workdir ?? '未確認' },
+    { label: '操作の種類', value: view.operation },
+    {
+      label: 'リスク',
+      value: `${RISK_TEXT[view.risk]}${view.ruleable ? '' : `（毎回確認: ${view.notRuleableReason ?? '継続許可の対象外'}）`}`,
+    },
+  ];
+  const details = [...context, ...view.details].slice(0, 9);
+  const note = `${until} まで。押すまで実行しません。Mac で答えても構いません。${
+    view.ruleable
+      ? '「同種を許可」は、この種類の操作を次から確認なしで進めます（「承認ルール」で一覧・取り消し）。'
+      : ''
+  }`;
+  return {
+    text: [summary, ...details.map((d) => `・${d.label}：${d.value.slice(0, 200)}`), '', note].join(
+      '\n',
+    ),
+    buttons: [
+      { label: '今回だけ承認', value: buttons.allow, style: 'primary' },
+      { label: '拒否', value: buttons.deny, style: 'danger' },
+      { label: '指示を添える', value: buttons.instruct },
+      ...(buttons.allowSession
+        ? [{ label: 'このセッションで同種を許可', value: buttons.allowSession }]
+        : []),
+      ...(buttons.allowProject
+        ? [{ label: 'このプロジェクトで常に許可', value: buttons.allowProject }]
+        : []),
+    ],
+    approval: {
+      summary,
+      details: details.map((d) => ({ label: d.label, value: d.value })),
+      note,
+    },
+  };
+}
+
+/** Claude Code の承認のボタンを押したあとの返事。送っただけで「実行した」とは言わない。 */
+export const agentApprovalAnswered = (
+  result:
+    | 'allowed'
+    | 'allowed_session'
+    | 'allowed_project'
+    | 'denied'
+    | 'awaiting_instruction'
+    | 'instructed'
+    | 'not_ruleable'
+    | 'answered_on_mac'
+    | 'expired'
+    | 'gone'
+    | 'not_yours',
+): OutgoingMessage => ({
+  text: {
+    allowed: '承認を受け付けました。Claude Code に渡します（実行を確かめたら知らせます）。',
+    allowed_session:
+      '承認を受け付けました。このセッションの間、同じ種類の操作は確認なしで進めます（実行を確かめたら知らせます）。',
+    allowed_project:
+      '承認を受け付けました。このプロジェクトでは、同じ種類の操作を次から確認なしで進めます。「承認ルール」で一覧・取り消しができます。',
+    denied: '拒否しました。Claude Code は実行せずに続けます。',
+    awaiting_instruction:
+      '指示を送ってください（次のメッセージを Claude Code に渡します。5 分以内）。この操作は実行しません。',
+    instructed: '指示を Claude Code に渡しました。この操作は実行せず、指示に沿って続けます。',
+    not_ruleable:
+      'この操作は継続許可にできません（毎回確認します）。今回だけ承認するか、拒否してください。',
+    answered_on_mac: 'この確認は Mac で答え済みです。',
+    expired: 'この確認は期限切れです。Mac の画面で答えてください。',
+    gone: 'この確認はもう済んでいます。',
+    not_yours: 'このボタンは操作できません。',
+  }[result],
+});

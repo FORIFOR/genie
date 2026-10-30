@@ -114,6 +114,8 @@ export interface AppDeps {
   readonly workDesk?: import('./work-desk.js').WorkDesk;
   /** 仕事のホームのリンク（LINE から開くページ）。 */
   readonly workLinks?: import('./work-home.js').WorkLinkStore;
+  /** Claude Code の承認を LINE から（agent-approvals.ts）。 */
+  readonly agentApprovals?: import('./agent-approvals.js').AgentApprovals;
   /** ブラウザの引き継ぎ（つまずいた Genie 専用のブラウザを、本人が LINE から操作する）。 */
   readonly handoffs?: Omit<
     import('./routes/browser-handoff.js').HandoffRouteDeps,
@@ -206,10 +208,17 @@ export function buildApp(deps: AppDeps): App {
   });
   registerTransactionAuthorizationRoutes(app, { db: deps.db, tasks: deps.tasks });
   // ほかの AI（Claude Code）に頼んだ仕事の見守り。hooks の受け口と Task Dock の一覧
-  registerAgentSessionRoutes(app, { db: deps.db });
+  registerAgentSessionRoutes(app, {
+    db: deps.db,
+    ...(deps.agentApprovals ? { approvals: deps.agentApprovals } : {}),
+  });
   if (deps.workDesk) registerWorkDeskRoutes(app, deps.workDesk);
   if (deps.workDesk && deps.workLinks)
-    registerWorkHomeRoutes(app, { desk: deps.workDesk, links: deps.workLinks });
+    registerWorkHomeRoutes(app, {
+      desk: deps.workDesk,
+      links: deps.workLinks,
+      ...(deps.agentApprovals ? { approvals: deps.agentApprovals } : {}),
+    });
   const handoffs =
     deps.handoffs && deps.hostBridge
       ? { ...deps.handoffs, bridge: deps.hostBridge, tasks: deps.tasks }

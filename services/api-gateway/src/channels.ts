@@ -295,6 +295,8 @@ export function channelsFromEnv(
     readonly shared?: import('@genie/service-channels').ChannelServiceDeps['shared'];
     /** 仕事のホームのリンク（終わりの知らせに付ける）。 */
     readonly homeLink?: import('@genie/service-channels').ChannelServiceDeps['homeLink'];
+    /** Claude Code の承認（agent-approvals.ts）。 */
+    readonly agentApprovals?: import('@genie/service-channels').ChannelServiceDeps['agentApprovals'];
   },
 ): GatewayChannels | null {
   const timeZone = env['GENIE_TIMEZONE']?.trim() || 'Asia/Tokyo';
@@ -529,6 +531,7 @@ export function channelsFromEnv(
         deps.tasks.decideApproval(tenantId, taskId, userId, approvalId, decision),
     },
     ...(deps.homeLink ? { homeLink: deps.homeLink } : {}),
+    ...(deps.agentApprovals ? { agentApprovals: deps.agentApprovals } : {}),
     artifactText: (tenantId, artifactId) => readArtifactText(deps.library, tenantId, artifactId),
     artifactBody: (tenantId, artifactId) => readArtifactBody(deps.library, tenantId, artifactId),
     actionSecret,

@@ -4,10 +4,13 @@
 import { describe, expect, it } from 'vitest';
 import {
   hashLinkCode,
+  isAgentApprovalAction,
   linkCodeIn,
   newLinkCode,
   normalizeLinkCode,
+  signAgentApprovalAction,
   signApprovalAction,
+  verifyAgentApprovalAction,
   verifyApprovalAction,
 } from '../src/tokens.js';
 
@@ -61,5 +64,39 @@ describe('approval action tokens', () => {
       reason: 'expired',
     });
     expect(verifyApprovalAction(secret, 'a1.x', 1_000)).toEqual({ ok: false, reason: 'malformed' });
+  });
+});
+
+describe('Claude Code approval buttons', () => {
+  const secret = 'b'.repeat(40);
+  const action = {
+    approvalId: '01890000-0000-7000-8000-000000000001',
+    linkId: '01890000-0000-7000-8000-000000000002',
+    choice: 'instruct' as const,
+    expiresAt: 2_000_000_000_000,
+  };
+
+  it('signs the approval, the link and the choice, and fits a LINE postback', () => {
+    const value = signAgentApprovalAction(secret, action);
+    expect(value.length).toBeLessThanOrEqual(300);
+    expect(isAgentApprovalAction(value)).toBe(true);
+    expect(verifyAgentApprovalAction(secret, value, 1_000)).toEqual({ ok: true, action });
+  });
+
+  it('refuses a changed choice, another key, an old button and the task-approval format', () => {
+    const value = signAgentApprovalAction(secret, action);
+    expect(verifyAgentApprovalAction(secret, value.replace('.I.', '.A.'), 1_000)).toEqual({
+      ok: false,
+      reason: 'bad_signature',
+    });
+    expect(verifyAgentApprovalAction('c'.repeat(40), value, 1_000).ok).toBe(false);
+    expect(verifyAgentApprovalAction(secret, value, action.expiresAt)).toEqual({
+      ok: false,
+      reason: 'expired',
+    });
+    expect(verifyAgentApprovalAction(secret, 'a1.x.y.z.A.1.sig', 1_000)).toEqual({
+      ok: false,
+      reason: 'malformed',
+    });
   });
 });

@@ -24,6 +24,8 @@
  * ブラウザの引き継ぎ（src/browser-handoff.ts）のページも通す（本人 1 人・15 分のリンク）:
  *   - GET /v1/channels/handoff/<32 字のリンク>（ページ）と、その /ws（画面の流れと本人の操作の WebSocket）
  *   - LINE の中では、上の LIFF の入口に liff.state=/h/<リンク> で入る
+ * 仕事のホームの承認ルールの取り消しも通す: POST /v1/channels/work/<リンク>/rules/<id>/revoke（本文なし）。
+ *   一覧は GET /v1/channels/work/<リンク>/rules（読むだけ）
  * 中継（公式アカウント 1 つ、docs/LINE_HUB.ja.md）を手元で動かすときは、`--hub` で
  *   - POST /line/webhook を中継へ通す（LINE の Webhook URL はこちらにする）
  * ほかはすべて 404。
@@ -43,7 +45,10 @@ export const CALL_SOCKET = /^\/v1\/channels\/call\/[A-Za-z0-9_-]{32}\/ws$/;
 export const BOARD_PAGE = /^\/v1\/channels\/board\/[A-Za-z0-9_-]{32}(?:\/state)?$/;
 /** 仕事のホームのページと、その中身（読むだけ）。 */
 export const WORK_PAGE =
-  /^\/v1\/channels\/work\/[A-Za-z0-9_-]{32}(?:\/state|\/item\/[st]\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})?$/;
+  /^\/v1\/channels\/work\/[A-Za-z0-9_-]{32}(?:\/state|\/rules|\/item\/[st]\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})?$/;
+/** 仕事のホームで変えられる唯一のこと: Claude Code の承認ルールの取り消し（本文なしの POST）。 */
+export const WORK_RULE_REVOKE =
+  /^\/v1\/channels\/work\/[A-Za-z0-9_-]{32}\/rules\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/revoke$/;
 /** LIFF の入口（エンドポイント URL）。gateway がそのボードのページへ移す。 */
 export const BOARD_ENTRY = /^\/v1\/channels\/board$/;
 /** ブラウザの引き継ぎのページと、その WebSocket。 */
@@ -87,6 +92,21 @@ export function createRelay({ gateway, hub = null, fetchImpl = fetch, log = () =
         res.writeHead(page.statusCode ?? 502, headers);
         page.pipe(res);
       });
+      upstream.on('error', () => done(502));
+      upstream.end();
+      return undefined;
+    }
+    if (req.method === 'POST' && WORK_RULE_REVOKE.test(pathOf(req.url))) {
+      // 承認ルールの取り消し。本文は捨てる（受け取らない）。状態だけを返す
+      req.resume();
+      const upstream = httpRequest(
+        new URL(pathOf(req.url), gateway),
+        { method: 'POST', timeout: 10_000, headers: { 'content-length': '0' } },
+        (answer) => {
+          answer.resume();
+          done(answer.statusCode ?? 502);
+        },
+      );
       upstream.on('error', () => done(502));
       upstream.end();
       return undefined;

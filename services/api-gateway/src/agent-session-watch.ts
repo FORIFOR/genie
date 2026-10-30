@@ -7,8 +7,9 @@
  * 知らせる先は Mac の通知（user_notices → NoticeInbox）と、つないでいれば本人のチャット（LINE）。
  * 同じ待ちは 1 回だけ。本人が止めたセッションは知らせない。
  *
- * **Claude Code には何も送らない。**opencode の見守り（opencode-watch.ts）は API で「続けて」を送るが、
- * Claude Code には外から頼みを入れる口が無い。ターミナルに文字を打ち込むこともしない（本人の画面を操作しない）。
+ * **ここから Claude Code には何も送らない。**ターミナルに文字を打ち込むこともしない（本人の画面を操作しない）。
+ * 承認だけは、本人が LINE のカードで答えたものを hooks（PermissionRequest）が取りに来て返す（agent-approvals.ts）。
+ * そのカードを出しているあいだは、チャットへ「ターミナルで確かめて」を重ねて送らない。
  *
  * チャットへは頼みの頭を載せない（外のサービスを通るので、フォルダの名前と状態だけ）。Mac の通知には載せる。
  */
@@ -25,6 +26,8 @@ export interface AgentSessionWatchDeps {
   readonly db: DbHandle;
   /** 本人のチャットへ知らせる（つないでいなければ何もしない）。 */
   readonly notifyChat?: (tenantId: string, userId: string, text: string) => Promise<void>;
+  /** その承認を LINE のカードで待っているか（待っていれば、チャットへは重ねて知らせない）。 */
+  readonly approvalOnChat?: (tenantId: string, externalSessionId: string) => boolean;
   readonly now?: () => Date;
   readonly log?: (event: string, detail: Record<string, unknown>) => void;
 }
@@ -177,9 +180,15 @@ export class AgentSessionWatch {
           body: fresh.body.slice(0, 2000),
         })
         .execute();
-      return { userId: row.user_id, notice: fresh };
+      return { userId: row.user_id, notice: fresh, session };
     });
     if (!found) return false;
+    // 承認のカードを LINE に出してあれば、そのカードが知らせ（「ターミナルで確かめて」は送らない）
+    if (
+      found.session.waitingReason === 'permission' &&
+      this.deps.approvalOnChat?.(tenantId, found.session.externalSessionId)
+    )
+      return true;
     this.deps.log?.('agent_session_watch.notified', { id, key: found.notice.key.split(':')[0] });
     await this.deps
       .notifyChat?.(tenantId, found.userId, found.notice.chat)

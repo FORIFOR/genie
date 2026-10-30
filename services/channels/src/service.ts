@@ -35,7 +35,14 @@ import {
   type QueuedInbound,
   type WatchedTask,
 } from './store.js';
-import { linkCodeIn, signApprovalAction, verifyApprovalAction } from './tokens.js';
+import {
+  isAgentApprovalAction,
+  linkCodeIn,
+  signAgentApprovalAction,
+  signApprovalAction,
+  verifyAgentApprovalAction,
+  verifyApprovalAction,
+} from './tokens.js';
 
 /** 受けたもの（発話・ボタン・友だち追加）。保存してから処理する単位。 */
 export type ChannelInbound =
@@ -257,6 +264,29 @@ export interface ChannelServiceDeps {
   readonly artifactText?: (tenantId: string, artifactId: string) => Promise<string | null>;
   /** ボタンの署名鍵。無ければチャットでは承認させない（承認カードへ案内する）。 */
   readonly actionSecret: string | null;
+  /**
+   * Claude Code の承認（gateway の agent-approvals.ts）。押した人と印はこちらで確かめてから渡す。
+   * instruct は「指示を添える」のあとの本人の文。待っていなければ null（ふつうの会話）。
+   */
+  readonly agentApprovals?: {
+    decide(
+      tenantId: string,
+      userId: string,
+      approvalId: string,
+      choice: 'allow' | 'deny' | 'instruct' | 'allow_session' | 'allow_project',
+    ): Promise<
+      | 'decided'
+      | 'decided_with_rule'
+      | 'awaiting_instruction'
+      | 'not_ruleable'
+      | 'gone'
+      | 'expired'
+      | 'answered_on_mac'
+    >;
+    instruct(tenantId: string, userId: string, text: string): Promise<'decided' | 'gone' | null>;
+    /** 「承認ルール」（一覧・取り消し）。当たらなければ null（ふつうの会話）。 */
+    command?(tenantId: string, userId: string, text: string): Promise<string | null>;
+  };
   /**
    * 受けた本文を封じて保存する鍵。**あれば保存してから 200 を返す**（落ちても続きから処理できる）。
    * 無ければ本文は持たず、これまでどおり 200 のあと同じプロセスで処理する。
@@ -621,6 +651,33 @@ export class ChannelService {
       await this.unlink(link.tenantId, link.userId, link.id);
       await this.#reply(message.provider, message, render.unlinked(), message.replyToken);
       return 'handled';
+    }
+
+    // 「指示を添える」を押したあとの文は、Claude Code への指示として渡す（ふつうの会話にしない）
+    if (!message.mention && this.deps.agentApprovals && message.text.trim()) {
+      const instructed = await this.deps.agentApprovals
+        .instruct(link.tenantId, link.userId, message.text)
+        .catch(() => null);
+      if (instructed) {
+        await this.#reply(
+          message.provider,
+          message,
+          render.agentApprovalAnswered(instructed === 'decided' ? 'instructed' : 'gone'),
+          message.replyToken,
+        );
+        return 'handled';
+      }
+    }
+
+    // 「承認ルール」「承認ルール 2 を取り消して」（Claude Code の継続許可の一覧・取り消し）
+    if (!message.mention && this.deps.agentApprovals?.command && message.text.trim()) {
+      const said = await this.deps.agentApprovals
+        .command(link.tenantId, link.userId, message.text)
+        .catch(() => null);
+      if (said) {
+        await this.#reply(message.provider, message, render.notice(said), message.replyToken);
+        return 'handled';
+      }
     }
 
     // メンションの結果はチャンネルに書かず、本人の DM に返す
@@ -1095,6 +1152,7 @@ export class ChannelService {
       action.subject,
     );
     if (!link || !this.deps.actionSecret) return refuse('not_yours');
+    if (isAgentApprovalAction(action.value)) return this.#actAgent(action, link, target);
     const check = verifyApprovalAction(this.deps.actionSecret, action.value, this.#now());
     if (!check.ok) return refuse(check.reason === 'expired' ? 'expired' : 'not_yours');
     // 印は「この連携に出したボタン」。転送されたボタンを別の人が押しても通さない
@@ -1134,6 +1192,44 @@ export class ChannelService {
     return 'decided';
   }
 
+  /** Claude Code の承認のボタン。印・期限・押した人を確かめてから gateway へ渡す。 */
+  async #actAgent(
+    action: InboundChannelAction,
+    link: { id: string; tenantId: string; userId: string },
+    target: { destination: string; threadKey: string },
+  ): Promise<'refused' | 'decided'> {
+    const answer = async (result: Parameters<typeof render.agentApprovalAnswered>[0]) =>
+      this.#reply(action.provider, target, render.agentApprovalAnswered(result), action.replyToken);
+    const check = verifyAgentApprovalAction(this.deps.actionSecret!, action.value, this.#now());
+    if (!check.ok) {
+      await answer(check.reason === 'expired' ? 'expired' : 'not_yours');
+      return 'refused';
+    }
+    // 転送されたボタンを別の人が押しても通さない
+    if (check.action.linkId !== link.id || !this.deps.agentApprovals) {
+      await answer('not_yours');
+      return 'refused';
+    }
+    const result = await this.deps.agentApprovals
+      .decide(link.tenantId, link.userId, check.action.approvalId, check.action.choice)
+      .catch(() => 'gone' as const);
+    if (result === 'decided' || result === 'decided_with_rule') {
+      const choice = check.action.choice;
+      await answer(
+        choice === 'deny'
+          ? 'denied'
+          : choice === 'allow_session'
+            ? 'allowed_session'
+            : choice === 'allow_project'
+              ? 'allowed_project'
+              : 'allowed',
+      );
+      return 'decided';
+    }
+    await answer(result);
+    return result === 'awaiting_instruction' ? 'decided' : 'refused';
+  }
+
   /**
    * 予約のお知らせを、頼まれたチャットのスレッドへ送る。チャットの会話でなければ 'none'。
    * 送れたか分からないときは 'unknown'（送り直しは outbox の規則どおり）。
@@ -1142,6 +1238,61 @@ export class ChannelService {
     tenantId: string,
     conversationId: string,
     text: string,
+  ): Promise<'delivered' | 'failed' | 'unknown' | 'none'> {
+    return this.#notice(tenantId, conversationId, render.notice(text));
+  }
+
+  /**
+   * Claude Code の承認を本人の LINE の 1:1 へ（ボタンはこの連携に縛って署名する）。
+   * 送れた（または outbox が送り直す）なら true。LINE をつないでいない・署名鍵が無いなら false（Mac の問いだけになる）。
+   */
+  async askAgentApproval(
+    tenantId: string,
+    userId: string,
+    approvalId: string,
+    view: render.AgentApprovalCardView,
+    timeZone: string,
+  ): Promise<boolean> {
+    if (!this.deps.actionSecret) return false;
+    const link = (await this.deps.store.listLinks(tenantId, userId)).find(
+      (l) => l.provider === 'line',
+    );
+    if (!link) return false;
+    const conversationId = await this.deps.store.conversationFor(
+      link,
+      link.subject,
+      link.subject,
+      () => this.deps.conversations.start(tenantId, userId, titleOf('line')),
+    );
+    const sign = (choice: 'allow' | 'deny' | 'instruct' | 'allow_session' | 'allow_project') =>
+      signAgentApprovalAction(this.deps.actionSecret!, {
+        approvalId,
+        linkId: link.id,
+        choice,
+        expiresAt: view.expiresAt.getTime(),
+      });
+    const body = render.agentApproval(
+      view,
+      {
+        allow: sign('allow'),
+        deny: sign('deny'),
+        instruct: sign('instruct'),
+        // 継続許可にしてよい種類のときだけ出す（gateway でも押されたときに確かめ直す）
+        allowSession: view.ruleable ? sign('allow_session') : null,
+        allowProject: view.ruleable ? sign('allow_project') : null,
+      },
+      timeZone,
+    );
+    // 送れたか分からない（'unknown'）ものは outbox が送り直す。待ちを閉じると、あとで届いたカードが押せなくなるので、
+    // 届くものとして待つ（そのあいだも Mac の問いでは答えられる）
+    const sent = await this.#notice(tenantId, conversationId, body);
+    return sent === 'delivered' || sent === 'unknown';
+  }
+
+  async #notice(
+    tenantId: string,
+    conversationId: string,
+    body: OutgoingMessage,
   ): Promise<'delivered' | 'failed' | 'unknown' | 'none'> {
     const thread = await this.deps.store.threadForConversation(tenantId, conversationId);
     if (!thread) return 'none';
@@ -1153,7 +1304,7 @@ export class ChannelService {
       kind: 'notice',
       destination: thread.destination,
       threadKey: thread.threadKey,
-      body: render.notice(text),
+      body,
     });
     if (!id) return 'failed';
     const sent = await this.#send(
@@ -1165,7 +1316,7 @@ export class ChannelService {
         destination: thread.destination,
         threadKey: thread.threadKey,
         kind: 'notice',
-        body: render.notice(text),
+        body,
         attempts: 0,
       },
       null,
