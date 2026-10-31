@@ -99,6 +99,22 @@ final class ConnectionJourneyTests: XCTestCase {
         await state.refreshNow()
         XCTAssertTrue(state.connected.isEmpty)
     }
+    func testRejectedRenewalIsReportedForLine() async {
+        let store = Storage(); let state0 = make(store); await complete(state0)
+        let saved = try! JSONDecoder().decode(ConnectorState.Credential.self, from: Data(store.values[mail.id]!.utf8))
+        store.rejected[mail.id] = saved.fingerprint
+        var deps = makeDeps(store)
+        var posted: [(String, [String: Any]?)] = []
+        deps.remote = { _, _, _, path, body in posted.append((path, body)); return Data() }
+        let state = ConnectorState(sources: [mail, calendar], dependencies: deps)
+        state.configureBackend(base: "fixture", token: "fixture")
+        await state.refreshNow()
+        XCTAssertEqual(posted.first?.0, "/v1/connector-reconnects/rejected")
+        XCTAssertEqual(posted.first?.1?["plugin_id"] as? String, mail.pluginId)
+        XCTAssertEqual(posted.first?.1?["fingerprint"] as? String, saved.fingerprint)
+        // 断られていない接続（カレンダー）は知らせない
+        XCTAssertFalse(posted.contains { $0.1?["plugin_id"] as? String == calendar.pluginId })
+    }
     func testRemoteReconnectHandsOnlyTheUrlThenSavesThePastedCode() async {
         // LINE からのつなぎ直し: URL だけを渡し、貼られた認可コードで保存する
         let store = Storage()

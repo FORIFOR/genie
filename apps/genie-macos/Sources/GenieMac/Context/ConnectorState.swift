@@ -181,7 +181,13 @@ final class ConnectorState: ObservableObject {
                 if valid, let local, local.usable, local.clientId == expected, Self.permits(s, granted: local.grantedScopes),
                    Self.scopesSafe(local.grantedScopes, for: sources.filter { $0.provider == s.provider }) {
                     // 保存はあっても、提供者が更新を断っていれば「接続済み」とは言わない（2026-10-19、7 日で失効した Gmail）。
-                    update(s, deps.rejected(s) == local.fingerprint ? .expired : .connected)
+                    let refused = deps.rejected(s) == local.fingerprint
+                    update(s, refused ? .expired : .connected)
+                    // 本人の LINE へ。host は断られたときにしか知らせず、次に更新を試すのが翌日のこともある（同じ接続では gateway が 1 回にまとめる）
+                    if refused {
+                        _ = await deps.remote(base, token, "POST", "/v1/connector-reconnects/rejected",
+                            ["plugin_id": s.pluginId, "connector_id": s.connectorId, "fingerprint": local.fingerprint])
+                    }
                     accounts[s.provider] = local.accountLabel ?? recorded?.accountLabel
                 } else { update(s, canConnect(s.name) ? .disconnected : .cannotConnect) }
             } catch {
