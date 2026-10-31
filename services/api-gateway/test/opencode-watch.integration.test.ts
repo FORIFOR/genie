@@ -282,6 +282,52 @@ describe.skipIf(!url)('watching an opencode session', () => {
     fake.message = { id: 'msg_1', completed: 1000, text: '途中まで直しました。' };
   });
 
+  it('approves everything once asked, and reports what it approved as one log message', async () => {
+    const say = (text: string) => watches.command(principal, conversationId, text);
+    fake.status = 'busy';
+    fake.permission = false;
+    fake.replies.length = 0;
+    fake.prompts.length = 0;
+    told.length = 0;
+    fake.message = { id: 'msg_auto', completed: 1, text: 'x' };
+    await say(`${base}/session/${SESSION} を10分ごとに見張って opencode`);
+    // 頼まれるまでは許可しない
+    fake.permission = true;
+    fake.permissionId = 'per_a';
+    await later(10);
+    expect(fake.replies).toHaveLength(0);
+    expect(await say('opencode は全部許可して')).toContain('自動で許可します');
+    await watches.tick();
+    expect(fake.replies).toEqual(['per_a:once']);
+    // 記録は次の確認でまとめて送る。送るのは 1 回だけ
+    fake.status = 'busy';
+    fake.permission = true;
+    fake.permissionId = 'per_b';
+    await watches.tick();
+    expect(fake.replies).toEqual(['per_a:once', 'per_b:once']);
+    told.length = 0;
+    fake.status = 'busy';
+    await later(10);
+    expect(told.filter((t) => t.includes('2 件を自動で許可'))).toHaveLength(1);
+    expect(told.at(-1)).toContain('pip install pytest');
+    await later(10);
+    expect(told.filter((t) => t.includes('自動で許可しました'))).toHaveLength(1);
+    // やめたら、また聞く
+    expect(await say('opencode の全部許可をやめて')).toContain('やめました');
+    fake.permission = true;
+    fake.permissionId = 'per_c';
+    told.length = 0;
+    await later(10);
+    expect(fake.replies).toHaveLength(2);
+    expect(told.at(-1)).toContain('承認を待っています');
+    fake.status = 'idle';
+    fake.permission = false;
+    await say('見守りをやめて');
+    fake.prompts.length = 0;
+    told.length = 0;
+    fake.message = { id: 'msg_1', completed: 1000, text: '途中まで直しました。' };
+  });
+
   it('nudges a stopped session, waits while it works, and ends when it says it is done', async () => {
     const answer = await watches.command(
       principal,

@@ -94,6 +94,24 @@ export function intervalFrom(text: string): number {
 export const WATCH_ANSWER =
   /^(?:opencode|オープンコード)\s*を?\s*(許可|拒否|続け)(?:する|して|て)?(?:ください)?[。！!]?$/i;
 
+/** 承認をすべて自動で許可する（本人が見守りごとに頼む）。 */
+export const WATCH_AUTO_ON =
+  /^(?:opencode|オープンコード)\s*[はをの]?\s*(?:全部|全て|すべて)\s*を?\s*(?:自動で?)?\s*許可(?:する|して)?(?:ください)?[。！!]?$/i;
+export const WATCH_AUTO_OFF =
+  /^(?:opencode|オープンコード)\s*[はをの]?\s*(?:全部|全て|すべて|自動)\s*の?\s*許可\s*を?\s*(?:やめ|止め|とめ|解除|終わ)/i;
+/** 記録の 1 通に載せる数と、1 行の長さ（LINE の 1 通に収める）。 */
+const LOG_LINES = 30;
+const LOG_LINE_CHARS = 120;
+
+export function approvalLogText(log: readonly string[]): string {
+  const shown = log.slice(-LOG_LINES).map((l) => `・${l.slice(0, LOG_LINE_CHARS)}`);
+  const hidden = log.length - shown.length;
+  return [
+    `🟢 opencode で ${String(log.length)} 件を自動で許可しました${hidden > 0 ? `（古い ${String(hidden)} 件は省略）` : ''}:`,
+    ...shown,
+  ].join('\n');
+}
+
 export interface PendingPermission {
   readonly id: string;
   /** 本人に見せる、頼まれている操作（コマンドなど）。 */
@@ -184,6 +202,15 @@ export class OpencodeClient {
         status: String(t.status ?? ''),
       })),
     };
+  }
+
+  /** このセッションが待っている承認のすべて。 */
+  async pending(sessionId: string): Promise<PendingPermission[]> {
+    const all = await this.#get<RawPermission[]>('/permission');
+    return all
+      .filter((p) => p.sessionID === sessionId)
+      .map(toPending)
+      .filter((p): p is PendingPermission => p !== null);
   }
 
   /** 承認に答える。「以後も許可」（always）は LINE からは送らない。 */
@@ -306,6 +333,22 @@ export class OpencodeWatchService {
     conversationId: string,
     text: string,
   ): Promise<string | null> {
+    if (WATCH_AUTO_ON.test(text.trim()) || WATCH_AUTO_OFF.test(text.trim())) {
+      const on = !WATCH_AUTO_OFF.test(text.trim());
+      const changed = await withTenant(this.deps.db, principal.tenantId, (tx) =>
+        tx
+          .updateTable('opencode_watches')
+          .set({ auto_approve: on, updated_at: this.#now() })
+          .where('user_id', '=', principal.userId)
+          .where('status', '=', 'active')
+          .executeTakeFirst(),
+      );
+      if (Number(changed.numUpdatedRows) === 0)
+        return 'いま見守っている opencode のセッションはありません。';
+      return on
+        ? 'opencode の承認をすべて自動で許可します。削除や外部への送信を含むコマンドも止めません。許可した内容は、確認のたびにまとめて LINE へ送ります。やめるときは「opencode の全部許可をやめて」。'
+        : 'opencode の自動の許可をやめました。これからは承認を LINE で聞きます。';
+    }
     if (WATCH_STOP.test(text)) {
       const stopped = await withTenant(this.deps.db, principal.tenantId, (tx) =>
         tx
@@ -510,6 +553,7 @@ export class OpencodeWatchService {
     if (this.#running) return 0;
     this.#running = true;
     try {
+      await this.#approveAll();
       const now = this.#now();
       const due = await withIdentity(this.deps.db, (tx) =>
         tx
@@ -532,6 +576,49 @@ export class OpencodeWatchService {
       return due.length;
     } finally {
       this.#running = false;
+    }
+  }
+
+  /** 全部許可の見守りの承認に答える。承認を待たせないよう、確認の間隔によらず毎回見る。 */
+  async #approveAll(): Promise<void> {
+    const rows = await withIdentity(this.deps.db, (tx) =>
+      tx
+        .selectFrom('opencode_watches')
+        .select(['id', 'tenant_id'])
+        .where('status', '=', 'active')
+        .where('auto_approve', '=', true)
+        .limit(10)
+        .execute(),
+    );
+    for (const { id, tenant_id: tenantId } of rows) {
+      const row = await withTenant(this.deps.db, tenantId, (tx) =>
+        tx
+          .selectFrom('opencode_watches')
+          .select(['id', 'tenant_id', 'base_url', 'session_id', 'approval_log'])
+          .where('id', '=', id)
+          .executeTakeFirstOrThrow(),
+      );
+      const client = new OpencodeClient(row.base_url, this.deps.fetchImpl);
+      const approved: string[] = [];
+      try {
+        for (const asked of await client.pending(row.session_id)) {
+          await client.reply(asked.id, 'once');
+          approved.push(asked.label);
+        }
+      } catch (error) {
+        this.deps.log?.('opencode_watch.auto_approve_failed', {
+          id: row.id,
+          error: (error as Error).message,
+        });
+      }
+      if (approved.length === 0) continue;
+      await withTenant(this.deps.db, row.tenant_id, (tx) =>
+        tx
+          .updateTable('opencode_watches')
+          .set({ approval_log: [...row.approval_log, ...approved] })
+          .where('id', '=', row.id)
+          .execute(),
+      );
     }
   }
 
@@ -562,6 +649,10 @@ export class OpencodeWatchService {
           this.deps.log?.('opencode_watch.notify_failed', { id, error: (error as Error).message }),
         );
     const label = `opencode（${watch.session_id}）`;
+    if (watch.approval_log.length > 0) {
+      await save({ approval_log: [] });
+      await tell(approvalLogText(watch.approval_log));
+    }
 
     if (watch.expires_at.getTime() <= now.getTime()) {
       await save({ status: 'expired', ended_reason: 'expired' });
@@ -669,6 +760,8 @@ export class OpencodeWatchService {
           next_check_at: next,
         });
         // 別の承認に変わったら、もう一度見せる
+        // 全部許可なら、次の巡回で答えるので聞かない（質問は聞く）
+        if (asked && watch.auto_approve) return;
         if (!watch.waiting_notified || (asked && asked.id !== watch.waiting_permission_id))
           await tell(
             asked

@@ -46,7 +46,7 @@ GRANT SELECT ON channel_groups TO astra_identity;
 -- 通話のリンクは開いた時点でテナントが分からないので、ハッシュで引いて使った印を付けるだけ
 GRANT SELECT (id, tenant_id, user_id, link_id, conversation_id, token_hash, expires_at, started_at, opening, household_id, group_id), UPDATE (started_at) ON call_sessions TO astra_identity;
 -- opencode の見守りは、時間が来たものをテナントをまたいで取り出すだけ（見る・送るのは本人のテナントの中）
-GRANT SELECT (id, tenant_id, status, next_check_at) ON opencode_watches TO astra_identity;
+GRANT SELECT (id, tenant_id, status, next_check_at, auto_approve) ON opencode_watches TO astra_identity;
 -- みんなの計画（Action Board）のページは開いた時点でテナントが分からないので、リンクのハッシュでテナントと計画を引くだけ
 -- （計画の中身は、そのテナントの中で読む）
 GRANT SELECT (token_hash, tenant_id, board_id, expires_at) ON group_board_links TO astra_identity;

@@ -815,6 +815,8 @@ export interface OnboardingStates {
 }
 
 export interface OpencodeWatches {
+  approval_log: Generated<string[]>;
+  auto_approve: Generated<boolean>;
   base_url: string;
   conversation_id: string;
   created_at: Generated<Timestamp>;

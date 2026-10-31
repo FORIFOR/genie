@@ -1448,6 +1448,8 @@ CREATE TABLE public.opencode_watches (
     stuck_notified boolean DEFAULT false NOT NULL,
     stuck_aborts integer DEFAULT 0 NOT NULL,
     waiting_permission_id text,
+    auto_approve boolean DEFAULT false NOT NULL,
+    approval_log text[] DEFAULT '{}'::text[] NOT NULL,
     CONSTRAINT opencode_watches_base_url_check CHECK (((length(base_url) >= 8) AND (length(base_url) <= 300))),
     CONSTRAINT opencode_watches_failures_check CHECK ((failures >= 0)),
     CONSTRAINT opencode_watches_idle_nudges_check CHECK ((idle_nudges >= 0)),
@@ -7366,3 +7368,4 @@ INSERT INTO schema_migrations (version) VALUES ('20261031000000');
 INSERT INTO schema_migrations (version) VALUES ('20261031010000');
 INSERT INTO schema_migrations (version) VALUES ('20261031020000');
 INSERT INTO schema_migrations (version) VALUES ('20261031030000');
+INSERT INTO schema_migrations (version) VALUES ('20261031040000');
