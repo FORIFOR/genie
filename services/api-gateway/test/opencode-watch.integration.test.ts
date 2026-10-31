@@ -187,6 +187,34 @@ describe.skipIf(!url)('watching an opencode session', () => {
     fake.message = { id: 'msg_1', completed: 1000, text: '途中まで直しました。' };
   });
 
+  it('never aborts a busy session that is waiting for approval, and outlives the watch window', async () => {
+    fake.status = 'busy';
+    fake.permission = true;
+    fake.aborts = 0;
+    fake.prompts.length = 0;
+    told.length = 0;
+    fake.message = { id: 'msg_wait', completed: 1, text: 'pip install' };
+    await watches.command(
+      principal,
+      conversationId,
+      `${base}/session/${SESSION} を10分ごとに見張って opencode`,
+    );
+    await watches.tick();
+    // 見守りの 12 時間を超えて待っても、止めない・促さない・終わらせない
+    for (let i = 0; i < 16; i += 1) await later(60);
+    expect(fake.aborts).toBe(0);
+    expect(fake.prompts).toHaveLength(0);
+    expect(told.filter((t) => t.includes('承認'))).toHaveLength(1);
+    expect(told.filter((t) => t.includes('進んでいません'))).toHaveLength(0);
+    expect(told.filter((t) => t.includes('見守りを終えました'))).toHaveLength(0);
+    fake.status = 'idle';
+    fake.permission = false;
+    await watches.command(principal, conversationId, '見守りをやめて');
+    fake.prompts.length = 0;
+    told.length = 0;
+    fake.message = { id: 'msg_1', completed: 1000, text: '途中まで直しました。' };
+  });
+
   it('nudges a stopped session, waits while it works, and ends when it says it is done', async () => {
     const answer = await watches.command(
       principal,

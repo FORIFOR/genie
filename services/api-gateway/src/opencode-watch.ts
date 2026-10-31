@@ -210,8 +210,9 @@ export function decide(
   snapshot: SessionSnapshot,
   state: { readonly lastSignature: string | null; readonly idleNudges: number },
 ): WatchDecision {
-  if (snapshot.busy) return { kind: 'working' };
+  // 承認待ちの間も opencode は busy と答える。先に見ないと、本人を待っているだけの実行を「固まった」と止めてしまう
   if (snapshot.waitingForUser) return { kind: 'waiting_user', what: snapshot.waitingForUser };
+  if (snapshot.busy) return { kind: 'working' };
   const lines = snapshot.lastAssistantText.split('\n').map((l) => l.trim());
   const marked = lines.some((l) => l === DONE_MARK || l.startsWith(DONE_MARK));
   const todosDone =
@@ -547,13 +548,25 @@ export class OpencodeWatchService {
           );
         return;
       }
-      case 'waiting_user':
-        await save({ failures: 0, waiting_notified: true, next_check_at: next });
+      case 'waiting_user': {
+        // 本人を待つのは失敗ではない。待っている間に見守りの期限を切らさず、固まった判定の時計も止める
+        const limit = watch.created_at.getTime() + WATCH_MAX_DAYS * 24 * 3600_000;
+        const extended = Math.min(now.getTime() + WATCH_HOURS * 3600_000, limit);
+        await save({
+          failures: 0,
+          waiting_notified: true,
+          last_activity: null,
+          last_activity_at: null,
+          stuck_notified: false,
+          expires_at: new Date(Math.max(extended, watch.expires_at.getTime())),
+          next_check_at: next,
+        });
         if (!watch.waiting_notified)
           await tell(
             `⏸ ${label}が${decision.what === 'permission' ? '承認' : '質問への答え'}を待っています。答えるまで「続けて」は送りません（見守りは続けます）。`,
           );
         return;
+      }
       case 'done': {
         await save({ status: 'done', ended_reason: 'done', failures: 0 });
         const last = snapshot.lastAssistantText.replace(/\s+/g, ' ').trim();

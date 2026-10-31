@@ -63,6 +63,15 @@ describe('opencode watch', () => {
     expect(intervalFrom('30分おきに')).toBe(1800);
   });
 
+  it('承認待ちの間は busy でも本人待ち（固まったと扱わない）', () => {
+    expect(
+      decide(snap({ busy: true, waitingForUser: 'permission' }), {
+        lastSignature: null,
+        idleNudges: 0,
+      }),
+    ).toEqual({ kind: 'waiting_user', what: 'permission' });
+  });
+
   it('leaves a working session alone and does not nudge while it waits for the user', () => {
     expect(decide(snap({ busy: true }), { lastSignature: null, idleNudges: 0 })).toEqual({
       kind: 'working',
