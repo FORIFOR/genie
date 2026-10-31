@@ -19,13 +19,13 @@
     "体感の複雑さ（層 C）: 段は 5、面は 1 枚、増えた窓 0"
   ],
   "product" : "Genie",
-  "startedAt" : "2026-10-31T07:04:19Z",
+  "startedAt" : "2026-10-31T08:03:53Z",
   "steps" : [
     {
       "front" : "com.astra.desktop",
       "interactions" : 0,
       "keyWindow" : true,
-      "ms" : 24,
+      "ms" : 23,
       "name" : "Home（Dock は待機）",
       "surface" : {
         "h" : 76,
@@ -43,7 +43,7 @@
       "keys" : {
         "esc" : "listening→idle"
       },
-      "ms" : 998,
+      "ms" : 982,
       "name" : "Listening",
       "surface" : {
         "h" : 76,
@@ -58,11 +58,11 @@
     {
       "front" : "com.astra.desktop",
       "ids" : {
-        "task" : "B67973B9-D220-43DD-8266-5D20D7DE1086"
+        "task" : "942C6007-3006-4316-92FE-63C6DEF39895"
       },
       "interactions" : 0,
       "keyWindow" : true,
-      "ms" : 1058,
+      "ms" : 1055,
       "name" : "Running",
       "surface" : {
         "h" : 258,
@@ -77,8 +77,8 @@
     {
       "front" : "com.astra.desktop",
       "ids" : {
-        "confirmation" : "7A45C2DB-5D5E-4709-A078-55EAD5BFD81C",
-        "resolved" : "7A45C2DB-5D5E-4709-A078-55EAD5BFD81C"
+        "confirmation" : "61DCA1A4-5E92-4240-82F1-3137AC5908FE",
+        "resolved" : "61DCA1A4-5E92-4240-82F1-3137AC5908FE"
       },
       "interactions" : 2,
       "keyWindow" : true,
@@ -86,7 +86,7 @@
         "cmdReturn" : "approved",
         "return" : "no-op"
       },
-      "ms" : 1800,
+      "ms" : 1793,
       "name" : "Confirmation",
       "surface" : {
         "h" : 258,
@@ -95,7 +95,7 @@
         "x" : 504,
         "y" : 859
       },
-      "transitionMs" : 201,
+      "transitionMs" : 204,
       "windows" : 2
     },
     {
@@ -105,7 +105,7 @@
       "keys" : {
         "esc" : "result→idle"
       },
-      "ms" : 1266,
+      "ms" : 1284,
       "name" : "Done",
       "surface" : {
         "h" : 76,
@@ -114,11 +114,11 @@
         "x" : 754,
         "y" : 1041
       },
-      "transitionMs" : 200,
+      "transitionMs" : 202,
       "windows" : 2
     }
   ],
   "success" : true,
-  "totalMs" : 5148,
+  "totalMs" : 5140,
   "windowsOpened" : 0
 }
