@@ -1447,6 +1447,7 @@ CREATE TABLE public.opencode_watches (
     last_activity_at timestamp with time zone,
     stuck_notified boolean DEFAULT false NOT NULL,
     stuck_aborts integer DEFAULT 0 NOT NULL,
+    waiting_permission_id text,
     CONSTRAINT opencode_watches_base_url_check CHECK (((length(base_url) >= 8) AND (length(base_url) <= 300))),
     CONSTRAINT opencode_watches_failures_check CHECK ((failures >= 0)),
     CONSTRAINT opencode_watches_idle_nudges_check CHECK ((idle_nudges >= 0)),
@@ -1454,7 +1455,8 @@ CREATE TABLE public.opencode_watches (
     CONSTRAINT opencode_watches_last_activity_check CHECK ((length(last_activity) <= 200)),
     CONSTRAINT opencode_watches_nudges_check CHECK ((nudges >= 0)),
     CONSTRAINT opencode_watches_session_id_check CHECK ((session_id ~ '^ses_[A-Za-z0-9]{1,64}$'::text)),
-    CONSTRAINT opencode_watches_status_check CHECK ((status = ANY (ARRAY['active'::text, 'done'::text, 'stalled'::text, 'unreachable'::text, 'expired'::text, 'stopped'::text])))
+    CONSTRAINT opencode_watches_status_check CHECK ((status = ANY (ARRAY['active'::text, 'done'::text, 'stalled'::text, 'unreachable'::text, 'expired'::text, 'stopped'::text]))),
+    CONSTRAINT opencode_watches_waiting_permission_id_check CHECK ((length(waiting_permission_id) <= 128))
 );
 
 ALTER TABLE ONLY public.opencode_watches FORCE ROW LEVEL SECURITY;
@@ -7363,3 +7365,4 @@ INSERT INTO schema_migrations (version) VALUES ('20261030230000');
 INSERT INTO schema_migrations (version) VALUES ('20261031000000');
 INSERT INTO schema_migrations (version) VALUES ('20261031010000');
 INSERT INTO schema_migrations (version) VALUES ('20261031020000');
+INSERT INTO schema_migrations (version) VALUES ('20261031030000');

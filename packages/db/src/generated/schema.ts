@@ -837,6 +837,7 @@ export interface OpencodeWatches {
   updated_at: Generated<Timestamp>;
   user_id: string;
   waiting_notified: Generated<boolean>;
+  waiting_permission_id: string | null;
 }
 
 export interface PendingConfirmations {

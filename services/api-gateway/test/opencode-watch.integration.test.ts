@@ -21,6 +21,8 @@ describe.skipIf(!url)('watching an opencode session', () => {
   const fake = {
     status: 'idle' as 'idle' | 'busy',
     permission: false,
+    permissionId: 'per_1',
+    replies: [] as string[],
     message: { id: 'msg_1', completed: 1000, text: '途中まで直しました。' },
     prompts: [] as string[],
     aborts: 0,
@@ -40,7 +42,24 @@ describe.skipIf(!url)('watching an opencode session', () => {
         if (req.url === '/session/status')
           return send(fake.status === 'busy' ? { [SESSION]: { type: 'busy' } } : {});
         if (req.url === '/permission')
-          return send(fake.permission ? [{ id: 'per_1', sessionID: SESSION }] : []);
+          return send(
+            fake.permission
+              ? [{ id: fake.permissionId, sessionID: SESSION, patterns: ['pip install pytest'] }]
+              : [],
+          );
+        if (req.url?.startsWith('/permission/') && req.method === 'POST') {
+          let body = '';
+          req.on('data', (c) => (body += c));
+          req.on('end', () => {
+            fake.replies.push(
+              `${req.url!.split('/')[2]!}:${(JSON.parse(body) as { reply: string }).reply}`,
+            );
+            fake.permission = false;
+            fake.status = 'idle';
+            send(true);
+          });
+          return;
+        }
         if (req.url === '/question') return send([]);
         if (req.url?.startsWith(`/session/${SESSION}/message`))
           return send([
@@ -210,6 +229,54 @@ describe.skipIf(!url)('watching an opencode session', () => {
     fake.status = 'idle';
     fake.permission = false;
     await watches.command(principal, conversationId, '見守りをやめて');
+    fake.prompts.length = 0;
+    told.length = 0;
+    fake.message = { id: 'msg_1', completed: 1000, text: '途中まで直しました。' };
+  });
+
+  it('answers an approval from LINE, only the one that was shown, and then continues', async () => {
+    const say = (text: string) => watches.command(principal, conversationId, text);
+    fake.status = 'busy';
+    fake.permission = true;
+    fake.permissionId = 'per_1';
+    fake.replies.length = 0;
+    fake.prompts.length = 0;
+    told.length = 0;
+    fake.message = { id: 'msg_ask', completed: 1, text: 'pip install' };
+    await say(`${base}/session/${SESSION} を10分ごとに見張って opencode`);
+    await watches.tick();
+    expect(told.at(-1)).toContain('pip install pytest');
+    // 許可を否定する文には答えない
+    expect(await say('opencode を許可しないで')).toBeNull();
+    // 見せたあとで別の承認に変わったら、通さずに見せ直す
+    fake.permissionId = 'per_2';
+    expect(await say('opencode を許可')).toContain('もう一度');
+    expect(fake.replies).toHaveLength(0);
+    expect(await say('opencode を続けて')).toContain('承認を待っています');
+    expect(fake.prompts).toHaveLength(0);
+    expect(await say('opencode を許可してください')).toContain('今回だけ許可');
+    expect(fake.replies).toEqual(['per_2:once']);
+    // 止まっていれば、次の確認で続けさせる
+    await watches.tick();
+    expect(fake.prompts).toHaveLength(1);
+    expect(await say('opencode を許可')).toContain('待っている承認はありません');
+    // 拒否も同じ入口
+    fake.permission = true;
+    fake.permissionId = 'per_3';
+    await later(10);
+    expect(told.at(-1)).toContain('pip install pytest');
+    expect(await say('opencode を拒否')).toContain('拒否しました');
+    expect(fake.replies.at(-1)).toBe('per_3:reject');
+    // 動いていないセッションには、頼まれれば「続けて」を送る
+    fake.permissionId = 'per_1';
+    fake.status = 'idle';
+    fake.prompts.length = 0;
+    expect(await say('opencode を続けて')).toContain('送りました');
+    expect(fake.prompts).toHaveLength(1);
+    await say('見守りをやめて');
+    expect(await say('opencode を許可')).toContain(
+      '見守っている opencode のセッションはありません',
+    );
     fake.prompts.length = 0;
     told.length = 0;
     fake.message = { id: 'msg_1', completed: 1000, text: '途中まで直しました。' };

@@ -168,4 +168,22 @@ describe.skipIf(!url)('connector reconnects', () => {
   it('ignores other words', async () => {
     expect(await store.command(tenantId, userId, 'Gmail を見せて')).toBeNull();
   });
+
+  it('understands everyday ways of asking, but not questions', async () => {
+    for (const text of [
+      'Google をつなぎ直して',
+      'Gmailの連携を再び繋げられるようにしてください',
+      'gmail を再接続',
+      'もう一度Gmailをつないで',
+      'Gmailの接続を戻して',
+    ])
+      expect(await store.command(tenantId, userId, text), text).toContain('のつなぎ直しです');
+    for (const text of [
+      'Gmail がつながらないのはなぜ？',
+      'Gmail につなげますか？',
+      'Gmail のメールを見せて',
+      '明日 Google に繋いでと言われた',
+    ])
+      expect(await store.command(tenantId, userId, text), text).toBeNull();
+  });
 });

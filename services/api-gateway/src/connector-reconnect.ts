@@ -79,6 +79,9 @@ export function authorizeUrlFor(provider: ReconnectProvider, text: string): URL 
   }
 }
 
+/** 「Google をつなぎ直して」「Gmail の連携を再び繋げて」など。文の頭が接続の名前のものだけ。 */
+export const RECONNECT_REQUEST =
+  /^(?:もう一度|再び|また)?\s*(Googleカレンダー|Google|グーグル|Gmail|Microsoft|マイクロソフト|Outlook)\s*(?:との|の)?\s*(?:接続|連携)?\s*(?:を|に)?\s*(?:もう一度|再び|また)?\s*(?:つなぎ直|繋ぎ直|つな[げぎい]|繋[げぎい]|再接続|再連携|連携し直|戻して|直して)/i;
 export class ConnectorReconnects {
   /** 認可コード。DB に置かない。再起動で消えたら、頼み直してもらう。 */
   readonly #callbacks = new Map<string, PastedCallback>();
@@ -124,11 +127,9 @@ export class ConnectorReconnects {
   }
 
   async command(tenantId: string, userId: string, text: string): Promise<string | null> {
-    const m =
-      /^(Google|グーグル|Gmail|Googleカレンダー|Microsoft|マイクロソフト|Outlook) ?(?:を|の接続を)? ?(?:つなぎ直|繋ぎ直|再接続)/i.exec(
-        text.trim(),
-      );
-    if (!m) return null;
+    const m = RECONNECT_REQUEST.exec(text.trim());
+    // 「なぜつなげないの？」のような問いは頼みではない
+    if (!m || /[?？]|なぜ|どうして|ません|ないの/.test(text)) return null;
     const provider: ReconnectProvider = /^(Microsoft|マイクロソフト|Outlook)/i.test(m[1]!)
       ? 'microsoft'
       : 'google';

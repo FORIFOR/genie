@@ -90,9 +90,20 @@ export function intervalFrom(text: string): number {
   return Math.min(7200, Math.max(300, seconds));
 }
 
+/** LINE から答える言い方（文全体がこの形のときだけ。「許可しないで」などを通さない）。 */
+export const WATCH_ANSWER =
+  /^(?:opencode|オープンコード)\s*を?\s*(許可|拒否|続け)(?:する|して|て)?(?:ください)?[。！!]?$/i;
+
+export interface PendingPermission {
+  readonly id: string;
+  /** 本人に見せる、頼まれている操作（コマンドなど）。 */
+  readonly label: string;
+}
+
 export interface SessionSnapshot {
   readonly busy: boolean;
   readonly waitingForUser: 'permission' | 'question' | null;
+  readonly permission?: PendingPermission | null;
   /** 最後の返答の印（id と終わった時刻）。返答が無ければ null。 */
   readonly signature: string | null;
   /** 進み具合の印（最後の返答の id・部品の数・最後の部品の状態）。作業中に変わらなければ進んでいない。 */
@@ -102,6 +113,19 @@ export interface SessionSnapshot {
 }
 
 type Fetch = typeof fetch;
+
+interface RawPermission {
+  readonly id?: string;
+  readonly sessionID?: string;
+  readonly permission?: string;
+  readonly patterns?: readonly string[];
+}
+
+function toPending(raw: RawPermission): PendingPermission | null {
+  if (!raw.id) return null;
+  const label = raw.patterns?.join(' / ') || raw.permission || '操作';
+  return { id: raw.id, label: label.slice(0, 200) };
+}
 
 /** opencode のサーバの API（opencode serve）。 */
 export class OpencodeClient {
@@ -123,7 +147,7 @@ export class OpencodeClient {
     const id = encodeURIComponent(sessionId);
     const [status, permissions, questions, messages, todos] = await Promise.all([
       this.#get<Record<string, { type?: string }>>('/session/status'),
-      this.#get<{ sessionID?: string }[]>('/permission').catch(() => []),
+      this.#get<RawPermission[]>('/permission').catch(() => []),
       this.#get<{ sessionID?: string }[]>('/question').catch(() => []),
       this.#get<
         {
@@ -135,6 +159,7 @@ export class OpencodeClient {
     ]);
     const state = status[sessionId]?.type ?? 'idle';
     const last = [...messages].reverse().find((m) => m.info?.role === 'assistant');
+    const asked = permissions.find((p) => p.sessionID === sessionId);
     const lastAssistantText = (last?.parts ?? [])
       .filter((p) => p.type === 'text' && typeof p.text === 'string')
       .map((p) => p.text!)
@@ -146,6 +171,7 @@ export class OpencodeClient {
         : questions.some((q) => q.sessionID === sessionId)
           ? 'question'
           : null,
+      permission: asked ? toPending(asked) : null,
       signature: last?.info?.id
         ? `${last.info.id}:${String(last.info.time?.completed ?? 'open')}`
         : null,
@@ -158,6 +184,20 @@ export class OpencodeClient {
         status: String(t.status ?? ''),
       })),
     };
+  }
+
+  /** 承認に答える。「以後も許可」（always）は LINE からは送らない。 */
+  async reply(permissionId: string, reply: 'once' | 'reject'): Promise<void> {
+    const res = await this.fetchImpl(
+      `${this.baseUrl}/permission/${encodeURIComponent(permissionId)}/reply`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ reply }),
+        signal: AbortSignal.timeout(15_000),
+      },
+    );
+    if (!res.ok) throw new Error(`opencode_http_${String(res.status)}`);
   }
 
   /** 固まった実行を止める。 */
@@ -279,6 +319,8 @@ export class OpencodeWatchService {
         ? '承知しました。opencode の見守りをやめました。'
         : 'いま見守っている opencode のセッションはありません。';
     }
+    const answer = WATCH_ANSWER.exec(text.trim())?.[1];
+    if (answer) return this.#answer(principal, answer as '許可' | '拒否' | '続け');
     const mentions = /opencode|オープンコード|\/session\/ses_/i.test(text);
     if (mentions && WATCH_STATUS.test(text) && !WATCH_START.test(text))
       return this.#report(principal);
@@ -325,6 +367,69 @@ export class OpencodeWatchService {
       `承知しました。${String(Math.round(interval / 60))} 分ごとに opencode のセッション（${target.sessionId}）を見て、止まっていたら「続けてください」と送ります。`,
       `終わったら（返答に${DONE_MARK}）・承認や質問を待っていたら・進まなくなったら知らせます。${String(WATCH_HOURS)} 時間で終えます。やめるときは「見守りをやめて」。`,
     ].join('\n');
+  }
+
+  /** 見守り中のセッションの承認に答える、または「続けて」を送る。 */
+  async #answer(
+    principal: { tenantId: string; userId: string },
+    action: '許可' | '拒否' | '続け',
+  ): Promise<string> {
+    const watch = await withTenant(this.deps.db, principal.tenantId, (tx) =>
+      tx
+        .selectFrom('opencode_watches')
+        .selectAll()
+        .where('user_id', '=', principal.userId)
+        .where('status', '=', 'active')
+        .orderBy('created_at', 'desc')
+        .limit(1)
+        .executeTakeFirst(),
+    );
+    if (!watch) return 'いま見守っている opencode のセッションはありません。';
+    const client = new OpencodeClient(watch.base_url, this.deps.fetchImpl);
+    const save = (patch: Record<string, unknown>) =>
+      withTenant(this.deps.db, principal.tenantId, (tx) =>
+        tx
+          .updateTable('opencode_watches')
+          .set({ ...patch, updated_at: this.#now() })
+          .where('id', '=', watch.id)
+          .execute(),
+      );
+    try {
+      const snapshot = await client.snapshot(watch.session_id);
+      const pending = snapshot.permission ?? null;
+      if (action === '続け') {
+        if (pending)
+          return `opencode は「${pending.label}」の承認を待っています。「opencode を許可」か「opencode を拒否」で答えてください。`;
+        if (snapshot.waitingForUser === 'question')
+          return 'opencode は質問への答えを待っています。LINE からは答えられないので、画面で答えてください。';
+        if (snapshot.busy) return 'opencode はいま作業中です。';
+        await client.nudge(watch.session_id, nudgeText(watch.nudges + 1));
+        await save({ nudges: watch.nudges + 1, waiting_notified: false });
+        return 'opencode に「続けてください」と送りました。';
+      }
+      if (!pending) return 'いま opencode が待っている承認はありません。';
+      // 本人に見せた承認にだけ答える。変わっていたら、見せ直して聞き直す
+      if (pending.id !== watch.waiting_permission_id) {
+        await save({ waiting_permission_id: pending.id, waiting_notified: true });
+        return `opencode が待っている承認は「${pending.label}」です。よければ、もう一度「opencode を${action}」と送ってください。`;
+      }
+      await client.reply(pending.id, action === '許可' ? 'once' : 'reject');
+      // すぐ次の確認で様子を見る（止まっていれば「続けて」を送る）
+      await save({
+        waiting_permission_id: null,
+        waiting_notified: false,
+        next_check_at: this.#now(),
+      });
+      return action === '許可'
+        ? `「${pending.label}」を今回だけ許可しました。止まっていれば、このあと続けさせます。`
+        : `「${pending.label}」を拒否しました。止まっていれば、このあと続けさせます。`;
+    } catch (error) {
+      this.deps.log?.('opencode_watch.answer_failed', {
+        id: watch.id,
+        error: (error as Error).message,
+      });
+      return 'opencode に届きませんでした。サーバが動いているか確かめてください。';
+    }
   }
 
   /** 本人が最後に見守ったセッション（状態は問わない）。 */
@@ -552,18 +657,23 @@ export class OpencodeWatchService {
         // 本人を待つのは失敗ではない。待っている間に見守りの期限を切らさず、固まった判定の時計も止める
         const limit = watch.created_at.getTime() + WATCH_MAX_DAYS * 24 * 3600_000;
         const extended = Math.min(now.getTime() + WATCH_HOURS * 3600_000, limit);
+        const asked = snapshot.permission ?? null;
         await save({
           failures: 0,
           waiting_notified: true,
+          waiting_permission_id: asked?.id ?? null,
           last_activity: null,
           last_activity_at: null,
           stuck_notified: false,
           expires_at: new Date(Math.max(extended, watch.expires_at.getTime())),
           next_check_at: next,
         });
-        if (!watch.waiting_notified)
+        // 別の承認に変わったら、もう一度見せる
+        if (!watch.waiting_notified || (asked && asked.id !== watch.waiting_permission_id))
           await tell(
-            `⏸ ${label}が${decision.what === 'permission' ? '承認' : '質問への答え'}を待っています。答えるまで「続けて」は送りません（見守りは続けます）。`,
+            asked
+              ? `⏸ ${label}が承認を待っています: ${asked.label}\n「opencode を許可」（今回だけ）か「opencode を拒否」で答えてください。答えるまで「続けて」は送りません。`
+              : `⏸ ${label}が質問への答えを待っています。LINE からは答えられないので、画面で答えてください。答えるまで「続けて」は送りません（見守りは続けます）。`,
           );
         return;
       }
