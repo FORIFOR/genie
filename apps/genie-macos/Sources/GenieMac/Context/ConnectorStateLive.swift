@@ -65,6 +65,20 @@ extension ConnectorState {
             },
             replaceLocked: {
                 try KeychainStore.replaceLockedConnectorSecret(service: KeychainStore.connectorService($0.pluginId, $0.connectorId), account: NSUserName(), value: $1)
-            })
+            },
+            remote: { base, token, method, path, body in
+                guard let url = URL(string: base + path) else { return nil }
+                var request = URLRequest(url: url, timeoutInterval: 15)
+                request.httpMethod = method
+                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+                if let body {
+                    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                    request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+                }
+                guard let (data, response) = try? await URLSession.shared.data(for: request),
+                      (response as? HTTPURLResponse).map({ (200..<300).contains($0.statusCode) }) == true else { return nil }
+                return data
+            },
+            startsRemoteLoop: true)
     }
 }

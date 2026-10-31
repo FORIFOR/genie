@@ -49,6 +49,7 @@ describe.skipIf(!url)('work desk (holds, follow-ups, overview)', () => {
   let schedules: ScheduleStore;
   let desk: WorkDesk;
   let agentWatch: AgentSessionWatch;
+  let scopeTenant = '';
   let deskWatch: WorkDeskWatch;
   const runs: Parameters<FollowupRun>[0][] = [];
   const chats: { userId: string; text: string }[] = [];
@@ -68,6 +69,8 @@ describe.skipIf(!url)('work desk (holds, follow-ups, overview)', () => {
       payload: { source: 'claude_code' },
     });
     const connection = (await store.identify(key.json<{ token: string }>().token))!;
+    // 見回りはこの検査のテナントだけ（並んで走る別の検査のセッションを拾わない）
+    scopeTenant = connection.tenantId;
     const conversation = await harness.app.inject({
       method: 'POST',
       url: '/v1/conversations',
@@ -143,9 +146,16 @@ describe.skipIf(!url)('work desk (holds, follow-ups, overview)', () => {
     });
     store = new AgentSessionStore(harness.db, now);
     schedules = new ScheduleStore(harness.db);
-    desk = new WorkDesk({ db: harness.db, tasks: harness.tasks, library: harness.library, schedules, tz: TZ, now: deskNow });
+    desk = new WorkDesk({
+      db: harness.db,
+      tasks: harness.tasks,
+      library: harness.library,
+      schedules,
+      tz: TZ,
+      now: deskNow,
+    });
     deskRef.current = desk;
-    agentWatch = new AgentSessionWatch({ db: harness.db, now });
+    agentWatch = new AgentSessionWatch({ db: harness.db, now, onlyTenant: () => scopeTenant });
     deskWatch = new WorkDeskWatch({
       db: harness.db,
       tz: TZ,

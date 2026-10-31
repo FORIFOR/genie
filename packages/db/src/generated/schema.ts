@@ -110,6 +110,64 @@ export interface AgentHosts {
   user_id: string;
 }
 
+export interface AgentJobRuns {
+  attempt: number;
+  cost_usd: Numeric | null;
+  ended_at: Timestamp | null;
+  exit_code: number | null;
+  id: string;
+  job_id: string;
+  kind: string;
+  note: string | null;
+  outcome: string | null;
+  started_at: Timestamp;
+  tenant_id: string;
+  turns: number | null;
+}
+
+export interface AgentJobs {
+  agent: string;
+  attempts: Generated<number>;
+  control: string;
+  cost_known: Generated<boolean>;
+  cost_usd: Generated<Numeric>;
+  created_at: Generated<Timestamp>;
+  depends_on: Generated<string[]>;
+  elapsed_ms: Generated<Int8>;
+  external_session_id: string | null;
+  failure_signature: string | null;
+  finished_at: Timestamp | null;
+  human_wait_ms: Generated<Int8>;
+  id: string;
+  improve_base_branch: string | null;
+  improve_base_sha: string | null;
+  improve_branch: string | null;
+  improve_commit: string | null;
+  last_failure: string | null;
+  max_attempts: Generated<number>;
+  max_cost_usd: Generated<Numeric>;
+  max_lifetime_hours: Generated<number>;
+  max_minutes: Generated<number>;
+  max_turns: Generated<number>;
+  next_run_at: Timestamp | null;
+  number: number;
+  pending_approval: string | null;
+  pending_instruction: string | null;
+  project: string;
+  project_root: string;
+  request: string | null;
+  same_failure_count: Generated<number>;
+  started_at: Timestamp | null;
+  status: string;
+  stop_reason: string | null;
+  tenant_id: string;
+  title: string;
+  turns: Generated<number>;
+  updated_at: Generated<Timestamp>;
+  user_id: string;
+  waiting_since: Timestamp | null;
+}
+
 export interface AgentSessionMarks {
   at: Generated<Timestamp>;
   id: string;
@@ -119,6 +177,7 @@ export interface AgentSessionMarks {
 }
 
 export interface AgentSessions {
+  agent_job_id: string | null;
   check_after: Timestamp | null;
   check_state: Generated<string>;
   checked_at: Timestamp | null;
@@ -366,6 +425,20 @@ export interface ConnectorConnections {
   updated_at: Generated<Timestamp>;
 }
 
+export interface ConnectorReconnects {
+  authorize_url: string | null;
+  created_at: Generated<Timestamp>;
+  expires_at: Timestamp | null;
+  fingerprint: string | null;
+  id: string;
+  provider: string;
+  state: string;
+  tenant_id: string;
+  token_hash: string | null;
+  updated_at: Generated<Timestamp>;
+  user_id: string;
+}
+
 export interface ConversationGoals {
   conversation_id: string;
   expires_at: Timestamp;
@@ -544,6 +617,17 @@ export interface Expenses {
   tenant_id: string;
   user_id: string;
   voided_at: Timestamp | null;
+}
+
+export interface GenieImprovementProposals {
+  created_at: Generated<Timestamp>;
+  decided_at: Timestamp | null;
+  id: string;
+  signature: string;
+  status: Generated<string>;
+  tenant_id: string;
+  text: string;
+  user_id: string;
 }
 
 export interface GroupBoardEvents {
@@ -740,11 +824,15 @@ export interface OpencodeWatches {
   id: string;
   idle_nudges: Generated<number>;
   interval_seconds: number;
+  last_activity: string | null;
+  last_activity_at: Timestamp | null;
   last_signature: string | null;
   next_check_at: Timestamp;
   nudges: Generated<number>;
   session_id: string;
   status: Generated<string>;
+  stuck_aborts: Generated<number>;
+  stuck_notified: Generated<boolean>;
   tenant_id: string;
   updated_at: Generated<Timestamp>;
   user_id: string;
@@ -1137,11 +1225,13 @@ export interface WorkCorrections {
 }
 
 export interface WorkCriteria {
+  agent_job_id: string | null;
   agent_session_id: string | null;
   created_at: Generated<Timestamp>;
   id: string;
   kind: string;
   met_at: Timestamp | null;
+  spec: string | null;
   task_id: string | null;
   tenant_id: string;
   text: string;
@@ -1259,6 +1349,8 @@ export interface DB {
   agent_approvals: AgentApprovals;
   agent_connections: AgentConnections;
   agent_hosts: AgentHosts;
+  agent_job_runs: AgentJobRuns;
+  agent_jobs: AgentJobs;
   agent_session_marks: AgentSessionMarks;
   agent_sessions: AgentSessions;
   approvals: Approvals;
@@ -1277,6 +1369,7 @@ export interface DB {
   channel_outbox: ChannelOutbox;
   channel_threads: ChannelThreads;
   connector_connections: ConnectorConnections;
+  connector_reconnects: ConnectorReconnects;
   conversation_goals: ConversationGoals;
   conversation_requests: ConversationRequests;
   conversation_states: ConversationStates;
@@ -1291,6 +1384,7 @@ export interface DB {
   evidence: Evidence;
   expense_budgets: ExpenseBudgets;
   expenses: Expenses;
+  genie_improvement_proposals: GenieImprovementProposals;
   group_board_events: GroupBoardEvents;
   group_board_links: GroupBoardLinks;
   group_boards: GroupBoards;

@@ -7,6 +7,8 @@
  *   POST   /v1/agent-events/claude-code        Claude Code の hooks の受け口（鍵で名乗る。ログインは要らない）
  *   POST   /v1/agent-approvals/claude-code     Claude Code が許可を求めた → 本人の LINE にカード（agent-approvals.ts）
  *   POST   /v1/agent-approvals/:id/wait        hooks が LINE の答えを取りに来る（長く待つ問い合わせ）
+ *   POST   /v1/agent-jobs                      仕事を頼む（hooks の鍵で名乗る。scripts/agent-job.mjs）
+ *   GET    /v1/agent-jobs                      仕事の一覧と「今どうなってる」の文
  *   GET    /v1/agent-sessions                  Task Dock が見る一覧
  *   PATCH  /v1/agent-sessions/:id              本人が止める（paused_by_user）・見守りに戻す（watch）
  *
@@ -21,11 +23,14 @@ import { requirePrincipal } from '../auth/middleware.js';
 import { bearerToken } from '../auth/tokens.js';
 import { AgentSessionStore, attentionFor, type AgentSession } from '../agent-sessions.js';
 import { hookOutput, type AgentApprovals } from '../agent-approvals.js';
+import { JobRefused, type AgentJobs } from '../agent-jobs.js';
 
 export interface AgentSessionRouteDeps {
   readonly db: DbHandle;
   /** LINE からの承認（チャットをつないでいなければ無い。hooks は Mac の問いに任せる）。 */
   readonly approvals?: AgentApprovals;
+  /** エージェントの仕事（セッションを仕事に結び付ける・仕事を頼む）。 */
+  readonly jobs?: AgentJobs;
   readonly now?: () => Date;
 }
 
@@ -44,6 +49,27 @@ const Connect = z.object({
   label: z.string().trim().min(1).max(80).default('Claude Code'),
 });
 const Patch = z.object({ user_policy: z.enum(['watch', 'paused_by_user']) });
+const JobBody = z.object({
+  agent: z.enum(['claude_code', 'codex', 'browser']).default('claude_code'),
+  project_root: z.string().min(1).max(1024),
+  request: z.string().trim().min(1).max(8000),
+  title: z.string().trim().min(1).max(120).optional(),
+  criteria: z
+    .array(
+      z.object({
+        kind: z.enum(['command', 'artifact', 'manual']),
+        text: z.string().trim().min(1).max(200),
+        spec: z.string().trim().min(1).max(1000).optional(),
+      }),
+    )
+    .min(1)
+    .max(20),
+  after: z.array(z.number().int().positive()).max(20).optional(),
+  max_attempts: z.number().int().min(1).max(3).optional(),
+  max_minutes: z.number().int().min(1).max(240).optional(),
+  max_turns: z.number().int().min(1).max(200).optional(),
+  max_cost_usd: z.number().positive().max(50).optional(),
+});
 
 /** hooks の入力のうち読む項目だけ。ほかの項目（道具の入出力・応答の本文など）は読まずに捨てる。 */
 const ClaudeHook = z.object({
@@ -150,7 +176,7 @@ export function registerAgentSessionRoutes(app: App, deps: AgentSessionRouteDeps
         return { accepted: false };
       }
       const h = parsed.data;
-      await store.record(connection, {
+      const session = await store.record(connection, {
         event: h.hook_event_name,
         sessionId: h.session_id,
         ...(h.cwd === undefined ? {} : { cwd: h.cwd }),
@@ -164,6 +190,10 @@ export function registerAgentSessionRoutes(app: App, deps: AgentSessionRouteDeps
           ? { command: commandOf(h.tool_input)! }
           : {}),
       });
+      // どの仕事のセッションか（本人が直接始めたものは、読むだけの仕事として取り込む）
+      await deps.jobs
+        ?.observe(connection.tenantId, connection.userId, session, h.cwd)
+        .catch(() => undefined);
       // LINE に出した承認のうち、Mac で答え済みになったものを取り下げる
       await deps.approvals
         ?.observe(connection, {
@@ -186,6 +216,78 @@ export function registerAgentSessionRoutes(app: App, deps: AgentSessionRouteDeps
       throw new GenieError('auth.invalid_token', 'unknown agent connection');
     return connection;
   };
+
+  // 仕事を頼む。完了条件のない仕事は受けない
+  app.post('/v1/agent-jobs', { config: { auth: false } }, async (request, reply) => {
+    const connection = await hookConnection(request.headers.authorization);
+    if (!deps.jobs) {
+      reply.code(503);
+      return { refused: 'agent jobs are off' };
+    }
+    const body = JobBody.parse(request.body);
+    try {
+      const job = await deps.jobs.create({
+        tenantId: connection.tenantId,
+        userId: connection.userId,
+        agent: body.agent,
+        projectRoot: body.project_root,
+        request: body.request,
+        criteria: body.criteria.map((c) => ({
+          kind: c.kind,
+          text: c.text,
+          ...(c.spec === undefined ? {} : { spec: c.spec }),
+        })),
+        ...(body.title === undefined ? {} : { title: body.title }),
+        ...(body.after === undefined ? {} : { after: body.after }),
+        ...(body.max_attempts === undefined ? {} : { maxAttempts: body.max_attempts }),
+        ...(body.max_minutes === undefined ? {} : { maxMinutes: body.max_minutes }),
+        ...(body.max_turns === undefined ? {} : { maxTurns: body.max_turns }),
+        ...(body.max_cost_usd === undefined ? {} : { maxCostUsd: body.max_cost_usd }),
+      });
+      void deps.jobs.tick();
+      reply.code(201);
+      return job;
+    } catch (error) {
+      if (error instanceof JobRefused) {
+        reply.code(422);
+        return { refused: error.message };
+      }
+      throw error;
+    }
+  });
+
+  // LINE と同じ言い方で操作する（「仕事 3 を再開」。scripts/agent-job.mjs）
+  app.post('/v1/agent-jobs/say', { config: { auth: false } }, async (request, reply) => {
+    const connection = await hookConnection(request.headers.authorization);
+    if (!deps.jobs) {
+      reply.code(503);
+      return { refused: 'agent jobs are off' };
+    }
+    const { text } = z.object({ text: z.string().trim().min(1).max(2100) }).parse(request.body);
+    return { said: await deps.jobs.command(connection.tenantId, connection.userId, text) };
+  });
+
+  app.get('/v1/agent-jobs', { config: { auth: false } }, async (request, reply) => {
+    const connection = await hookConnection(request.headers.authorization);
+    if (!deps.jobs) {
+      reply.code(503);
+      return { refused: 'agent jobs are off' };
+    }
+    const jobs = await deps.jobs.list(connection.tenantId, connection.userId);
+    return {
+      summary: await deps.jobs.summary(connection.tenantId, connection.userId),
+      items: jobs.map((j) => ({
+        number: j.number,
+        agent: j.agent,
+        control: j.control,
+        project: j.project,
+        title: j.title,
+        status: j.status,
+        stop_reason: j.stop_reason,
+        attempts: j.attempts,
+      })),
+    };
+  });
 
   // 許可を求められた。
   //   本人の継続許可に当たれば 200 と、Claude Code へそのまま渡す JSON（その場で許可）

@@ -15,6 +15,7 @@
  */
 import { uuidv7 } from '@genie/contracts';
 import { withIdentity, withTenant, type DbHandle } from '@genie/db';
+import { ADAPTER_LABELS } from './agent-adapters.js';
 import {
   attentionFor,
   type AgentSession,
@@ -24,6 +25,8 @@ import {
 
 export interface AgentSessionWatchDeps {
   readonly db: DbHandle;
+  /** 検査用: このテナントのセッションだけを見る（並んで走る別の検査の行を拾わない）。 */
+  readonly onlyTenant?: () => string;
   /** 本人のチャットへ知らせる（つないでいなければ何もしない）。 */
   readonly notifyChat?: (tenantId: string, userId: string, text: string) => Promise<void>;
   /** その承認を LINE のカードで待っているか（待っていれば、チャットへは重ねて知らせない）。 */
@@ -45,7 +48,7 @@ export interface AgentSessionNotice {
 /** いま知らせることがあるか。無ければ null（作業中・待機・止めた・終わった）。 */
 export function noticeFor(s: AgentSession, now: number): AgentSessionNotice | null {
   const attention = attentionFor(s, now);
-  const tool = s.source === 'claude_code' ? 'Claude Code' : s.source;
+  const tool = ADAPTER_LABELS[s.source];
   // 「Claude Code が」/「Claude Code（genie）が」
   const subject = s.project ? `${tool}（${s.project}）が` : `${tool} が`;
   const name = s.title ?? s.project ?? '名前のないセッション';
@@ -110,6 +113,9 @@ export class AgentSessionWatch {
           .selectFrom('agent_sessions')
           .select(['id', 'tenant_id'])
           .where('check_after', '<=', now)
+          .$if(Boolean(this.deps.onlyTenant), (q) =>
+            q.where('tenant_id', '=', this.deps.onlyTenant!()),
+          )
           .orderBy('check_after')
           .limit(20)
           .execute(),

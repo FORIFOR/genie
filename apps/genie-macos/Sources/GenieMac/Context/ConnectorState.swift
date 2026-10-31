@@ -55,6 +55,9 @@ final class ConnectorState: ObservableObject {
         var rejected: (Source) -> String? = { _ in nil }
         /// 読めなくなった項目を、本人の「つなぎ直す」で作り直す。無ければ通常の保存だけ。
         var replaceLocked: ((Source, String) throws -> Void)? = nil
+        /// gateway への呼び出し（LINE からのつなぎ直し）。答えの本文を返す。届かなければ nil。
+        var remote: (String, String, String, String, [String: Any]?) async -> Data? = { _, _, _, _, _ in nil }
+        var startsRemoteLoop = false
     }
     @Published var connected: Set<String> = []
     @Published private(set) var status: [String: Status] = [:]
@@ -149,6 +152,7 @@ final class ConnectorState: ObservableObject {
             sources.forEach { update($0, .disconnected) }
         }
         self.base = base; self.token = token; refresh()
+        if deps.startsRemoteLoop { startRemoteReconnects() }
     }
     func refresh() {
         guard activeProvider == nil else { return }
@@ -186,6 +190,66 @@ final class ConnectorState: ObservableObject {
             }
         }
     }
+    // MARK: LINE からのつなぎ直し（services/api-gateway/src/connector-reconnect.ts）
+    // 保存はアプリだけができる（host からキーチェーンへ書くとアプリが読めなくなる）ので、ここで受ける。
+
+    private struct RemoteItem: Decodable {
+        let id: String
+        let provider: String
+        let state: String
+        let code: String?
+        let error: String?
+        let callback_state: String?
+    }
+    private struct RemoteResponse: Decodable { let items: [RemoteItem] }
+    private var remoteFlows: [String: ConnectorFlow.Pending] = [:]
+    private var remoteLoop: Task<Void, Never>?
+
+    func startRemoteReconnects(interval: Duration = .seconds(10)) {
+        guard remoteLoop == nil else { return }
+        remoteLoop = Task { [weak self] in
+            while !Task.isCancelled {
+                await self?.pollRemoteReconnects()
+                try? await Task.sleep(for: interval)
+            }
+        }
+    }
+
+    func pollRemoteReconnects() async {
+        guard let base, let token,
+              let data = await deps.remote(base, token, "GET", "/v1/connector-reconnects/pending", nil),
+              let items = try? JSONDecoder().decode(RemoteResponse.self, from: data).items else { return }
+        for item in items {
+            let list = sources.filter { $0.provider == item.provider }
+            let path = "/v1/connector-reconnects/\(item.id)"
+            guard let first = list.first,
+                  let clientId = Self.connectionClientId(provider: first.provider, readOnly: first.readOnly, env: deps.configuration()) else {
+                _ = await deps.remote(base, token, "POST", "\(path)/finished", ["ok": false]); continue
+            }
+            if item.state == "requested" {
+                var scopes = Set(list.flatMap(\.scopes))
+                if first.readOnly { scopes.formUnion(first.provider == "google" ? ["openid", "email"] : ["User.Read"]) }
+                guard let prepared = ConnectorFlow.prepareRemote(provider: first.provider, clientId: clientId, scopes: scopes.sorted()) else {
+                    _ = await deps.remote(base, token, "POST", "\(path)/finished", ["ok": false]); continue
+                }
+                remoteFlows[item.id] = prepared.pending
+                _ = await deps.remote(base, token, "POST", "\(path)/authorize", ["authorize_url": prepared.url])
+            } else if item.state == "code", let pending = remoteFlows.removeValue(forKey: item.id) {
+                let callback = OauthCallback(code: item.code, state: item.callback_state, error: item.error, errorDescription: nil, idToken: nil, displayName: nil)
+                await finish(list: list, callback: callback, pending: pending, clientId: clientId,
+                    secret: ConnectionConfiguration.clientSecret(provider: first.provider, readOnly: first.readOnly, values: deps.configuration()),
+                    base: base, token: token)
+                let ok = list.contains { status[$0.statusKey] == .connected }
+                var body: [String: Any] = ["ok": ok]
+                if ok, let account = accounts[first.provider] { body["account"] = account }
+                _ = await deps.remote(base, token, "POST", "\(path)/finished", body)
+            } else if item.state == "code" {
+                // アプリが手続きの途中で起動し直した。verifier が無いので交換できない
+                _ = await deps.remote(base, token, "POST", "\(path)/finished", ["ok": false])
+            }
+        }
+    }
+
     @discardableResult func connect(_ app: String) -> Bool { source(named: app).map { connect(source: $0) } ?? false }
     @discardableResult func connect(source: Source) -> Bool { begin([source]) }
     @discardableResult func connectProvider(_ provider: String) -> Bool { begin(sources.filter { $0.provider == provider }) }

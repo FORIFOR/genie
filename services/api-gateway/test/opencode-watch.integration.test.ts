@@ -23,6 +23,7 @@ describe.skipIf(!url)('watching an opencode session', () => {
     permission: false,
     message: { id: 'msg_1', completed: 1000, text: '途中まで直しました。' },
     prompts: [] as string[],
+    aborts: 0,
   };
   const told: string[] = [];
   let clock = new Date('2026-10-25T00:00:00Z');
@@ -55,6 +56,11 @@ describe.skipIf(!url)('watching an opencode session', () => {
             },
           ]);
         if (req.url === `/session/${SESSION}/todo`) return send([]);
+        if (req.url === `/session/${SESSION}/abort` && req.method === 'POST') {
+          fake.aborts += 1;
+          fake.status = 'idle';
+          return send(true);
+        }
         if (req.url === `/session/${SESSION}/prompt_async` && req.method === 'POST') {
           let body = '';
           req.on('data', (c) => (body += c));
@@ -121,6 +127,65 @@ describe.skipIf(!url)('watching an opencode session', () => {
         .orderBy('created_at', 'desc')
         .executeTakeFirstOrThrow(),
     );
+
+  it('tells about a session stuck on busy, then aborts and nudges it, and gives up after three', async () => {
+    await watches.command(principal, conversationId, '見守りをやめて');
+    fake.status = 'busy';
+    fake.aborts = 0;
+    fake.prompts.length = 0;
+    told.length = 0;
+    fake.message = { id: 'msg_stuck', completed: 1, text: 'pip install' };
+    await watches.command(
+      principal,
+      conversationId,
+      `${base}/session/${SESSION} を10分ごとに見張って opencode`,
+    );
+    await watches.tick();
+    await later(20);
+    expect(told).toHaveLength(0);
+    await later(10);
+    expect(told.at(-1)).toContain('30 分進んでいません');
+    await later(10);
+    expect(told.filter((t) => t.includes('進んでいません'))).toHaveLength(1);
+    expect(fake.aborts).toBe(0);
+    await later(20);
+    expect(fake.aborts).toBe(1);
+    expect(told.at(-1)).toContain('固まった実行を止めました');
+    await watches.tick();
+    expect(fake.prompts).toHaveLength(1);
+    // 進み始めたら期限が延びる
+    fake.status = 'busy';
+    fake.message = { id: 'msg_next', completed: 2, text: 'x' };
+    await later(10);
+    const row = () =>
+      withTenant(h.db, principal.tenantId, (tx) =>
+        tx
+          .selectFrom('opencode_watches')
+          .select(['expires_at', 'stuck_aborts', 'status'])
+          .orderBy('created_at', 'desc')
+          .executeTakeFirstOrThrow(),
+      );
+    expect((await row()).expires_at.getTime()).toBe(clock.getTime() + 12 * 3600_000);
+    // 3 回止めても固まるなら、止めて知らせる
+    for (let i = 0; i < 2; i += 1) {
+      fake.status = 'busy';
+      fake.message = { id: `msg_again_${String(i)}`, completed: 3, text: 'x' };
+      await later(10);
+      await later(60);
+      await watches.tick();
+    }
+    fake.status = 'busy';
+    fake.message = { id: 'msg_last', completed: 4, text: 'x' };
+    await later(10);
+    await later(60);
+    expect((await row()).status).toBe('stalled');
+    expect(fake.aborts).toBe(3);
+    fake.status = 'idle';
+    await watches.command(principal, conversationId, '見守りをやめて');
+    fake.prompts.length = 0;
+    told.length = 0;
+    fake.message = { id: 'msg_1', completed: 1000, text: '途中まで直しました。' };
+  });
 
   it('nudges a stopped session, waits while it works, and ends when it says it is done', async () => {
     const answer = await watches.command(

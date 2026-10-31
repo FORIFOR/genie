@@ -181,7 +181,7 @@ CREATE TABLE public.agent_connections (
     revoked_at timestamp with time zone,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT agent_connections_label_check CHECK (((length(label) >= 1) AND (length(label) <= 80))),
-    CONSTRAINT agent_connections_source_check CHECK ((source = 'claude_code'::text))
+    CONSTRAINT agent_connections_source_check CHECK ((source = ANY (ARRAY['claude_code'::text, 'codex'::text, 'opencode'::text])))
 );
 
 ALTER TABLE ONLY public.agent_connections FORCE ROW LEVEL SECURITY;
@@ -205,6 +205,107 @@ CREATE TABLE public.agent_hosts (
 );
 
 ALTER TABLE ONLY public.agent_hosts FORCE ROW LEVEL SECURITY;
+
+
+--
+-- Name: agent_job_runs; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.agent_job_runs (
+    id uuid NOT NULL,
+    tenant_id uuid NOT NULL,
+    job_id uuid NOT NULL,
+    attempt integer NOT NULL,
+    kind text NOT NULL,
+    outcome text,
+    cost_usd numeric(10,4),
+    turns integer,
+    exit_code integer,
+    note text,
+    started_at timestamp with time zone NOT NULL,
+    ended_at timestamp with time zone,
+    CONSTRAINT agent_job_runs_attempt_check CHECK ((attempt > 0)),
+    CONSTRAINT agent_job_runs_kind_check CHECK ((kind = ANY (ARRAY['work'::text, 'fix'::text, 'resume'::text]))),
+    CONSTRAINT agent_job_runs_note_check CHECK ((length(note) <= 300)),
+    CONSTRAINT agent_job_runs_outcome_check CHECK ((outcome = ANY (ARRAY['success'::text, 'error'::text, 'transient'::text, 'crashed'::text, 'denied'::text, 'limit_turns'::text, 'limit_cost'::text, 'limit_time'::text, 'unavailable'::text])))
+);
+
+ALTER TABLE ONLY public.agent_job_runs FORCE ROW LEVEL SECURITY;
+
+
+--
+-- Name: agent_jobs; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.agent_jobs (
+    id uuid NOT NULL,
+    tenant_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    number integer NOT NULL,
+    agent text NOT NULL,
+    control text NOT NULL,
+    project_root text NOT NULL,
+    project text NOT NULL,
+    request text,
+    title text NOT NULL,
+    status text NOT NULL,
+    stop_reason text,
+    last_failure text,
+    depends_on uuid[] DEFAULT '{}'::uuid[] NOT NULL,
+    max_attempts integer DEFAULT 3 NOT NULL,
+    max_minutes integer DEFAULT 30 NOT NULL,
+    max_turns integer DEFAULT 40 NOT NULL,
+    max_cost_usd numeric(8,2) DEFAULT 2 NOT NULL,
+    attempts integer DEFAULT 0 NOT NULL,
+    turns integer DEFAULT 0 NOT NULL,
+    elapsed_ms bigint DEFAULT 0 NOT NULL,
+    cost_usd numeric(10,4) DEFAULT 0 NOT NULL,
+    cost_known boolean DEFAULT true NOT NULL,
+    failure_signature text,
+    same_failure_count integer DEFAULT 0 NOT NULL,
+    external_session_id text,
+    pending_instruction text,
+    next_run_at timestamp with time zone,
+    started_at timestamp with time zone,
+    finished_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    human_wait_ms bigint DEFAULT 0 NOT NULL,
+    waiting_since timestamp with time zone,
+    pending_approval text,
+    max_lifetime_hours integer DEFAULT 168 NOT NULL,
+    improve_branch text,
+    improve_base_branch text,
+    improve_base_sha text,
+    improve_commit text,
+    CONSTRAINT agent_jobs_agent_check CHECK ((agent = ANY (ARRAY['claude_code'::text, 'codex'::text, 'opencode'::text, 'browser'::text]))),
+    CONSTRAINT agent_jobs_check CHECK (((control = 'managed'::text) OR (status = ANY (ARRAY['running'::text, 'waiting_user'::text, 'idle'::text, 'ended'::text, 'held'::text])))),
+    CONSTRAINT agent_jobs_check1 CHECK (((control = 'observed'::text) OR (request IS NOT NULL))),
+    CONSTRAINT agent_jobs_control_check CHECK ((control = ANY (ARRAY['managed'::text, 'observed'::text]))),
+    CONSTRAINT agent_jobs_external_session_id_check CHECK ((length(external_session_id) <= 128)),
+    CONSTRAINT agent_jobs_failure_signature_check CHECK ((length(failure_signature) <= 64)),
+    CONSTRAINT agent_jobs_improve_base_branch_check CHECK ((length(improve_base_branch) <= 200)),
+    CONSTRAINT agent_jobs_improve_base_sha_check CHECK ((length(improve_base_sha) <= 64)),
+    CONSTRAINT agent_jobs_improve_branch_check CHECK ((length(improve_branch) <= 200)),
+    CONSTRAINT agent_jobs_improve_commit_check CHECK ((length(improve_commit) <= 64)),
+    CONSTRAINT agent_jobs_last_failure_check CHECK ((length(last_failure) <= 300)),
+    CONSTRAINT agent_jobs_max_attempts_check CHECK (((max_attempts >= 1) AND (max_attempts <= 3))),
+    CONSTRAINT agent_jobs_max_cost_usd_check CHECK (((max_cost_usd > (0)::numeric) AND (max_cost_usd <= (50)::numeric))),
+    CONSTRAINT agent_jobs_max_lifetime_hours_check CHECK (((max_lifetime_hours >= 1) AND (max_lifetime_hours <= 2160))),
+    CONSTRAINT agent_jobs_max_minutes_check CHECK (((max_minutes >= 1) AND (max_minutes <= 240))),
+    CONSTRAINT agent_jobs_max_turns_check CHECK (((max_turns >= 1) AND (max_turns <= 200))),
+    CONSTRAINT agent_jobs_number_check CHECK ((number > 0)),
+    CONSTRAINT agent_jobs_pending_approval_check CHECK ((length(pending_approval) <= 500)),
+    CONSTRAINT agent_jobs_pending_instruction_check CHECK ((length(pending_instruction) <= 2000)),
+    CONSTRAINT agent_jobs_project_check CHECK (((length(project) >= 1) AND (length(project) <= 120))),
+    CONSTRAINT agent_jobs_project_root_check CHECK (((length(project_root) >= 1) AND (length(project_root) <= 1024))),
+    CONSTRAINT agent_jobs_request_check CHECK ((length(request) <= 8000)),
+    CONSTRAINT agent_jobs_status_check CHECK ((status = ANY (ARRAY['queued'::text, 'running'::text, 'waiting_user'::text, 'waiting_human'::text, 'waiting_dependency'::text, 'verifying'::text, 'needs_review'::text, 'done'::text, 'stopped'::text, 'held'::text, 'cancelled'::text, 'idle'::text, 'ended'::text]))),
+    CONSTRAINT agent_jobs_stop_reason_check CHECK ((length(stop_reason) <= 60)),
+    CONSTRAINT agent_jobs_title_check CHECK (((length(title) >= 1) AND (length(title) <= 120)))
+);
+
+ALTER TABLE ONLY public.agent_jobs FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -252,13 +353,14 @@ CREATE TABLE public.agent_sessions (
     held_by uuid,
     check_state text DEFAULT 'none'::text NOT NULL,
     checked_at timestamp with time zone,
+    agent_job_id uuid,
     CONSTRAINT agent_sessions_check_state_check CHECK ((check_state = ANY (ARRAY['none'::text, 'changed'::text, 'passed'::text, 'failed'::text]))),
     CONSTRAINT agent_sessions_end_reason_check CHECK ((length(end_reason) <= 40)),
     CONSTRAINT agent_sessions_external_session_id_check CHECK (((length(external_session_id) >= 1) AND (length(external_session_id) <= 128))),
     CONSTRAINT agent_sessions_last_event_check CHECK ((length(last_event) <= 40)),
     CONSTRAINT agent_sessions_notified_key_check CHECK ((length(notified_key) <= 80)),
     CONSTRAINT agent_sessions_project_check CHECK ((length(project) <= 120)),
-    CONSTRAINT agent_sessions_source_check CHECK ((source = 'claude_code'::text)),
+    CONSTRAINT agent_sessions_source_check CHECK ((source = ANY (ARRAY['claude_code'::text, 'codex'::text, 'opencode'::text]))),
     CONSTRAINT agent_sessions_state_check CHECK ((state = ANY (ARRAY['working'::text, 'waiting_user'::text, 'idle'::text, 'error'::text, 'ended'::text]))),
     CONSTRAINT agent_sessions_title_check CHECK ((length(title) <= 120)),
     CONSTRAINT agent_sessions_user_policy_check CHECK ((user_policy = ANY (ARRAY['watch'::text, 'paused_by_user'::text]))),
@@ -654,6 +756,32 @@ ALTER TABLE ONLY public.connector_connections FORCE ROW LEVEL SECURITY;
 
 
 --
+-- Name: connector_reconnects; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.connector_reconnects (
+    id uuid NOT NULL,
+    tenant_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    provider text NOT NULL,
+    state text NOT NULL,
+    fingerprint text,
+    token_hash text,
+    authorize_url text,
+    expires_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT connector_reconnects_authorize_url_check CHECK ((length(authorize_url) <= 4000)),
+    CONSTRAINT connector_reconnects_fingerprint_check CHECK ((length(fingerprint) <= 128)),
+    CONSTRAINT connector_reconnects_provider_check CHECK ((provider = ANY (ARRAY['google'::text, 'microsoft'::text]))),
+    CONSTRAINT connector_reconnects_state_check CHECK ((state = ANY (ARRAY['notified'::text, 'requested'::text, 'ready'::text, 'code'::text, 'done'::text, 'failed'::text]))),
+    CONSTRAINT connector_reconnects_token_hash_check CHECK ((length(token_hash) = 64))
+);
+
+ALTER TABLE ONLY public.connector_reconnects FORCE ROW LEVEL SECURITY;
+
+
+--
 -- Name: conversation_goals; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -947,6 +1075,27 @@ CREATE TABLE public.expenses (
 );
 
 ALTER TABLE ONLY public.expenses FORCE ROW LEVEL SECURITY;
+
+
+--
+-- Name: genie_improvement_proposals; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.genie_improvement_proposals (
+    id uuid NOT NULL,
+    tenant_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    signature text NOT NULL,
+    text text NOT NULL,
+    status text DEFAULT 'proposed'::text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    decided_at timestamp with time zone,
+    CONSTRAINT genie_improvement_proposals_signature_check CHECK ((length(signature) <= 120)),
+    CONSTRAINT genie_improvement_proposals_status_check CHECK ((status = ANY (ARRAY['proposed'::text, 'started'::text, 'dismissed'::text]))),
+    CONSTRAINT genie_improvement_proposals_text_check CHECK (((length(text) >= 1) AND (length(text) <= 500)))
+);
+
+ALTER TABLE ONLY public.genie_improvement_proposals FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -1294,10 +1443,15 @@ CREATE TABLE public.opencode_watches (
     ended_reason text,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    last_activity text,
+    last_activity_at timestamp with time zone,
+    stuck_notified boolean DEFAULT false NOT NULL,
+    stuck_aborts integer DEFAULT 0 NOT NULL,
     CONSTRAINT opencode_watches_base_url_check CHECK (((length(base_url) >= 8) AND (length(base_url) <= 300))),
     CONSTRAINT opencode_watches_failures_check CHECK ((failures >= 0)),
     CONSTRAINT opencode_watches_idle_nudges_check CHECK ((idle_nudges >= 0)),
     CONSTRAINT opencode_watches_interval_seconds_check CHECK (((interval_seconds >= 300) AND (interval_seconds <= 7200))),
+    CONSTRAINT opencode_watches_last_activity_check CHECK ((length(last_activity) <= 200)),
     CONSTRAINT opencode_watches_nudges_check CHECK ((nudges >= 0)),
     CONSTRAINT opencode_watches_session_id_check CHECK ((session_id ~ '^ses_[A-Za-z0-9]{1,64}$'::text)),
     CONSTRAINT opencode_watches_status_check CHECK ((status = ANY (ARRAY['active'::text, 'done'::text, 'stalled'::text, 'unreachable'::text, 'expired'::text, 'stopped'::text])))
@@ -1886,7 +2040,7 @@ CREATE TABLE public.user_notices (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     delivered_at timestamp with time zone,
     CONSTRAINT user_notices_body_check CHECK ((length(body) <= 2000)),
-    CONSTRAINT user_notices_kind_check CHECK ((kind = ANY (ARRAY['reminder'::text, 'scheduled_task'::text, 'schedule_problem'::text, 'agent_session'::text, 'work_hold'::text, 'task_followup'::text]))),
+    CONSTRAINT user_notices_kind_check CHECK ((kind = ANY (ARRAY['reminder'::text, 'scheduled_task'::text, 'schedule_problem'::text, 'agent_session'::text, 'work_hold'::text, 'task_followup'::text, 'agent_job'::text]))),
     CONSTRAINT user_notices_title_check CHECK (((length(title) >= 1) AND (length(title) <= 200)))
 );
 
@@ -1981,9 +2135,13 @@ CREATE TABLE public.work_criteria (
     kind text NOT NULL,
     met_at timestamp with time zone,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT work_criteria_check CHECK ((num_nonnulls(task_id, agent_session_id) = 1)),
-    CONSTRAINT work_criteria_check1 CHECK (((kind = 'manual'::text) OR (met_at IS NULL))),
-    CONSTRAINT work_criteria_kind_check CHECK ((kind = ANY (ARRAY['tests'::text, 'manual'::text]))),
+    agent_job_id uuid,
+    spec text,
+    CONSTRAINT work_criteria_check CHECK ((num_nonnulls(task_id, agent_session_id, agent_job_id) = 1)),
+    CONSTRAINT work_criteria_check1 CHECK (((kind <> 'tests'::text) OR (met_at IS NULL))),
+    CONSTRAINT work_criteria_kind_check CHECK ((kind = ANY (ARRAY['tests'::text, 'manual'::text, 'command'::text, 'artifact'::text]))),
+    CONSTRAINT work_criteria_spec CHECK (((kind = ANY (ARRAY['command'::text, 'artifact'::text])) = (spec IS NOT NULL))),
+    CONSTRAINT work_criteria_spec_check CHECK ((length(spec) <= 1000)),
     CONSTRAINT work_criteria_text_check CHECK (((length(text) >= 1) AND (length(text) <= 200)))
 );
 
@@ -2200,6 +2358,22 @@ ALTER TABLE ONLY public.agent_hosts
 
 
 --
+-- Name: agent_job_runs agent_job_runs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_job_runs
+    ADD CONSTRAINT agent_job_runs_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: agent_jobs agent_jobs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_jobs
+    ADD CONSTRAINT agent_jobs_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: agent_session_marks agent_session_marks_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2360,6 +2534,14 @@ ALTER TABLE ONLY public.connector_connections
 
 
 --
+-- Name: connector_reconnects connector_reconnects_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.connector_reconnects
+    ADD CONSTRAINT connector_reconnects_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: conversation_goals conversation_goals_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2461,6 +2643,14 @@ ALTER TABLE ONLY public.evidence
 
 ALTER TABLE ONLY public.expenses
     ADD CONSTRAINT expenses_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: genie_improvement_proposals genie_improvement_proposals_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.genie_improvement_proposals
+    ADD CONSTRAINT genie_improvement_proposals_pkey PRIMARY KEY (id);
 
 
 --
@@ -3023,6 +3213,48 @@ CREATE UNIQUE INDEX agent_hosts_device ON public.agent_hosts USING btree (tenant
 
 
 --
+-- Name: agent_job_runs_job; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX agent_job_runs_job ON public.agent_job_runs USING btree (job_id, started_at);
+
+
+--
+-- Name: agent_job_runs_recent; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX agent_job_runs_recent ON public.agent_job_runs USING btree (tenant_id, started_at);
+
+
+--
+-- Name: agent_jobs_improve; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX agent_jobs_improve ON public.agent_jobs USING btree (tenant_id, user_id) WHERE (improve_branch IS NOT NULL);
+
+
+--
+-- Name: agent_jobs_number; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX agent_jobs_number ON public.agent_jobs USING btree (tenant_id, user_id, number);
+
+
+--
+-- Name: agent_jobs_queue; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX agent_jobs_queue ON public.agent_jobs USING btree (status, next_run_at) WHERE (control = 'managed'::text);
+
+
+--
+-- Name: agent_jobs_session; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX agent_jobs_session ON public.agent_jobs USING btree (tenant_id, user_id, external_session_id) WHERE (external_session_id IS NOT NULL);
+
+
+--
 -- Name: agent_session_marks_session; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -3041,6 +3273,13 @@ CREATE INDEX agent_sessions_due ON public.agent_sessions USING btree (check_afte
 --
 
 CREATE UNIQUE INDEX agent_sessions_external ON public.agent_sessions USING btree (tenant_id, user_id, source, external_session_id);
+
+
+--
+-- Name: agent_sessions_job; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX agent_sessions_job ON public.agent_sessions USING btree (agent_job_id) WHERE (agent_job_id IS NOT NULL);
 
 
 --
@@ -3240,6 +3479,27 @@ CREATE UNIQUE INDEX connector_connections_unique ON public.connector_connections
 
 
 --
+-- Name: connector_reconnects_fingerprint; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX connector_reconnects_fingerprint ON public.connector_reconnects USING btree (tenant_id, user_id, provider, fingerprint) WHERE (fingerprint IS NOT NULL);
+
+
+--
+-- Name: connector_reconnects_open; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX connector_reconnects_open ON public.connector_reconnects USING btree (tenant_id, user_id) WHERE (state = ANY (ARRAY['requested'::text, 'ready'::text, 'code'::text]));
+
+
+--
+-- Name: connector_reconnects_token; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX connector_reconnects_token ON public.connector_reconnects USING btree (token_hash) WHERE (token_hash IS NOT NULL);
+
+
+--
 -- Name: conversation_summaries_by_conversation; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -3335,6 +3595,13 @@ CREATE INDEX expenses_month ON public.expenses USING btree (tenant_id, user_id, 
 --
 
 CREATE UNIQUE INDEX expenses_receipt_key ON public.expenses USING btree (tenant_id, user_id, COALESCE(household_id, '00000000-0000-0000-0000-000000000000'::uuid), receipt_key) WHERE (voided_at IS NULL);
+
+
+--
+-- Name: genie_improvement_proposals_signature; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX genie_improvement_proposals_signature ON public.genie_improvement_proposals USING btree (tenant_id, user_id, signature);
 
 
 --
@@ -3709,6 +3976,13 @@ CREATE INDEX work_corrections_user ON public.work_corrections USING btree (tenan
 
 
 --
+-- Name: work_criteria_job; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX work_criteria_job ON public.work_criteria USING btree (agent_job_id) WHERE (agent_job_id IS NOT NULL);
+
+
+--
 -- Name: work_criteria_session; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -3989,6 +4263,38 @@ ALTER TABLE ONLY public.agent_hosts
 
 
 --
+-- Name: agent_job_runs agent_job_runs_job_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_job_runs
+    ADD CONSTRAINT agent_job_runs_job_id_fkey FOREIGN KEY (job_id) REFERENCES public.agent_jobs(id) ON DELETE CASCADE;
+
+
+--
+-- Name: agent_job_runs agent_job_runs_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_job_runs
+    ADD CONSTRAINT agent_job_runs_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: agent_jobs agent_jobs_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_jobs
+    ADD CONSTRAINT agent_jobs_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: agent_jobs agent_jobs_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_jobs
+    ADD CONSTRAINT agent_jobs_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
 -- Name: agent_session_marks agent_session_marks_session_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4002,6 +4308,14 @@ ALTER TABLE ONLY public.agent_session_marks
 
 ALTER TABLE ONLY public.agent_session_marks
     ADD CONSTRAINT agent_session_marks_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: agent_sessions agent_sessions_agent_job_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_sessions
+    ADD CONSTRAINT agent_sessions_agent_job_id_fkey FOREIGN KEY (agent_job_id) REFERENCES public.agent_jobs(id) ON DELETE SET NULL;
 
 
 --
@@ -4365,6 +4679,22 @@ ALTER TABLE ONLY public.connector_connections
 
 
 --
+-- Name: connector_reconnects connector_reconnects_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.connector_reconnects
+    ADD CONSTRAINT connector_reconnects_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: connector_reconnects connector_reconnects_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.connector_reconnects
+    ADD CONSTRAINT connector_reconnects_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
 -- Name: conversation_goals conversation_goals_conversation_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4674,6 +5004,22 @@ ALTER TABLE ONLY public.expenses
 
 ALTER TABLE ONLY public.expenses
     ADD CONSTRAINT expenses_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: genie_improvement_proposals genie_improvement_proposals_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.genie_improvement_proposals
+    ADD CONSTRAINT genie_improvement_proposals_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: genie_improvement_proposals genie_improvement_proposals_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.genie_improvement_proposals
+    ADD CONSTRAINT genie_improvement_proposals_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
 
 
 --
@@ -5605,6 +5951,14 @@ ALTER TABLE ONLY public.work_corrections
 
 
 --
+-- Name: work_criteria work_criteria_agent_job_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.work_criteria
+    ADD CONSTRAINT work_criteria_agent_job_id_fkey FOREIGN KEY (agent_job_id) REFERENCES public.agent_jobs(id) ON DELETE CASCADE;
+
+
+--
 -- Name: work_criteria work_criteria_agent_session_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5811,6 +6165,32 @@ ALTER TABLE public.agent_hosts ENABLE ROW LEVEL SECURITY;
 --
 
 CREATE POLICY agent_hosts_tenant_isolation ON public.agent_hosts USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
+
+
+--
+-- Name: agent_job_runs; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.agent_job_runs ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: agent_job_runs agent_job_runs_tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY agent_job_runs_tenant_isolation ON public.agent_job_runs USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
+
+
+--
+-- Name: agent_jobs; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.agent_jobs ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: agent_jobs agent_jobs_tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY agent_jobs_tenant_isolation ON public.agent_jobs USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
 
 
 --
@@ -6035,6 +6415,19 @@ CREATE POLICY connector_connections_tenant_isolation ON public.connector_connect
 
 
 --
+-- Name: connector_reconnects; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.connector_reconnects ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: connector_reconnects connector_reconnects_tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY connector_reconnects_tenant_isolation ON public.connector_reconnects USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
+
+
+--
 -- Name: conversation_goals; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -6214,6 +6607,19 @@ ALTER TABLE public.expenses ENABLE ROW LEVEL SECURITY;
 --
 
 CREATE POLICY expenses_tenant_isolation ON public.expenses USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
+
+
+--
+-- Name: genie_improvement_proposals; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.genie_improvement_proposals ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: genie_improvement_proposals genie_improvement_proposals_tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY genie_improvement_proposals_tenant_isolation ON public.genie_improvement_proposals USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
 
 
 --
@@ -6952,3 +7358,8 @@ INSERT INTO schema_migrations (version) VALUES ('20261030120000');
 INSERT INTO schema_migrations (version) VALUES ('20261030150000');
 INSERT INTO schema_migrations (version) VALUES ('20261030180000');
 INSERT INTO schema_migrations (version) VALUES ('20261030200000');
+INSERT INTO schema_migrations (version) VALUES ('20261030220000');
+INSERT INTO schema_migrations (version) VALUES ('20261030230000');
+INSERT INTO schema_migrations (version) VALUES ('20261031000000');
+INSERT INTO schema_migrations (version) VALUES ('20261031010000');
+INSERT INTO schema_migrations (version) VALUES ('20261031020000');

@@ -74,7 +74,7 @@ export interface ApprovalView {
   readonly workdir: string | null;
   /** 作業（Claude Code の最初の頼みの頭。秘密は伏せる）。無ければ null（未確認）。 */
   readonly task: string | null;
-  /** Genie の仕事に結び付いていれば、その名前（いまは結び付けない: null =「タスク未紐付け」）。 */
+  /** Genie の仕事に結び付いていれば、その名前（null =「タスク未紐付け」）。 */
   readonly genieTask: string | null;
   readonly tool: string;
   /** 何をしようとしているか（1 行）。 */
@@ -244,6 +244,26 @@ export interface AgentApprovalDeps {
   readonly available?: () => boolean;
   /** cwd のプロジェクト（git の根・名前・ブランチ）。無ければ cwd を根にする。 */
   readonly projectOf?: (cwd: string) => Promise<ProjectInfo | null>;
+  /**
+   * 本人を待ち始めた・答えがあった・答えがないまま終わった。Genie が起動した仕事は、ここで時計を止め、
+   * 答えがなければ作業を安全に止める（agent-jobs.ts）。本人が直接始めたセッションには何もしない。
+   */
+  readonly humanWait?: {
+    started(tenantId: string, userId: string, sessionId: string): void;
+    answered(tenantId: string, userId: string, sessionId: string): void;
+    unanswered(
+      tenantId: string,
+      userId: string,
+      sessionId: string,
+      asked: { operation: string; summary: string; reason: 'expired' | 'undelivered' },
+    ): Promise<void>;
+  };
+  /** このセッションが Genie の仕事なら、その名前（カードの「タスク」の行）。 */
+  readonly jobLabel?: (
+    tenantId: string,
+    userId: string,
+    externalSessionId: string,
+  ) => Promise<string | null>;
   readonly now?: () => Date;
   /** 何が起きたか（中身は書かない。道具の名前・種類と結果だけ）。 */
   readonly log?: (event: string, detail: Record<string, unknown>) => void;
@@ -450,7 +470,10 @@ export class AgentApprovals {
       workdir:
         workdir && !workdir.startsWith('..') ? workdir : event.cwd ? shownPath(event.cwd) : null,
       task: session?.title ? redactSecrets(session.title) : null,
-      genieTask: null,
+      genieTask:
+        (await this.deps
+          .jobLabel?.(connection.tenantId, connection.userId, event.sessionId)
+          .catch(() => null)) ?? null,
       tool: event.toolName,
       ...describePermission(event.toolName, event.toolInput, inProject),
       operation: op.label,
@@ -478,12 +501,20 @@ export class AgentApprovals {
       waiters: [],
       timer,
     });
+    this.deps.humanWait?.started(connection.tenantId, connection.userId, event.sessionId);
     const delivered = await this.deps
       .ask(connection.tenantId, connection.userId, view)
       .catch(() => false);
     this.deps.log?.('agent_approval.asked', { id, operation: op.operation, delivered });
     if (!delivered) {
       await this.#end(connection.tenantId, id, 'ended');
+      await this.deps.humanWait
+        ?.unanswered(connection.tenantId, connection.userId, event.sessionId, {
+          operation: op.label,
+          summary: view.summary,
+          reason: 'undelivered',
+        })
+        .catch(() => undefined);
       return { kind: 'none' };
     }
     return { kind: 'asked', id, expiresAt };
@@ -850,15 +881,17 @@ export class AgentApprovals {
     if (!won || live.decision) return false;
     live.decision = decision;
     this.#release(id, live);
+    this.deps.humanWait?.answered(tenantId, live.userId, live.sessionId);
     return true;
   }
 
   /** 答えずに終える（取り下げ・期限切れ・届けられなかった）。hooks には「何も返さない」。 */
   async #end(tenantId: string, id: string, state: 'answered_on_mac' | 'expired' | 'ended') {
     const live = this.#live.get(id);
-    if (live && !live.decision) {
-      live.decision = { behavior: 'none' };
-      this.#release(id, live);
+    const first = live && !live.decision ? live : null;
+    if (first) {
+      first.decision = { behavior: 'none' };
+      this.#release(id, first);
     }
     for (const [key, w] of this.#awaiting) if (w.id === id) this.#awaiting.delete(key);
     await withTenant(this.deps.db, tenantId, (tx) =>
@@ -869,6 +902,16 @@ export class AgentApprovals {
         .where('state', '=', 'pending')
         .execute(),
     ).catch(() => undefined);
+    if (!first) return;
+    if (state === 'expired')
+      await this.deps.humanWait
+        ?.unanswered(tenantId, first.userId, first.sessionId, {
+          operation: first.view.operation,
+          summary: first.view.summary,
+          reason: 'expired',
+        })
+        .catch(() => undefined);
+    else this.deps.humanWait?.answered(tenantId, first.userId, first.sessionId);
   }
 
   #release(id: string, live: Live) {

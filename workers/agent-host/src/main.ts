@@ -278,12 +278,29 @@ async function main(): Promise<void> {
     secrets,
     // 提供者が更新を断ったら、Mac の Apps に「期限切れ」と出させる（失敗しても読み取りの結果は変えない）。
     reportRenewalRejected: (pluginId, connectorId, fingerprint) =>
-      recordRenewalRejected(pluginId, connectorId, fingerprint).catch((error: unknown) =>
-        logger.warn(
-          { err: error instanceof Error ? error.message : 'unknown' },
-          'connector status write failed',
+      Promise.all([
+        recordRenewalRejected(pluginId, connectorId, fingerprint),
+        // 本人の LINE へ知らせる（同じ接続では gateway が 1 回にまとめる）
+        apiSession.fetch(`${baseUrl}/v1/connector-reconnects/rejected`, {
+          method: 'POST',
+          headers: {
+            authorization: `Bearer ${token}`,
+            'content-type': 'application/json',
+          },
+          body: JSON.stringify({
+            plugin_id: pluginId,
+            connector_id: connectorId,
+            fingerprint,
+          }),
+        }),
+      ])
+        .then(() => undefined)
+        .catch((error: unknown) =>
+          logger.warn(
+            { err: error instanceof Error ? error.message : 'unknown' },
+            'connector status write failed',
+          ),
         ),
-      ),
     ...(faultFetch ? { fetch: faultFetch } : {}),
     credentialRefFor: credentialRef,
     /*

@@ -26,6 +26,7 @@ type HookAnswer = {
   hookSpecificOutput: { hookEventName: string; decision: { behavior: string; message?: string } };
 };
 // ほかの試験の LINE の人（Uline など）と重ならない人
+const waits: string[] = [];
 const ME = `Uapproval${uuidv7().replace(/-/g, '')}`;
 
 type Sent = { url: string; body: Record<string, unknown> };
@@ -252,6 +253,12 @@ describe.skipIf(!url)('Claude Code approvals from LINE', () => {
         }),
       agentApprovals: {
         now: () => new Date(clock),
+        humanWait: {
+          started: (_t, _u, sessionId) => void waits.push(`started:${sessionId}`),
+          answered: (_t, _u, sessionId) => void waits.push(`answered:${sessionId}`),
+          unanswered: async (_t, _u, sessionId, asked) =>
+            void waits.push(`unanswered:${sessionId}:${asked.reason}`),
+        },
         // git の代わり: ROOT の下は genie（main）
         projectOf: async (cwd) =>
           cwd.startsWith(ROOT) ? { root: ROOT, name: 'genie', branch: 'main' } : null,
@@ -435,6 +442,7 @@ describe.skipIf(!url)('Claude Code approvals from LINE', () => {
       .find((v) => v.split('.')[3] === 'A')!;
     expect(await press(allow)).toContain('承認を受け付けました');
     expect((await wait(asked.id)).statusCode).toBe(200);
+    expect(waits.at(-1)).toMatch(/^answered:/);
   });
 
   it('refuses a press after the card expired, and the hook gives the question back to the Mac', async () => {
@@ -442,6 +450,8 @@ describe.skipIf(!url)('Claude Code approvals from LINE', () => {
     clock += 10 * 60_000;
     try {
       expect(await press(asked.buttons!.allow)).toContain('期限切れ');
+      // Genie が起動した仕事なら、ここで作業を止めて本人を待つ
+      expect(waits.at(-1)).toMatch(/^unanswered:.*:expired$/);
       expect((await wait(asked.id)).statusCode).toBe(204);
       expect((await stateOf(asked.id)).state).toBe('expired');
     } finally {

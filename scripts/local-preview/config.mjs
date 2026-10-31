@@ -85,6 +85,8 @@ export function parseOptions(args) {
      * **明示したときだけ読み、CHANNEL_ENV_KEYS の名前だけを gateway に渡す。**
      */
     '--channels-env': 'channelsEnv',
+    // 無料のトンネルは起動し直すと URL が変わる。ファイルより優先する
+    '--public-url': 'publicUrl',
   };
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
@@ -464,6 +466,10 @@ export function systemEnvironment(source = process.env) {
   // Never inherit .env, paid providers, remote Docker contexts, or injected Node flags.
   const allowed = [
     'PATH',
+    // エージェントの仕事（agent-jobs.ts）の設定。鍵ではない
+    'GENIE_AGENT_CLAUDE_MODEL',
+    'GENIE_AGENT_DAILY_BUDGET_USD',
+    'GENIE_IMPROVE_REPO',
     'HOME',
     'USER',
     'LOGNAME',

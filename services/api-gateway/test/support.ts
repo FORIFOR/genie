@@ -140,6 +140,7 @@ export interface MakeAppOptions {
   };
   /** Claude Code の承認を LINE から（本番と同じくチャットの service へつなぐ）。 */
   readonly agentApprovals?: {
+    readonly humanWait?: import('../src/agent-approvals.js').AgentApprovalDeps['humanWait'];
     readonly now?: () => Date;
     readonly projectOf?: import('../src/agent-approvals.js').AgentApprovalDeps['projectOf'];
   };
@@ -279,6 +280,9 @@ export async function makeTestApp(options: MakeAppOptions): Promise<TestApp> {
           ? { projectOf: options.agentApprovals.projectOf }
           : {}),
         ...(options.agentApprovals.now ? { now: options.agentApprovals.now } : {}),
+        ...(options.agentApprovals.humanWait
+          ? { humanWait: options.agentApprovals.humanWait }
+          : {}),
       })
     : null;
   const app = buildApp({

@@ -23,7 +23,10 @@ final class ConnectionJourneyTests: XCTestCase {
         var refresh = "test-refresh"
     }
     func make(_ storage: Storage) -> ConnectorState {
-        let deps = ConnectorState.Dependencies(configuration: { ["ASTRA_OAUTH_GOOGLE_CLIENT_ID": "client"] },
+        ConnectorState(sources: [mail, calendar], dependencies: makeDeps(storage))
+    }
+    func makeDeps(_ storage: Storage) -> ConnectorState.Dependencies {
+        ConnectorState.Dependencies(configuration: { ["ASTRA_OAUTH_GOOGLE_CLIENT_ID": "client"] },
             read: { if storage.locked.contains($0.id) { throw KeychainStore.KeychainError.accessDenied }; return storage.values[$0.id] },
             write: { if storage.locked.contains($0.id) { throw KeychainStore.KeychainError.accessDenied }; storage.values[$0.id] = $1 },
             delete: { if storage.failDelete { throw URLError(.cannotWriteToFile) }; storage.values[$0.id] = nil },
@@ -43,7 +46,6 @@ final class ConnectionJourneyTests: XCTestCase {
             replaceLocked: { source, value in
                 storage.replaced.append(source.id); storage.locked.remove(source.id); storage.values[source.id] = value
             })
-        return ConnectorState(sources: [mail, calendar], dependencies: deps)
     }
     func complete(_ state: ConnectorState) async {
         await state.finish(list: [mail, calendar], callback: connectorParseCallback(target: "/callback?code=code&state=expected"), pending: pending,
@@ -96,6 +98,36 @@ final class ConnectionJourneyTests: XCTestCase {
         state.configureBackend(base: "fixture", token: "fixture")
         await state.refreshNow()
         XCTAssertTrue(state.connected.isEmpty)
+    }
+    func testRemoteReconnectHandsOnlyTheUrlThenSavesThePastedCode() async {
+        // LINE からのつなぎ直し: URL だけを渡し、貼られた認可コードで保存する
+        let store = Storage()
+        var deps = makeDeps(store)
+        var calls: [(String, [String: Any]?)] = []
+        var answer = #"{"items":[{"id":"r1","provider":"google","state":"requested"}]}"#
+        deps.remote = { _, _, method, path, body in
+            if method == "GET" { return Data(answer.utf8) }
+            calls.append((path, body)); return Data()
+        }
+        let state = ConnectorState(sources: [mail, calendar], dependencies: deps)
+        state.configureBackend(base: "fixture", token: "fixture")
+        await state.pollRemoteReconnects()
+        XCTAssertEqual(calls.first?.0, "/v1/connector-reconnects/r1/authorize")
+        let url = try! XCTUnwrap(calls.first?.1?["authorize_url"] as? String)
+        XCTAssertFalse(url.contains("code_verifier"))
+        let stateValue = URLComponents(string: url)!.queryItems!.first { $0.name == "state" }!.value!
+        // 別の手続きの値は保存しない
+        answer = #"{"items":[{"id":"r2","provider":"google","state":"code","code":"c"}]}"#
+        await state.pollRemoteReconnects()
+        XCTAssertEqual(calls.last?.0, "/v1/connector-reconnects/r2/finished")
+        XCTAssertEqual(calls.last?.1?["ok"] as? Bool, false)
+        XCTAssertEqual(store.registrations, 0)
+        answer = #"{"items":[{"id":"r1","provider":"google","state":"code","code":"c","callback_state":"\#(stateValue)"}]}"#
+        await state.pollRemoteReconnects()
+        XCTAssertEqual(store.registrations, 2)
+        XCTAssertEqual(calls.last?.0, "/v1/connector-reconnects/r1/finished")
+        XCTAssertEqual(calls.last?.1?["ok"] as? Bool, true)
+        XCTAssertEqual(state.status[mail.id], .connected)
     }
     func testRejectedRenewalShowsExpiredUntilReconnected() async {
         // host が invalid_grant を受け、この接続の指紋を記録した（Google の「テスト中」のアプリは 7 日で失効する）

@@ -4,7 +4,9 @@
  * 本人が「このセッションを10分ごとに見て、止まっていたら続けさせて <URL>」と頼むと、決まった間隔で
  * opencode の API を見て、止まっていて終わっていなければ「続けて」を送る。画面は見ない（承認も画面読みのモデルも要らない）。
  *
- *   作業中（busy・retry）           … 何もしない
+ *   作業中（busy・retry）で進んでいる … 何もしない（進んでいる間は期限も延ばす。最長 7 日）
+ *   作業中のまま 30 分進まない       … 本人に 1 回知らせる
+ *   作業中のまま 60 分進まない       … 固まった実行を止めて（abort）、次の確認で「続けて」を送る。3 回で止めて知らせる
  *   承認・質問を待っている           … 促さない。本人に 1 回知らせて、見続ける
  *   最後の返答に【完了】がある・TODO が全部済み … 終わり。知らせて止める
  *   止まっていて、前に促してから進んだ … 「続けて」を送る
@@ -93,6 +95,8 @@ export interface SessionSnapshot {
   readonly waitingForUser: 'permission' | 'question' | null;
   /** 最後の返答の印（id と終わった時刻）。返答が無ければ null。 */
   readonly signature: string | null;
+  /** 進み具合の印（最後の返答の id・部品の数・最後の部品の状態）。作業中に変わらなければ進んでいない。 */
+  readonly activity?: string | null;
   readonly lastAssistantText: string;
   readonly todos: readonly { readonly content: string; readonly status: string }[];
 }
@@ -124,7 +128,7 @@ export class OpencodeClient {
       this.#get<
         {
           info?: { id?: string; role?: string; time?: { completed?: number }; finish?: string };
-          parts?: { type?: string; text?: string }[];
+          parts?: { type?: string; text?: string; state?: { status?: string } }[];
         }[]
       >(`/session/${id}/message?limit=10`),
       this.#get<{ content?: string; status?: string }[]>(`/session/${id}/todo`).catch(() => []),
@@ -145,12 +149,24 @@ export class OpencodeClient {
       signature: last?.info?.id
         ? `${last.info.id}:${String(last.info.time?.completed ?? 'open')}`
         : null,
+      activity: last?.info?.id
+        ? `${last.info.id}:${String(last.parts?.length ?? 0)}:${String(last.parts?.at(-1)?.type)}:${String(last.parts?.at(-1)?.state?.status)}`
+        : null,
       lastAssistantText,
       todos: todos.map((t) => ({
         content: String(t.content ?? ''),
         status: String(t.status ?? ''),
       })),
     };
+  }
+
+  /** 固まった実行を止める。 */
+  async abort(sessionId: string): Promise<void> {
+    const res = await this.fetchImpl(
+      `${this.baseUrl}/session/${encodeURIComponent(sessionId)}/abort`,
+      { method: 'POST', signal: AbortSignal.timeout(15_000) },
+    );
+    if (!res.ok) throw new Error(`opencode_http_${String(res.status)}`);
   }
 
   async nudge(sessionId: string, text: string): Promise<void> {
@@ -225,6 +241,11 @@ export interface OpencodeWatchDeps {
 
 /** 見守りの期限。 */
 const WATCH_HOURS = 12;
+/** 進んでいる間は期限を延ばすが、これを超えない。 */
+const WATCH_MAX_DAYS = 7;
+const STUCK_NOTIFY_MS = 30 * 60_000;
+const STUCK_ABORT_MS = 60 * 60_000;
+const MAX_STUCK_ABORTS = 3;
 /** 促したことを知らせる間隔（毎回は知らせない。最初と、その後は 6 回ごと）。 */
 const NOTIFY_EVERY = 6;
 
@@ -470,9 +491,62 @@ export class OpencodeWatchService {
     });
     this.deps.log?.('opencode_watch.checked', { id, decision: decision.kind });
     switch (decision.kind) {
-      case 'working':
-        await save({ failures: 0, waiting_notified: false, next_check_at: next });
+      case 'working': {
+        const activity = snapshot.activity ?? null;
+        const base = { failures: 0, waiting_notified: false, next_check_at: next };
+        if (activity !== watch.last_activity || !watch.last_activity_at) {
+          // 進んでいる。見張りを途中で切らないよう期限を延ばす
+          const limit = watch.created_at.getTime() + WATCH_MAX_DAYS * 24 * 3600_000;
+          const extended = Math.min(now.getTime() + WATCH_HOURS * 3600_000, limit);
+          await save({
+            ...base,
+            last_activity: activity,
+            last_activity_at: now,
+            stuck_notified: false,
+            expires_at: new Date(Math.max(extended, watch.expires_at.getTime())),
+          });
+          return;
+        }
+        const quiet = now.getTime() - watch.last_activity_at.getTime();
+        if (quiet >= STUCK_ABORT_MS) {
+          if (watch.stuck_aborts >= MAX_STUCK_ABORTS) {
+            await save({ status: 'stalled', ended_reason: 'stuck', failures: 0 });
+            await tell(
+              `⚠️ ${label}は止めて促しても、${String(MAX_STUCK_ABORTS)} 回固まりました。見守りを止めました。画面で様子を確かめてください。`,
+            );
+            return;
+          }
+          try {
+            await client.abort(watch.session_id);
+          } catch (error) {
+            await save({ failures: watch.failures + 1, next_check_at: next });
+            this.deps.log?.('opencode_watch.abort_failed', {
+              id,
+              error: (error as Error).message,
+            });
+            return;
+          }
+          // すぐ次の確認で「続けて」を送る
+          await save({
+            failures: 0,
+            stuck_aborts: watch.stuck_aborts + 1,
+            stuck_notified: false,
+            last_activity: null,
+            last_activity_at: null,
+            next_check_at: now,
+          });
+          await tell(
+            `🔁 ${label}が ${String(Math.round(quiet / 60_000))} 分進まなかったので、固まった実行を止めました。このあと「続けてください」と送ります。`,
+          );
+          return;
+        }
+        await save({ ...base, stuck_notified: quiet >= STUCK_NOTIFY_MS || watch.stuck_notified });
+        if (quiet >= STUCK_NOTIFY_MS && !watch.stuck_notified)
+          await tell(
+            `⚠️ ${label}は「作業中」のまま ${String(Math.round(quiet / 60_000))} 分進んでいません。60 分進まなければ、固まった実行を止めて続けさせます。`,
+          );
         return;
+      }
       case 'waiting_user':
         await save({ failures: 0, waiting_notified: true, next_check_at: next });
         if (!watch.waiting_notified)

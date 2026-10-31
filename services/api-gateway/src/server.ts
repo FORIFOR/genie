@@ -63,6 +63,12 @@ import { boardUrlFor } from './routes/board.js';
 import { WorkLinkStore, homeLinkFor, openHomeAnswer, workUrlFor } from './work-home.js';
 import { AgentApprovals } from './agent-approvals.js';
 import { projectOf } from './project-info.js';
+import { ClaudeCodeAdapter, CodexAdapter } from './agent-adapters.js';
+import { AgentDiscovery } from './agent-discovery.js';
+import { AgentJobs } from './agent-jobs.js';
+import { GenieImprover } from './agent-improve.js';
+import { ConnectorReconnects } from './connector-reconnect.js';
+import { AgentSessionStore } from './agent-sessions.js';
 import { HandoffHub, HandoffStore, handoffUrlFor } from './browser-handoff.js';
 import { MediaResolver } from './media.js';
 import { MemoryRateLimiter, RedisRateLimiter, type RateLimiter } from './rate-limit/index.js';
@@ -202,6 +208,49 @@ async function main(): Promise<void> {
     },
     log: (event, detail) => logger.info(detail, event),
   });
+  // エージェントの仕事。Genie が起動して進める仕事と、本人が直接始めたセッションの取り込み（読むだけ）
+  const claudeModel = process.env['GENIE_AGENT_CLAUDE_MODEL']?.trim();
+  const agentJobs = new AgentJobs({
+    db,
+    adapters: {
+      claude_code: new ClaudeCodeAdapter(claudeModel ? { model: claudeModel } : {}),
+      codex: new CodexAdapter(),
+    },
+    notify: async (tenantId, userId, text) => {
+      await chat.current?.service.notifyUser(tenantId, userId, null, text);
+    },
+    projectOf,
+    dailyBudgetUsd: Number(process.env['GENIE_AGENT_DAILY_BUDGET_USD'] ?? '5') || 5,
+    log: (event, detail) => logger.info(detail, event),
+  });
+  // Genie 自身の改善。GENIE_IMPROVE_REPO（手元のリポジトリ）があるときだけ
+  const genieImprover = new GenieImprover({
+    db,
+    jobs: agentJobs,
+    repoRoot: process.env['GENIE_IMPROVE_REPO'] || null,
+    notify: async (tenantId, userId, text) => {
+      await chat.current?.service.notifyUser(tenantId, userId, null, text);
+    },
+    log: (event, detail) => logger.info(detail, event),
+  });
+  // メール・予定の接続が切れたときの知らせと、LINE からのつなぎ直し
+  const connectorReconnects = new ConnectorReconnects({
+    db,
+    notify: async (tenantId, userId, text) => {
+      await chat.current?.service.notifyUser(tenantId, userId, null, text);
+    },
+    // LINE の中のブラウザでは Google が許可の画面を出さないので、外のブラウザで開く
+    urlFor: (token) =>
+      callConfig.publicUrl
+        ? `${callConfig.publicUrl}/v1/channels/reconnect/${token}?openExternalBrowser=1`
+        : null,
+  });
+  const agentDiscovery = new AgentDiscovery({
+    db,
+    store: new AgentSessionStore(db),
+    jobs: agentJobs,
+    log: (event, detail) => logger.info(detail, event),
+  });
   // ほかの AI（Claude Code）の承認待ち・停滞の知らせ。Mac の通知と、つないでいれば本人の LINE へ
   // Claude Code の承認を LINE から（カードの署名と送り先はチャットの側。Genie は自分では承認しない）
   const agentApprovals = new AgentApprovals({
@@ -219,6 +268,8 @@ async function main(): Promise<void> {
       await chat.current?.service.notifyUser(tenantId, userId, null, text);
     },
     projectOf,
+    jobLabel: (tenantId, userId, sessionId) => agentJobs.jobLabel(tenantId, userId, sessionId),
+    humanWait: agentJobs.humanWait,
     log: (event, detail) => logger.info(detail, event),
   });
   const agentWatch = new AgentSessionWatch({
@@ -354,7 +405,11 @@ async function main(): Promise<void> {
           decide: (tenantId, userId, id, choice) =>
             agentApprovals.decide(tenantId, userId, id, choice),
           instruct: (tenantId, userId, text) => agentApprovals.instruct(tenantId, userId, text),
-          command: (tenantId, userId, text) => agentApprovals.command(tenantId, userId, text),
+          command: async (tenantId, userId, text) =>
+            (await agentApprovals.command(tenantId, userId, text)) ??
+            (await connectorReconnects.command(tenantId, userId, text)) ??
+            (await genieImprover.command(tenantId, userId, text)) ??
+            agentJobs.command(tenantId, userId, text),
         },
         homeLink: (tenantId, userId) =>
           homeLinkFor({
@@ -383,6 +438,8 @@ async function main(): Promise<void> {
     workDesk: desk,
     workLinks,
     agentApprovals,
+    agentJobs,
+    connectorReconnects,
     // ブラウザの引き継ぎ（Genie 専用のブラウザがログインの壁で止まったら、本人が LINE から操作する）
     handoffs: {
       store: new HandoffStore(db),
@@ -447,6 +504,7 @@ async function main(): Promise<void> {
     deskWatch?.stop();
     watches.stop();
     agentWatch.stop();
+    genieImprover.stop();
     phone.inbound?.stop();
     chat.current?.stop();
     await app.close();
@@ -469,6 +527,11 @@ async function main(): Promise<void> {
   watches.start(30_000);
   // ほかの AI の知らせ。15 秒ごとに、見る時刻が来たセッションだけ見る
   agentWatch.start(15_000);
+  // エージェントの仕事の列。15 秒ごと。本人が直接始めた Codex のセッションは 1 分ごとに探す
+  agentJobs.start(15_000);
+  agentDiscovery.start(60_000);
+  // 自分の止まり方から改善を提案する。6 時間ごと（提案だけで、始めるのは本人の言葉）
+  genieImprover.start();
   // 保留の日・前の仕事を待つ頼み。15 秒ごと
   deskWatch?.start(15_000);
   logger.info({ schedules: runner ? 'on' : 'off', tz: schedules.tz }, 'schedules');

@@ -71,6 +71,9 @@ GRANT SELECT (tenant_id, status, next_run_at, running_at) ON scheduled_jobs TO a
 GRANT SELECT (id, tenant_id, user_id, source, token_hash, revoked_at) ON agent_connections TO astra_identity;
 -- 知らせの見回りは、時間が来たセッションをテナントをまたいで取り出すだけ（見る・知らせるのは本人のテナントの中）
 GRANT SELECT (id, tenant_id, check_after) ON agent_sessions TO astra_identity;
+-- エージェントの仕事の見回り（どのテナントに動かす仕事があるかだけ）
+GRANT SELECT (id, tenant_id, status, control, next_run_at) ON agent_jobs TO astra_identity;
+GRANT SELECT (id, tenant_id, user_id, provider, state, token_hash, expires_at) ON connector_reconnects TO astra_identity;
 -- 保留の日が来たか・前の仕事を待っている頼みがあるかを、テナントをまたいで知るだけ（名前・理由・頼みの文は読めない）
 GRANT SELECT (id, tenant_id, status, until_date, due_noticed_at) ON work_holds TO astra_identity;
 GRANT SELECT (id, tenant_id, status) ON task_followups TO astra_identity;

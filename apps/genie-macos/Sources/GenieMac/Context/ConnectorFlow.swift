@@ -127,6 +127,17 @@ final class ConnectorFlow {
         connections.forEach { $0.cancel() }; connections.removeAll()
     }
 
+    /// LINE からのつなぎ直し（スマホで許可する）。戻り先の 127.0.0.1 はスマホからは開けず、本人が URL を貼って届くので、待ち受けない。
+    static func prepareRemote(provider: String, clientId: String, scopes: [String]) -> (pending: Pending, url: String)? {
+        let verifier = randomVerifier(), state = randomVerifier()
+        guard !clientId.isEmpty, !verifier.isEmpty, !state.isEmpty else { return nil }
+        let port = UInt16.random(in: 49152...65000)
+        let redirect = provider == "microsoft" ? "http://localhost:\(port)/" : "http://127.0.0.1:\(port)/callback"
+        guard let url = GenieCoreBridge.authorizeUrl(provider: provider, clientId: clientId, redirectUri: redirect,
+                scopes: scopes, state: state, codeChallenge: GenieCoreBridge.pkceChallenge(verifier)) else { return nil }
+        return (Pending(verifier: verifier, state: state, redirectUri: redirect, port: port), url)
+    }
+
     func begin(provider: String, clientId: String, scopes: [String],
                onTimeout: @escaping () -> Void = {},
                onCallback: @escaping (OauthCallback, Pending) -> Void) async throws -> Bool {

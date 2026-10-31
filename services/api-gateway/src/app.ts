@@ -35,6 +35,7 @@ import {
   registerHandoffHostRoutes,
   registerHandoffViewerRoutes,
 } from './routes/browser-handoff.js';
+import { registerConnectorReconnectRoutes } from './connector-reconnect.js';
 import { registerArtifactRoutes } from './routes/artifacts.js';
 import { registerPluginRoutes } from './routes/plugins.js';
 import { registerShareRoutes } from './routes/shares.js';
@@ -116,6 +117,10 @@ export interface AppDeps {
   readonly workLinks?: import('./work-home.js').WorkLinkStore;
   /** Claude Code の承認を LINE から（agent-approvals.ts）。 */
   readonly agentApprovals?: import('./agent-approvals.js').AgentApprovals;
+  /** エージェントの仕事（agent-jobs.ts）。 */
+  readonly agentJobs?: import('./agent-jobs.js').AgentJobs;
+  /** メール・予定の接続が切れたときの知らせと、LINE からのつなぎ直し。 */
+  readonly connectorReconnects?: import('./connector-reconnect.js').ConnectorReconnects;
   /** ブラウザの引き継ぎ（つまずいた Genie 専用のブラウザを、本人が LINE から操作する）。 */
   readonly handoffs?: Omit<
     import('./routes/browser-handoff.js').HandoffRouteDeps,
@@ -211,6 +216,7 @@ export function buildApp(deps: AppDeps): App {
   registerAgentSessionRoutes(app, {
     db: deps.db,
     ...(deps.agentApprovals ? { approvals: deps.agentApprovals } : {}),
+    ...(deps.agentJobs ? { jobs: deps.agentJobs } : {}),
   });
   if (deps.workDesk) registerWorkDeskRoutes(app, deps.workDesk);
   if (deps.workDesk && deps.workLinks)
@@ -224,6 +230,7 @@ export function buildApp(deps: AppDeps): App {
       ? { ...deps.handoffs, bridge: deps.hostBridge, tasks: deps.tasks }
       : null;
   if (handoffs) registerHandoffHostRoutes(app, handoffs);
+  if (deps.connectorReconnects) registerConnectorReconnectRoutes(app, deps.connectorReconnects);
   if (deps.agentHosts) {
     registerAgentHostRoutes(app, {
       hosts: deps.agentHosts,

@@ -39,7 +39,7 @@ import { sql } from 'kysely';
 import { uuidv7 } from '@genie/contracts';
 import { withIdentity, withTenant, type DbHandle, type ScopedDb } from '@genie/db';
 
-export type AgentSource = 'claude_code';
+export type AgentSource = 'claude_code' | 'codex' | 'opencode';
 export type AgentState = 'working' | 'waiting_user' | 'idle' | 'error' | 'ended';
 export type UserPolicy = 'watch' | 'paused_by_user';
 /** Dock に何として出すか（読むときに決める。残さない）。 */
@@ -412,6 +412,26 @@ export class AgentSessionStore {
         .execute(),
     );
     return { id, token };
+  }
+
+  /** その種類の接続（発見で届くものには hooks の鍵が要らない。無ければ作る）。 */
+  async ownConnection(
+    tenantId: string,
+    userId: string,
+    source: AgentSource,
+    label: string,
+  ): Promise<AgentConnection> {
+    const found = await withTenant(this.db, tenantId, (tx) =>
+      tx
+        .selectFrom('agent_connections')
+        .select('id')
+        .where('user_id', '=', userId)
+        .where('source', '=', source)
+        .where('revoked_at', 'is', null)
+        .executeTakeFirst(),
+    );
+    const id = found?.id ?? (await this.connect({ tenantId, userId, source, label })).id;
+    return { id, tenantId, userId, source };
   }
 
   async connections(tenantId: string, userId: string) {

@@ -76,6 +76,7 @@ DB設定・マイグレーション・3サービスの起動をまとめて行�
   --computer-use      Macの画面操作を有効化。タスク承認と開始時の同意が必要
   --computer-vision-model <名前>  画面操作だけ導入済みローカルOllama画像モデルを使う（会話設定を保持）
   --work-sync         つないだ Gmail・カレンダーを 15 分ごとに Work へ同期（読み取りのみ。分類にモデルは使わない）
+  --public-url <url>   公開の先頭（--channels-env の GENIE_PUBLIC_URL より優先）
   --channels-env <file>  LINE / Slack・写真を読む・通話の設定（0600 のファイル）。鍵はキーチェーンから読む（docs/SECRETS.ja.md）
   --transaction-simulation  架空の注文だけを検証。--computer-use 必須、実サービスへ発注しません
   --computer-helper <path>  画面操作ヘルパーの道。既定はこのリポジトリが建てた本番版。
@@ -875,6 +876,7 @@ export async function start(options) {
           (ignored.length ? `（渡さなかった名前: ${ignored.join(', ')}）` : ''),
       );
     }
+    if (options.publicUrl) runtimeEnv.GENIE_PUBLIC_URL = options.publicUrl;
     if (codexExecutable) runtimeEnv.ASTRA_CODEX_PATH = codexExecutable;
     if (claudeExecutable) runtimeEnv.ASTRA_CLAUDE_CODE_PATH = claudeExecutable;
     if (options.computerUse) {

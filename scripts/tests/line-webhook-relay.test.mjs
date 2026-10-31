@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { createServer } from 'node:http';
 import { createRelay, MAX_BODY, WEBHOOK_PATH } from '../line-webhook-relay.mjs';
 import { channelEnvironment, parseOptions } from '../local-preview/config.mjs';
 import { SECRET_ENV, secretEnvironment } from '../local-preview/secrets.mjs';
@@ -158,6 +159,47 @@ test('passes only the call page and its WebSocket to the gateway', async () => {
     wss.close();
     gateway.closeAllConnections?.();
     await new Promise((r) => gateway.close(r));
+  }
+});
+
+test('passes the reconnect page, status and callback, and nothing else under it', async () => {
+  const seen = [];
+  const gateway = createServer((req, res) => {
+    let body = '';
+    req.on('data', (c) => (body += c));
+    req.on('end', () => {
+      seen.push(`${req.method} ${req.url} ${body}`);
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end('{"result":"ok"}');
+    });
+  });
+  await new Promise((r) => gateway.listen(0, '127.0.0.1', r));
+  const relay = createRelay({ gateway: `http://127.0.0.1:${gateway.address().port}` });
+  await new Promise((r) => relay.listen(0, '127.0.0.1', r));
+  const base = `http://127.0.0.1:${relay.address().port}/v1/channels/reconnect`;
+  const token = 'R'.repeat(32);
+  try {
+    assert.equal((await fetch(`${base}/${token}?openExternalBrowser=1`)).status, 200);
+    assert.equal((await fetch(`${base}/${token}/status`)).status, 200);
+    const posted = await fetch(`${base}/${token}/callback`, {
+      method: 'POST',
+      body: '{"url":"http://127.0.0.1:1/callback?code=c&state=s"}',
+    });
+    assert.deepEqual(await posted.json(), { result: 'ok' });
+    assert.equal((await fetch(`${base}/short`)).status, 404);
+    assert.equal((await fetch(`${base}/${token}/other`)).status, 404);
+    assert.equal(
+      (await fetch(`http://127.0.0.1:${relay.address().port}/v1/connector-reconnects/pending`)).status,
+      404,
+    );
+    assert.deepEqual(seen, [
+      `GET /v1/channels/reconnect/${token} `,
+      `GET /v1/channels/reconnect/${token}/status `,
+      `POST /v1/channels/reconnect/${token}/callback {"url":"http://127.0.0.1:1/callback?code=c&state=s"}`,
+    ]);
+  } finally {
+    relay.close();
+    gateway.close();
   }
 });
 

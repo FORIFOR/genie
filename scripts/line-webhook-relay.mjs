@@ -24,6 +24,8 @@
  * ブラウザの引き継ぎ（src/browser-handoff.ts）のページも通す（本人 1 人・15 分のリンク）:
  *   - GET /v1/channels/handoff/<32 字のリンク>（ページ）と、その /ws（画面の流れと本人の操作の WebSocket）
  *   - LINE の中では、上の LIFF の入口に liff.state=/h/<リンク> で入る
+ * 接続のつなぎ直し（src/connector-reconnect.ts）のページも通す（本人 1 人・15 分のリンク）:
+ *   - GET /v1/channels/reconnect/<32 字のリンク> と、その /status。POST その /callback（貼られた URL。4KB まで）
  * 仕事のホームの承認ルールの取り消しも通す: POST /v1/channels/work/<リンク>/rules/<id>/revoke（本文なし）。
  *   一覧は GET /v1/channels/work/<リンク>/rules（読むだけ）
  * 中継（公式アカウント 1 つ、docs/LINE_HUB.ja.md）を手元で動かすときは、`--hub` で
@@ -53,6 +55,8 @@ export const WORK_RULE_REVOKE =
 export const BOARD_ENTRY = /^\/v1\/channels\/board$/;
 /** ブラウザの引き継ぎのページと、その WebSocket。 */
 export const HANDOFF_PAGE = /^\/v1\/channels\/handoff\/[A-Za-z0-9_-]{32}$/;
+export const RECONNECT_PAGE = /^\/v1\/channels\/reconnect\/[A-Za-z0-9_-]{32}(?:\/status)?$/;
+export const RECONNECT_CALLBACK = /^\/v1\/channels\/reconnect\/[A-Za-z0-9_-]{32}\/callback$/;
 export const HANDOFF_SOCKET = /^\/v1\/channels\/handoff\/[A-Za-z0-9_-]{32}\/ws$/;
 /** カードの画像（店の写真・地図）。gateway が Google から取り直して返す（キーは外へ出ない）。 */
 export const MEDIA = /^\/v1\/channels\/media\/[A-Za-z0-9_-]{32}$/;
@@ -74,7 +78,7 @@ export function createRelay({ gateway, hub = null, fetchImpl = fetch, log = () =
     };
     if (
       req.method === 'GET' &&
-      [CALL_PAGE, BOARD_PAGE, WORK_PAGE, BOARD_ENTRY, MEDIA, HANDOFF_PAGE].some((re) =>
+      [CALL_PAGE, BOARD_PAGE, WORK_PAGE, BOARD_ENTRY, MEDIA, HANDOFF_PAGE, RECONNECT_PAGE].some((re) =>
         re.test(pathOf(req.url)),
       )
     ) {
@@ -94,6 +98,40 @@ export function createRelay({ gateway, hub = null, fetchImpl = fetch, log = () =
       });
       upstream.on('error', () => done(502));
       upstream.end();
+      return undefined;
+    }
+    if (req.method === 'POST' && RECONNECT_CALLBACK.test(pathOf(req.url))) {
+      // 本人が貼った URL。認可コードを含むので記録しない。答えはそのまま返す
+      const chunks = [];
+      let size = 0;
+      req.on('data', (chunk) => {
+        size += chunk.length;
+        if (size > 4096) {
+          req.destroy();
+          return;
+        }
+        chunks.push(chunk);
+      });
+      req.on('end', () => {
+        const body = Buffer.concat(chunks);
+        const upstream = httpRequest(
+          new URL(pathOf(req.url), gateway),
+          {
+            method: 'POST',
+            timeout: 10_000,
+            headers: { 'content-type': 'application/json', 'content-length': body.length },
+          },
+          (answer) => {
+            res.writeHead(answer.statusCode ?? 502, {
+              'content-type': 'application/json',
+              'cache-control': 'no-store',
+            });
+            answer.pipe(res);
+          },
+        );
+        upstream.on('error', () => done(502));
+        upstream.end(body);
+      });
       return undefined;
     }
     if (req.method === 'POST' && WORK_RULE_REVOKE.test(pathOf(req.url))) {
