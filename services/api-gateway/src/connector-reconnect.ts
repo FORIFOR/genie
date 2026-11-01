@@ -10,6 +10,9 @@
  * なぜ貼るのか: デスクトップ用の OAuth クライアントの戻り先はその端末の 127.0.0.1 だけで、スマホからは Mac に届かない。
  * 認可コードは verifier が無いと使えない。DB にも記録にも残さず、このプロセスのメモリで Mac へ渡すだけ。
  * 自動ではつなぎ直さない。必ず本人の言葉で始める。
+ *
+ * 本人「Gmail つながってる？」 → いまの様子を答える（リンクは作らない）。
+ * 手元の鍵は見えないので、最後につないだ時刻（connector_connections）と、提供者に断られた知らせの時刻を比べて答える。
  */
 import { createHash, randomBytes } from 'node:crypto';
 import { sql } from 'kysely';
@@ -37,6 +40,12 @@ const AUTHORIZE_HOST: Record<ReconnectProvider, string> = {
 
 export interface ReconnectDeps {
   readonly db: DbHandle;
+  /** 本人のつないだ接続（新しい順。切ったものは除く）。持ち主は plugin-registry。 */
+  readonly connectionsOf: (
+    tenantId: string,
+    userId: string,
+    provider: ReconnectProvider,
+  ) => Promise<readonly { state: string; accountLabel: string | null; connectedAt: Date }[]>;
   readonly notify?: (tenantId: string, userId: string, text: string) => Promise<void>;
   /** 本人のページのリンク。公開の先頭が無ければ null。 */
   readonly urlFor: (token: string) => string | null;
@@ -82,6 +91,23 @@ export function authorizeUrlFor(provider: ReconnectProvider, text: string): URL 
 /** 「Google をつなぎ直して」「Gmail の連携を再び繋げて」など。文の頭が接続の名前のものだけ。 */
 export const RECONNECT_REQUEST =
   /^(?:もう一度|再び|また)?\s*(Googleカレンダー|Google|グーグル|Gmail|Microsoft|マイクロソフト|Outlook)\s*(?:との|の)?\s*(?:接続|連携)?\s*(?:を|に)?\s*(?:もう一度|再び|また)?\s*(?:つなぎ直|繋ぎ直|つな[げぎい]|繋[げぎい]|再接続|再連携|連携し直|戻して|直して)/i;
+
+/** 「Gmail つながってる？」「Google の接続は？」「接続状況」など。つなぎ直しの頼み（「つないで」）とは分ける。 */
+export const RECONNECT_STATUS =
+  /^(Googleカレンダー|Google|グーグル|Gmail|Microsoft|マイクロソフト|Outlook)?\s*(?:との|の|は|が)?\s*(?:(?:接続|連携)\s*(?:は|が|の)?\s*(?:いま|今)?\s*(?:どう|状況|状態|大丈夫|切れ|きれ|つなが|繋が|[?？]|$)|(?:いま|今)?\s*(?:つながって|繋がって|つないで[るい]|繋いで[るい]|切れて|きれて))/i;
+
+const isMicrosoft = (name: string) => /^(Microsoft|マイクロソフト|Outlook)/i.test(name);
+
+/** 本人に見せる日時（例: 10/31 16:09）。 */
+const shortDate = (at: Date) =>
+  new Intl.DateTimeFormat('ja-JP', {
+    timeZone: 'Asia/Tokyo',
+    month: 'numeric',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(at);
+
 export class ConnectorReconnects {
   /** 認可コード。DB に置かない。再起動で消えたら、頼み直してもらう。 */
   readonly #callbacks = new Map<string, PastedCallback>();
@@ -126,13 +152,76 @@ export class ConnectorReconnects {
     return true;
   }
 
+  /** 1 つの提供者のいまの様子。つないだことが無い提供者は null。 */
+  async #statusLine(
+    tenantId: string,
+    userId: string,
+    provider: ReconnectProvider,
+  ): Promise<string | null> {
+    const connections = await this.deps.connectionsOf(tenantId, userId, provider);
+    const { broken, open } = await withTenant(this.deps.db, tenantId, async (tx) => ({
+      broken: await tx
+        .selectFrom('connector_reconnects')
+        .select('created_at')
+        .where('user_id', '=', userId)
+        .where('provider', '=', provider)
+        .where('state', '=', 'notified')
+        .orderBy('created_at', 'desc')
+        .executeTakeFirst(),
+      open: await tx
+        .selectFrom('connector_reconnects')
+        .select('expires_at')
+        .where('user_id', '=', userId)
+        .where('provider', '=', provider)
+        .where('state', 'in', ['requested', 'ready', 'code'])
+        .where('expires_at', '>', this.#now())
+        .orderBy('created_at', 'desc')
+        .executeTakeFirst(),
+    }));
+    // つないだことが無い、または本人が切った（断られた知らせも無い）
+    if (connections.length === 0 && !broken) return null;
+    const label = LABEL[provider];
+    const current = connections.find((c) => c.state === 'CONNECTED');
+    // 断られた知らせのあとにつなぎ直していれば、その知らせはもう古い
+    if (current && !(broken && broken.created_at > current.connectedAt)) {
+      const who = current.accountLabel ? `${current.accountLabel}・` : '';
+      return `✅ ${label}はつながっています（${who}${shortDate(current.connectedAt)} につなぎました）。切れた知らせは届いていません。`;
+    }
+    const since = broken ? `（${shortDate(broken.created_at)} に分かりました）` : '';
+    const name = provider === 'google' ? 'Google' : 'Microsoft';
+    const left = open?.expires_at
+      ? Math.ceil((open.expires_at.getTime() - this.#now().getTime()) / 60_000)
+      : null;
+    return [
+      `⚠️ ${label}は切れています${since}。つなぎ直すまで、メールや予定を読めません。`,
+      left !== null
+        ? `いまつなぎ直しの途中です。届いたリンクから進めてください（あと ${String(left)} 分）。`
+        : `「${name} をつなぎ直して」と送ると、スマホから手続きできます。`,
+    ].join('\n');
+  }
+
+  async #statusReply(tenantId: string, userId: string, name: string | undefined): Promise<string> {
+    const providers: readonly ReconnectProvider[] = name
+      ? [isMicrosoft(name) ? 'microsoft' : 'google']
+      : ['google', 'microsoft'];
+    const lines: string[] = [];
+    for (const provider of providers) {
+      const line = await this.#statusLine(tenantId, userId, provider);
+      if (line) lines.push(line);
+    }
+    if (lines.length > 0) return lines.join('\n');
+    return name
+      ? `${LABEL[providers[0]!]}はまだつないでいません。「${isMicrosoft(name) ? 'Microsoft' : 'Google'} をつなぎ直して」と送ると、スマホから手続きできます。`
+      : 'メールや予定の接続はまだありません。「Google をつなぎ直して」と送ると、スマホから手続きできます。';
+  }
+
   async command(tenantId: string, userId: string, text: string): Promise<string | null> {
+    const asked = RECONNECT_STATUS.exec(text.trim());
+    if (asked) return this.#statusReply(tenantId, userId, asked[1]);
     const m = RECONNECT_REQUEST.exec(text.trim());
     // 「なぜつなげないの？」のような問いは頼みではない
     if (!m || /[?？]|なぜ|どうして|ません|ないの/.test(text)) return null;
-    const provider: ReconnectProvider = /^(Microsoft|マイクロソフト|Outlook)/i.test(m[1]!)
-      ? 'microsoft'
-      : 'google';
+    const provider: ReconnectProvider = isMicrosoft(m[1]!) ? 'microsoft' : 'google';
     const token = randomBytes(24).toString('base64url');
     const url = this.deps.urlFor(token);
     if (!url)

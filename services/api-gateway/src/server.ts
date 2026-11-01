@@ -236,6 +236,7 @@ async function main(): Promise<void> {
   // メール・予定の接続が切れたときの知らせと、LINE からのつなぎ直し
   const connectorReconnects = new ConnectorReconnects({
     db,
+    connectionsOf: (tenantId, userId, provider) => connections.ofUser(tenantId, userId, provider),
     notify: async (tenantId, userId, text) => {
       await chat.current?.service.notifyUser(tenantId, userId, null, text);
     },

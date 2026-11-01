@@ -4,7 +4,8 @@
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { type TokenResponse, uuidv7 } from '@genie/contracts';
-import { withTenant } from '@genie/db';
+import { withSystem, withTenant } from '@genie/db';
+import { ConnectionService } from '@genie/service-plugin-registry';
 import { makeTestApp, makeTokens, testDbConfig, type TestApp } from './support.js';
 import {
   ConnectorReconnects,
@@ -14,6 +15,7 @@ import {
 
 const url = process.env['TEST_DATABASE_URL'];
 const identityUrl = process.env['TEST_IDENTITY_DATABASE_URL'];
+const PLUGIN_ID = 'com.test.reconnect-mail';
 const AUTH = 'https://accounts.google.com/o/oauth2/v2/auth?state=expected&code_challenge=x';
 
 describe('parsePastedCallback', () => {
@@ -79,6 +81,25 @@ describe.skipIf(!url)('connector reconnects', () => {
         headers: { authorization: `Bearer ${access}` },
       })
     ).json<{ user: { id: string } }>().user.id;
+    // connector_connections の FK に plugin 行が要る
+    await withSystem(harness.db, async (tx) => {
+      await tx
+        .insertInto('plugin_publishers')
+        .values({ id: 'astra', display_name: 'Genie', public_key: '', verified: true })
+        .onConflict((oc) => oc.column('id').doNothing())
+        .execute();
+      await tx
+        .insertInto('plugins')
+        .values({
+          id: PLUGIN_ID,
+          publisher_id: 'astra',
+          name: 'Reconnect mail',
+          category: 'connector',
+          latest_version: '0.1.0',
+        })
+        .onConflict((oc) => oc.column('id').doNothing())
+        .execute();
+    });
   });
 
   afterAll(async () => {
@@ -91,8 +112,13 @@ describe.skipIf(!url)('connector reconnects', () => {
     await withTenant(harness.db, tenantId, (tx) =>
       tx.deleteFrom('connector_reconnects').where('user_id', '=', userId).execute(),
     );
+    await withTenant(harness.db, tenantId, (tx) =>
+      tx.deleteFrom('connector_connections').where('connected_by', '=', userId).execute(),
+    );
     store = new ConnectorReconnects({
       db: harness.db,
+      connectionsOf: (t, u, provider) =>
+        new ConnectionService({ db: harness.db }).ofUser(t, u, provider),
       notify: async (_t, _u, text) => {
         told.push(text);
       },
@@ -163,6 +189,107 @@ describe.skipIf(!url)('connector reconnects', () => {
     expect(await store.authorize(tenantId, userId, item!.id, 'https://evil.example/?state=s')).toBe(
       false,
     );
+  });
+
+  const connect = (at: Date, state = 'CONNECTED') =>
+    withTenant(harness.db, tenantId, (tx) =>
+      tx
+        .insertInto('connector_connections')
+        .values({
+          id: uuidv7(),
+          tenant_id: tenantId,
+          plugin_id: PLUGIN_ID,
+          connector_id: 'gmail',
+          provider: 'google',
+          state,
+          granted_scopes: ['mail.read'],
+          credential_ref: `ref-${uuidv7()}`,
+          account_label: 'me@example.com',
+          connected_by: userId,
+          connected_at: at,
+          revoked_at: state === 'REVOKED' ? at : null,
+        })
+        .execute(),
+    );
+  const statusOf = (text = 'Gmail つながってる？') => store.command(tenantId, userId, text);
+  const minutes = (n: number) => new Date(Date.now() + n * 60_000);
+
+  it('says connected when no refusal came after the last connection', async () => {
+    await connect(minutes(-60));
+    const reply = await statusOf();
+    expect(reply).toContain('はつながっています');
+    expect(reply).toContain('me@example.com');
+  });
+
+  it('says cut when the provider refused after the last connection', async () => {
+    await connect(minutes(-60));
+    await store.rejected(tenantId, userId, 'google', 'a'.repeat(32));
+    const reply = await statusOf();
+    expect(reply).toContain('は切れています');
+    expect(reply).not.toContain('はつながっています');
+    expect(reply).toContain('Google をつなぎ直して');
+  });
+
+  it('says cut when an expired connection remains, or the refused one was removed', async () => {
+    await connect(minutes(-60), 'EXPIRED');
+    expect(await statusOf()).toContain('は切れています');
+    await withTenant(harness.db, tenantId, (tx) =>
+      tx.deleteFrom('connector_connections').where('connected_by', '=', userId).execute(),
+    );
+    await connect(minutes(-60), 'REVOKED');
+    await store.rejected(tenantId, userId, 'google', 'a'.repeat(32));
+    expect(await statusOf()).toContain('は切れています');
+  });
+
+  it('says not connected after the user disconnected on purpose', async () => {
+    await connect(minutes(-60), 'REVOKED');
+    expect(await statusOf()).toContain('まだつないでいません');
+  });
+
+  it('says connected again after reconnecting on the Mac', async () => {
+    await connect(minutes(-60), 'REVOKED');
+    await store.rejected(tenantId, userId, 'google', 'a'.repeat(32));
+    await connect(minutes(5));
+    expect(await statusOf()).toContain('はつながっています');
+  });
+
+  it('shows a reconnect in progress, and does not make a new link', async () => {
+    await connect(minutes(-60));
+    await store.rejected(tenantId, userId, 'google', 'a'.repeat(32));
+    const { token } = await asked();
+    const reply = await statusOf();
+    expect(reply).toContain('つなぎ直しの途中');
+    expect(reply).toContain('あと 15 分');
+    expect(reply).not.toContain('reconnect/');
+    // 聞いただけで、進行中のリンクを壊さない
+    expect(await store.status(token)).not.toBeNull();
+  });
+
+  it('says so when never connected', async () => {
+    expect(await statusOf()).toContain('まだつないでいません');
+    expect(await statusOf('接続状況')).toContain('接続はまだありません');
+  });
+
+  it('understands status wordings without taking requests or other questions', async () => {
+    await connect(minutes(-60));
+    for (const text of [
+      'Gmail つながってる？',
+      'Gmailは繋がってますか',
+      'gmail 切れてる？',
+      'Google の接続は？',
+      'Gmailの連携はどう？',
+      'Gmailの接続状況',
+      '接続状況',
+      '連携は大丈夫？',
+    ])
+      expect(await statusOf(text), text).toContain('はつながっています');
+    expect(await statusOf('Gmailをつないで')).toContain('のつなぎ直しです');
+    for (const text of [
+      'Gmail がつながらないのはなぜ？',
+      'Gmail のメールを見せて',
+      '今どうなってる？',
+    ])
+      expect(await statusOf(text), text).toBeNull();
   });
 
   it('ignores other words', async () => {

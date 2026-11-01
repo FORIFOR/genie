@@ -143,6 +143,29 @@ export class ConnectionService {
     return rows.map(toConnection);
   }
 
+  /** 本人が提供者へつないだもの（切ったものは除く）。新しい順。いま切れているかを本人に答えるのに使う。 */
+  async ofUser(
+    tenantId: string,
+    userId: string,
+    provider: string,
+  ): Promise<{ state: ConnectionState; accountLabel: string | null; connectedAt: Date }[]> {
+    const rows = await withTenant(this.#db, tenantId, (tx) =>
+      tx
+        .selectFrom('connector_connections')
+        .select(['state', 'account_label', 'connected_at'])
+        .where('connected_by', '=', userId)
+        .where('provider', '=', provider)
+        .where('state', '!=', 'REVOKED')
+        .orderBy('connected_at', 'desc')
+        .execute(),
+    );
+    return rows.map((r) => ({
+      state: r.state as ConnectionState,
+      accountLabel: r.account_label,
+      connectedAt: r.connected_at,
+    }));
+  }
+
   /** 切る。**参照も消す。**残しておく理由が無い。 */
   async disconnect(tenantId: string, pluginId: string, connectorId: string): Promise<void> {
     const at = this.#now();
