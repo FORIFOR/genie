@@ -47,6 +47,17 @@ export interface WorkContextDeps {
   readonly horizonDays?: number;
 }
 
+/**
+ * jsonb に入る JSON にする。途中で切られた絵文字（片割れのサロゲート）と NUL は
+ * JSON.stringify が \uXXXX のまま書き出し、Postgres が拒む。1 通のために同期全体を
+ * 止めないよう、その文字だけ落として保存する。
+ */
+function jsonbText(value: unknown): string {
+  return JSON.stringify(value, (_key, v: unknown) =>
+    typeof v === 'string' ? v.replace(/\p{Cs}/gu, '').replaceAll('\u0000', '') : v,
+  );
+}
+
 export class WorkContextService {
   readonly initialProfile: InitialProfileService;
   readonly #db: DbHandle;
@@ -73,6 +84,7 @@ export class WorkContextService {
     await withTenant(this.#db, tenantId, async (tx) => {
       for (const raw of batch.artifacts) {
         const art = WorkArtifact.parse(raw);
+        const body = jsonbText(art);
         const res = await tx
           .insertInto('work_artifacts')
           .values({
@@ -84,7 +96,7 @@ export class WorkContextService {
             occurred_at: new Date(art.occurred_at),
             due_at: art.due_at ? new Date(art.due_at) : null,
             thread_id: art.thread_id,
-            body: JSON.stringify(art),
+            body,
             observed_at: at,
           })
           .onConflict((oc) =>
@@ -92,7 +104,7 @@ export class WorkContextService {
               occurred_at: new Date(art.occurred_at),
               due_at: art.due_at ? new Date(art.due_at) : null,
               thread_id: art.thread_id,
-              body: JSON.stringify(art),
+              body,
               observed_at: at,
             }),
           )
