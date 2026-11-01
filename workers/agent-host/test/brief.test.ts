@@ -231,6 +231,28 @@ describe('morning brief (read-only, rules only)', () => {
     expect(calendar?.lines).toHaveLength(3);
   });
 
+  it('does not call a cut Google Calendar empty or unauthorized', async () => {
+    const cut = async () => ({ events: [], source: 'Google カレンダー', reconnect: true });
+    const denied = await composeBrief(
+      args({ calendar: { status: 'denied', events: [], fetched_at: NOW.toISOString() } }),
+      { get: fakeGet().get, region: '東京都', now: () => NOW, cloudCalendar: cut },
+    );
+    const section = denied.sections.find((s) => s.id === 'calendar');
+    expect(section).toMatchObject({ status: 'stale', sources: [] });
+    expect(section?.reason).toContain('Google カレンダーの接続の期限が切れました');
+    expect(section?.reason).not.toContain('許可がありません');
+    const empty = await composeBrief(
+      args({ calendar: { status: 'granted', events: [], fetched_at: NOW.toISOString() } }),
+      { get: fakeGet().get, region: '東京都', now: () => NOW, cloudCalendar: cut },
+    );
+    expect(empty.sections.find((s) => s.id === 'calendar')).toMatchObject({
+      status: 'stale',
+      sources: [{ name: 'このMacのカレンダー' }],
+    });
+    expect(JSON.stringify(empty)).toContain('今日の予定を確かめられません');
+    expect(JSON.stringify(empty)).not.toContain('今日は予定が入っていません');
+  });
+
   it('uses the topics the person chose and drops duplicate headlines', async () => {
     const { get, urls } = fakeGet();
     const brief = await composeBrief(args({ interests: ['半導体', '為替'] }), {

@@ -278,6 +278,8 @@ export const KNOWN_TASK_KINDS = [
   'browser.read',
   'work.preview',
   'brief.today',
+  // 「メール確認して」（読むだけ）
+  'mail.check',
   // 予定を読む・時間を変える（calendar-plan.ts。仕様 v1.0 §11）
   'calendar.agenda',
   'calendar.move',
@@ -912,6 +914,21 @@ export function planTask(kind: string, input: Record<string, unknown>): TaskPlan
         },
       };
     }
+    case 'mail.check':
+      return {
+        steps: [
+          {
+            index: 0,
+            toolId: 'mail.check',
+            // 読むだけ。モデルは使わず、つないであるメールの件名と差出人を一覧にする。
+            risk: 'READ',
+            surface: 'local',
+            message: 'メールを確認しています',
+            args: {},
+          },
+        ],
+        artifact: { type: 'OTHER', title: 'メールの確認', mimeType: 'text/markdown' },
+      };
     case 'work.preview': {
       const to = input['to'];
       const subject = input['subject'];

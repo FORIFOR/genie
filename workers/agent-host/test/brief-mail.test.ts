@@ -7,7 +7,7 @@ import {
   type OutlookMailSummary,
 } from '@genie/service-connectors';
 import type { ConnectorRuntime } from '../src/connector-steps.js';
-import { readBriefMail } from '../src/brief/mail.js';
+import { mailCheckText, readBriefMail } from '../src/brief/mail.js';
 
 const NOW = new Date('2026-10-10T00:00:00Z');
 const mail = (id: string, over: Partial<MailSummary> = {}): MailSummary => ({
@@ -320,6 +320,27 @@ describe('fresh daily brief mail', () => {
       'Gmailの接続の期限が切れました。Apps の「つなぎ直す」から許可し直してください。',
     );
     expect(JSON.stringify(expired)).not.toMatch(/PRIVATE/);
+  });
+
+  it('answers a mail check truthfully when the connection is cut', async () => {
+    const h = fixture();
+    h.list.mockRejectedValue(new ConnectorError('token_expired', 'PRIVATE_PLUGIN_ID'));
+    const text = mailCheckText(await readBriefMail(h.connectors, () => NOW));
+    expect(text).toContain('Gmailの接続が切れている');
+    expect(text).toContain('Google をつなぎ直して');
+    expect(text).not.toMatch(/PRIVATE|確認しました/);
+  });
+
+  it('lists subject and sender for a mail check, never the body', async () => {
+    const h = fixture([], [mail('m1')]);
+    const text = mailCheckText(await readBriefMail(h.connectors, () => NOW));
+    expect(text).toContain('Synthetic m1');
+    expect(text).toContain('Person');
+    expect(text).not.toContain('PRIVATE_SNIPPET');
+  });
+
+  it('says plainly that nothing is connected for a mail check', async () => {
+    expect(mailCheckText(await readBriefMail(undefined, () => NOW))).toContain('つながっていない');
   });
 
   it('shares the maximum 100 metadata rows between connected providers and rejects unsafe links', async () => {

@@ -79,7 +79,7 @@ export function isGmailNoise(mail: MailSummary): boolean {
   return gmailCandidate(mail).noise;
 }
 
-function needsReconnect(error: unknown): boolean {
+export function needsReconnect(error: unknown): boolean {
   const reason = error instanceof ConnectorError ? error.reason : null;
   return reason === 'token_expired' || reason === 'not_connected';
 }
@@ -333,4 +333,41 @@ export async function readBriefMail(
     sources,
     lines,
   };
+}
+
+/** 確認の答えに載せる数（LINE の 1 通に収める）。 */
+const CHECK_LINES = 10;
+
+/**
+ * 「メール確認して」の答え。読めなかったときは理由をそのまま言う（読めたふりをしない）。
+ * 接続が切れた印は readBriefMail の理由の文（`の接続の期限が切れました`）。
+ */
+export function mailCheckText(section: BriefSection): string {
+  const how =
+    '「Google をつなぎ直して」（Outlook は「Microsoft をつなぎ直して」）と LINE で送るか、Mac の Apps から許可し直してください。';
+  const cut = /(Gmail|Outlook)(?:・(?:Gmail|Outlook))?の接続の期限が切れました/.exec(
+    section.reason ?? '',
+  );
+  const names = cut ? cut[0].replace('の接続の期限が切れました', '') : null;
+  if (section.status === 'none') return `メールの読み取りがつながっていないので、読めません。${how}`;
+  if (!section.fetched_at)
+    return names
+      ? `${names}の接続が切れているので、メールを読めませんでした。${how}`
+      : `メールを読めませんでした。${section.reason ?? '少し待ってから、もう一度頼んでください。'}`;
+  const partial = names
+    ? `\n⚠️ ${names}は接続が切れているので、読めていません。${how}`
+    : section.status === 'stale'
+      ? '\n⚠️ 一部を取得できませんでした。'
+      : '';
+  if (section.lines.length === 0)
+    return `直近7日の受信メールを確認しました。広告や自動通知を除くと、知らせるものはありません。${partial}`;
+  const shown = section.lines
+    .slice(0, CHECK_LINES)
+    .map(
+      (l) => `・${l.text}${l.subtitle || l.time ? `（${[l.subtitle, l.time].filter(Boolean).join(' · ')}）` : ''}`,
+    );
+  return [
+    `直近7日のメールを確認しました。広告や自動通知を除いた主なものです（本文は読んでいません）。`,
+    ...shown,
+  ].join('\n') + partial;
 }

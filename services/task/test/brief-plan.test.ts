@@ -22,3 +22,14 @@ describe('morning brief task', () => {
     expect(() => planTask('brief.today', { date: '2026-10-06' })).toThrow();
   });
 });
+
+describe('mail check task', () => {
+  it('is one local read-only step that uses no model', () => {
+    expect(isKnownTaskKind('mail.check')).toBe(true);
+    const plan = planTask('mail.check', {});
+    expect(plan.steps).toHaveLength(1);
+    expect(plan.steps[0]).toMatchObject({ toolId: 'mail.check', risk: 'READ', surface: 'local' });
+    expect(isMeteredStep(plan.steps[0]!)).toBe(false);
+    expect(plan.artifact.mimeType).toBe('text/markdown');
+  });
+});

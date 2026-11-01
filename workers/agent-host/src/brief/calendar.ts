@@ -8,12 +8,15 @@
 import type { BriefEvent } from '@genie/contracts';
 import type { CalendarEvent } from '@genie/service-connectors';
 import type { ConnectorRuntime } from '../connector-steps.js';
+import { needsReconnect } from './mail.js';
 
 const READ_BUDGET_MS = 8_000;
 
 export interface CloudCalendar {
   readonly events: BriefEvent[];
   readonly source: string;
+  /** 接続が切れていて読めなかった（予定が無いのではない）。 */
+  readonly reconnect?: boolean;
 }
 
 /** `timeZone` での時差（"+09:00"）。終日予定の開始を、その日の 0 時として書くため。 */
@@ -72,6 +75,6 @@ export async function readBriefGoogleCalendar(
       reason:
         (error as { reason?: string }).reason ?? (error instanceof Error ? error.name : 'unknown'),
     });
-    return null;
+    return needsReconnect(error) ? { events: [], source: 'Google カレンダー', reconnect: true } : null;
   }
 }

@@ -181,7 +181,7 @@ export async function composeBrief(args: BriefArgs, deps: BriefDeps): Promise<Br
 
   // ---- 予定（Mac の EventKit と、つないである Google カレンダーから） ----
   const day = args.date;
-  const cloud = deps.cloudCalendar
+  const cloudRead = deps.cloudCalendar
     ? await deps
         .cloudCalendar(
           {
@@ -192,6 +192,11 @@ export async function composeBrief(args: BriefArgs, deps: BriefDeps): Promise<Br
         )
         .catch(() => null)
     : null;
+  // 切れた接続は「予定なし」でも「許可がない」でもない
+  const calendarCut = cloudRead?.reconnect === true;
+  const cloud = calendarCut ? null : cloudRead;
+  const calendarCutReason =
+    'Google カレンダーの接続の期限が切れました。Apps の「つなぎ直す」から許可し直してください。';
   // 今日（その人の日付）に掛かる予定だけ。終日予定は日付で見る。
   const today = (cloud?.events ?? []).filter((e) =>
     e.allDay
@@ -209,8 +214,8 @@ export async function composeBrief(args: BriefArgs, deps: BriefDeps): Promise<Br
     sections.push({
       id: 'calendar',
       title: '予定',
-      status: 'none',
-      reason: 'カレンダーの許可がありません',
+      status: calendarCut ? 'stale' : 'none',
+      reason: calendarCut ? calendarCutReason : 'カレンダーの許可がありません',
       fetched_at: null,
       sources: [],
       lines: [],
@@ -219,7 +224,8 @@ export async function composeBrief(args: BriefArgs, deps: BriefDeps): Promise<Br
     sections.push({
       id: 'calendar',
       title: '予定',
-      status: 'ok',
+      status: calendarCut ? 'stale' : 'ok',
+      ...(calendarCut ? { reason: calendarCutReason } : {}),
       fetched_at: args.calendar.fetched_at,
       sources: calendarSources,
       lines: events.map((e) => ({
@@ -229,7 +235,11 @@ export async function composeBrief(args: BriefArgs, deps: BriefDeps): Promise<Br
     });
     const timed = events.filter((e) => !e.allDay);
     const upcoming = timed.find((e) => new Date(e.end).getTime() > now().getTime());
-    if (events.length === 0) {
+    if (events.length === 0 && calendarCut) {
+      summary.schedule = 'Google カレンダーが切れているので、今日の予定を確かめられません。';
+      spoken.push('Google カレンダーが切れているので、今日の予定を確かめられません。');
+      talk.push('Google カレンダーが切れているので、今日の予定を確かめられません。');
+    } else if (events.length === 0) {
       summary.schedule = '今日は予定が入っていません。';
       spoken.push('今日の予定はありません。');
       talk.push('今日の予定はありません。');

@@ -7,7 +7,7 @@ import { infoFetch, type InfoFetch } from '../current-info/hosts.js';
 import { defaultRegion } from '../current-info/preferences.js';
 import { composeBrief } from './compose.js';
 import { readBriefGoogleCalendar } from './calendar.js';
-import { readBriefMail } from './mail.js';
+import { mailCheckText, readBriefMail } from './mail.js';
 
 export interface BriefRuntimeDeps {
   readonly get?: InfoFetch;
@@ -25,10 +25,20 @@ export class BriefRuntime {
   }
 
   handles(toolId: string): boolean {
-    return toolId === 'brief.compose';
+    return toolId === 'brief.compose' || toolId === 'mail.check';
   }
 
   async run(step: HostStep): Promise<StepOutcome> {
+    if (step.toolId === 'mail.check') {
+      const section = await readBriefMail(this.#deps.connectors, this.#deps.now);
+      return {
+        ok: true,
+        result: {
+          kind: 'mail',
+          artifact: { title: 'メールの確認', markdown: mailCheckText(section) },
+        },
+      };
+    }
     const parsed = BriefArgs.safeParse(step.args);
     if (!parsed.success)
       return {

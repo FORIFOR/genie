@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { CalendarEvent } from '@genie/service-connectors';
+import { ConnectorError, type CalendarEvent } from '@genie/service-connectors';
 import type { ConnectorRuntime } from '../src/connector-steps.js';
 import { briefEventFrom, offsetOf, readBriefGoogleCalendar } from '../src/brief/calendar.js';
 
@@ -72,6 +72,22 @@ describe('Google Calendar in the brief', () => {
       source: 'Google カレンダー',
       events: [{ title: '定例' }],
     });
+  });
+
+  it('tells a cut connection apart from an ordinary failure', async () => {
+    const list = (error: Error) => async () => {
+      throw error;
+    };
+    expect(
+      await readBriefGoogleCalendar(
+        runtime({ list: list(new ConnectorError('token_expired', 'x')) }),
+        window,
+        '+09:00',
+      ),
+    ).toEqual({ events: [], source: 'Google カレンダー', reconnect: true });
+    expect(
+      await readBriefGoogleCalendar(runtime({ list: list(new Error('network')) }), window, '+09:00'),
+    ).toBeNull();
   });
 
   it('writes the time zone offset of the day', () => {

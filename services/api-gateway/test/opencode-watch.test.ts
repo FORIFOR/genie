@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import {
   DONE_MARK,
   decide,
+  lastFailedCheck,
   intervalFrom,
   isPrivateHost,
   nudgeText,
@@ -61,6 +62,33 @@ describe('opencode watch', () => {
     expect(intervalFrom('1分ごと')).toBe(300);
     expect(intervalFrom('3時間おき')).toBe(7200);
     expect(intervalFrom('30分おきに')).toBe(1800);
+  });
+
+  it('does not call a claimed completion finished while the last test fails', () => {
+    const marked = snap({ lastAssistantText: '【完了】', failedCheck: 'pytest tests/test_modes.py' });
+    expect(decide(marked, { lastSignature: null, idleNudges: 0 })).toEqual({
+      kind: 'done_unverified',
+      command: 'pytest tests/test_modes.py',
+    });
+    expect(decide(snap({ lastAssistantText: '【完了】' }), { lastSignature: null, idleNudges: 0 }).kind).toBe('done');
+  });
+
+  it('reads the result of the last test run', () => {
+    const run = (command: string, exit: number) => ({
+      parts: [
+        { type: 'tool', tool: 'bash', state: { status: 'completed', input: { command }, metadata: { exit } } },
+      ],
+    });
+    // 実機（2026-11-01）: 失敗のあとに編集の失敗だけがあって【完了】
+    expect(
+      lastFailedCheck([
+        run('source venv/bin/activate && pytest tests/test_modes.py', 2),
+        { parts: [{ type: 'tool', tool: 'edit', state: { status: 'error' } }, { type: 'text', text: '【完了】' }] },
+      ]),
+    ).toBe('source venv/bin/activate && pytest tests/test_modes.py');
+    expect(lastFailedCheck([run('pytest', 2), run('pytest', 0)])).toBeNull();
+    expect(lastFailedCheck([run('ls missing', 1)])).toBeNull();
+    expect(lastFailedCheck([])).toBeNull();
   });
 
   it('承認待ちの間は busy でも本人待ち（固まったと扱わない）', () => {

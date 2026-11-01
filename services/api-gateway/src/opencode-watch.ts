@@ -8,7 +8,8 @@
  *   作業中のまま 30 分進まない       … 本人に 1 回知らせる
  *   作業中のまま 60 分進まない       … 固まった実行を止めて（abort）、次の確認で「続けて」を送る。3 回で止めて知らせる
  *   承認・質問を待っている           … 促さない。本人に 1 回知らせて、見続ける
- *   最後の返答に【完了】がある・TODO が全部済み … 終わり。知らせて止める
+ *   最後の返答に【完了】がある・TODO が全部済み … 終わり。知らせて止める（完成かは確かめていないと添える）
+ *   終わったと書いたのに、最後のテストが失敗したまま … 完成と言わない。そう知らせて止める
  *   止まっていて、前に促してから進んだ … 「続けて」を送る
  *   促しても 3 回続けて進まない       … 止めて知らせる
  *   3 回続けてつながらない・期限（12 時間） … 止めて知らせる
@@ -128,6 +129,37 @@ export interface SessionSnapshot {
   readonly activity?: string | null;
   readonly lastAssistantText: string;
   readonly todos: readonly { readonly content: string; readonly status: string }[];
+  /** 見えている範囲で最後に走らせたテストが失敗していれば、そのコマンド。 */
+  readonly failedCheck?: string | null;
+}
+
+/** テストを走らせるコマンド。 */
+const CHECK_COMMAND =
+  /\b(?:pytest|unittest|vitest|jest|mocha|rspec|phpunit|(?:go|cargo|swift|dotnet|deno|bun)\s+test|(?:npm|pnpm|yarn)\s+(?:run\s+)?(?:-\S+\s+)*test|make\s+(?:test|check)|xcodebuild\s+test)\b/;
+
+interface RawPart {
+  type?: string;
+  text?: string;
+  tool?: string;
+  state?: {
+    status?: string;
+    input?: { command?: unknown };
+    metadata?: { exit?: unknown };
+  };
+}
+
+/** 古い順の返答から、最後のテストの結果を見る。失敗ならコマンド、通った・走らせていないなら null。 */
+export function lastFailedCheck(messages: readonly { parts?: readonly RawPart[] }[]): string | null {
+  const parts = messages.flatMap((m) => m.parts ?? []);
+  for (const part of [...parts].reverse()) {
+    const command = part.state?.input?.command;
+    if (part.type !== 'tool' || part.tool !== 'bash' || typeof command !== 'string') continue;
+    if (!CHECK_COMMAND.test(command)) continue;
+    const exit = part.state?.metadata?.exit;
+    const failed = part.state?.status === 'error' || (typeof exit === 'number' && exit !== 0);
+    return failed ? command.replace(/\s+/g, ' ').trim().slice(0, 120) : null;
+  }
+  return null;
 }
 
 type Fetch = typeof fetch;
@@ -170,9 +202,9 @@ export class OpencodeClient {
       this.#get<
         {
           info?: { id?: string; role?: string; time?: { completed?: number }; finish?: string };
-          parts?: { type?: string; text?: string; state?: { status?: string } }[];
+          parts?: RawPart[];
         }[]
-      >(`/session/${id}/message?limit=10`),
+      >(`/session/${id}/message?limit=20`),
       this.#get<{ content?: string; status?: string }[]>(`/session/${id}/todo`).catch(() => []),
     ]);
     const state = status[sessionId]?.type ?? 'idle';
@@ -197,6 +229,7 @@ export class OpencodeClient {
         ? `${last.info.id}:${String(last.parts?.length ?? 0)}:${String(last.parts?.at(-1)?.type)}:${String(last.parts?.at(-1)?.state?.status)}`
         : null,
       lastAssistantText,
+      failedCheck: lastFailedCheck(messages),
       todos: todos.map((t) => ({
         content: String(t.content ?? ''),
         status: String(t.status ?? ''),
@@ -269,6 +302,7 @@ export type WatchDecision =
   | { readonly kind: 'working' }
   | { readonly kind: 'waiting_user'; readonly what: 'permission' | 'question' }
   | { readonly kind: 'done' }
+  | { readonly kind: 'done_unverified'; readonly command: string }
   | { readonly kind: 'stalled' }
   | { readonly kind: 'nudge'; readonly idleNudges: number };
 
@@ -285,7 +319,10 @@ export function decide(
   const todosDone =
     snapshot.todos.length > 0 &&
     snapshot.todos.every((t) => t.status === 'completed' || t.status === 'cancelled');
-  if (marked || (todosDone && state.lastSignature !== null)) return { kind: 'done' };
+  if (marked || (todosDone && state.lastSignature !== null))
+    return snapshot.failedCheck
+      ? { kind: 'done_unverified', command: snapshot.failedCheck }
+      : { kind: 'done' };
   // 前に促したときと同じ返答のまま = 促しても進んでいない
   const progressed = snapshot.signature !== state.lastSignature;
   const idleNudges = progressed ? 0 : state.idleNudges + 1;
@@ -522,9 +559,10 @@ export class OpencodeWatchService {
         watch.session_id,
       );
       const left = now.todos.filter((t) => t.status !== 'completed' && t.status !== 'cancelled');
-      const finished = decide(now, { lastSignature: 'x', idleNudges: 0 }).kind === 'done';
+      const verdict = decide(now, { lastSignature: 'x', idleNudges: 0 });
+      const finished = verdict.kind === 'done' || verdict.kind === 'done_unverified';
       lines.push(
-        `いまのセッション: ${now.busy ? '作業中です' : now.waitingForUser ? `${now.waitingForUser === 'permission' ? '承認' : '質問への答え'}を待っています` : finished ? '終わったと書いています' : '止まっています'}。${now.todos.length ? `TODO は残り ${String(left.length)} / ${String(now.todos.length)}。` : ''}`,
+        `いまのセッション: ${now.busy ? '作業中です' : now.waitingForUser ? `${now.waitingForUser === 'permission' ? '承認' : '質問への答え'}を待っています` : verdict.kind === 'done_unverified' ? `終わったと書いていますが、最後のテスト（${verdict.command}）は失敗したままです` : finished ? '終わったと書いています（完成かは確かめていません）' : '止まっています'}。${now.todos.length ? `TODO は残り ${String(left.length)} / ${String(now.todos.length)}。` : ''}`,
       );
       const last = now.lastAssistantText.replace(/\s+/g, ' ').trim();
       if (last) lines.push(`最後の返答: ${last.slice(0, 200)}${last.length > 200 ? '…' : ''}`);
@@ -774,10 +812,17 @@ export class OpencodeWatchService {
         await save({ status: 'done', ended_reason: 'done', failures: 0 });
         const last = snapshot.lastAssistantText.replace(/\s+/g, ' ').trim();
         await tell(
-          `✅ ${label}が終わったようです。見守りを終えました（「続けて」を送った回数: ${String(watch.nudges)}）。${last ? `\n最後の返答: ${last.slice(0, 200)}${last.length > 200 ? '…' : ''}` : ''}`,
+          `✅ ${label}が終わったようです。見守りを終えました（「続けて」を送った回数: ${String(watch.nudges)}）。${last ? `\n最後の返答: ${last.slice(0, 200)}${last.length > 200 ? '…' : ''}` : ''}\n完成かどうかは、Genie では確かめていません。`,
         );
         return;
       }
+      case 'done_unverified':
+        // 促しても同じ失敗を繰り返したので、これ以上は送らず本人に渡す
+        await save({ status: 'done', ended_reason: 'unverified', failures: 0 });
+        await tell(
+          `⚠️ ${label}は終わったと書きましたが、最後のテストは失敗したままです: ${decision.command}\n完成とは受け取らないでください。見守りを止めました（「続けて」を送った回数: ${String(watch.nudges)}）。続けるなら「もう一度 opencode を見守って」と送ってください。`,
+        );
+        return;
       case 'stalled':
         await save({ status: 'stalled', ended_reason: 'no_progress', failures: 0 });
         await tell(

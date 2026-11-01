@@ -5,6 +5,7 @@
  * 入口ごとに作り直すと、同じ頼みごとが入口によって違う扱いになる。
  * ここは HTTP を知らない。状態コードへの写し方は呼ぶ側が決める。
  */
+import { isMailCheck } from './mail-intent.js';
 import {
   ACCOUNT_REGISTRATION_NOTICE,
   CHECKOUT_HANDOFF_NOTICE,
@@ -274,6 +275,23 @@ export async function handleTurn(
         ...(scheduled.choices?.length ? { choices: scheduled.choices } : {}),
       };
     }
+  }
+
+  // 「メール確認して」: モデルに渡さず、つないであるメールを実際に読む（読むだけ。答えを本文で返す）
+  if (isMailCheck(body.text)) {
+    const started = await createTask(deps, principal, id, turn.id, {
+      kind: 'mail.check',
+      title: 'メールの確認',
+      input: {},
+    });
+    return {
+      kind: 'started',
+      turn,
+      intent: 'talking',
+      taskId: started.taskId,
+      notice: started.notice,
+      reply: null,
+    };
   }
 
   // 予定を読む・ずらす・元に戻す（仕様 v1.0 §11）。対象は直前に出した一覧から、変えるときは承認つきの仕事
