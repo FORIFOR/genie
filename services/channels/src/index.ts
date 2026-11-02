@@ -57,6 +57,7 @@ export {
   type ChannelSender,
   type OutgoingButton,
   type OutgoingMessage,
+  type QuickReply,
   type SendOptions,
   type SendTarget,
 } from './send.js';

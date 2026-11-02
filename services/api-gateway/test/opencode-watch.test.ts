@@ -10,6 +10,13 @@ import {
   isPrivateHost,
   nudgeText,
   parseOpencodeUrl,
+  OpencodeClient,
+  PERMISSION_BUTTONS,
+  questionButtons,
+  questionText,
+  resolveAnswer,
+  WATCH_QUESTION_ANSWER,
+  type PendingQuestion,
   type SessionSnapshot,
 } from '../src/opencode-watch.js';
 
@@ -20,6 +27,92 @@ const snap = (over: Partial<SessionSnapshot> = {}): SessionSnapshot => ({
   lastAssistantText: '修正しました。',
   todos: [],
   ...over,
+});
+
+const question = (over: Partial<PendingQuestion> = {}): PendingQuestion => ({
+  id: 'que_1',
+  question: 'Which linter?',
+  options: ['flake8', 'mypy', 'ruff'],
+  multiple: false,
+  custom: true,
+  count: 1,
+  ...over,
+});
+
+describe('opencode questions from LINE', () => {
+  const parse = (text: string) => {
+    const m = WATCH_QUESTION_ANSWER.exec(text);
+    return m ? { numbers: m[2] ?? null, words: m[1] ?? null } : null;
+  };
+
+  it('takes only a clear answer, not talk about opencode', () => {
+    expect(parse('opencode 2')).toEqual({ numbers: '2', words: null });
+    expect(parse('opencode １,３')).toEqual({ numbers: '１,３', words: null });
+    expect(parse('opencode に答えて ruff です')).toEqual({ numbers: null, words: 'ruff です' });
+    expect(parse('オープンコードの質問に回答 mypy')).toEqual({ numbers: null, words: 'mypy' });
+    for (const text of ['opencode はどう？', 'opencode を許可', 'opencode 見守って', '2'])
+      expect(parse(text), text).toBeNull();
+  });
+
+  it('turns numbers and words into what opencode expects', () => {
+    expect(resolveAnswer(question(), '2', null)).toEqual({ labels: ['mypy'] });
+    expect(resolveAnswer(question(), '４', null)).toHaveProperty('error');
+    expect(resolveAnswer(question(), '0', null)).toHaveProperty('error');
+    expect(resolveAnswer(question(), '1,2', null)).toHaveProperty('error');
+    expect(resolveAnswer(question({ multiple: true }), '１、3', null)).toEqual({
+      labels: ['flake8', 'ruff'],
+    });
+    expect(resolveAnswer(question(), null, 'RUFF')).toEqual({ labels: ['ruff'] });
+    expect(resolveAnswer(question(), null, 'pylint を使う')).toEqual({ labels: ['pylint を使う'] });
+    expect(resolveAnswer(question({ custom: false }), null, 'pylint')).toHaveProperty('error');
+  });
+
+  it('shows the question and how to answer, and sends several questions to the screen', () => {
+    const shown = questionText('opencode', question());
+    expect(shown).toContain('Which linter?');
+    expect(shown).toContain('3. ruff');
+    expect(shown).toContain('opencode 1');
+    expect(questionText('opencode', question({ count: 2 }))).toContain('画面で');
+  });
+
+  it('offers buttons that send the same words as typing', () => {
+    expect(PERMISSION_BUTTONS.map((b) => b.text)).toEqual(['opencode を許可', 'opencode を拒否']);
+    expect(questionButtons(question())[2]).toEqual({ label: '3. ruff', text: 'opencode 3' });
+    expect(questionButtons(question({ count: 2 }))).toEqual([]);
+    // 押した文が、そのまま答えの言い方に合う
+    for (const b of questionButtons(question()))
+      expect(WATCH_QUESTION_ANSWER.test(b.text), b.text).toBe(true);
+  });
+
+  it('reads the waiting question and replies in the form the server takes', async () => {
+    const calls: { url: string; body: string | undefined }[] = [];
+    const respond = (url: string, init?: RequestInit) => {
+      calls.push({ url, body: init?.body as string | undefined });
+      if (url.endsWith('/question'))
+        return [
+          { id: 'que_other', sessionID: 'ses_other', questions: [{ question: 'x', options: [] }] },
+          {
+            id: 'que_1',
+            sessionID: 'ses_a',
+            questions: [{ question: 'Which?', options: [{ label: 'ruff' }], multiple: false }],
+          },
+        ];
+      if (url.endsWith('/session/status')) return { ses_a: { type: 'idle' } };
+      return url.endsWith('/reply') ? true : [];
+    };
+    const client = new OpencodeClient(
+      'http://op',
+      (async (url: string, init?: RequestInit) =>
+        new Response(JSON.stringify(respond(String(url), init)))) as typeof fetch,
+    );
+    const snapshot = await client.snapshot('ses_a');
+    expect(snapshot.waitingForUser).toBe('question');
+    expect(snapshot.question).toMatchObject({ id: 'que_1', options: ['ruff'], custom: true });
+    await client.answerQuestion('que_1', ['ruff']);
+    const reply = calls.at(-1)!;
+    expect(reply.url).toBe('http://op/question/que_1/reply');
+    expect(JSON.parse(reply.body!)).toEqual({ answers: [['ruff']] });
+  });
 });
 
 describe('opencode watch', () => {
@@ -65,25 +158,39 @@ describe('opencode watch', () => {
   });
 
   it('does not call a claimed completion finished while the last test fails', () => {
-    const marked = snap({ lastAssistantText: '【完了】', failedCheck: 'pytest tests/test_modes.py' });
+    const marked = snap({
+      lastAssistantText: '【完了】',
+      failedCheck: 'pytest tests/test_modes.py',
+    });
     expect(decide(marked, { lastSignature: null, idleNudges: 0 })).toEqual({
       kind: 'done_unverified',
       command: 'pytest tests/test_modes.py',
     });
-    expect(decide(snap({ lastAssistantText: '【完了】' }), { lastSignature: null, idleNudges: 0 }).kind).toBe('done');
+    expect(
+      decide(snap({ lastAssistantText: '【完了】' }), { lastSignature: null, idleNudges: 0 }).kind,
+    ).toBe('done');
   });
 
   it('reads the result of the last test run', () => {
     const run = (command: string, exit: number) => ({
       parts: [
-        { type: 'tool', tool: 'bash', state: { status: 'completed', input: { command }, metadata: { exit } } },
+        {
+          type: 'tool',
+          tool: 'bash',
+          state: { status: 'completed', input: { command }, metadata: { exit } },
+        },
       ],
     });
     // 実機（2026-11-01）: 失敗のあとに編集の失敗だけがあって【完了】
     expect(
       lastFailedCheck([
         run('source venv/bin/activate && pytest tests/test_modes.py', 2),
-        { parts: [{ type: 'tool', tool: 'edit', state: { status: 'error' } }, { type: 'text', text: '【完了】' }] },
+        {
+          parts: [
+            { type: 'tool', tool: 'edit', state: { status: 'error' } },
+            { type: 'text', text: '【完了】' },
+          ],
+        },
       ]),
     ).toBe('source venv/bin/activate && pytest tests/test_modes.py');
     expect(lastFailedCheck([run('pytest', 2), run('pytest', 0)])).toBeNull();

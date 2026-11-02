@@ -95,6 +95,13 @@ export function intervalFrom(text: string): number {
 export const WATCH_ANSWER =
   /^(?:opencode|オープンコード)\s*を?\s*(許可|拒否|続け)(?:する|して|て)?(?:ください)?[。！!]?$/i;
 
+/**
+ * opencode の質問に答える言い方。「opencode 2」か「opencode に答えて ruff です」。
+ * opencode の話をしただけの文（「opencode はどう？」）を、答えとして送らない。
+ */
+export const WATCH_QUESTION_ANSWER =
+  /^(?:opencode|オープンコード)\s*(?:(?:に|へ|の質問に)?\s*(?:答えて|答え|回答)\s*(?:は|を)?\s*[:：]?\s*([\s\S]+)|([0-9０-９]+(?:\s*[,、，]\s*[0-9０-９]+)*))$/i;
+
 /** 承認をすべて自動で許可する（本人が見守りごとに頼む）。 */
 export const WATCH_AUTO_ON =
   /^(?:opencode|オープンコード)\s*[はをの]?\s*(?:全部|全て|すべて)\s*を?\s*(?:自動で?)?\s*許可(?:する|して)?(?:ください)?[。！!]?$/i;
@@ -119,10 +126,22 @@ export interface PendingPermission {
   readonly label: string;
 }
 
+export interface PendingQuestion {
+  readonly id: string;
+  readonly question: string;
+  readonly options: readonly string[];
+  readonly multiple: boolean;
+  /** 選択肢にない答えを受けるか。 */
+  readonly custom: boolean;
+  /** 1 回で聞かれている問いの数。LINE で答えられるのは 1 つのときだけ。 */
+  readonly count: number;
+}
+
 export interface SessionSnapshot {
   readonly busy: boolean;
   readonly waitingForUser: 'permission' | 'question' | null;
   readonly permission?: PendingPermission | null;
+  readonly question?: PendingQuestion | null;
   /** 最後の返答の印（id と終わった時刻）。返答が無ければ null。 */
   readonly signature: string | null;
   /** 進み具合の印（最後の返答の id・部品の数・最後の部品の状態）。作業中に変わらなければ進んでいない。 */
@@ -149,7 +168,9 @@ interface RawPart {
 }
 
 /** 古い順の返答から、最後のテストの結果を見る。失敗ならコマンド、通った・走らせていないなら null。 */
-export function lastFailedCheck(messages: readonly { parts?: readonly RawPart[] }[]): string | null {
+export function lastFailedCheck(
+  messages: readonly { parts?: readonly RawPart[] }[],
+): string | null {
   const parts = messages.flatMap((m) => m.parts ?? []);
   for (const part of [...parts].reverse()) {
     const command = part.state?.input?.command;
@@ -169,6 +190,88 @@ interface RawPermission {
   readonly sessionID?: string;
   readonly permission?: string;
   readonly patterns?: readonly string[];
+}
+
+interface RawQuestion {
+  readonly id?: string;
+  readonly sessionID?: string;
+  readonly questions?: readonly {
+    readonly question?: string;
+    readonly options?: readonly { readonly label?: string }[];
+    readonly multiple?: boolean;
+    readonly custom?: boolean;
+  }[];
+}
+
+function toQuestion(raw: RawQuestion): PendingQuestion | null {
+  const first = raw.questions?.[0];
+  if (!raw.id || !first) return null;
+  return {
+    id: raw.id,
+    question: String(first.question ?? '').slice(0, 500),
+    options: (first.options ?? []).map((o) => String(o.label ?? '')).filter(Boolean),
+    multiple: first.multiple === true,
+    // opencode の既定は「選択肢にない答えも受ける」
+    custom: first.custom !== false,
+    count: raw.questions?.length ?? 0,
+  };
+}
+
+/** LINE でタップして答えるボタン。押すと、打つのと同じ文が届く（見せた承認・質問にしか答えない決まりもそのまま）。 */
+export interface WatchButton {
+  readonly label: string;
+  readonly text: string;
+}
+
+export const PERMISSION_BUTTONS: readonly WatchButton[] = [
+  { label: '許可（今回だけ）', text: 'opencode を許可' },
+  { label: '拒否', text: 'opencode を拒否' },
+];
+
+/** LINE の Quick Reply は 13 個まで。入らない選択肢は番号を打って答える。 */
+export function questionButtons(q: PendingQuestion): readonly WatchButton[] {
+  if (q.count !== 1) return [];
+  return q.options
+    .slice(0, 13)
+    .map((option, i) => ({ label: `${String(i + 1)}. ${option}`, text: `opencode ${String(i + 1)}` }));
+}
+
+/** LINE に出す質問の文。 */
+export function questionText(label: string, q: PendingQuestion): string {
+  if (q.count !== 1)
+    return `⏸ ${label}が ${String(q.count)} 個の質問への答えを待っています。一度に複数の質問には LINE から答えられないので、画面で答えてください。答えるまで「続けて」は送りません（見守りは続けます）。`;
+  const lines = q.options.map((o, i) => `${String(i + 1)}. ${o}`);
+  const how = q.options.length
+    ? `下のボタンで答えてください（ボタンが消えたら「opencode 1」のように番号で${q.multiple ? '。複数なら「opencode 1,3」' : ''}）。`
+    : '';
+  const free = q.custom ? '「opencode に答えて ○○」と文章でも答えられます。' : '';
+  return [`⏸ ${label}が質問しています:`, q.question, ...lines, `${how}${free}`]
+    .filter(Boolean)
+    .join('\n');
+}
+
+/** 本人の答えを opencode に送る選択肢の名前にする。答えにならなければ理由を返す。 */
+export function resolveAnswer(
+  q: PendingQuestion,
+  numbers: string | null,
+  words: string | null,
+): { readonly labels: readonly string[] } | { readonly error: string } {
+  if (numbers !== null) {
+    const picked = numbers
+      .replace(/[０-９]/g, (d) => String.fromCharCode(d.charCodeAt(0) - 0xfee0))
+      .split(/\s*[,、，]\s*/)
+      .map(Number);
+    if (picked.some((n) => !Number.isInteger(n) || n < 1 || n > q.options.length))
+      return { error: `番号は 1 から ${String(q.options.length)} で答えてください。` };
+    if (!q.multiple && picked.length > 1) return { error: 'この質問の答えは 1 つだけです。' };
+    return { labels: [...new Set(picked)].map((n) => q.options[n - 1]!) };
+  }
+  const text = (words ?? '').trim().slice(0, 500);
+  if (!text) return { error: '答えが読み取れませんでした。' };
+  const same = q.options.find((o) => o.toLowerCase() === text.toLowerCase());
+  if (same) return { labels: [same] };
+  if (!q.custom) return { error: '選択肢の番号で答えてください。' };
+  return { labels: [text] };
 }
 
 function toPending(raw: RawPermission): PendingPermission | null {
@@ -198,7 +301,7 @@ export class OpencodeClient {
     const [status, permissions, questions, messages, todos] = await Promise.all([
       this.#get<Record<string, { type?: string }>>('/session/status'),
       this.#get<RawPermission[]>('/permission').catch(() => []),
-      this.#get<{ sessionID?: string }[]>('/question').catch(() => []),
+      this.#get<RawQuestion[]>('/question').catch(() => []),
       this.#get<
         {
           info?: { id?: string; role?: string; time?: { completed?: number }; finish?: string };
@@ -210,6 +313,7 @@ export class OpencodeClient {
     const state = status[sessionId]?.type ?? 'idle';
     const last = [...messages].reverse().find((m) => m.info?.role === 'assistant');
     const asked = permissions.find((p) => p.sessionID === sessionId);
+    const questioned = questions.find((q) => q.sessionID === sessionId);
     const lastAssistantText = (last?.parts ?? [])
       .filter((p) => p.type === 'text' && typeof p.text === 'string')
       .map((p) => p.text!)
@@ -222,6 +326,7 @@ export class OpencodeClient {
           ? 'question'
           : null,
       permission: asked ? toPending(asked) : null,
+      question: questioned ? toQuestion(questioned) : null,
       signature: last?.info?.id
         ? `${last.info.id}:${String(last.info.time?.completed ?? 'open')}`
         : null,
@@ -254,6 +359,20 @@ export class OpencodeClient {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ reply }),
+        signal: AbortSignal.timeout(15_000),
+      },
+    );
+    if (!res.ok) throw new Error(`opencode_http_${String(res.status)}`);
+  }
+
+  /** 質問に答える。答えは選択肢の名前（または本人の文章）の並び。 */
+  async answerQuestion(questionId: string, labels: readonly string[]): Promise<void> {
+    const res = await this.fetchImpl(
+      `${this.baseUrl}/question/${encodeURIComponent(questionId)}/reply`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ answers: [labels] }),
         signal: AbortSignal.timeout(15_000),
       },
     );
@@ -338,6 +457,7 @@ export interface OpencodeWatchDeps {
     userId: string,
     conversationId: string,
     text: string,
+    buttons?: readonly WatchButton[],
   ) => Promise<void>;
   readonly fetchImpl?: Fetch;
   readonly now?: () => Date;
@@ -401,6 +521,8 @@ export class OpencodeWatchService {
     }
     const answer = WATCH_ANSWER.exec(text.trim())?.[1];
     if (answer) return this.#answer(principal, answer as '許可' | '拒否' | '続け');
+    const replied = WATCH_QUESTION_ANSWER.exec(text.trim());
+    if (replied) return this.#answerQuestion(principal, replied[2] ?? null, replied[1] ?? null);
     const mentions = /opencode|オープンコード|\/session\/ses_/i.test(text);
     if (mentions && WATCH_STATUS.test(text) && !WATCH_START.test(text))
       return this.#report(principal);
@@ -481,7 +603,9 @@ export class OpencodeWatchService {
         if (pending)
           return `opencode は「${pending.label}」の承認を待っています。「opencode を許可」か「opencode を拒否」で答えてください。`;
         if (snapshot.waitingForUser === 'question')
-          return 'opencode は質問への答えを待っています。LINE からは答えられないので、画面で答えてください。';
+          return snapshot.question
+            ? questionText('opencode', snapshot.question)
+            : 'opencode は質問への答えを待っています。画面で答えてください。';
         if (snapshot.busy) return 'opencode はいま作業中です。';
         await client.nudge(watch.session_id, nudgeText(watch.nudges + 1));
         await save({ nudges: watch.nudges + 1, waiting_notified: false });
@@ -491,7 +615,14 @@ export class OpencodeWatchService {
       // 本人に見せた承認にだけ答える。変わっていたら、見せ直して聞き直す
       if (pending.id !== watch.waiting_permission_id) {
         await save({ waiting_permission_id: pending.id, waiting_notified: true });
-        return `opencode が待っている承認は「${pending.label}」です。よければ、もう一度「opencode を${action}」と送ってください。`;
+        await this.deps.notify(
+          principal.tenantId,
+          principal.userId,
+          watch.conversation_id,
+          `opencode が待っている承認は「${pending.label}」です。よければ、もう一度答えてください。`,
+          PERMISSION_BUTTONS,
+        );
+        return '承認の内容が変わっていたので、まだ答えていません。';
       }
       await client.reply(pending.id, action === '許可' ? 'once' : 'reject');
       // すぐ次の確認で様子を見る（止まっていれば「続けて」を送る）
@@ -503,6 +634,65 @@ export class OpencodeWatchService {
       return action === '許可'
         ? `「${pending.label}」を今回だけ許可しました。止まっていれば、このあと続けさせます。`
         : `「${pending.label}」を拒否しました。止まっていれば、このあと続けさせます。`;
+    } catch (error) {
+      this.deps.log?.('opencode_watch.answer_failed', {
+        id: watch.id,
+        error: (error as Error).message,
+      });
+      return 'opencode に届きませんでした。サーバが動いているか確かめてください。';
+    }
+  }
+
+  /** 見守り中のセッションの質問に答える。本人に見せた質問にだけ答える。 */
+  async #answerQuestion(
+    principal: { tenantId: string; userId: string },
+    numbers: string | null,
+    words: string | null,
+  ): Promise<string> {
+    const watch = await withTenant(this.deps.db, principal.tenantId, (tx) =>
+      tx
+        .selectFrom('opencode_watches')
+        .selectAll()
+        .where('user_id', '=', principal.userId)
+        .where('status', '=', 'active')
+        .orderBy('created_at', 'desc')
+        .limit(1)
+        .executeTakeFirst(),
+    );
+    if (!watch) return 'いま見守っている opencode のセッションはありません。';
+    const client = new OpencodeClient(watch.base_url, this.deps.fetchImpl);
+    const save = (patch: Record<string, unknown>) =>
+      withTenant(this.deps.db, principal.tenantId, (tx) =>
+        tx
+          .updateTable('opencode_watches')
+          .set({ ...patch, updated_at: this.#now() })
+          .where('id', '=', watch.id)
+          .execute(),
+      );
+    try {
+      const question = (await client.snapshot(watch.session_id)).question ?? null;
+      if (!question) return 'いま opencode が待っている質問はありません。';
+      if (question.id !== watch.waiting_permission_id) {
+        await save({ waiting_permission_id: question.id, waiting_notified: true });
+        await this.deps.notify(
+          principal.tenantId,
+          principal.userId,
+          watch.conversation_id,
+          questionText('opencode', question),
+          questionButtons(question),
+        );
+        return '質問が変わっていたので、まだ答えていません。もう一度答えてください。';
+      }
+      if (question.count !== 1) return questionText('opencode', question);
+      const resolved = resolveAnswer(question, numbers, words);
+      if ('error' in resolved) return resolved.error;
+      await client.answerQuestion(question.id, resolved.labels);
+      await save({
+        waiting_permission_id: null,
+        waiting_notified: false,
+        next_check_at: this.#now(),
+      });
+      return `opencode に「${resolved.labels.join('、')}」と答えました。止まっていれば、このあと続けさせます。`;
     } catch (error) {
       this.deps.log?.('opencode_watch.answer_failed', {
         id: watch.id,
@@ -680,9 +870,9 @@ export class OpencodeWatchService {
           .where('id', '=', id)
           .execute(),
       );
-    const tell = (text: string) =>
+    const tell = (text: string, buttons?: readonly WatchButton[]) =>
       this.deps
-        .notify(tenantId, watch.user_id, watch.conversation_id, text)
+        .notify(tenantId, watch.user_id, watch.conversation_id, text, buttons)
         .catch((error: unknown) =>
           this.deps.log?.('opencode_watch.notify_failed', { id, error: (error as Error).message }),
         );
@@ -787,10 +977,12 @@ export class OpencodeWatchService {
         const limit = watch.created_at.getTime() + WATCH_MAX_DAYS * 24 * 3600_000;
         const extended = Math.min(now.getTime() + WATCH_HOURS * 3600_000, limit);
         const asked = snapshot.permission ?? null;
+        const question = asked ? null : (snapshot.question ?? null);
+        const waitingId = asked?.id ?? question?.id ?? null;
         await save({
           failures: 0,
           waiting_notified: true,
-          waiting_permission_id: asked?.id ?? null,
+          waiting_permission_id: waitingId,
           last_activity: null,
           last_activity_at: null,
           stuck_notified: false,
@@ -800,11 +992,14 @@ export class OpencodeWatchService {
         // 別の承認に変わったら、もう一度見せる
         // 全部許可なら、次の巡回で答えるので聞かない（質問は聞く）
         if (asked && watch.auto_approve) return;
-        if (!watch.waiting_notified || (asked && asked.id !== watch.waiting_permission_id))
+        if (!watch.waiting_notified || (waitingId && waitingId !== watch.waiting_permission_id))
           await tell(
             asked
-              ? `⏸ ${label}が承認を待っています: ${asked.label}\n「opencode を許可」（今回だけ）か「opencode を拒否」で答えてください。答えるまで「続けて」は送りません。`
-              : `⏸ ${label}が質問への答えを待っています。LINE からは答えられないので、画面で答えてください。答えるまで「続けて」は送りません（見守りは続けます）。`,
+              ? `⏸ ${label}が承認を待っています: ${asked.label}\n下のボタンで答えてください（ボタンが消えたら「opencode を許可」か「opencode を拒否」）。答えるまで「続けて」は送りません。`
+              : question
+                ? questionText(label, question)
+                : `⏸ ${label}が質問への答えを待っています。画面で答えてください。答えるまで「続けて」は送りません（見守りは続けます）。`,
+            asked ? PERMISSION_BUTTONS : question ? questionButtons(question) : [],
           );
         return;
       }

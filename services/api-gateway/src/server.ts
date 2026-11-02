@@ -203,8 +203,8 @@ async function main(): Promise<void> {
   // opencode のセッションの見守り。知らせはチャット（無ければ本人の LINE）へ。チャネルを組んだあとで口が入る
   const watches = new OpencodeWatchService({
     db,
-    notify: async (tenantId, userId, conversationId, text) => {
-      await chat.current?.service.notifyUser(tenantId, userId, conversationId, text);
+    notify: async (tenantId, userId, conversationId, text, quickReplies) => {
+      await chat.current?.service.notifyUser(tenantId, userId, conversationId, text, quickReplies);
     },
     log: (event, detail) => logger.info(detail, event),
   });

@@ -24,6 +24,7 @@ import {
   type OutgoingMessage,
   type ReceivedContent,
   type SlackSender,
+  type QuickReply,
 } from './send.js';
 import {
   MAX_INBOUND_ATTEMPTS,
@@ -1238,8 +1239,9 @@ export class ChannelService {
     tenantId: string,
     conversationId: string,
     text: string,
+    quickReplies?: readonly QuickReply[],
   ): Promise<'delivered' | 'failed' | 'unknown' | 'none'> {
-    return this.#notice(tenantId, conversationId, render.notice(text));
+    return this.#notice(tenantId, conversationId, render.notice(text, quickReplies));
   }
 
   /**
@@ -1342,9 +1344,10 @@ export class ChannelService {
     /** null なら、どの会話から始まった知らせでもない（本人の LINE へ）。 */
     conversationId: string | null,
     text: string,
+    quickReplies?: readonly QuickReply[],
   ): Promise<'delivered' | 'failed' | 'unknown' | 'none'> {
     if (conversationId) {
-      const here = await this.notifyConversation(tenantId, conversationId, text);
+      const here = await this.notifyConversation(tenantId, conversationId, text, quickReplies);
       if (here !== 'none') return here;
     }
     const link = (await this.deps.store.listLinks(tenantId, userId)).find(
@@ -1357,7 +1360,7 @@ export class ChannelService {
       link.subject,
       () => this.deps.conversations.start(tenantId, userId, titleOf('line')),
     );
-    return this.notifyConversation(tenantId, lineConversation, text);
+    return this.notifyConversation(tenantId, lineConversation, text, quickReplies);
   }
 
   async watchTask(tenantId: string, conversationId: string, taskId: string): Promise<boolean> {

@@ -20,6 +20,9 @@ export interface OutgoingButton {
   readonly style?: 'primary' | 'danger';
 }
 
+/** タップで送る選択肢。ボタンの字と送る文が違うときは組で渡す。 */
+export type QuickReply = string | { readonly label: string; readonly text: string };
+
 export interface OutgoingMessage {
   readonly text: string;
   readonly buttons?: readonly OutgoingButton[];
@@ -30,7 +33,7 @@ export interface OutgoingMessage {
   /** 答えの元の成果物（予定の一覧・天気・ニュースの JSON）。LINE はカードで描く（cards.ts）。 */
   readonly card?: string;
   /** 次の一手の選択肢（LINE の Quick Reply）。無ければ文の終わりの「はい / いいえ」から読む。 */
-  readonly quickReplies?: readonly string[];
+  readonly quickReplies?: readonly QuickReply[];
   /** 承認の中身。LINE は、変わるところとボタンを並べた確認カードで描く。 */
   readonly approval?: {
     readonly summary: string;
@@ -387,15 +390,16 @@ export function choicesOf(text: string): string[] | null {
   return choices.length >= 2 ? choices.slice(0, 4) : null;
 }
 
-const withQuickReply = (message: unknown, choices: readonly string[] | null): unknown =>
+const withQuickReply = (message: unknown, choices: readonly QuickReply[] | null): unknown =>
   choices
     ? {
         ...(message as object),
         quickReply: {
-          items: choices.map((label) => ({
-            type: 'action',
-            action: { type: 'message', label: label.slice(0, 20), text: label },
-          })),
+          items: choices.map((choice) => {
+            const { label, text } =
+              typeof choice === 'string' ? { label: choice, text: choice } : choice;
+            return { type: 'action', action: { type: 'message', label: label.slice(0, 20), text } };
+          }),
         },
       }
     : message;

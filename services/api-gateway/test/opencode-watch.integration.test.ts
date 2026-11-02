@@ -13,6 +13,7 @@ import { makeTestApp, makeTokens, testDbConfig, type TestApp } from './support.j
 const url = process.env['TEST_DATABASE_URL'];
 describe.skipIf(!url)('watching an opencode session', () => {
   let h: TestApp;
+  let shownButtons: readonly string[] = [];
   let principal: { tenantId: string; userId: string };
   let conversationId: string;
   let server: http.Server;
@@ -22,6 +23,8 @@ describe.skipIf(!url)('watching an opencode session', () => {
     status: 'idle' as 'idle' | 'busy',
     permission: false,
     permissionId: 'per_1',
+    question: null as string | null,
+    answers: [] as string[],
     replies: [] as string[],
     message: { id: 'msg_1', completed: 1000, text: '途中まで直しました。' },
     prompts: [] as string[],
@@ -60,7 +63,33 @@ describe.skipIf(!url)('watching an opencode session', () => {
           });
           return;
         }
-        if (req.url === '/question') return send([]);
+        if (req.url === '/question')
+          return send(
+            fake.question
+              ? [
+                  {
+                    id: fake.question,
+                    sessionID: SESSION,
+                    questions: [
+                      {
+                        question: 'Which linter?',
+                        options: [{ label: 'flake8' }, { label: 'ruff' }],
+                      },
+                    ],
+                  },
+                ]
+              : [],
+          );
+        if (req.url?.startsWith('/question/') && req.method === 'POST') {
+          let body = '';
+          req.on('data', (c) => (body += c));
+          req.on('end', () => {
+            fake.answers.push(`${req.url!.split('/')[2]!}:${body}`);
+            fake.question = null;
+            send(true);
+          });
+          return;
+        }
         if (req.url?.startsWith(`/session/${SESSION}/message`))
           return send([
             { info: { id: 'msg_0', role: 'user' }, parts: [{ type: 'text', text: '実装して' }] },
@@ -123,8 +152,9 @@ describe.skipIf(!url)('watching an opencode session', () => {
     watches = new OpencodeWatchService({
       db: h.db,
       now: () => clock,
-      notify: async (_t, _u, _c, text) => {
+      notify: async (_t, _u, _c, text, buttons) => {
         told.push(text);
+        shownButtons = buttons?.map((b) => b.text) ?? [];
       },
     });
   });
@@ -246,11 +276,13 @@ describe.skipIf(!url)('watching an opencode session', () => {
     await say(`${base}/session/${SESSION} を10分ごとに見張って opencode`);
     await watches.tick();
     expect(told.at(-1)).toContain('pip install pytest');
+    expect(shownButtons).toEqual(['opencode を許可', 'opencode を拒否']);
     // 許可を否定する文には答えない
     expect(await say('opencode を許可しないで')).toBeNull();
     // 見せたあとで別の承認に変わったら、通さずに見せ直す
     fake.permissionId = 'per_2';
-    expect(await say('opencode を許可')).toContain('もう一度');
+    expect(await say('opencode を許可')).toContain('変わっていた');
+    expect(told.at(-1)).toContain('もう一度');
     expect(fake.replies).toHaveLength(0);
     expect(await say('opencode を続けて')).toContain('承認を待っています');
     expect(fake.prompts).toHaveLength(0);
@@ -280,6 +312,38 @@ describe.skipIf(!url)('watching an opencode session', () => {
     fake.prompts.length = 0;
     told.length = 0;
     fake.message = { id: 'msg_1', completed: 1000, text: '途中まで直しました。' };
+  });
+
+  it('shows a question on LINE, passes the answer to the one that was shown, and continues', async () => {
+    const say = (text: string) => watches.command(principal, conversationId, text);
+    fake.status = 'idle';
+    fake.permission = false;
+    fake.question = 'que_1';
+    fake.answers.length = 0;
+    fake.prompts.length = 0;
+    told.length = 0;
+    fake.message = { id: 'msg_q', completed: 1, text: 'どれを使いますか' };
+    await say(`${base}/session/${SESSION} を10分ごとに見張って opencode`);
+    await watches.tick();
+    expect(told.at(-1)).toContain('Which linter?');
+    expect(told.at(-1)).toContain('2. ruff');
+    expect(shownButtons).toEqual(['opencode 1', 'opencode 2']);
+    // 答えるまで促さない
+    expect(fake.prompts).toHaveLength(0);
+    expect(await say('opencode はどう？')).not.toContain('と答えました');
+    expect(await say('opencode 9')).toContain('番号は');
+    expect(fake.answers).toHaveLength(0);
+    // 見せたあとで変わった質問には答えず、見せ直す
+    fake.question = 'que_2';
+    expect(await say('opencode 2')).toContain('変わっていた');
+    expect(told.at(-1)).toContain('Which linter?');
+    expect(fake.answers).toHaveLength(0);
+    expect(await say('opencode 2')).toContain('「ruff」と答えました');
+    expect(fake.answers).toEqual(['que_2:{"answers":[["ruff"]]}']);
+    await watches.tick();
+    expect(fake.prompts).toHaveLength(1);
+    expect(await say('opencode 2')).toContain('待っている質問はありません');
+    await say('見守りをやめて opencode');
   });
 
   it('approves everything once asked, and reports what it approved as one log message', async () => {

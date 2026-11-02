@@ -5,7 +5,7 @@
  * 内部の tool 名や JSON は出さない（正本 §9.3）。Lane も出さない。
  */
 import { CALL_OUTCOME_TEXT, type CallReport } from '@genie/contracts';
-import type { OutgoingButton, OutgoingMessage } from './send.js';
+import type { OutgoingButton, OutgoingMessage, QuickReply } from './send.js';
 
 export type PostingPolicy = 'summary_and_link' | 'full_text';
 
@@ -32,7 +32,10 @@ export const accepted = (title: string | null): OutgoingMessage => ({
   text: `承知しました${title ? `：${title}` : ''}。終わったらお知らせします。`,
 });
 
-export const notice = (text: string): OutgoingMessage => ({ text });
+export const notice = (text: string, quickReplies?: readonly QuickReply[]): OutgoingMessage => ({
+  text,
+  ...(quickReplies?.length ? { quickReplies } : {}),
+});
 
 /** 調べものが長引いている（質問なので「承知しました」は付けない）。 */
 export const lookingUp = (): OutgoingMessage => ({

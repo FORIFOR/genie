@@ -42,3 +42,16 @@ describe('quick reply choices', () => {
     ).toBeUndefined();
   });
 });
+
+describe('quick replies with their own label', () => {
+  it('shows the label and sends the words', () => {
+    const [message] = lineMessages({
+      text: '承認を待っています',
+      quickReplies: [{ label: '許可（今回だけ）', text: 'opencode を許可' }, '拒否'],
+    }) as { quickReply: { items: { action: { label: string; text: string } }[] } }[];
+    expect(message!.quickReply.items.map((i) => i.action)).toEqual([
+      { type: 'message', label: '許可（今回だけ）', text: 'opencode を許可' },
+      { type: 'message', label: '拒否', text: '拒否' },
+    ]);
+  });
+});
