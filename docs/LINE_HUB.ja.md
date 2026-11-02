@@ -64,3 +64,17 @@ LINE → https://<トンネル>/line/webhook → 中継の入り口（scripts/li
 - **通話のページは、まだ中継を通りません。**いまは手元のトンネル（`GENIE_PUBLIC_URL`）を使います。製品にするには、中継がページと音声も各 Genie へ通す必要があります。
 - **中継の控えは SQLite 1 つです。**中継を複数台に増やす作りではありません。
 - **実際の LINE で、中継を通した動きはまだ試していません。**試験は、本物の中継と、LINE の API の代役を使った結合テストだけです。
+
+## 止まったときの知らせ（見張り）
+
+`scripts/line-watchdog.mjs` は Genie とは別に動き、LINE の受け口と Genie 本体を 5 分ごとに調べます。2 回続けて失敗したら本人の LINE へ 1 回知らせ、戻ったらもう 1 回知らせます。
+
+```
+pnpm -s exec node scripts/line-watchdog.mjs check      # 1 回調べる（送らない）
+pnpm -s exec node scripts/line-watchdog.mjs install    # launchd に登録
+pnpm -s exec node scripts/line-watchdog.mjs uninstall  # 解除
+```
+
+- **宛先:** `set-destination` が標準入力から受け取り、`~/Library/Application Support/Genie/line-watchdog.json` に 0600 で置きます。
+- **知らせが来ない場面:** Mac の電源が切れている間、スリープ中、ネットにつながっていない間は動きません。
+- **記録:** `~/Library/Logs/Genie/line-watchdog.log`
