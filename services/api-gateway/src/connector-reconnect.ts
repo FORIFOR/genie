@@ -61,8 +61,11 @@ export interface PastedCallback {
 /** 貼られた URL から戻りの値を取り出す。手元の戻り先でなければ null（別のページの URL を受けない）。 */
 export function parsePastedCallback(text: string): PastedCallback | null {
   let url: URL;
+  // スマホのブラウザは、コピーするときに http:// を落とすことがある
+  const pasted = text.trim();
+  const whole = /^(?:127\.0\.0\.1|localhost)[:/]/.test(pasted) ? `http://${pasted}` : pasted;
   try {
-    url = new URL(text.trim());
+    url = new URL(whole);
   } catch {
     return null;
   }

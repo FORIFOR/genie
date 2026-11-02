@@ -34,6 +34,21 @@ describe('parsePastedCallback', () => {
     expect(parsePastedCallback('なにか')).toBeNull();
   });
 
+  it('takes the local address when the phone dropped http:// while copying', () => {
+    expect(parsePastedCallback(' 127.0.0.1:50000/callback?code=c&state=s ')).toEqual({
+      code: 'c',
+      state: 's',
+    });
+    expect(parsePastedCallback('localhost:50000/callback?code=c&state=s')).toEqual({
+      code: 'c',
+      state: 's',
+    });
+    // 抜けた形でも、ほかの場所の URL は受けない
+    expect(parsePastedCallback('127.0.0.1.evil.example/callback?code=c&state=s')).toBeNull();
+    expect(parsePastedCallback('evil.example/callback?code=c&state=s')).toBeNull();
+    expect(parsePastedCallback('https://127.0.0.1:1/callback?code=c&state=s')).toBeNull();
+  });
+
   it('accepts only the provider authorize page', () => {
     expect(authorizeUrlFor('google', AUTH)).not.toBeNull();
     expect(authorizeUrlFor('google', 'https://evil.example/?state=s')).toBeNull();
