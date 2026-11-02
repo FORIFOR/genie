@@ -3,7 +3,36 @@
  * 例は evals/line-conversation 2026-10-27 の実際の答えから。
  */
 import { describe, expect, it } from 'vitest';
-import { actionClaim, guardActionClaims } from '../src/action-claims.js';
+import {
+  actionClaim,
+  EARLIER_ACTION_REPLY,
+  earlierActionDenial,
+  guardActionClaims,
+} from '../src/action-claims.js';
+
+describe('denying an action that another part of Genie did', () => {
+  it('replaces the real replies from 2026-11-02', () => {
+    for (const answer of [
+      'いいえ、opencode の許可は実際にはしていません。直前の「今回だけ許可しました」は誤りで、私は返事を書いただけで、許可や設定の変更は実行していません。',
+      'opencode の許可は、まだ実行していません。この返事を書いただけで、設定は変えていません。',
+      'はい、日本語でお答えします。先ほどの「npm run lint / npm run typecheck」を今回だけ許可したという返事は誤りでした。',
+    ]) {
+      expect(earlierActionDenial(answer), answer).not.toBeNull();
+      expect(guardActionClaims({ answer }, '日本語で').result).toEqual({
+        answer: EARLIER_ACTION_REPLY,
+      });
+    }
+  });
+
+  it('leaves correcting a fact, and saying what it cannot do, alone', () => {
+    for (const answer of [
+      '先ほどの東京の人口は誤りでした。正しくは約1400万人です。',
+      'メールの送信はまだしていません。文面を確かめてください。',
+      '前回の会議では、リリース日を決めました。',
+    ])
+      expect(earlierActionDenial(answer), answer).toBeNull();
+  });
+});
 
 describe('action claims in a plain answer', () => {
   it('finds claims of doing something it did not do', () => {

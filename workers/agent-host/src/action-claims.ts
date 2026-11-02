@@ -57,6 +57,30 @@ export function actionClaim(answer: string, withContext = false): string | null 
   return null;
 }
 
+/**
+ * 前の返事で伝えた操作を「していない」「誤りだった」と取り消す文（無ければ null）。
+ * 「opencode を許可」のような操作はモデルを通さず別の仕組みが実行して、結果を伝えている。
+ * このモデルはそれを知らないので、続きを聞かれると、実行済みの操作を「返事を書いただけ」と打ち消した
+ * （2026-11-02: 実際に許可した 3 件のあとで 3 回）。事実の言い直し（「先ほどの人口は誤りでした」）は数えない。
+ */
+const EARLIER = /先ほど|さきほど|さっき|直前|前回|前の|今の返事/;
+const DENIED = /誤り|間違い|取り消|して(?:い|お)?(?:ま|り)せん|しておりません/;
+const ACTION =
+  /許可|承認|拒否|実行|操作|送信|送り|返信|変更|登録|追加|削除|予約|設定|つなぎ直|キャンセル/;
+
+export function earlierActionDenial(answer: string): string | null {
+  for (const sentence of answer.split(/(?<=[。！？!?\n])/)) {
+    if (/返事を書いただけ/.test(sentence)) return sentence.trim();
+    if (EARLIER.test(sentence) && DENIED.test(sentence) && ACTION.test(sentence))
+      return sentence.trim();
+  }
+  return null;
+}
+
+/** 打ち消しの代わりに伝える文。この答えからは確かめられないことも書く。 */
+export const EARLIER_ACTION_REPLY =
+  '前の返事で「〜しました」とお伝えした操作は、Genie の機能が実行した結果です。取り消されていません。この返事の中では、その後の様子までは確かめられません。';
+
 /** 実行していないことを正直に伝える文。 */
 export function notDoneReply(question: string): string {
   const q = question.replace(/\s+/g, ' ').trim();
@@ -83,9 +107,10 @@ export function guardActionClaims(
         ? String((result as { answer: string }).answer)
         : null;
   if (text === null) return { result, claim: null };
-  const claim = actionClaim(text, withContext);
+  const denial = earlierActionDenial(text);
+  const claim = denial ?? actionClaim(text, withContext);
   if (!claim) return { result, claim: null };
-  const replaced = notDoneReply(question);
+  const replaced = denial ? EARLIER_ACTION_REPLY : notDoneReply(question);
   return {
     result: typeof result === 'string' ? replaced : { ...(result as object), answer: replaced },
     claim,
