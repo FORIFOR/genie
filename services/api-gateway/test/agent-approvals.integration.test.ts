@@ -159,6 +159,7 @@ describe.skipIf(!url)('Claude Code approvals from LINE', () => {
     toolInput: Record<string, unknown>,
     sessionId = 'sess-1',
     cwd = `${ROOT}/services/api`,
+    toolName = 'Bash',
   ) => {
     const before = sent.length;
     const res = await harness.app.inject({
@@ -169,7 +170,7 @@ describe.skipIf(!url)('Claude Code approvals from LINE', () => {
         hook_event_name: 'PermissionRequest',
         session_id: sessionId,
         cwd,
-        tool_name: 'Bash',
+        tool_name: toolName,
         tool_input: toolInput,
         permission_mode: 'default',
         prompt_id: `p-${sessionId}`,
@@ -181,6 +182,7 @@ describe.skipIf(!url)('Claude Code approvals from LINE', () => {
         id: '',
         card: JSON.stringify(sent.slice(before)),
         buttons: null,
+        values: [] as string[],
         answer: res.statusCode === 200 ? res.json<HookAnswer>() : null,
       };
     const card = JSON.stringify(sent.slice(before));
@@ -197,6 +199,7 @@ describe.skipIf(!url)('Claude Code approvals from LINE', () => {
         session: pick('S'),
         project: pick('P'),
       },
+      values,
       answer: null,
     };
   };
@@ -614,5 +617,108 @@ describe.skipIf(!url)('Claude Code approvals from LINE', () => {
     );
     expect((await stateOf(asked.id)).state).toBe('pending');
     expect(await say('承認ルール')).toContain('承認ルールはありません');
+  });
+
+  it('lets the person answer Claude Code questions from LINE, one question at a time', async () => {
+    const code = (values: readonly string[], c: string) =>
+      values.find((v) => v.split('.')[3] === c)!;
+    const questions = [
+      {
+        question: 'Which linter?',
+        header: 'Linter',
+        multiSelect: false,
+        options: [
+          { label: 'ruff', description: 'fast' },
+          { label: 'flake8', description: 'classic' },
+        ],
+      },
+      {
+        question: 'Run it now?',
+        header: 'Run',
+        multiSelect: false,
+        options: [
+          { label: 'Yes', description: 'run' },
+          { label: 'No', description: 'later' },
+        ],
+      },
+    ];
+    const asked = await ask({ questions }, 'sess-q1', undefined, 'AskUserQuestion');
+    expect(asked.status).toBe(201);
+    expect(asked.card).toContain('Claude Codeが質問しています（#');
+    expect(asked.card).toContain('（1/2 問目）');
+    expect(asked.card).toContain('Which linter?');
+    expect(asked.card).toContain('2. flake8');
+    // 「承認」や「同種を許可」は出さない（質問は許可しても Mac に問いが出るだけ）
+    expect(asked.buttons!.allow).toBeUndefined();
+    expect(asked.buttons!.session).toBeUndefined();
+
+    // 1 問目: 「文で答える」を押してから、やはり選択肢のボタン → 2 問目のカードが届く。まだ Claude Code には返さない
+    expect(await press(code(asked.values, 'I'))).toContain('答えを文で送ってください');
+    const before = sent.length;
+    expect(await press(code(asked.values, '01'))).toContain('続きの質問');
+    await waitFor(
+      () => JSON.stringify(sent.slice(before)).includes('（2/2 問目）'),
+      'the second question',
+    );
+    const second = [...JSON.stringify(sent.slice(before)).matchAll(/c1\.[A-Za-z0-9._-]+/g)].map(
+      (m) => m[0],
+    );
+    expect((await wait(asked.id)).statusCode).toBe(202);
+    // ボタンで答えたので、次の文は答えにしない（ふつうの会話）
+    expect(await say('ありがとう')).not.toContain('Claude Code に渡しました');
+    expect((await wait(asked.id)).statusCode).toBe(202);
+    // 前の問いのボタンはもう通らない
+    expect(await press(code(asked.values, '00'))).toContain('もう済んでいます');
+
+    // 2 問目: 選択肢にない答えを文で
+    expect(await press(code(second, 'I'))).toContain('答えを文で送ってください');
+    expect(await say('明日の朝に流して')).toContain('答えを Claude Code に渡しました');
+    expect((await wait(asked.id)).json()).toEqual({
+      hookSpecificOutput: {
+        hookEventName: 'PermissionRequest',
+        decision: {
+          behavior: 'allow',
+          updatedInput: {
+            questions,
+            answers: { 'Which linter?': 'flake8', 'Run it now?': '明日の朝に流して' },
+          },
+        },
+      },
+    });
+    expect((await stateOf(asked.id)).state).toBe('allowed');
+    // LINE で答えたあとは、Claude Code が動き出すまで「ターミナルで確かめて」を送らない
+    const approvals = harness.agentApprovals!;
+    expect(approvals.handledOnChat(tenantId, 'sess-q1', new Date(clock - 60_000))).toBe(true);
+    expect(approvals.handledOnChat(tenantId, 'sess-q1', new Date(clock + 60_000))).toBe(false);
+  });
+
+  it('tells Claude Code when the person chose not to answer, and never answers a question by rule', async () => {
+    const question = {
+      question: 'Overwrite config.yaml?',
+      header: 'Config',
+      multiSelect: false,
+      options: [
+        { label: 'Overwrite', description: 'replace it' },
+        { label: 'Keep', description: 'leave it' },
+      ],
+    };
+    const asked = await ask({ questions: [question] }, 'sess-q2', undefined, 'AskUserQuestion');
+    expect(asked.card).not.toContain('問目）');
+    // 承認のボタンの形（今回だけ承認）を作って押しても、質問には通らない
+    expect(await harness.agentApprovals!.decide(tenantId, userId, asked.id, 'allow_project')).toBe(
+      'gone',
+    );
+    expect(await press(asked.values.find((v) => v.split('.')[3] === 'R')!)).toContain(
+      '答えずに返しました',
+    );
+    const answered = (await wait(asked.id)).json<{
+      hookSpecificOutput: { decision: { behavior: string; message: string } };
+    }>();
+    expect(answered.hookSpecificOutput.decision.behavior).toBe('deny');
+    expect(answered.hookSpecificOutput.decision.message).toContain('答えない');
+    // 同じ質問がまた来ても、毎回カードにする（その場で答えを返さない）
+    expect(
+      (await ask({ questions: [question] }, 'sess-q2', undefined, 'AskUserQuestion')).status,
+    ).toBe(201);
   });
 });

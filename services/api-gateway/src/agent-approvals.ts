@@ -45,15 +45,70 @@ const INSTRUCTION_MS = 5 * 60_000;
 /** 答えたあと、実行の結果（PostToolUse）を待つ時間。 */
 const RESULT_MS = 15 * 60_000;
 
-export type ApprovalChoice = 'allow' | 'deny' | 'instruct' | 'allow_session' | 'allow_project';
+/** Claude Code の質問（AskUserQuestion）の選択肢のボタン。`answer_<何問目>_<何番目>`（0 から）。 */
+export type AnswerChoice = `answer_${number}_${number}`;
+export type ApprovalChoice =
+  'allow' | 'deny' | 'instruct' | 'allow_session' | 'allow_project' | AnswerChoice;
 export type ApprovalState =
   'pending' | 'allowed' | 'denied' | 'auto_allowed' | 'answered_on_mac' | 'expired' | 'ended';
 
-/** Claude Code へ返す答え。none は「何も返さない」（Mac の問いに任せる）。 */
+/**
+ * Claude Code へ返す答え。none は「何も返さない」（Mac の問いに任せる）。
+ * 質問（AskUserQuestion）は allow に updatedInput.answers を付けて返すと、Claude Code はそれを本人の答えとして受け取る
+ * （2026-11-04、Claude Code 2.1.317 で確かめた）。
+ */
 export type HookDecision =
-  | { readonly behavior: 'allow' }
+  | { readonly behavior: 'allow'; readonly updatedInput?: Record<string, unknown> }
   | { readonly behavior: 'deny'; readonly message: string }
   | { readonly behavior: 'none' };
+
+/** Claude Code の質問 1 つ（AskUserQuestion の questions の 1 つ）。答えは選択肢の label をそのまま返す。 */
+export interface AskedQuestion {
+  readonly question: string;
+  readonly header: string | null;
+  readonly options: readonly { readonly label: string; readonly description: string | null }[];
+  readonly multiSelect: boolean;
+}
+
+/** カードに載せる質問（秘密を伏せた写し）。 */
+export interface QuestionView {
+  /** 何問目か（0 から）と全部で何問か。 */
+  readonly index: number;
+  readonly total: number;
+  readonly header: string | null;
+  readonly text: string;
+  readonly options: readonly { readonly label: string; readonly description: string | null }[];
+  readonly multiSelect: boolean;
+}
+
+/**
+ * AskUserQuestion の問いを読む。形が分からなければ null（ふつうの承認カードにする）。
+ * ボタンは 4 つまで（Claude Code も 1 問 2〜4 択）。それより多い選択肢は文で答えてもらう。
+ */
+export function askedQuestions(toolName: string, input: unknown): AskedQuestion[] | null {
+  if (toolName !== 'AskUserQuestion' || !input || typeof input !== 'object') return null;
+  const raw = (input as { questions?: unknown }).questions;
+  if (!Array.isArray(raw) || raw.length === 0 || raw.length > 4) return null;
+  const out: AskedQuestion[] = [];
+  for (const q of raw) {
+    if (!q || typeof q !== 'object') return null;
+    const r = q as Record<string, unknown>;
+    if (typeof r['question'] !== 'string' || !r['question'].trim()) return null;
+    const options = (Array.isArray(r['options']) ? r['options'] : []).flatMap((o: unknown) => {
+      const label = o && typeof o === 'object' ? (o as Record<string, unknown>)['label'] : null;
+      if (typeof label !== 'string' || !label.trim()) return [];
+      const description = (o as Record<string, unknown>)['description'];
+      return [{ label, description: typeof description === 'string' ? description : null }];
+    });
+    out.push({
+      question: r['question'],
+      header: typeof r['header'] === 'string' && r['header'].trim() ? r['header'] : null,
+      options,
+      multiSelect: r['multiSelect'] === true,
+    });
+  }
+  return out;
+}
 
 /** プロジェクト（git の根）。分からなければ cwd をそのまま根にする。 */
 export interface ProjectInfo {
@@ -87,6 +142,8 @@ export interface ApprovalView {
   readonly ruleable: boolean;
   readonly notRuleableReason: string | null;
   readonly expiresAt: Date;
+  /** Claude Code の質問なら、いま答えてほしい 1 問（ボタンは選択肢）。承認なら null。 */
+  readonly question: QuestionView | null;
 }
 
 // ---- 秘密を伏せる ----
@@ -204,7 +261,15 @@ export function inputHash(input: unknown): string {
 // ---- 待ちの取り次ぎ（このプロセスのメモリだけ） ----
 
 interface Live {
-  readonly view: ApprovalView;
+  /** 質問が続くときは、次の問いのカードに差し替える。 */
+  view: ApprovalView;
+  /** Claude Code の質問なら、その問い（原文）と、ここまでの答え（問いの文 → 選んだ label か本人の文）。 */
+  readonly questions: readonly AskedQuestion[] | null;
+  readonly answers: Record<string, string>;
+  /** いま答えを待っている問い（0 から）。 */
+  asking: number;
+  /** 答えを返すときにそのまま戻す入力（questions を含む）。このプロセスのメモリだけ。 */
+  readonly toolInput: unknown;
   readonly tenantId: string;
   readonly userId: string;
   readonly connectionId: string;
@@ -273,10 +338,18 @@ export type DecideResult =
   | 'decided'
   | 'decided_with_rule'
   | 'awaiting_instruction'
+  /** 質問の「文で答える」を押した（次の文を答えにする）。 */
+  | 'awaiting_text'
   | 'not_ruleable'
   | 'gone'
   | 'expired'
-  | 'answered_on_mac';
+  | 'answered_on_mac'
+  /** 質問の答えを全部そろえて Claude Code に渡した。 */
+  | 'answered'
+  /** 質問の答えを受け、次の問いのカードを送った。 */
+  | 'next_question'
+  /** 質問に「答えない」を選んだ（Claude Code には答えないことを伝えた）。 */
+  | 'skipped';
 
 export type RequestResult =
   | { readonly kind: 'asked'; readonly id: string; readonly expiresAt: Date }
@@ -302,6 +375,8 @@ export class AgentApprovals {
   readonly #awaiting = new Map<string, { id: string; until: number }>();
   /** 答えたあと、実行の結果を待っているもの（承認の id → 中身）。 */
   readonly #results = new Map<string, Pending>();
+  /** チャットで最後に答えた時刻（tenant:session → ms）。答えたあとも「待っている」に見える間の知らせを止める。 */
+  readonly #chatAnswered = new Map<string, number>();
 
   constructor(private readonly deps: AgentApprovalDeps) {}
 
@@ -318,6 +393,17 @@ export class AgentApprovals {
     for (const live of this.#live.values())
       if (live.tenantId === tenantId && live.sessionId === sessionId && !live.decision) return true;
     return false;
+  }
+
+  /**
+   * そのセッションの待ちは、チャットのカードが受け持っているか（待っている、または since 以降にチャットで答えた）。
+   * Claude Code は答えを受けて動き出しても、次の出来事（実行の終わり）まで「承認待ち」のままに見える。
+   * そのあいだに「ターミナルで確かめて」を送ると、LINE で答えた本人を Mac へ行かせてしまう（2026-11-04 のログ）。
+   */
+  handledOnChat(tenantId: string, sessionId: string, since: Date): boolean {
+    if (this.hasPending(tenantId, sessionId)) return true;
+    const at = this.#chatAnswered.get(`${tenantId}:${sessionId}`);
+    return at !== undefined && at >= since.getTime();
   }
 
   async #project(cwd: string | undefined): Promise<ProjectInfo | null> {
@@ -380,7 +466,20 @@ export class AgentApprovals {
     );
     const project = await this.#project(event.cwd);
     const root = project?.root ?? event.cwd ?? '/';
-    const op = classify(event.toolName, event.toolInput, event.cwd ?? root, root);
+    const questions = askedQuestions(event.toolName, event.toolInput);
+    const isQuestion = event.toolName === 'AskUserQuestion';
+    // 質問は「許可」しても Mac に問いが出るだけ。答えは毎回本人から（継続許可にしない・ルールも当てない）
+    const op: OperationClass = isQuestion
+      ? {
+          operation: 'question',
+          label: '質問に答える',
+          risk: 'low',
+          ruleable: false,
+          reason: '質問には毎回本人が答える',
+          match: null,
+          targets: [],
+        }
+      : classify(event.toolName, event.toolInput, event.cwd ?? root, root);
     const hash = inputHash(event.toolInput);
     const id = uuidv7();
     const now = this.#now();
@@ -399,11 +498,13 @@ export class AgentApprovals {
 
     // 本人が前もって許した同種の操作なら、その場で許可する（毎回評価し直す。本人が止めたセッションでも、
     // 本人が作ったルールには従う）
-    const rule = ruleFor(await this.#rules(connection.tenantId, connection.id), op, {
-      toolName: event.toolName,
-      sessionId: event.sessionId,
-      projectRoot: root,
-    });
+    const rule = isQuestion
+      ? null
+      : ruleFor(await this.#rules(connection.tenantId, connection.id), op, {
+          toolName: event.toolName,
+          sessionId: event.sessionId,
+          projectRoot: root,
+        });
     if (rule) {
       await withTenant(this.deps.db, connection.tenantId, async (tx) => {
         await tx
@@ -475,12 +576,18 @@ export class AgentApprovals {
           .jobLabel?.(connection.tenantId, connection.userId, event.sessionId)
           .catch(() => null)) ?? null,
       tool: event.toolName,
-      ...describePermission(event.toolName, event.toolInput, inProject),
+      ...(questions
+        ? {
+            summary: `質問に答えてください：${shown(questions[0]!.header ?? questions[0]!.question, 80)}`,
+            details: [],
+          }
+        : describePermission(event.toolName, event.toolInput, inProject)),
       operation: op.label,
       risk: op.risk,
       ruleable: op.ruleable,
       notRuleableReason: op.reason,
       expiresAt,
+      question: questions ? questionView(questions, 0) : null,
     };
     const timer = setTimeout(
       () => void this.#end(connection.tenantId, id, 'expired'),
@@ -497,6 +604,10 @@ export class AgentApprovals {
       toolName: event.toolName,
       op,
       projectRoot: root,
+      questions,
+      answers: {},
+      asking: 0,
+      toolInput: event.toolInput,
       decision: null,
       waiters: [],
       timer,
@@ -575,12 +686,23 @@ export class AgentApprovals {
       await this.#end(tenantId, id, 'expired');
       return 'expired';
     }
+    const picked = /^answer_(\d)_(\d)$/.exec(choice);
+    if (live.questions) {
+      // 質問のカードのボタンは 選択肢・文で答える・答えない だけ。前の問いのボタンは通さない
+      if (picked) {
+        const q = Number(picked[1]);
+        const label = live.questions[q]?.options[Number(picked[2])]?.label;
+        if (q !== live.asking || label === undefined) return 'gone';
+        return this.#answer(tenantId, id, live, label);
+      }
+      if (choice !== 'instruct' && choice !== 'deny') return 'gone';
+    } else if (picked) return 'gone';
     if (choice === 'instruct') {
       this.#awaiting.set(`${tenantId}:${userId}`, {
         id,
         until: Math.min(this.#now().getTime() + INSTRUCTION_MS, live.view.expiresAt.getTime()),
       });
-      return 'awaiting_instruction';
+      return live.questions ? 'awaiting_text' : 'awaiting_instruction';
     }
     // 継続許可にしてはいけない種類は、ボタンを押されても作らない（今回の許可もしない。聞き直す）
     if ((choice === 'allow_session' || choice === 'allow_project') && !live.op.ruleable)
@@ -595,8 +717,9 @@ export class AgentApprovals {
         ? { behavior: 'allow' }
         : {
             behavior: 'deny',
-            message:
-              'LINE で本人が拒否しました。この操作は実行せず、別の方法を考えるか、本人に確かめてください。',
+            message: live.questions
+              ? 'LINE で本人がこの質問に答えないことを選びました。答えを推して進めず、別の方法を考えるか、あとで本人に確かめてください。'
+              : 'LINE で本人が拒否しました。この操作は実行せず、別の方法を考えるか、本人に確かめてください。',
           },
       async (tx) => {
         if (choice !== 'allow_session' && choice !== 'allow_project') return null;
@@ -631,6 +754,7 @@ export class AgentApprovals {
       summary: live.view.summary,
       report: allow,
     });
+    if (live.questions) return 'skipped';
     return choice === 'allow_session' || choice === 'allow_project'
       ? 'decided_with_rule'
       : 'decided';
@@ -644,7 +768,7 @@ export class AgentApprovals {
     tenantId: string,
     userId: string,
     text: string,
-  ): Promise<'decided' | 'gone' | null> {
+  ): Promise<'decided' | 'answered' | 'next_question' | 'gone' | null> {
     const key = `${tenantId}:${userId}`;
     const waiting = this.#awaiting.get(key);
     if (!waiting) return null;
@@ -652,6 +776,12 @@ export class AgentApprovals {
     if (waiting.until <= this.#now().getTime()) return null;
     const instruction = text.trim().slice(0, 2000);
     if (!instruction) return null;
+    // 質問への「文で答える」: 本人の文をそのまま、いまの問いの答えにする
+    const live = this.#live.get(waiting.id);
+    if (live?.questions) {
+      if (live.decision || live.tenantId !== tenantId || live.userId !== userId) return 'gone';
+      return this.#answer(tenantId, waiting.id, live, instruction);
+    }
     const ok = await this.#settle(tenantId, waiting.id, 'denied', true, {
       behavior: 'deny',
       message: `LINE で本人がこの操作を止め、次の指示を出しました。指示に従って続けてください。\n指示: ${instruction}`,
@@ -804,6 +934,41 @@ export class AgentApprovals {
     );
   }
 
+  /**
+   * いまの問いに答えを入れる。問いが残っていれば次のカードを送り、全部そろえば Claude Code へ渡す。
+   * 同時に 2 回押されても、asking を先に進めるので 1 回だけ通る（ここまで await を挟まない）。
+   */
+  async #answer(
+    tenantId: string,
+    id: string,
+    live: Live,
+    answer: string,
+  ): Promise<'answered' | 'next_question' | 'gone'> {
+    const questions = live.questions!;
+    const current = questions[live.asking];
+    if (!current || live.decision) return 'gone';
+    live.answers[current.question] = answer;
+    live.asking += 1;
+    // 「文で答える」を押したあとにボタンで答えた: 次の文を答えとして待つのはやめる（ふつうの会話に戻す）
+    for (const [key, w] of this.#awaiting) if (w.id === id) this.#awaiting.delete(key);
+    if (live.asking < questions.length) {
+      live.view = { ...live.view, question: questionView(questions, live.asking) };
+      const delivered = await this.deps.ask?.(tenantId, live.userId, live.view).catch(() => false);
+      if (delivered) return 'next_question';
+      // 次の問いを送れなければ、Mac の問いに任せる（答えを推して埋めない）
+      await this.#end(tenantId, id, 'ended');
+      return 'gone';
+    }
+    const input = (
+      live.toolInput && typeof live.toolInput === 'object' ? live.toolInput : {}
+    ) as Record<string, unknown>;
+    const ok = await this.#settle(tenantId, id, 'allowed', false, {
+      behavior: 'allow',
+      updatedInput: { ...input, answers: { ...live.answers } },
+    });
+    return ok ? 'answered' : 'gone';
+  }
+
   #track(id: string, p: Omit<Pending, 'until'>) {
     this.#results.set(id, { ...p, until: this.#now().getTime() + RESULT_MS });
     // 古いものは捨てる（結果が来ないこともある: Claude Code が止められた・別の道具に替えた）
@@ -880,6 +1045,9 @@ export class AgentApprovals {
     });
     if (!won || live.decision) return false;
     live.decision = decision;
+    const at = this.#now().getTime();
+    this.#chatAnswered.set(`${tenantId}:${live.sessionId}`, at);
+    for (const [k, t] of this.#chatAnswered) if (t < at - RESULT_MS) this.#chatAnswered.delete(k);
     this.#release(id, live);
     this.deps.humanWait?.answered(tenantId, live.userId, live.sessionId);
     return true;
@@ -938,8 +1106,26 @@ export function hookOutput(decision: Exclude<HookDecision, { behavior: 'none' }>
       hookEventName: 'PermissionRequest',
       decision:
         decision.behavior === 'allow'
-          ? { behavior: 'allow' }
+          ? decision.updatedInput
+            ? { behavior: 'allow', updatedInput: decision.updatedInput }
+            : { behavior: 'allow' }
           : { behavior: 'deny', message: decision.message },
     },
   });
+}
+
+/** カードに載せる n 問目（秘密を伏せる。答えに返すのは原文の label）。 */
+function questionView(questions: readonly AskedQuestion[], index: number): QuestionView {
+  const q = questions[index]!;
+  return {
+    index,
+    total: questions.length,
+    header: q.header ? shown(q.header, 40) : null,
+    text: shown(q.question, 400),
+    options: q.options.slice(0, 4).map((o) => ({
+      label: shown(o.label, 60),
+      description: o.description ? shown(o.description, 160) : null,
+    })),
+    multiSelect: q.multiSelect,
+  };
 }

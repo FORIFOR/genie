@@ -117,7 +117,14 @@ function sign(secret: string, body: string): string {
 export interface AgentApprovalAction {
   readonly approvalId: string;
   readonly linkId: string;
-  readonly choice: 'allow' | 'deny' | 'instruct' | 'allow_session' | 'allow_project';
+  /** answer_<何問目>_<何番目> は Claude Code の質問の選択肢（0 から、どちらも 0〜3）。 */
+  readonly choice:
+    | 'allow'
+    | 'deny'
+    | 'instruct'
+    | 'allow_session'
+    | 'allow_project'
+    | `answer_${number}_${number}`;
   /** ms */
   readonly expiresAt: number;
 }
@@ -131,13 +138,27 @@ const CHOICE_CODE = {
   allow_project: 'P',
 } as const;
 
-/** `c1.<approvalId>.<linkId>.<A|R|I|S|P>.<expires(36進)>.<sig>`（Genie の仕事の承認 a1 とは別の形）。 */
+/** 質問の選択肢は 2 桁の数字（何問目・何番目）。それ以外は 1 文字。 */
+const ANSWER = /^answer_([0-3])_([0-3])$/;
+const ANSWER_CODE = /^([0-3])([0-3])$/;
+
+function choiceCode(choice: AgentApprovalAction['choice']): string {
+  const answer = ANSWER.exec(choice);
+  if (answer) return `${answer[1]!}${answer[2]!}`;
+  if (choice in CHOICE_CODE) return CHOICE_CODE[choice as keyof typeof CHOICE_CODE];
+  throw new Error('unknown choice');
+}
+
+/**
+ * `c1.<approvalId>.<linkId>.<A|R|I|S|P|質問の 2 桁>.<expires(36進)>.<sig>`
+ * （Genie の仕事の承認 a1 とは別の形）。
+ */
 export function signAgentApprovalAction(secret: string, action: AgentApprovalAction): string {
   const body = [
     'c1',
     action.approvalId,
     action.linkId,
-    CHOICE_CODE[action.choice],
+    choiceCode(action.choice),
     action.expiresAt.toString(36),
   ].join('.');
   return `${body}.${sign(secret, body)}`;
@@ -165,9 +186,12 @@ export function verifyAgentApprovalAction(
     string,
   ];
   const uuid = /^[0-9a-f-]{36}$/i;
-  const choice = (Object.keys(CHOICE_CODE) as (keyof typeof CHOICE_CODE)[]).find(
-    (k) => CHOICE_CODE[k] === code,
-  );
+  const answer = ANSWER_CODE.exec(code);
+  const choice: AgentApprovalAction['choice'] | undefined = answer
+    ? `answer_${Number(answer[1])}_${Number(answer[2])}`
+    : (Object.keys(CHOICE_CODE) as (keyof typeof CHOICE_CODE)[]).find(
+        (k) => CHOICE_CODE[k] === code,
+      );
   if (![approvalId, linkId].every((id) => uuid.test(id)) || !choice)
     return { ok: false, reason: 'malformed' };
   if (!constantTimeEqual(sign(secret, parts.slice(0, 5).join('.')), signature))

@@ -99,4 +99,15 @@ describe('Claude Code approval buttons', () => {
       reason: 'malformed',
     });
   });
+
+  it('carries which question and which option a question button answers', () => {
+    const answer = { ...action, choice: 'answer_1_3' as const };
+    const value = signAgentApprovalAction(secret, answer);
+    expect(value.split('.')[3]).toBe('13');
+    expect(verifyAgentApprovalAction(secret, value, 1_000)).toEqual({ ok: true, action: answer });
+    // 別の問い・別の選択肢に書き換えたものは通らない
+    expect(verifyAgentApprovalAction(secret, value.replace('.13.', '.03.'), 1_000).ok).toBe(false);
+    // 4 問・4 択より先は作らない
+    expect(() => signAgentApprovalAction(secret, { ...action, choice: 'answer_4_0' })).toThrow();
+  });
 });

@@ -37,6 +37,7 @@ import {
   type WatchedTask,
 } from './store.js';
 import {
+  type AgentApprovalAction,
   isAgentApprovalAction,
   linkCodeIn,
   signAgentApprovalAction,
@@ -274,17 +275,26 @@ export interface ChannelServiceDeps {
       tenantId: string,
       userId: string,
       approvalId: string,
-      choice: 'allow' | 'deny' | 'instruct' | 'allow_session' | 'allow_project',
+      choice: AgentApprovalAction['choice'],
     ): Promise<
       | 'decided'
       | 'decided_with_rule'
       | 'awaiting_instruction'
+      | 'awaiting_text'
       | 'not_ruleable'
       | 'gone'
       | 'expired'
       | 'answered_on_mac'
+      | 'answered'
+      | 'next_question'
+      | 'skipped'
     >;
-    instruct(tenantId: string, userId: string, text: string): Promise<'decided' | 'gone' | null>;
+    /** 「指示を添える」「文で答える」のあとの本人の文。質問なら answered / next_question。 */
+    instruct(
+      tenantId: string,
+      userId: string,
+      text: string,
+    ): Promise<'decided' | 'answered' | 'next_question' | 'gone' | null>;
     /** 「承認ルール」（一覧・取り消し）。当たらなければ null（ふつうの会話）。 */
     command?(tenantId: string, userId: string, text: string): Promise<string | null>;
   };
@@ -663,7 +673,7 @@ export class ChannelService {
         await this.#reply(
           message.provider,
           message,
-          render.agentApprovalAnswered(instructed === 'decided' ? 'instructed' : 'gone'),
+          render.agentApprovalAnswered(instructed === 'decided' ? 'instructed' : instructed),
           message.replyToken,
         );
         return 'handled';
@@ -1228,7 +1238,13 @@ export class ChannelService {
       return 'decided';
     }
     await answer(result);
-    return result === 'awaiting_instruction' ? 'decided' : 'refused';
+    return result === 'awaiting_instruction' ||
+      result === 'awaiting_text' ||
+      result === 'answered' ||
+      result === 'next_question' ||
+      result === 'skipped'
+      ? 'decided'
+      : 'refused';
   }
 
   /**
@@ -1266,25 +1282,38 @@ export class ChannelService {
       link.subject,
       () => this.deps.conversations.start(tenantId, userId, titleOf('line')),
     );
-    const sign = (choice: 'allow' | 'deny' | 'instruct' | 'allow_session' | 'allow_project') =>
+    const sign = (choice: AgentApprovalAction['choice']) =>
       signAgentApprovalAction(this.deps.actionSecret!, {
         approvalId,
         linkId: link.id,
         choice,
         expiresAt: view.expiresAt.getTime(),
       });
-    const body = render.agentApproval(
-      view,
-      {
-        allow: sign('allow'),
-        deny: sign('deny'),
-        instruct: sign('instruct'),
-        // 継続許可にしてよい種類のときだけ出す（gateway でも押されたときに確かめ直す）
-        allowSession: view.ruleable ? sign('allow_session') : null,
-        allowProject: view.ruleable ? sign('allow_project') : null,
-      },
-      timeZone,
-    );
+    const question = view.question;
+    // Claude Code の質問: 選択肢をそのままボタンに（押した選択肢の文を Claude Code へ答えとして返す）
+    const body = question
+      ? render.agentQuestion(
+          view,
+          question,
+          {
+            options: question.options.map((_, o) => sign(`answer_${question.index}_${o}`)),
+            text: sign('instruct'),
+            skip: sign('deny'),
+          },
+          timeZone,
+        )
+      : render.agentApproval(
+          view,
+          {
+            allow: sign('allow'),
+            deny: sign('deny'),
+            instruct: sign('instruct'),
+            // 継続許可にしてよい種類のときだけ出す（gateway でも押されたときに確かめ直す）
+            allowSession: view.ruleable ? sign('allow_session') : null,
+            allowProject: view.ruleable ? sign('allow_project') : null,
+          },
+          timeZone,
+        );
     // 送れたか分からない（'unknown'）ものは outbox が送り直す。待ちを閉じると、あとで届いたカードが押せなくなるので、
     // 届くものとして待つ（そのあいだも Mac の問いでは答えられる）
     const sent = await this.#notice(tenantId, conversationId, body);

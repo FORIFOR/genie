@@ -278,7 +278,8 @@ async function main(): Promise<void> {
     notifyChat: async (tenantId, userId, text) => {
       await chat.current?.service.notifyUser(tenantId, userId, null, text);
     },
-    approvalOnChat: (tenantId, sessionId) => agentApprovals.hasPending(tenantId, sessionId),
+    approvalOnChat: (tenantId, sessionId, since) =>
+      agentApprovals.handledOnChat(tenantId, sessionId, since),
     log: (event, detail) => logger.info(detail, event),
   });
   // カードの画像（店の写真・地図）は gateway が中継する（キーを外へ出さない・写真を保存しない）

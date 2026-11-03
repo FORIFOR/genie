@@ -259,6 +259,18 @@ export interface AgentApprovalCardView {
   readonly ruleable: boolean;
   readonly notRuleableReason: string | null;
   readonly expiresAt: Date;
+  /** Claude Code の質問なら、いま答えてほしい 1 問。承認なら null。 */
+  readonly question?: AgentQuestionView | null;
+}
+
+/** Claude Code の質問 1 問（gateway の QuestionView の写し。秘密は向こうで伏せてある）。 */
+export interface AgentQuestionView {
+  readonly index: number;
+  readonly total: number;
+  readonly header: string | null;
+  readonly text: string;
+  readonly options: readonly { readonly label: string; readonly description: string | null }[];
+  readonly multiSelect: boolean;
 }
 
 const RISK_TEXT = { low: '低', medium: '中', high: '高' } as const;
@@ -327,6 +339,62 @@ export function agentApproval(
   };
 }
 
+/**
+ * 「Claude Code が質問しています」のカード。選択肢をそのままボタンにする（押すと、その選択肢を答えとして返す）。
+ * ほかに「文で答える」（次の文を答えにする）と「答えない」。何問かあれば 1 問ずつ送る。
+ */
+export function agentQuestion(
+  view: AgentApprovalCardView,
+  question: AgentQuestionView,
+  buttons: { options: readonly string[]; text: string; skip: string },
+  timeZone: string,
+): OutgoingMessage {
+  const until = view.expiresAt.toLocaleTimeString('ja-JP', {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone,
+  });
+  const count =
+    question.total > 1 ? `（${String(question.index + 1)}/${String(question.total)} 問目）` : '';
+  const summary = `${view.agent}が質問しています（#${view.number}）${count}：${question.header ?? question.text.slice(0, 40)}`;
+  const details = [
+    {
+      label: 'プロジェクト',
+      value: view.project ? `${view.project}${view.branch ? `（${view.branch}）` : ''}` : '未確認',
+    },
+    { label: '作業', value: view.task ?? '未確認' },
+    { label: '質問', value: question.text },
+    ...question.options.map((o, i) => ({
+      label: String(i + 1),
+      value: o.description && o.description !== o.label ? `${o.label} — ${o.description}` : o.label,
+    })),
+  ];
+  const note = `${until} まで。ボタンを押すと、その答えを Claude Code に返します。${
+    question.multiSelect
+      ? '複数選ぶときは「文で答える」で「A、B」のように送ってください。'
+      : '選択肢にないときは「文で答える」。'
+  }Mac で答えても構いません。`;
+  return {
+    text: [summary, ...details.map((d) => `・${d.label}：${d.value.slice(0, 200)}`), '', note].join(
+      '\n',
+    ),
+    buttons: [
+      ...question.options.map((o, i) => ({
+        label: `${String(i + 1)}. ${o.label}`,
+        value: buttons.options[i]!,
+        ...(i === 0 ? { style: 'primary' as const } : {}),
+      })),
+      { label: '文で答える', value: buttons.text },
+      { label: '答えない', value: buttons.skip, style: 'danger' as const },
+    ],
+    approval: {
+      summary,
+      details: details.map((d) => ({ label: d.label, value: d.value })),
+      note,
+    },
+  };
+}
+
 /** Claude Code の承認のボタンを押したあとの返事。送っただけで「実行した」とは言わない。 */
 export const agentApprovalAnswered = (
   result:
@@ -335,6 +403,10 @@ export const agentApprovalAnswered = (
     | 'allowed_project'
     | 'denied'
     | 'awaiting_instruction'
+    | 'awaiting_text'
+    | 'answered'
+    | 'next_question'
+    | 'skipped'
     | 'instructed'
     | 'not_ruleable'
     | 'answered_on_mac'
@@ -351,6 +423,11 @@ export const agentApprovalAnswered = (
     denied: '拒否しました。Claude Code は実行せずに続けます。',
     awaiting_instruction:
       '指示を送ってください（次のメッセージを Claude Code に渡します。5 分以内）。この操作は実行しません。',
+    awaiting_text:
+      '答えを文で送ってください（次のメッセージをそのまま Claude Code への答えにします。5 分以内）。',
+    answered: '答えを Claude Code に渡しました。',
+    next_question: '答えを受け付けました。続きの質問にも答えてください。',
+    skipped: '答えずに返しました。Claude Code には「答えない」と伝えます。',
     instructed: '指示を Claude Code に渡しました。この操作は実行せず、指示に沿って続けます。',
     not_ruleable:
       'この操作は継続許可にできません（毎回確認します）。今回だけ承認するか、拒否してください。',

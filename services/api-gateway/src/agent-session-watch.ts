@@ -29,8 +29,11 @@ export interface AgentSessionWatchDeps {
   readonly onlyTenant?: () => string;
   /** 本人のチャットへ知らせる（つないでいなければ何もしない）。 */
   readonly notifyChat?: (tenantId: string, userId: string, text: string) => Promise<void>;
-  /** その承認を LINE のカードで待っているか（待っていれば、チャットへは重ねて知らせない）。 */
-  readonly approvalOnChat?: (tenantId: string, externalSessionId: string) => boolean;
+  /**
+   * その待ちを LINE のカードが受け持っているか（待っている、または since 以降に LINE で答えた）。
+   * そうなら、チャットへは「ターミナルで確かめて」を重ねて送らない。
+   */
+  readonly approvalOnChat?: (tenantId: string, externalSessionId: string, since: Date) => boolean;
   readonly now?: () => Date;
   readonly log?: (event: string, detail: Record<string, unknown>) => void;
 }
@@ -189,10 +192,15 @@ export class AgentSessionWatch {
       return { userId: row.user_id, notice: fresh, session };
     });
     if (!found) return false;
-    // 承認のカードを LINE に出してあれば、そのカードが知らせ（「ターミナルで確かめて」は送らない）
+    // 承認のカードを LINE に出してあれば、そのカードが知らせ（「ターミナルで確かめて」は送らない）。
+    // LINE で答えたあとも、Claude Code は実行が終わるまで「承認待ち」に見えるので、それも送らない
     if (
       found.session.waitingReason === 'permission' &&
-      this.deps.approvalOnChat?.(tenantId, found.session.externalSessionId)
+      this.deps.approvalOnChat?.(
+        tenantId,
+        found.session.externalSessionId,
+        found.session.stateSince,
+      )
     )
       return true;
     this.deps.log?.('agent_session_watch.notified', { id, key: found.notice.key.split(':')[0] });
