@@ -773,9 +773,12 @@ CREATE TABLE public.connector_reconnects (
     expires_at timestamp with time zone,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    purpose text DEFAULT 'reconnect'::text NOT NULL,
     CONSTRAINT connector_reconnects_authorize_url_check CHECK ((length(authorize_url) <= 4000)),
     CONSTRAINT connector_reconnects_fingerprint_check CHECK ((length(fingerprint) <= 128)),
     CONSTRAINT connector_reconnects_provider_check CHECK ((provider = ANY (ARRAY['google'::text, 'microsoft'::text]))),
+    CONSTRAINT connector_reconnects_purpose_check CHECK ((purpose = ANY (ARRAY['reconnect'::text, 'calendar_write'::text]))),
+    CONSTRAINT connector_reconnects_purpose_provider CHECK (((purpose <> 'calendar_write'::text) OR (provider = 'google'::text))),
     CONSTRAINT connector_reconnects_state_check CHECK ((state = ANY (ARRAY['notified'::text, 'requested'::text, 'ready'::text, 'code'::text, 'done'::text, 'failed'::text]))),
     CONSTRAINT connector_reconnects_token_hash_check CHECK ((length(token_hash) = 64))
 );
@@ -7373,3 +7376,4 @@ INSERT INTO schema_migrations (version) VALUES ('20261031020000');
 INSERT INTO schema_migrations (version) VALUES ('20261031030000');
 INSERT INTO schema_migrations (version) VALUES ('20261031040000');
 INSERT INTO schema_migrations (version) VALUES ('20261105000000');
+INSERT INTO schema_migrations (version) VALUES ('20261105010000');

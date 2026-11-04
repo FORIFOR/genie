@@ -433,6 +433,7 @@ export interface ConnectorReconnects {
   fingerprint: string | null;
   id: string;
   provider: string;
+  purpose: Generated<string>;
   state: string;
   tenant_id: string;
   token_hash: string | null;

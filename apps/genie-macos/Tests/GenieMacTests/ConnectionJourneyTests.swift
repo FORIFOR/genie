@@ -331,6 +331,38 @@ final class ConnectionJourneyTests: XCTestCase {
         XCTAssertEqual(store.result?.id, "fixture")
         XCTAssertNil(store.failure)
     }
+    func testRemoteCalendarWritePermissionUsesOnlyTheWriteConnection() async {
+        // LINE からの「カレンダーに予定を入れられるようにして」: 書く接続だけの許可を取り、読む接続には触れない
+        let store = Storage(); store.scopes = ["calendar.events"]
+        var deps = makeDeps(store)
+        var calls: [(String, [String: Any]?)] = []
+        var answer = #"{"items":[{"id":"w1","provider":"google","state":"requested","plugin_id":"test.calendar","connector_id":"calendar-actions"}]}"#
+        deps.remote = { _, _, method, path, body in
+            if method == "GET" { return Data(answer.utf8) }
+            calls.append((path, body)); return Data()
+        }
+        let write = ConnectorState.Source(pluginId: "test.calendar", name: "Google Calendar", purpose: "Create", provider: "google", connectorId: "calendar-actions", scopes: ["calendar.events"], readOnly: false)
+        let state = ConnectorState(sources: [mail, calendar], actions: [write], dependencies: deps)
+        state.configureBackend(base: "fixture", token: "fixture")
+        await state.pollRemoteReconnects()
+        XCTAssertEqual(calls.first?.0, "/v1/connector-reconnects/w1/authorize")
+        let url = try! XCTUnwrap(calls.first?.1?["authorize_url"] as? String)
+        let scope = URLComponents(string: url)!.queryItems!.first { $0.name == "scope" }!.value!
+        XCTAssertEqual(scope, "calendar.events")
+        let stateValue = URLComponents(string: url)!.queryItems!.first { $0.name == "state" }!.value!
+        answer = #"{"items":[{"id":"w1","provider":"google","state":"code","code":"c","callback_state":"\#(stateValue)","plugin_id":"test.calendar","connector_id":"calendar-actions"}]}"#
+        await state.pollRemoteReconnects()
+        XCTAssertEqual(store.registrations, 1)
+        XCTAssertEqual(calls.last?.0, "/v1/connector-reconnects/w1/finished")
+        XCTAssertEqual(calls.last?.1?["ok"] as? Bool, true)
+        XCTAssertEqual(state.status[write.statusKey], .connected)
+        XCTAssertNotEqual(state.status[mail.id], .connected)
+        // 知らない書く接続は断る（読む接続で代わりに許可を取らない）
+        answer = #"{"items":[{"id":"w2","provider":"google","state":"requested","plugin_id":"test.calendar","connector_id":"unknown"}]}"#
+        await state.pollRemoteReconnects()
+        XCTAssertEqual(calls.last?.0, "/v1/connector-reconnects/w2/finished")
+        XCTAssertEqual(calls.last?.1?["ok"] as? Bool, false)
+    }
     func testSeparateSendAuthorizationDoesNotRelabelReadAccount() async {
         let store = Storage(); let state = make(store); await complete(state)
         store.account = "sender@example.invalid"; store.scopes = ["mail.send"]

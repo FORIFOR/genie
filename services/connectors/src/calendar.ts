@@ -4,6 +4,7 @@
  * 読むのは自由、書くのは承認つき。予定を作るのは外へ出る操作で、
  * 招待メールが同席者に飛ぶ（取り消しても「取り消し通知」が飛ぶ）。
  */
+import { createHash } from 'node:crypto';
 import { callJson, ConnectorError, type CallConfig } from './http.js';
 import {
   requireApproval,
@@ -70,6 +71,10 @@ export interface CreateEventInput {
   readonly description?: string;
   readonly location?: string;
   readonly attendeeEmails?: readonly string[];
+  /** Google Meet の会議を付ける（`conferenceData.createRequest`）。承認カードに出したときだけ true にする */
+  readonly meet?: boolean;
+  /** Meet を作る頼みの一意な印（同じ承認の再試行で会議を 2 つ作らない）。無ければ予定の中身から作る */
+  readonly meetRequestId?: string;
 }
 
 interface RawEvent {
@@ -84,6 +89,7 @@ interface RawEvent {
   status?: string;
   htmlLink?: string;
   conferenceData?: { entryPoints?: { uri?: string; entryPointType?: string }[] };
+  hangoutLink?: string;
 }
 
 function toEvent(raw: RawEvent): CalendarEvent {
@@ -112,7 +118,9 @@ function toEvent(raw: RawEvent): CalendarEvent {
     status: raw.status === 'cancelled' || raw.status === 'tentative' ? raw.status : 'confirmed',
     htmlLink: raw.htmlLink ?? null,
     conferenceUri:
-      raw.conferenceData?.entryPoints?.find((e) => e.entryPointType === 'video')?.uri ?? null,
+      raw.conferenceData?.entryPoints?.find((e) => e.entryPointType === 'video')?.uri ??
+      raw.hangoutLink ??
+      null,
   };
 }
 
@@ -126,6 +134,12 @@ export interface CalendarDeps extends CallConfig {
   /** 実際に許された scope。要求した scope ではない。 */
   readonly grantedScopes: readonly string[];
   readonly now?: () => Date;
+}
+
+/** 予定の中身から決まる Meet の頼みの印（Google は同じ印の頼みを 1 つの会議として扱う） */
+export function meetRequestId(input: Pick<CreateEventInput, 'title' | 'start' | 'end'>): string {
+  const key = JSON.stringify([input.title, input.start, input.end]);
+  return `genie-${createHash('sha256').update(key).digest('hex').slice(0, 32)}`;
 }
 
 export class GoogleCalendarConnector {
@@ -193,7 +207,8 @@ export class GoogleCalendarConnector {
     if (!input.title.trim()) {
       throw new ConnectorError('provider_error', 'an event needs a title');
     }
-    const path = `${BASE}/calendars/${encodeURIComponent(input.calendarId ?? 'primary')}/events?sendUpdates=none`;
+    // Meet を付けるときは conferenceDataVersion=1 が要る（無いと createRequest は黙って捨てられる）
+    const path = `${BASE}/calendars/${encodeURIComponent(input.calendarId ?? 'primary')}/events?sendUpdates=none${input.meet ? '&conferenceDataVersion=1' : ''}`;
     const raw = await callJson<RawEvent>(
       path,
       {
@@ -207,11 +222,23 @@ export class GoogleCalendarConnector {
           ...(input.attendeeEmails?.length
             ? { attendees: input.attendeeEmails.map((email) => ({ email })) }
             : {}),
+          ...(input.meet
+            ? {
+                conferenceData: {
+                  createRequest: {
+                    requestId: input.meetRequestId ?? meetRequestId(input),
+                    conferenceSolutionKey: { type: 'hangoutsMeet' },
+                  },
+                },
+              }
+            : {}),
         },
       },
       this.#deps,
       signal,
     );
+    // Meet が付かなかったときも予定はもうある。ここで失敗にすると再試行で予定が 2 つになるので、
+    // conferenceUri が null のまま返し、答えの文で「Meet は付きませんでした」と伝える
     return toEvent(raw);
   }
 

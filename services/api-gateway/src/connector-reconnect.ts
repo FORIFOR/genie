@@ -11,6 +11,9 @@
  * 認可コードは verifier が無いと使えない。DB にも記録にも残さず、このプロセスのメモリで Mac へ渡すだけ。
  * 自動ではつなぎ直さない。必ず本人の言葉で始める。
  *
+ * 本人「カレンダーに予定を入れられるようにして」 → 同じ道で、予定を作る接続（google-calendar-actions）を取る。
+ *   グループで頼まれた会議を入れるのに要る。まだ無ければ、会議の確認と一緒にこのリンクを送る。
+ *
  * 本人「Gmail つながってる？」 → いまの様子を答える（リンクは作らない）。
  * 手元の鍵は見えないので、最後につないだ時刻（connector_connections）と、提供者に断られた知らせの時刻を比べて答える。
  */
@@ -28,6 +31,15 @@ const ID = /^[0-9a-f-]{36}$/;
 const hash = (token: string) => createHash('sha256').update(token).digest('hex');
 
 export type ReconnectProvider = 'google' | 'microsoft';
+/** 何のための手続きか。calendar_write は Google カレンダーの予定を作る接続（Mac は書く接続で許可を取る） */
+export type ReconnectPurpose = 'reconnect' | 'calendar_write';
+
+/** 予定を作る接続（plugins/builtin/calendar/plugin.yaml の google-calendar-actions） */
+export const CALENDAR_WRITE = {
+  pluginId: 'com.astra.google-calendar',
+  connectorId: 'google-calendar-actions',
+} as const;
+const CALENDAR_WRITE_LABEL = 'Google カレンダー（予定を入れる）';
 
 const LABEL: Record<ReconnectProvider, string> = {
   google: 'Google（Gmail・カレンダー）',
@@ -46,6 +58,11 @@ export interface ReconnectDeps {
     userId: string,
     provider: ReconnectProvider,
   ) => Promise<readonly { state: string; accountLabel: string | null; connectedAt: Date }[]>;
+  /** あるプラグインの接続（切ったものは除く）。予定を作る接続があるかを見る。持ち主は plugin-registry。 */
+  readonly connectionsOfPlugin?: (
+    tenantId: string,
+    pluginId: string,
+  ) => Promise<readonly { connectorId: string; state: string }[]>;
   readonly notify?: (tenantId: string, userId: string, text: string) => Promise<void>;
   /** 本人のページのリンク。公開の先頭が無ければ null。 */
   readonly urlFor: (token: string) => string | null;
@@ -98,6 +115,10 @@ export const RECONNECT_REQUEST =
 /** 「Gmail つながってる？」「Google の接続は？」「接続状況」など。つなぎ直しの頼み（「つないで」）とは分ける。 */
 export const RECONNECT_STATUS =
   /^(Googleカレンダー|Google|グーグル|Gmail|Microsoft|マイクロソフト|Outlook)?\s*(?:との|の|は|が)?\s*(?:(?:接続|連携)\s*(?:は|が|の)?\s*(?:いま|今)?\s*(?:どう|状況|状態|大丈夫|切れ|きれ|つなが|繋が|[?？]|$)|(?:いま|今)?\s*(?:つながって|繋がって|つないで[るい]|繋いで[るい]|切れて|きれて))/i;
+
+/** 「カレンダーに予定を入れられるようにして」「カレンダーの書き込みを許可して」 */
+export const CALENDAR_WRITE_REQUEST =
+  /^(?:Google\s*|グーグル)?カレンダー\s*(?:に|へ|の)\s*(?:予定を\s*)?(?:(?:入れられる|いれられる|入れる|書き込める|書ける|作れる)ように|書き込み(?:を)?\s*(?:許可|有効に|できるように))\s*(?:して|する)?/i;
 
 const isMicrosoft = (name: string) => /^(Microsoft|マイクロソフト|Outlook)/i.test(name);
 
@@ -219,16 +240,56 @@ export class ConnectorReconnects {
   }
 
   async command(tenantId: string, userId: string, text: string): Promise<string | null> {
+    const asking = /[?？]|なぜ|どうして|ません|ないの/.test(text);
+    if (CALENDAR_WRITE_REQUEST.test(text.trim()) && !asking) {
+      if (await this.calendarWritable(tenantId))
+        return `${CALENDAR_WRITE_LABEL}はもう許可されています。グループで頼まれた会議も入れられます。`;
+      return this.#issue(tenantId, userId, 'google', 'calendar_write');
+    }
     const asked = RECONNECT_STATUS.exec(text.trim());
     if (asked) return this.#statusReply(tenantId, userId, asked[1]);
     const m = RECONNECT_REQUEST.exec(text.trim());
     // 「なぜつなげないの？」のような問いは頼みではない
-    if (!m || /[?？]|なぜ|どうして|ません|ないの/.test(text)) return null;
-    const provider: ReconnectProvider = isMicrosoft(m[1]!) ? 'microsoft' : 'google';
+    if (!m || asking) return null;
+    return this.#issue(tenantId, userId, isMicrosoft(m[1]!) ? 'microsoft' : 'google', 'reconnect');
+  }
+
+  /** 予定を作る接続がつながっているか（グループの会議を入れる前に見る）。 */
+  async calendarWritable(tenantId: string): Promise<boolean> {
+    // 接続の記録の持ち主は plugin-registry。ここでは読まない（§5.1）
+    const connections =
+      (await this.deps.connectionsOfPlugin?.(tenantId, CALENDAR_WRITE.pluginId)) ?? [];
+    return connections.some(
+      (c) => c.connectorId === CALENDAR_WRITE.connectorId && c.state === 'CONNECTED',
+    );
+  }
+
+  /**
+   * グループの会議の確認に添える文。予定を作る接続がまだ無ければ、許可の手続きのリンクを作って返す。
+   * もうあれば null（何も足さない）。
+   */
+  async calendarWriteNotice(tenantId: string, userId: string): Promise<string | null> {
+    if (await this.calendarWritable(tenantId)) return null;
+    const link = await this.#issue(tenantId, userId, 'google', 'calendar_write');
+    return [
+      'この会議を入れるには、Google カレンダーに予定を入れる許可が要ります（まだもらっていません）。',
+      '先に下の手続きを済ませてから、届く確認で「予定を入れる」を押してください。',
+      link,
+    ].join('\n');
+  }
+
+  async #issue(
+    tenantId: string,
+    userId: string,
+    provider: ReconnectProvider,
+    purpose: ReconnectPurpose,
+  ): Promise<string> {
     const token = randomBytes(24).toString('base64url');
     const url = this.deps.urlFor(token);
     if (!url)
-      return 'この環境では LINE からつなぎ直せません。Mac の Apps → Connections から行ってください。';
+      return purpose === 'calendar_write'
+        ? 'この環境では、カレンダーに予定を入れる許可を LINE から取れません（公開の場所がありません）。'
+        : 'この環境では LINE からつなぎ直せません。Mac の Apps → Connections から行ってください。';
     const expires = new Date(this.#now().getTime() + RECONNECT_MINUTES * 60_000);
     await withTenant(this.deps.db, tenantId, async (tx) => {
       // 前のリンクは使えなくする（同時に 1 つだけ）
@@ -249,11 +310,16 @@ export class ConnectorReconnects {
           state: 'requested',
           token_hash: hash(token),
           expires_at: expires,
+          purpose,
         })
         .execute();
     });
+    const what =
+      purpose === 'calendar_write'
+        ? `${CALENDAR_WRITE_LABEL}の許可の手続き`
+        : `${LABEL[provider]}のつなぎ直し`;
     return [
-      `${LABEL[provider]}のつなぎ直しです。下のリンクを開いて、手順どおりに進めてください（${String(RECONNECT_MINUTES)} 分使えるあなた専用のリンクです。人に送らないでください）。`,
+      `${what}です。下のリンクを開いて、手順どおりに進めてください（${String(RECONNECT_MINUTES)} 分使えるあなた専用のリンクです。人に送らないでください）。`,
       url,
     ].join('\n');
   }
@@ -263,7 +329,7 @@ export class ConnectorReconnects {
     const rows = await withTenant(this.deps.db, tenantId, (tx) =>
       tx
         .selectFrom('connector_reconnects')
-        .select(['id', 'provider', 'state'])
+        .select(['id', 'provider', 'state', 'purpose'])
         .where('user_id', '=', userId)
         .where('state', 'in', ['requested', 'code'])
         .where('expires_at', '>', this.#now())
@@ -275,6 +341,10 @@ export class ConnectorReconnects {
         id: row.id,
         provider: row.provider,
         state: row.state,
+        // 予定を作る接続の許可。Mac は読む接続ではなく、この接続で許可を取る
+        ...(row.purpose === 'calendar_write'
+          ? { plugin_id: CALENDAR_WRITE.pluginId, connector_id: CALENDAR_WRITE.connectorId }
+          : {}),
         ...(callback
           ? {
               callback_state: callback.state,
@@ -329,10 +399,20 @@ export class ConnectorReconnects {
         .where('id', '=', id)
         .where('user_id', '=', userId)
         .where('state', 'in', ['requested', 'ready', 'code'])
-        .returning('provider')
+        .returning(['provider', 'purpose'])
         .executeTakeFirst(),
     );
     if (!row) return false;
+    if (row.purpose === 'calendar_write') {
+      await this.deps.notify?.(
+        tenantId,
+        userId,
+        ok
+          ? `${CALENDAR_WRITE_LABEL}を許可しました${account ? `（${account}）` : ''}。グループで頼まれた会議を入れられます。`
+          : `${CALENDAR_WRITE_LABEL}の許可を取れませんでした。もう一度「カレンダーに予定を入れられるようにして」と送ってください。`,
+      );
+      return true;
+    }
     const label = LABEL[row.provider as ReconnectProvider];
     await this.deps.notify?.(
       tenantId,
@@ -365,7 +445,7 @@ export class ConnectorReconnects {
     const full = await withTenant(this.deps.db, row.tenant_id, (tx) =>
       tx
         .selectFrom('connector_reconnects')
-        .select(['state', 'authorize_url', 'created_at'])
+        .select(['state', 'authorize_url', 'created_at', 'purpose'])
         .where('id', '=', row.id)
         .executeTakeFirstOrThrow(),
     );
@@ -373,7 +453,10 @@ export class ConnectorReconnects {
       provider: row.provider,
       state: full.state,
       authorize_url: full.state === 'ready' ? full.authorize_url : null,
-      label: LABEL[row.provider as ReconnectProvider],
+      label:
+        full.purpose === 'calendar_write'
+          ? CALENDAR_WRITE_LABEL
+          : LABEL[row.provider as ReconnectProvider],
     };
   }
 

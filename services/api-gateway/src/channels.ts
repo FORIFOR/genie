@@ -297,6 +297,11 @@ export function channelsFromEnv(
     readonly homeLink?: import('@genie/service-channels').ChannelServiceDeps['homeLink'];
     /** Claude Code の承認（agent-approvals.ts）。 */
     readonly agentApprovals?: import('@genie/service-channels').ChannelServiceDeps['agentApprovals'];
+    /**
+     * グループの会議を入れる前に見る。予定を作る許可がまだ無ければ、許可の手続きの文（リンクつき）を返す
+     * （connector-reconnect.ts）。持ち主の 1:1 に、確認より先に送る。
+     */
+    readonly calendarWriteNotice?: (tenantId: string, userId: string) => Promise<string | null>;
   },
 ): GatewayChannels | null {
   const timeZone = env['GENIE_TIMEZONE']?.trim() || 'Asia/Tokyo';
@@ -529,6 +534,29 @@ export function channelsFromEnv(
       pendingApprovals: (tenantId, taskId) => deps.tasks.pendingApprovals(tenantId, taskId),
       decideApproval: (tenantId, taskId, userId, approvalId, decision) =>
         deps.tasks.decideApproval(tenantId, taskId, userId, approvalId, decision),
+    },
+    // グループで頼まれた会議。持ち主の会話に calendar.meeting を作る（承認は持ち主の 1:1 トーク）。
+    // 同じ発言の送り直しで仕事を 2 つ作らない（冪等キーは Meet の頼みの印と同じ、グループの発言 id から）
+    meeting: {
+      timeZone,
+      request: async (owner, conversationId, input) => {
+        const key = typeof input['meet_request_id'] === 'string' ? input['meet_request_id'] : null;
+        const { task } = await deps.tasks.create({
+          tenantId: owner.tenantId,
+          userId: owner.userId,
+          request: {
+            kind: 'calendar.meeting',
+            title: `会議: ${String(input['title'] ?? '')}`.slice(0, 200),
+            input: input as Record<string, string>,
+            conversation_id: conversationId as never,
+          },
+          idempotencyKey: key ? `group-meeting:${key}` : `group-meeting:${uuidv7()}`,
+        });
+        // 予定を作る許可がまだ無ければ、確認（承認のカード）より先に手続きのリンクを持ち主へ
+        const notice = await deps.calendarWriteNotice?.(owner.tenantId, owner.userId);
+        if (notice) await service.notifyUser(owner.tenantId, owner.userId, conversationId, notice);
+        return { taskId: task.id, title: task.title ?? null };
+      },
     },
     ...(deps.homeLink ? { homeLink: deps.homeLink } : {}),
     ...(deps.agentApprovals ? { agentApprovals: deps.agentApprovals } : {}),

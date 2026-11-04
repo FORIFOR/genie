@@ -107,4 +107,55 @@ describe('calendar plans', () => {
     expect(() => formatCalendarArtifact('calendar.move', {}, [{}])).toThrow();
     expect(formatCalendarArtifact('research', {}, [])).toBeNull();
   });
+
+  it('puts a meeting asked for in a group on the calendar with Meet, only with approval', () => {
+    const input = {
+      title: '打ち合わせ',
+      start: '2026-11-06T15:00:00+09:00',
+      end: '2026-11-06T15:30:00+09:00',
+      when_label: '11/6(金) 15:00〜15:30',
+      group_id: 'Cgroup',
+      requested_by: '田中',
+      meet_request_id: 'genie-123',
+    };
+    const plan = planTask('calendar.meeting', input);
+    expect(plan.steps).toHaveLength(1);
+    const step = plan.steps[0]!;
+    expect(step).toMatchObject({
+      toolId: 'calendar.create_event',
+      risk: 'EXTERNAL_COMMIT',
+      surface: 'local',
+      requiresConfirmation: true,
+      args: {
+        title: '打ち合わせ',
+        start: '2026-11-06T15:00:00+09:00',
+        end: '2026-11-06T15:30:00+09:00',
+        meet: true,
+        meet_request_id: 'genie-123',
+      },
+    });
+    // 承認カード: どこから・誰が・いつ。グループの id や ISO の時刻は見せない
+    const card = approvalSummaryFor(step);
+    expect(card.summary).toContain('田中さん');
+    expect(card.summary).toContain('打ち合わせ');
+    expect(card.details).toEqual([
+      { label: '頼まれた場所', value: 'グループ' },
+      { label: '頼んだ人', value: '田中さん' },
+      { label: '日時', value: '11/6(金) 15:00〜15:30' },
+    ]);
+    expect(JSON.stringify(card)).not.toContain('Cgroup');
+    expect(card.impact.primary_action_label).toBe('予定を入れる');
+    expect(() => planTask('calendar.meeting', { ...input, start: '' })).toThrow();
+
+    // 答え: 端末が返した Meet のリンクから。付かなかったら付かなかったと言う
+    const made = formatCalendarArtifact('calendar.meeting', input, [
+      { title: '打ち合わせ', conferenceUri: 'https://meet.google.com/x' },
+    ]);
+    expect(made?.markdown).toContain('Google Meet: https://meet.google.com/x');
+    const none = formatCalendarArtifact('calendar.meeting', input, [
+      { title: '打ち合わせ', conferenceUri: null },
+    ]);
+    expect(none?.markdown).toContain('Meet のリンクは付きませんでした');
+    expect(() => formatCalendarArtifact('calendar.meeting', input, [])).toThrow();
+  });
 });

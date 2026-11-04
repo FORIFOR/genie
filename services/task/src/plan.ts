@@ -6,7 +6,7 @@
  * （uuidv7 が Web Crypto を触るため、ワークフローのサンドボックスに持ち込めない）。
  * 例外は副作用の無い契約だけを切り出した research / checkout-assistance subpath。
  */
-import { planCalendarAgenda, planCalendarMove } from './calendar-plan.js';
+import { planCalendarAgenda, planCalendarMeeting, planCalendarMove } from './calendar-plan.js';
 import { asksForJudgment } from '@genie/contracts/research';
 import { CHECKOUT_SERVICES, CheckoutPrepareArgs } from '@genie/contracts/checkout-assistance';
 import { isPublicWebUrl } from '@genie/contracts/browser-read';
@@ -283,6 +283,8 @@ export const KNOWN_TASK_KINDS = [
   // 予定を読む・時間を変える（calendar-plan.ts。仕様 v1.0 §11）
   'calendar.agenda',
   'calendar.move',
+  // グループで頼まれた会議を Meet 付きで入れる（持ち主の承認つき）
+  'calendar.meeting',
   'transaction.order',
   'transaction.reconcile',
   'phone.call',
@@ -820,6 +822,8 @@ export function planTask(kind: string, input: Record<string, unknown>): TaskPlan
       return planCalendarAgenda(input);
     case 'calendar.move':
       return planCalendarMove(input);
+    case 'calendar.meeting':
+      return planCalendarMeeting(input);
     case 'info.lookup':
       return planInfoLookup(input);
     case 'office.edit': {
@@ -1151,6 +1155,22 @@ export function approvalSummaryFor(step: TaskStep): ApprovalCard {
         scope: 'external',
         reversible: false,
         recovery_note: '変えたあとも「元に戻して」で、元の時間に戻せます（もう一度確認します）',
+      },
+    };
+  // グループで頼まれた会議: どこから・いつ・何を入れるかだけを見せる（ISO の時刻や Meet の印は見せない）
+  if (step.toolId === 'calendar.create_event' && step.args['meet'] === true)
+    return {
+      summary: step.message,
+      details: ['頼まれた場所', '頼んだ人', '日時'].flatMap((label) =>
+        typeof step.args[label] === 'string' ? [{ label, value: String(step.args[label]) }] : [],
+      ),
+      impact: {
+        primary_action_label: '予定を入れる',
+        affected_count: 1,
+        scope: 'external',
+        reversible: false,
+        recovery_note:
+          '入れたあとは Google カレンダーで消せます。Meet のリンクはグループに送ります',
       },
     };
   const external =

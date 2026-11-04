@@ -237,6 +237,7 @@ async function main(): Promise<void> {
   const connectorReconnects = new ConnectorReconnects({
     db,
     connectionsOf: (tenantId, userId, provider) => connections.ofUser(tenantId, userId, provider),
+    connectionsOfPlugin: (tenantId, pluginId) => connections.list(tenantId, pluginId),
     notify: async (tenantId, userId, text) => {
       await chat.current?.service.notifyUser(tenantId, userId, null, text);
     },
@@ -413,6 +414,8 @@ async function main(): Promise<void> {
             (await genieImprover.command(tenantId, userId, text)) ??
             agentJobs.command(tenantId, userId, text),
         },
+        calendarWriteNotice: (tenantId, userId) =>
+          connectorReconnects.calendarWriteNotice(tenantId, userId),
         homeLink: (tenantId, userId) =>
           homeLinkFor({
             links: workLinks,

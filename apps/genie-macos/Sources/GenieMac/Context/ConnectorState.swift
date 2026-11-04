@@ -75,10 +75,13 @@ final class ConnectorState: ObservableObject {
     private var work: Task<Void, Never>?
     private var activeSources: [Source] = []
     private var injectedSources: Bool
+    /// 検査で渡す書く接続（無ければ組み込みのプラグインの宣言から引く）
+    private var injectedActions: [Source]?
 
-    init(sources: [Source]? = nil, dependencies: Dependencies? = nil) {
+    init(sources: [Source]? = nil, actions: [Source]? = nil, dependencies: Dependencies? = nil) {
         deps = dependencies ?? Self.liveDependencies()
         injectedSources = sources != nil
+        injectedActions = actions
         if let sources { self.sources = sources }
         reloadSources()
     }
@@ -127,6 +130,7 @@ final class ConnectorState: ObservableObject {
     func source(named app: String) -> Source? { sources.first { $0.name == app } }
     func status(of app: String) -> Status? { source(named: app).flatMap { status[$0.statusKey] } }
     func actionsSource(pluginId: String, connectorId: String) -> Source? {
+        if let injectedActions { return injectedActions.first { $0.pluginId == pluginId && $0.connectorId == connectorId } }
         let store = PluginRuntimeStore.shared; store.load()
         guard let m = store.manifests.first(where: { $0.id == pluginId }), let c = m.connectors.first(where: { $0.id == connectorId && !$0.readOnly }) else { return nil }
         return Source(pluginId: pluginId, name: m.name, purpose: c.purpose ?? "送る・動かす", provider: c.provider, connectorId: c.id, scopes: c.scopes, readOnly: false)
@@ -206,6 +210,9 @@ final class ConnectorState: ObservableObject {
         let code: String?
         let error: String?
         let callback_state: String?
+        /// 書く接続の許可（例: Google カレンダーに予定を入れる）。無ければ読む接続のつなぎ直し
+        let plugin_id: String?
+        let connector_id: String?
     }
     private struct RemoteResponse: Decodable { let items: [RemoteItem] }
     private var remoteFlows: [String: ConnectorFlow.Pending] = [:]
@@ -226,7 +233,13 @@ final class ConnectorState: ObservableObject {
               let data = await deps.remote(base, token, "GET", "/v1/connector-reconnects/pending", nil),
               let items = try? JSONDecoder().decode(RemoteResponse.self, from: data).items else { return }
         for item in items {
-            let list = sources.filter { $0.provider == item.provider }
+            // 書く接続の許可は、その接続だけで取る（読む接続の許可をまとめて取り直さない）
+            let list: [Source]
+            if let pluginId = item.plugin_id, let connectorId = item.connector_id {
+                list = actionsSource(pluginId: pluginId, connectorId: connectorId).map { [$0] } ?? []
+            } else {
+                list = sources.filter { $0.provider == item.provider }
+            }
             let path = "/v1/connector-reconnects/\(item.id)"
             guard let first = list.first,
                   let clientId = Self.connectionClientId(provider: first.provider, readOnly: first.readOnly, env: deps.configuration()) else {

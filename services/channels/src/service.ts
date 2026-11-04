@@ -11,6 +11,7 @@
  *   - チャットに返すのは外部への送信。本文まで送るかは連携ごとの posting_policy（既定は要約だけ）
  *   - チャットで承認できるのは EXTERNAL_COMMIT だけ。削除・お金・規制のある記録は承認カードへ
  */
+import { parseMeetingRequest } from './meeting-request.js';
 import { parseCallReport, type ChannelProvider } from '@genie/contracts';
 import type {
   InboundChannelAction,
@@ -116,6 +117,8 @@ export interface ChannelTaskView {
   readonly created_by?: string;
   /** 仕事の種類（電話の結果はカードにする）。 */
   readonly kind?: string;
+  /** 頼んだときの入力（グループで頼まれた会議は、返事を送るグループをここに持つ）。 */
+  readonly input?: Readonly<Record<string, unknown>>;
 }
 
 export interface ChannelEvent {
@@ -229,6 +232,18 @@ export interface ChannelServiceDeps {
    * 「電話して」で、Genie と声で話すページのリンクを出す（gateway の call）。返すのはトークへ返す文。
    * 無ければ「電話して」はいつもどおり Genie に渡す。
    */
+  /**
+   * グループで頼まれた会議（「@Genie 明日15時から30分 打ち合わせ、Meet作って」）。
+   * 持ち主の会話に calendar.meeting の仕事を作る（承認は持ち主の 1:1 トーク）。無ければ読まない。
+   */
+  readonly meeting?: {
+    readonly timeZone: string;
+    request(
+      owner: { tenantId: string; userId: string },
+      conversationId: string,
+      input: Record<string, unknown>,
+    ): Promise<{ readonly taskId: string; readonly title: string | null }>;
+  };
   readonly call?: {
     issue(link: ChannelLink, conversationId: string): Promise<OutgoingMessage>;
     /** 家族のグループで、みんなで話す通話のリンク（何人でも入れる。頼みは共有スペースだけ）。 */
@@ -993,6 +1008,62 @@ export class ChannelService {
       await this.#reply(message.provider, target, invite, message.replyToken);
       return 'handled';
     }
+    // 「@Genie 明日15時から30分 打ち合わせ、Meet作って」: 持ち主の承認を取ってから、持ち主のカレンダーに入れる
+    const meeting =
+      group.mentioned && this.deps.meeting
+        ? parseMeetingRequest(message.text, this.#now(), this.deps.meeting.timeZone)
+        : null;
+    if (meeting && this.deps.meeting) {
+      const owner = await this.deps.store.findLink(
+        message.provider,
+        message.workspaceId,
+        space.enabledBy,
+      );
+      if (!owner) {
+        await say('使い始めた人の連携が切れているので、会議を入れられません。');
+        return 'handled';
+      }
+      const conversationId = await this.deps.store.conversationFor(
+        owner,
+        owner.subject,
+        owner.subject,
+        () => this.deps.conversations.start(owner.tenantId, owner.userId, titleOf(owner.provider)),
+      );
+      const asker =
+        (await this.deps.senders[message.provider]
+          ?.memberName?.(group.id, message.subject)
+          .catch(() => null)) ?? null;
+      try {
+        const started = await this.deps.meeting.request(
+          { tenantId: owner.tenantId, userId: owner.userId },
+          conversationId,
+          {
+            title: meeting.title,
+            start: meeting.start,
+            end: meeting.end,
+            when_label: meeting.whenLabel,
+            time_zone: this.deps.meeting.timeZone,
+            // 返事を送るグループ（完了・見送りをここへ）。同じ頼みの重ね押しで会議を 2 つ作らない印も
+            group_id: group.id,
+            group_provider: message.provider,
+            meet_request_id: `genie-${(group.messageId ?? message.eventId).slice(0, 40)}`,
+            ...(asker ? { requested_by: asker } : {}),
+          },
+        );
+        await this.followTask(owner.tenantId, conversationId, started.taskId, started.title);
+        // 持ち主が自分で頼んだときも、承認は 1:1 トークで取る（グループのボタンは誰でも押せる）
+        await say(
+          `会議「${meeting.title}」（${meeting.whenLabel}）を入れてよいか、持ち主に確認しています。入れたら Google Meet のリンクをここに送ります。`,
+        );
+      } catch (error) {
+        this.#log('channel.meeting_failed', {
+          provider: message.provider,
+          error: errorCode(error),
+        });
+        await say('会議を入れる準備ができませんでした。少し待ってから、もう一度頼んでください。');
+      }
+      return 'handled';
+    }
     const photos = (message.attachments ?? []).filter((a) => a.kind === 'image');
     // 会話を文脈として覚える（グループの設定が「覚える」のときだけ）。呼ばれたかもここで決める:
     // @Genie・「ジーニー、」で始まる・Genie の返事への引用返信（本人の設計 2026-10-28）
@@ -1554,6 +1625,26 @@ export class ChannelService {
     for (const event of events) {
       const kind = EVENT_KIND[event.type];
       if (!kind) continue;
+      const terminal = kind === 'completed' || kind === 'failed' || kind === 'cancelled';
+      // グループで頼まれた会議は、終わりをそのグループにも知らせる（Meet のリンク・見送り）。
+      // 持ち主への終わりより先に積む（間で止まっても、次の見回りでもう一度積まれ、一意索引で 1 回になる）
+      if (terminal) {
+        const group = await this.#groupReply(tenantId, watch, kind);
+        if (group) {
+          const groupRow = await this.deps.store.enqueue({
+            tenantId,
+            linkId: watch.linkId,
+            taskId: watch.taskId,
+            // 持ち主への行とは負の番号で分ける
+            eventSequence: -event.sequence,
+            kind: 'notice',
+            destination: group.destination,
+            threadKey: group.destination,
+            body: render.notice(group.text),
+          });
+          if (groupRow) queued += 1;
+        }
+      }
       const body = await this.#milestone(tenantId, watch, kind, event);
       const id = await this.deps.store.enqueue({
         tenantId,
@@ -1567,9 +1658,37 @@ export class ChannelService {
       });
       if (id) queued += 1;
       // 終わりを積んだら、この task はもう見ない
-      if (kind === 'completed' || kind === 'failed' || kind === 'cancelled') break;
+      if (terminal) break;
     }
     return queued;
+  }
+
+  /** グループで頼まれた会議の終わりに、そのグループへ送る文。会議の仕事でなければ null */
+  async #groupReply(
+    tenantId: string,
+    watch: WatchedTask,
+    kind: OutboxKind,
+  ): Promise<{ destination: string; text: string } | null> {
+    const task = await this.deps.tasks.get(tenantId, watch.taskId).catch(() => null);
+    const groupId = task?.input?.['group_id'];
+    if (task?.kind !== 'calendar.meeting' || typeof groupId !== 'string' || !groupId) return null;
+    const title = typeof task.input?.['title'] === 'string' ? task.input['title'] : '会議';
+    if (kind !== 'completed')
+      return {
+        destination: groupId,
+        text:
+          kind === 'cancelled'
+            ? `会議「${title}」は、持ち主が見送ったので入れていません。`
+            : `会議「${title}」を入れられませんでした。持ち主のトークに理由を送っています。`,
+      };
+    const body =
+      task.result_artifact_id && this.deps.artifactText
+        ? await this.deps.artifactText(tenantId, task.result_artifact_id).catch(() => null)
+        : null;
+    return {
+      destination: groupId,
+      text: body?.trim() || `会議「${title}」を入れました。`,
+    };
   }
 
   async #milestone(

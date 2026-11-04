@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { GoogleCalendarConnector } from '../src/calendar.js';
+import { GoogleCalendarConnector, meetRequestId } from '../src/calendar.js';
 import { ApprovalRequired, type ApprovalProof } from '../src/approval.js';
 
 const NOW = (): Date => new Date('2026-08-27T00:00:00.000Z');
@@ -161,6 +161,45 @@ describe('GoogleCalendarConnector', () => {
       summary: '打ち合わせ',
       attendees: [{ email: 'b@example.com' }],
     });
+  });
+
+  it('adds a Google Meet only when asked, and returns its link', async () => {
+    const { fetch, calls } = fakeFetch({
+      id: 'e10',
+      status: 'confirmed',
+      hangoutLink: 'https://meet.google.com/abc-defg-hij',
+    });
+    const calendar = new GoogleCalendarConnector({
+      token: async () => 't',
+      fetch,
+      grantedScopes: READ_WRITE,
+      now: NOW,
+    });
+    const input = {
+      title: '打ち合わせ',
+      start: { dateTime: '2026-09-01T15:00:00+09:00' },
+      end: { dateTime: '2026-09-01T15:30:00+09:00' },
+    };
+    const made = await calendar.create({ ...input, meet: true }, proof);
+    // conferenceDataVersion=1 が無いと、Google は Meet の頼みを黙って捨てる
+    expect(calls[0]!.url).toContain('conferenceDataVersion=1');
+    expect(calls[0]!.url).toContain('sendUpdates=none');
+    expect(calls[0]!.body).toMatchObject({
+      conferenceData: {
+        createRequest: {
+          requestId: meetRequestId(input),
+          conferenceSolutionKey: { type: 'hangoutsMeet' },
+        },
+      },
+    });
+    expect(made.conferenceUri).toBe('https://meet.google.com/abc-defg-hij');
+    // 同じ予定の頼みは同じ印（再試行で会議を 2 つ作らない）。違う予定は違う印
+    expect(meetRequestId(input)).toBe(meetRequestId({ ...input }));
+    expect(meetRequestId({ ...input, title: '別' })).not.toBe(meetRequestId(input));
+
+    await calendar.create(input, proof);
+    expect(calls[1]!.url).not.toContain('conferenceDataVersion');
+    expect(calls[1]!.body).not.toHaveProperty('conferenceData');
   });
 
   it('refuses to write when only the read scope was granted', async () => {

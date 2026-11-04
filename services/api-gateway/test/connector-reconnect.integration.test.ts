@@ -114,6 +114,17 @@ describe.skipIf(!url)('connector reconnects', () => {
         })
         .onConflict((oc) => oc.column('id').doNothing())
         .execute();
+      await tx
+        .insertInto('plugins')
+        .values({
+          id: 'com.astra.google-calendar',
+          publisher_id: 'astra',
+          name: 'Google Calendar',
+          category: 'connector',
+          latest_version: '0.1.0',
+        })
+        .onConflict((oc) => oc.column('id').doNothing())
+        .execute();
     });
   });
 
@@ -134,6 +145,8 @@ describe.skipIf(!url)('connector reconnects', () => {
       db: harness.db,
       connectionsOf: (t, u, provider) =>
         new ConnectionService({ db: harness.db }).ofUser(t, u, provider),
+      connectionsOfPlugin: (t, pluginId) =>
+        new ConnectionService({ db: harness.db }).list(t, pluginId),
       notify: async (_t, _u, text) => {
         told.push(text);
       },
@@ -327,5 +340,75 @@ describe.skipIf(!url)('connector reconnects', () => {
       '明日 Google に繋いでと言われた',
     ])
       expect(await store.command(tenantId, userId, text), text).toBeNull();
+  });
+
+  describe('permission to put events on the calendar', () => {
+    const writeConnected = () =>
+      withTenant(harness.db, tenantId, (tx) =>
+        tx
+          .insertInto('connector_connections')
+          .values({
+            id: uuidv7(),
+            tenant_id: tenantId,
+            plugin_id: 'com.astra.google-calendar',
+            connector_id: 'google-calendar-actions',
+            provider: 'google',
+            state: 'CONNECTED',
+            granted_scopes: ['https://www.googleapis.com/auth/calendar.events'],
+            credential_ref: `ref-${uuidv7()}`,
+            account_label: 'me@example.com',
+            connected_by: userId,
+            connected_at: new Date(),
+          })
+          .execute(),
+      );
+
+    it('asks the Mac for the write connection, not the read one, and says so when done', async () => {
+      const reply = await store.command(tenantId, userId, 'カレンダーに予定を入れられるようにして');
+      expect(reply).toContain('Google カレンダー（予定を入れる）の許可の手続きです');
+      const token = linkFrom(reply);
+      const [item] = await store.pending(tenantId, userId);
+      expect(item).toMatchObject({
+        provider: 'google',
+        state: 'requested',
+        plugin_id: 'com.astra.google-calendar',
+        connector_id: 'google-calendar-actions',
+      });
+      expect((await store.status(token))!.label).toBe('Google カレンダー（予定を入れる）');
+      await store.finished(tenantId, userId, item!.id, true, 'me@example.com');
+      expect(told.at(-1)).toContain('予定を入れる）を許可しました（me@example.com）');
+      // つなぎ直し（読む接続）の頼みには、接続の印を付けない
+      await store.command(tenantId, userId, 'Google をつなぎ直して');
+      const [plain] = await store.pending(tenantId, userId);
+      expect(plain).not.toHaveProperty('connector_id');
+    });
+
+    it('adds the link to a group meeting only while the permission is missing', async () => {
+      const notice = await store.calendarWriteNotice(tenantId, userId);
+      expect(notice).toContain('予定を入れる許可が要ります');
+      expect(notice).toMatch(/reconnect\/[\w-]+/);
+      await writeConnected();
+      expect(await store.calendarWritable(tenantId)).toBe(true);
+      expect(await store.calendarWriteNotice(tenantId, userId)).toBeNull();
+      expect(await store.command(tenantId, userId, 'カレンダーの書き込みを許可して')).toContain(
+        'もう許可されています',
+      );
+    });
+
+    it('understands the wordings, but not questions', async () => {
+      for (const text of [
+        'カレンダーに予定を入れられるようにして',
+        'Googleカレンダーに書き込めるようにして',
+        'カレンダーの書き込みを許可して',
+      ])
+        expect(await store.command(tenantId, userId, text), text).toContain('許可の手続きです');
+      for (const text of [
+        'カレンダーに予定を入れられるようにしてくれないの？',
+        'カレンダーに予定を入れて',
+      ])
+        expect(String(await store.command(tenantId, userId, text)), text).not.toContain(
+          '許可の手続き',
+        );
+    });
   });
 });

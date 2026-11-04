@@ -351,6 +351,26 @@ describe('running a connector step on the device', () => {
     );
 
     expect(sent[0]!.body).toMatchObject({ start: { date: '2026-09-01' } });
+    // Meet は承認した引数（meet: true）のときだけ頼む
+    expect(sent[0]!.body).not.toHaveProperty('conferenceData');
+
+    await r.run(
+      step({
+        toolId: 'calendar.create_event',
+        args: {
+          title: '打ち合わせ',
+          start: '2026-09-01T15:00:00+09:00',
+          end: '2026-09-01T15:30:00+09:00',
+          meet: true,
+          meet_request_id: 'genie-msg-1',
+        },
+        approval: approved('calendar.create'),
+      }),
+    );
+    expect(sent[1]!.url).toContain('conferenceDataVersion=1');
+    expect(sent[1]!.body).toMatchObject({
+      conferenceData: { createRequest: { requestId: 'genie-msg-1' } },
+    });
   });
 
   // 仕様 v1.0 §11: 承認された「午後にずらして」を、この端末の Google カレンダーで変える
