@@ -9,11 +9,14 @@ import { join } from 'node:path';
 import {
   ClaudeCodeAdapter,
   parseClaudeResult,
+  parseClaudeReview,
   parseCodexResult,
+  parseCodexReview,
+  reviewArgs,
   RunClock,
 } from '../src/agent-adapters.js';
 import { eventsFor, parseCodexRollout } from '../src/agent-discovery.js';
-import { artifactPath, failureSignature } from '../src/agent-jobs.js';
+import { artifactPath, failureSignature, reviewVerdict } from '../src/agent-jobs.js';
 
 const done = (stdout: string, over: Partial<Parameters<typeof parseClaudeResult>[0]> = {}) => ({
   stdout,
@@ -182,5 +185,74 @@ describe('small rules', () => {
     expect(failureSignature(['tests', 'a is wrong'])).not.toBe(
       failureSignature(['tests', 'b is wrong']),
     );
+  });
+});
+
+describe('reviews by a second agent', () => {
+  it('runs Claude Code read-only: no writing tools, nothing asked, the user settings not loaded', () => {
+    const args = reviewArgs({
+      cwd: '/p',
+      prompt: 'review',
+      maxTurns: 30,
+      maxCostUsd: 1,
+      clock: new RunClock(1_000),
+    });
+    const tools = args.slice(args.indexOf('--tools') + 1, args.indexOf('--allowedTools'));
+    expect(tools).toEqual(['Read', 'Grep', 'Glob', 'Bash']);
+    const allowed = args.slice(
+      args.indexOf('--allowedTools') + 1,
+      args.indexOf('--disallowedTools'),
+    );
+    // Bash は git で差分を見るものだけ
+    expect(allowed.filter((t) => t.startsWith('Bash'))).toEqual([
+      'Bash(git diff:*)',
+      'Bash(git status:*)',
+      'Bash(git log:*)',
+      'Bash(git show:*)',
+    ]);
+    expect(args).toEqual(expect.arrayContaining(['Edit', 'Write', 'NotebookEdit']));
+    expect(args[args.indexOf('--permission-mode') + 1]).toBe('dontAsk');
+    expect(args[args.indexOf('--permission-prompts') + 1]).toBe('none');
+    expect(args[args.indexOf('--setting-sources') + 1]).toBe('project');
+  });
+
+  it('reads the review text from Claude Code and Codex', () => {
+    const c = parseClaudeReview(done(claude({ result: '- a.ts:1 wrong\nVERDICT: FAIL' })));
+    expect(c.outcome).toBe('success');
+    expect(c.text).toContain('VERDICT: FAIL');
+    const x = parseCodexReview(
+      done(
+        [
+          JSON.stringify({ type: 'thread.started', thread_id: 't' }),
+          JSON.stringify({
+            type: 'item.completed',
+            item: { type: 'agent_message', text: 'first' },
+          }),
+          JSON.stringify({
+            type: 'item.completed',
+            item: { type: 'agent_message', text: 'ok\nVERDICT: PASS' },
+          }),
+          JSON.stringify({ type: 'turn.completed' }),
+        ].join('\n'),
+      ),
+    );
+    expect(x).toMatchObject({ outcome: 'success', text: 'ok\nVERDICT: PASS', costUsd: null });
+  });
+
+  it('takes the verdict only from a VERDICT line, and never passes without one', () => {
+    expect(reviewVerdict('looks fine\nVERDICT: PASS')).toEqual({
+      pass: true,
+      findings: 'looks fine',
+    });
+    expect(reviewVerdict('- a.ts:3 off by one\n**VERDICT: FAIL**')).toEqual({
+      pass: false,
+      findings: '- a.ts:3 off by one',
+    });
+    // 最後の判定を使う（途中で引用した「VERDICT: PASS」に騙されない）
+    expect(
+      reviewVerdict('例: VERDICT: PASS\nVERDICT: PASS と書くべきだが\nVERDICT: FAIL')?.pass,
+    ).toBe(false);
+    expect(reviewVerdict('all good, I think')).toBeNull();
+    expect(reviewVerdict(null)).toBeNull();
   });
 });

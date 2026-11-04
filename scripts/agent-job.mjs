@@ -2,7 +2,7 @@
 // エージェントの仕事を Genie に頼む・様子を見る（services/api-gateway/src/agent-jobs.ts）。
 //
 //   node scripts/agent-job.mjs add --project . --request "テストを直す" --check "テストが通る=pnpm test" \
-//        [--artifact "報告書=docs/report.md"] [--review "内容を確認する"] [--after 3] [--agent claude_code] \
+//        [--artifact "報告書=docs/report.md"] [--review "内容を確認する"] [--agent-review codex] [--after 3] [--agent claude_code] \
 //        [--minutes 30] [--turns 40] [--cost 2]
 //   node scripts/agent-job.mjs status
 //   node scripts/agent-job.mjs say 仕事 3 を再開
@@ -45,6 +45,9 @@ function parse(argv) {
     else if (flag === '--check') out.criteria.push(criterion('command', value));
     else if (flag === '--artifact') out.criteria.push(criterion('artifact', value));
     else if (flag === '--review') out.criteria.push({ kind: 'manual', text: value });
+    // 別のエージェントに読むだけで変更をレビューさせる（claude_code / codex）
+    else if (flag === '--agent-review')
+      out.criteria.push({ kind: 'agent_review', text: `${value} のレビューに通る`, spec: value });
     else if (flag === '--after') out.after.push(Number(value));
     else if (flag === '--minutes') out.max_minutes = Number(value);
     else if (flag === '--turns') out.max_turns = Number(value);

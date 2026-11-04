@@ -128,6 +128,7 @@ export interface AgentJobRuns {
 export interface AgentJobs {
   agent: string;
   attempts: Generated<number>;
+  base_sha: string | null;
   control: string;
   cost_known: Generated<boolean>;
   cost_usd: Generated<Numeric>;

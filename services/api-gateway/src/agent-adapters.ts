@@ -54,6 +54,25 @@ export interface AgentRunResult {
   readonly note: string | null;
 }
 
+/** レビューの頼み。**読むだけ**で走らせる（ファイルを書き換えさせない）。 */
+export interface AgentReviewRequest {
+  readonly cwd: string;
+  readonly prompt: string;
+  readonly maxTurns: number;
+  readonly maxCostUsd: number;
+  readonly clock: RunClock;
+  readonly signal?: AbortSignal;
+}
+
+export interface AgentReviewResult {
+  readonly outcome: RunOutcome;
+  /** レビューの本文（最後の返事）。直すときにエージェントへ渡すだけで、DB には残さない。 */
+  readonly text: string | null;
+  readonly costUsd: number | null;
+  readonly turns: number | null;
+  readonly note: string | null;
+}
+
 export interface AgentAdapter {
   readonly agent: AgentKind;
   readonly label: string;
@@ -63,7 +82,17 @@ export interface AgentAdapter {
   readonly reportsCost: boolean;
   available(): Promise<boolean>;
   run(request: AgentRunRequest): Promise<AgentRunResult>;
+  /** 別のエージェントの成果を読むだけで確かめる。できないエージェントは持たない。 */
+  review?(request: AgentReviewRequest): Promise<AgentReviewResult>;
 }
+
+/** レビューで使ってよい道具（読む・探す・git で差分を見るだけ）。 */
+export const REVIEW_BASH = [
+  'Bash(git diff:*)',
+  'Bash(git status:*)',
+  'Bash(git log:*)',
+  'Bash(git show:*)',
+] as const;
 
 /** 待てば通るかもしれない失敗の言い方。 */
 const TRANSIENT =
@@ -256,6 +285,35 @@ export function parseClaudeResult(done: Finished): AgentRunResult {
   };
 }
 
+/** `claude -p` のレビューの結果。返事の本文も読む。 */
+export function parseClaudeReview(done: Finished): AgentReviewResult {
+  const base = parseClaudeResult(done);
+  const result = lastLines(done.stdout)
+    .map(parseLine)
+    .find((v) => v?.['type'] === 'result');
+  const text = typeof result?.['result'] === 'string' ? result['result'] : null;
+  return {
+    outcome: base.outcome,
+    text,
+    costUsd: base.costUsd,
+    turns: base.turns,
+    note: base.note,
+  };
+}
+
+/** `codex exec --json` のレビューの結果。最後のエージェントの返事を本文にする。 */
+export function parseCodexReview(done: Finished): AgentReviewResult {
+  const base = parseCodexResult(done);
+  let text: string | null = null;
+  for (const line of done.stdout.split('\n')) {
+    const event = line.trim() ? parseLine(line) : null;
+    const item = event?.['item'] as { type?: unknown; text?: unknown } | undefined;
+    if (event?.['type'] === 'item.completed' && item?.type === 'agent_message')
+      text = typeof item.text === 'string' ? item.text : text;
+  }
+  return { outcome: base.outcome, text, costUsd: null, turns: base.turns, note: base.note };
+}
+
 /** `codex exec --json` の出来事の列を読む。費用は出ない（null）。 */
 export function parseCodexResult(done: Finished): AgentRunResult {
   if (done.missing)
@@ -348,6 +406,58 @@ export class ClaudeCodeAdapter implements AgentAdapter {
       }),
     );
   }
+
+  /**
+   * 読むだけのレビュー。使える道具を読む・探す・git の差分に絞り、それ以外は聞かずに断る
+   * （dontAsk + 問いを出さない）。書く道具は道具の一覧から外す。本人の LINE に問いは出ない。
+   */
+  async review(request: AgentReviewRequest): Promise<AgentReviewResult> {
+    const args = reviewArgs(request, this.options.model);
+    return parseClaudeReview(
+      await runProcess(this.#bin(), args, {
+        cwd: request.cwd,
+        clock: request.clock,
+        ...(request.signal ? { signal: request.signal } : {}),
+      }),
+    );
+  }
+}
+
+/** Claude Code のレビューの起動引数（検査で中身を見る）。 */
+export function reviewArgs(request: AgentReviewRequest, model?: string): string[] {
+  return [
+    '-p',
+    request.prompt,
+    '--output-format',
+    'json',
+    '--max-turns',
+    String(request.maxTurns),
+    '--max-budget-usd',
+    request.maxCostUsd.toFixed(2),
+    '--tools',
+    'Read',
+    'Grep',
+    'Glob',
+    'Bash',
+    '--allowedTools',
+    'Read',
+    'Grep',
+    'Glob',
+    ...REVIEW_BASH,
+    '--disallowedTools',
+    'Edit',
+    'Write',
+    'NotebookEdit',
+    '--permission-mode',
+    'dontAsk',
+    '--permission-prompts',
+    'none',
+    // 本人の設定（許可の一覧・hooks）は読まない。広い許可でレビューが書き換えないように
+    '--setting-sources',
+    'project',
+    '--no-session-persistence',
+    ...(model ? ['--model', model] : []),
+  ];
 }
 
 export class CodexAdapter implements AgentAdapter {
@@ -377,6 +487,18 @@ export class CodexAdapter implements AgentAdapter {
       request.prompt,
     ];
     return parseCodexResult(
+      await runProcess(this.#bin(), args, {
+        cwd: request.cwd,
+        clock: request.clock,
+        ...(request.signal ? { signal: request.signal } : {}),
+      }),
+    );
+  }
+
+  /** 読むだけのレビュー（`--sandbox read-only`）。**実機では未確認**（この Mac に codex が無い）。 */
+  async review(request: AgentReviewRequest): Promise<AgentReviewResult> {
+    const args = ['exec', '--json', '--sandbox', 'read-only', request.prompt];
+    return parseCodexReview(
       await runProcess(this.#bin(), args, {
         cwd: request.cwd,
         clock: request.clock,

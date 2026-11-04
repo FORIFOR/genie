@@ -57,7 +57,7 @@ const JobBody = z.object({
   criteria: z
     .array(
       z.object({
-        kind: z.enum(['command', 'artifact', 'manual']),
+        kind: z.enum(['command', 'artifact', 'manual', 'agent_review']),
         text: z.string().trim().min(1).max(200),
         spec: z.string().trim().min(1).max(1000).optional(),
       }),

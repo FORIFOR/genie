@@ -9,7 +9,13 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { type TokenResponse, uuidv7 } from '@genie/contracts';
 import { withTenant } from '@genie/db';
 import { makeTestApp, makeTokens, testDbConfig, type TestApp } from './support.js';
-import type { AgentAdapter, AgentRunRequest, AgentRunResult } from '../src/agent-adapters.js';
+import type {
+  AgentAdapter,
+  AgentReviewRequest,
+  AgentReviewResult,
+  AgentRunRequest,
+  AgentRunResult,
+} from '../src/agent-adapters.js';
 import { AgentJobs, JobRefused, type CheckResult } from '../src/agent-jobs.js';
 import { AgentSessionStore } from '../src/agent-sessions.js';
 
@@ -352,6 +358,137 @@ describe.skipIf(!url)('agent jobs', () => {
     await jobs.command(tenantId, userId, '仕事 1 を再開');
     await jobs.settled();
     expect((await job(1)).status).toBe('done');
+  });
+
+  describe('review by a second agent', () => {
+    const BASE = 'a'.repeat(40);
+    let reviews: AgentReviewRequest[];
+    let verdicts: AgentReviewResult[];
+    const said = (
+      text: string | null,
+      over: Partial<AgentReviewResult> = {},
+    ): AgentReviewResult => ({
+      outcome: 'success',
+      text,
+      // Codex は費用を返さない
+      costUsd: null,
+      turns: 3,
+      note: null,
+      ...over,
+    });
+    const reviewer = (): AgentAdapter => ({
+      agent: 'codex',
+      label: 'Codex',
+      runnable: true,
+      reportsCost: false,
+      available: async () => true,
+      run: async () => ok(),
+      review: async (request) => {
+        reviews.push(request);
+        return verdicts.shift() ?? said('VERDICT: PASS');
+      },
+    });
+    const withReview = () =>
+      make({
+        adapters: { claude_code: adapter(), codex: reviewer() },
+        headOf: async () => BASE,
+      });
+    const criteria = [
+      { kind: 'command' as const, text: 'テストが通る', spec: 'pnpm test' },
+      { kind: 'agent_review' as const, text: 'Codex のレビューに通る', spec: 'codex' },
+    ];
+
+    beforeEach(() => {
+      reviews = [];
+      verdicts = [];
+    });
+
+    it('sends the findings back to the implementer, and finishes only after the review passes', async () => {
+      const jobs = withReview();
+      await add(jobs, { criteria });
+      script = [ok({ sessionId: 'impl-1' }), ok({ sessionId: 'impl-1' })];
+      verdicts = [
+        said(
+          '- src/a.ts:3 期限切れのトークンを通している token=sk-ant-api03-abcdefghijklmnop\nVERDICT: FAIL',
+        ),
+        said('直っている\nVERDICT: PASS'),
+      ];
+      await drain(jobs);
+      expect((await job(1)).status).toBe('done');
+      expect(reviews).toHaveLength(2);
+      // 読むだけのレビューに、依頼・起点からの差分の見方・判定の書き方を渡す
+      expect(reviews[0]!.prompt).toContain('テストを直す');
+      expect(reviews[0]!.prompt).toContain(`git diff ${BASE}`);
+      expect(reviews[0]!.prompt).toContain('VERDICT: PASS');
+      // 指摘は同じセッションの実装担当へ（秘密の値は伏せる）
+      expect(requests).toHaveLength(2);
+      expect(requests[1]!.resumeSessionId).toBe('impl-1');
+      expect(requests[1]!.prompt).toContain('期限切れのトークン');
+      expect(requests[1]!.prompt).not.toContain('sk-ant');
+      // 指摘の本文は DB に残さない。実行の履歴に review として残る
+      const stored = await job(1);
+      expect(stored.base_sha).toBe(BASE);
+      expect(JSON.stringify(stored)).not.toContain('期限切れ');
+      const runs = await withTenant(harness.db, tenantId, (tx) =>
+        tx
+          .selectFrom('agent_job_runs')
+          .select(['kind', 'outcome', 'note'])
+          .where('job_id', '=', stored.id)
+          .orderBy('started_at')
+          .execute(),
+      );
+      expect(runs.map((r) => r.kind)).toEqual(['work', 'review', 'fix', 'review']);
+      expect(runs.map((r) => r.note).join('|')).not.toContain('期限切れ');
+      // 費用の取れないレビュー担当を混ぜたので、合計は「分かっている分だけ」
+      expect(stored.cost_known).toBe(false);
+    });
+
+    it('does not ask for a review while the checks still fail', async () => {
+      const jobs = withReview();
+      await add(jobs, { criteria });
+      checks = [
+        { ok: false, output: 'FAIL a' },
+        { ok: true, output: '' },
+      ];
+      await drain(jobs);
+      expect((await job(1)).status).toBe('done');
+      expect(requests).toHaveLength(2);
+      expect(reviews).toHaveLength(1);
+    });
+
+    it('stops and tells the user when the reviewer gives no verdict, instead of passing the work', async () => {
+      const jobs = withReview();
+      await add(jobs, { criteria });
+      verdicts = [said('たぶん大丈夫です')];
+      await drain(jobs);
+      const stopped = await job(1);
+      expect(stopped.status).toBe('stopped');
+      expect(stopped.stop_reason).toBe('review_unavailable');
+      expect(requests).toHaveLength(1);
+      expect(told.join('\n')).toContain('レビュー担当が判定を返せませんでした');
+    });
+
+    it('stops when the same review failure comes back, like any other failure', async () => {
+      const jobs = withReview();
+      await add(jobs, { criteria });
+      verdicts = [
+        said('- a.ts:1 同じ問題\nVERDICT: FAIL'),
+        said('- a.ts:1 同じ問題\nVERDICT: FAIL'),
+      ];
+      await drain(jobs);
+      expect((await job(1)).stop_reason).toBe('same_failure');
+      expect(reviews).toHaveLength(2);
+    });
+
+    it('refuses a reviewer Genie cannot ask', async () => {
+      const jobs = make({ headOf: async () => BASE });
+      await expect(
+        add(jobs, { criteria: [{ kind: 'agent_review', text: 'x', spec: 'codex' }] }),
+      ).rejects.toBeInstanceOf(JobRefused);
+      await expect(
+        add(withReview(), { criteria: [{ kind: 'agent_review', text: 'x', spec: 'browser' }] }),
+      ).rejects.toBeInstanceOf(JobRefused);
+    });
   });
 
   it('checks artifacts and waits for the user on review criteria; instructions go to the next run', async () => {

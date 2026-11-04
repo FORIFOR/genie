@@ -15,10 +15,13 @@ import type { App } from '../src/fastify.js';
 
 const url = process.env['TEST_DATABASE_URL'];
 const identityUrl = process.env['TEST_IDENTITY_DATABASE_URL'];
+const DAY = 86_400_000;
+const ago = (ms: number) => new Date(Date.now() - ms).toISOString();
 
 const batch = {
   source: 'gmail',
   cursor: 'history-42',
+  // メールの日付は今からの相対（固定の日付だと、取り込みの期間（60 日）を過ぎて試験が古びる）
   artifacts: [
     {
       id: 'c1',
@@ -53,14 +56,14 @@ const batch = {
       body_excerpt: 'SITE_ID は明日までにお送りします',
       people: [{ name: 'MTI 田中', email: 'tanaka@mti.example', role: 'from' }],
       direction: 'inbound',
-      occurred_at: '2026-09-06T05:21:00.000Z',
+      occurred_at: ago(2 * DAY),
       thread_id: 'th-mopita',
       project_hint: 'MOPITA連携',
       provenance: {
         source: 'gmail',
         external_id: 'g1',
         label: 'MTI からの返信',
-        observed_at: '2026-09-06T05:21:00.000Z',
+        observed_at: ago(2 * DAY),
       },
       semantic: {
         category: 'info',
@@ -79,19 +82,19 @@ const batch = {
       body_excerpt: '9/9 までにご返信ください',
       people: [{ name: '佐藤', email: 'sato@example.com', role: 'from' }],
       direction: 'inbound',
-      occurred_at: '2026-09-05T00:30:00.000Z',
+      occurred_at: ago(3 * DAY),
       thread_id: 'th-quote',
       provenance: {
         source: 'gmail',
         external_id: 'g2',
         label: '見積のご確認',
-        observed_at: '2026-09-05T00:30:00.000Z',
+        observed_at: ago(3 * DAY),
       },
       semantic: {
         category: 'request_to_me',
         project: '○○社 提案',
         request: '見積に返信する',
-        due: '2026-09-09T09:00:00.000Z',
+        due: ago(-1.5 * DAY),
         confidence: 0.9,
         extracted_by: 'llm',
       },

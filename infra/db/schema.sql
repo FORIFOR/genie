@@ -225,7 +225,7 @@ CREATE TABLE public.agent_job_runs (
     started_at timestamp with time zone NOT NULL,
     ended_at timestamp with time zone,
     CONSTRAINT agent_job_runs_attempt_check CHECK ((attempt > 0)),
-    CONSTRAINT agent_job_runs_kind_check CHECK ((kind = ANY (ARRAY['work'::text, 'fix'::text, 'resume'::text]))),
+    CONSTRAINT agent_job_runs_kind_check CHECK ((kind = ANY (ARRAY['work'::text, 'fix'::text, 'resume'::text, 'review'::text]))),
     CONSTRAINT agent_job_runs_note_check CHECK ((length(note) <= 300)),
     CONSTRAINT agent_job_runs_outcome_check CHECK ((outcome = ANY (ARRAY['success'::text, 'error'::text, 'transient'::text, 'crashed'::text, 'denied'::text, 'limit_turns'::text, 'limit_cost'::text, 'limit_time'::text, 'unavailable'::text])))
 );
@@ -278,7 +278,9 @@ CREATE TABLE public.agent_jobs (
     improve_base_branch text,
     improve_base_sha text,
     improve_commit text,
+    base_sha text,
     CONSTRAINT agent_jobs_agent_check CHECK ((agent = ANY (ARRAY['claude_code'::text, 'codex'::text, 'opencode'::text, 'browser'::text]))),
+    CONSTRAINT agent_jobs_base_sha_check CHECK ((base_sha ~ '^[0-9a-f]{7,64}$'::text)),
     CONSTRAINT agent_jobs_check CHECK (((control = 'managed'::text) OR (status = ANY (ARRAY['running'::text, 'waiting_user'::text, 'idle'::text, 'ended'::text, 'held'::text])))),
     CONSTRAINT agent_jobs_check1 CHECK (((control = 'observed'::text) OR (request IS NOT NULL))),
     CONSTRAINT agent_jobs_control_check CHECK ((control = ANY (ARRAY['managed'::text, 'observed'::text]))),
@@ -2143,8 +2145,9 @@ CREATE TABLE public.work_criteria (
     spec text,
     CONSTRAINT work_criteria_check CHECK ((num_nonnulls(task_id, agent_session_id, agent_job_id) = 1)),
     CONSTRAINT work_criteria_check1 CHECK (((kind <> 'tests'::text) OR (met_at IS NULL))),
-    CONSTRAINT work_criteria_kind_check CHECK ((kind = ANY (ARRAY['tests'::text, 'manual'::text, 'command'::text, 'artifact'::text]))),
-    CONSTRAINT work_criteria_spec CHECK (((kind = ANY (ARRAY['command'::text, 'artifact'::text])) = (spec IS NOT NULL))),
+    CONSTRAINT work_criteria_kind_check CHECK ((kind = ANY (ARRAY['tests'::text, 'manual'::text, 'command'::text, 'artifact'::text, 'agent_review'::text]))),
+    CONSTRAINT work_criteria_review_agent CHECK (((kind <> 'agent_review'::text) OR (spec = ANY (ARRAY['claude_code'::text, 'codex'::text])))),
+    CONSTRAINT work_criteria_spec CHECK (((kind = ANY (ARRAY['command'::text, 'artifact'::text, 'agent_review'::text])) = (spec IS NOT NULL))),
     CONSTRAINT work_criteria_spec_check CHECK ((length(spec) <= 1000)),
     CONSTRAINT work_criteria_text_check CHECK (((length(text) >= 1) AND (length(text) <= 200)))
 );
@@ -7369,3 +7372,4 @@ INSERT INTO schema_migrations (version) VALUES ('20261031010000');
 INSERT INTO schema_migrations (version) VALUES ('20261031020000');
 INSERT INTO schema_migrations (version) VALUES ('20261031030000');
 INSERT INTO schema_migrations (version) VALUES ('20261031040000');
+INSERT INTO schema_migrations (version) VALUES ('20261105000000');

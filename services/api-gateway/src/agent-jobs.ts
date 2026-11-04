@@ -57,14 +57,53 @@ export type JobStatus =
   | 'idle'
   | 'ended';
 
-export type CriterionKind = 'command' | 'artifact' | 'manual';
+export type CriterionKind = 'command' | 'artifact' | 'manual' | 'agent_review';
 
 export interface CriterionInput {
   readonly kind: CriterionKind;
   /** 本人の言葉（「テストが通る」）。 */
   readonly text: string;
-  /** command ならコマンド、artifact ならプロジェクトからの道。 */
+  /**
+   * command ならコマンド、artifact ならプロジェクトからの道、
+   * agent_review ならレビュー担当のエージェント（'claude_code' / 'codex'）。
+   */
   readonly spec?: string;
+}
+
+const REVIEWERS: readonly AgentKind[] = ['claude_code', 'codex'];
+/** レビューの時間・手数の上限（仕事の上限とは別に、1 回のレビューごと）。 */
+const REVIEW_MINUTES = 10;
+const REVIEW_TURNS = 30;
+/** 直すときに渡すレビューの指摘の長さ。 */
+const REVIEW_OUTPUT = 3_000;
+
+/** レビューの最後の行の判定。無ければ合格にしない（判定なしは「レビューできなかった」）。 */
+export function reviewVerdict(text: string | null): { pass: boolean; findings: string } | null {
+  if (!text) return null;
+  const lines = text.split('\n');
+  for (let i = lines.length - 1; i >= 0; i -= 1) {
+    const m = /^\s*\**\s*VERDICT:\s*(PASS|FAIL)\b/i.exec(lines[i]!);
+    if (m)
+      return {
+        pass: m[1]!.toUpperCase() === 'PASS',
+        findings: lines.slice(0, i).join('\n').trim().slice(-REVIEW_OUTPUT),
+      };
+  }
+  return null;
+}
+
+/** git の HEAD（git でなければ null）。レビューで差分の起点にする。 */
+function headOf(cwd: string): Promise<string | null> {
+  return new Promise((done) => {
+    const child = spawn('git', ['rev-parse', 'HEAD'], { cwd, stdio: ['ignore', 'pipe', 'ignore'] });
+    let out = '';
+    child.stdout.on('data', (c: Buffer) => (out += c.toString('utf8')));
+    child.on('error', () => done(null));
+    child.on('close', (code) => {
+      const sha = out.trim();
+      done(code === 0 && /^[0-9a-f]{7,64}$/.test(sha) ? sha : null);
+    });
+  });
 }
 
 export interface JobInput {
@@ -107,6 +146,8 @@ export interface AgentJobsDeps {
   readonly maxConcurrent?: number;
   /** 検査用: このテナントの仕事だけを動かす（並んで走る別の検査の仕事を拾わない）。 */
   readonly onlyTenant?: string;
+  /** 検査用: 仕事を作ったときの HEAD の代わり。 */
+  readonly headOf?: (cwd: string) => Promise<string | null>;
   readonly now?: () => Date;
   readonly log?: (event: string, detail: Record<string, unknown>) => void;
 }
@@ -209,6 +250,8 @@ type JobRow = {
   pending_approval: string | null;
   max_lifetime_hours: number;
   improve_branch: string | null;
+  improve_base_sha?: string | null;
+  base_sha?: string | null;
   created_at: Date | string;
   updated_at: Date | string;
 };
@@ -223,6 +266,7 @@ const STOP_TEXT: Record<string, string> = {
   dependency_cancelled: '先に終わるはずの仕事が取り消されました',
   lifetime: '再開できる期間を過ぎました',
   unavailable: 'エージェントを起動できません',
+  review_unavailable: 'レビュー担当が判定を返せませんでした',
 };
 
 /** 次に使える本人の番号。呼ぶ前に本人の鎖を取る（lockOwner）。 */
@@ -295,8 +339,22 @@ export class AgentJobs {
         throw new JobRefused(`「${c.text}」の中身がありません。`);
       if (c.kind === 'artifact' && !artifactPath(input.projectRoot, c.spec!))
         throw new JobRefused(`成果物「${c.spec!}」がプロジェクトの外を指しています。`);
+      if (c.kind === 'agent_review') {
+        const reviewer = c.spec!.trim() as AgentKind;
+        if (!REVIEWERS.includes(reviewer) || !this.deps.adapters[reviewer]?.review)
+          throw new JobRefused(
+            `${ADAPTER_LABELS[reviewer] ?? c.spec!}はまだ Genie からレビューを頼めません。`,
+          );
+      }
     }
     const info = await this.deps.projectOf?.(input.projectRoot).catch(() => null);
+    const hasReview = input.criteria.some((c) => c.kind === 'agent_review');
+    // レビューは仕事を始める前からの差分を見る（エージェントがコミットしても見失わない）
+    const baseSha =
+      input.improve?.baseSha ??
+      (hasReview
+        ? await (this.deps.headOf ?? headOf)(input.projectRoot).catch(() => null)
+        : null);
     const id = uuidv7();
     return withTenant(this.deps.db, input.tenantId, async (tx) => {
       await lockOwner(tx, input.userId);
@@ -328,6 +386,7 @@ export class AgentJobs {
           title: input.title?.trim() || titleOf(input.request),
           status: deps.length > 0 ? 'waiting_dependency' : 'queued',
           depends_on: deps.map((d) => d.id),
+          ...(baseSha ? { base_sha: baseSha } : {}),
           ...(input.improve
             ? {
                 improve_branch: input.improve.branch,
@@ -352,7 +411,7 @@ export class AgentJobs {
             agent_job_id: id,
             text: c.text.slice(0, 200),
             kind: c.kind,
-            spec: c.kind === 'manual' ? null : c.spec!,
+            spec: c.kind === 'manual' ? null : c.spec!.trim(),
           })),
         )
         .execute();
@@ -603,7 +662,15 @@ export class AgentJobs {
       const list = criteria
         .map(
           (c) =>
-            `- ${c.text}${c.kind === 'manual' ? '（本人が確かめます）' : c.spec ? `: ${c.spec}` : ''}`,
+            `- ${c.text}${
+              c.kind === 'manual'
+                ? '（本人が確かめます）'
+                : c.kind === 'agent_review'
+                  ? `（${ADAPTER_LABELS[c.spec as AgentKind] ?? c.spec}が変更をレビューします）`
+                  : c.spec
+                    ? `: ${c.spec}`
+                    : ''
+            }`,
         )
         .join('\n');
       return `${job.request ?? ''}${instruction}\n\n完了条件（終わったあとで Genie が確かめます）:\n${list}`;
@@ -751,7 +818,7 @@ export class AgentJobs {
     const failures: { text: string; output: string }[] = [];
     const now = this.#now();
     for (const c of criteria) {
-      if (c.kind === 'manual') continue;
+      if (c.kind === 'manual' || c.kind === 'agent_review') continue;
       let ok = false;
       let output = '';
       if (c.kind === 'command') {
@@ -774,6 +841,28 @@ export class AgentJobs {
           .execute(),
       );
       if (!ok) failures.push({ text: c.text, output });
+    }
+    // レビューは機械の確かめが通ってから（落ちている変更を読ませて費用を使わない）
+    if (failures.length === 0) {
+      for (const c of criteria.filter((c) => c.kind === 'agent_review')) {
+        const review = await this.#review(tenantId, job, c.spec as AgentKind, criteria);
+        if (review === 'gone') return;
+        if (review.verdict === null) {
+          await this.#haltNow(tenantId, job, 'review_unavailable', review.note);
+          return;
+        }
+        await withTenant(this.deps.db, tenantId, (tx) =>
+          tx
+            .updateTable('work_criteria')
+            .set({ met_at: review.verdict!.pass ? this.#now() : null })
+            .where('id', '=', c.id)
+            .execute(),
+        );
+        if (!review.verdict.pass) {
+          failures.push({ text: c.text, output: review.verdict.findings });
+          break;
+        }
+      }
     }
     // 確かめているあいだに本人が保留・取り消しにしたら、結果で上書きしない
     const fresh = await withTenant(this.deps.db, tenantId, (tx) =>
@@ -831,6 +920,103 @@ export class AgentJobs {
       return;
     }
     await this.#finish(tenantId, job);
+  }
+
+  /**
+   * 別のエージェントに読むだけでレビューさせる。判定（PASS / FAIL）が無ければ verdict は null。
+   * 費用と手数は仕事に足し、実行の履歴に review として残す（本文は残さない）。
+   * 'gone' … レビュー中に本人が保留・取り消しにした。
+   */
+  async #review(
+    tenantId: string,
+    job: JobRow,
+    reviewer: AgentKind,
+    criteria: readonly { text: string; kind: string; spec: string | null }[],
+  ): Promise<
+    { verdict: { pass: boolean; findings: string } | null; note: string | null } | 'gone'
+  > {
+    const adapter = this.deps.adapters[reviewer];
+    const runId = uuidv7();
+    const startedAt = this.#now();
+    await withTenant(this.deps.db, tenantId, (tx) =>
+      tx
+        .insertInto('agent_job_runs')
+        .values({
+          id: runId,
+          tenant_id: tenantId,
+          job_id: job.id,
+          attempt: Math.max(1, job.attempts),
+          kind: 'review',
+          started_at: startedAt,
+        })
+        .execute(),
+    );
+    const base = job.base_sha ?? job.improve_base_sha ?? null;
+    const others = criteria
+      .filter((c) => c.kind !== 'agent_review')
+      .map((c) => `- ${c.text}${c.kind === 'manual' ? '（本人が確かめます）' : ''}`)
+      .join('\n');
+    const prompt = [
+      'あなたはレビュー担当です。別のエージェントがこのプロジェクトで次の依頼に取り組みました。',
+      '**ファイルは変更しないでください。**読む・探す・git で差分を見ることだけができます。',
+      '',
+      `依頼:\n${job.request ?? job.title}`,
+      ...(others ? ['', `完了条件（コマンド・成果物は Genie が確かめ済み）:\n${others}`] : []),
+      '',
+      `変更の見方: ${base ? `\`git diff ${base}\`` : '`git diff HEAD`'} と \`git status --short\`（未追跡のファイルも読む）`,
+      '確かめること: 依頼どおりに作られているか。明らかな不具合・取りこぼし・依頼と関係のない変更・秘密の値の混入がないか。',
+      '直すべき点があれば、場所（ファイル:行）と理由を箇条書きにしてください。',
+      '最後の行には必ず、合格なら `VERDICT: PASS`、直すべき点があれば `VERDICT: FAIL` とだけ書いてください。',
+    ].join('\n');
+    const active = this.#active.get(job.id);
+    const clock = new RunClock(REVIEW_MINUTES * 60_000, () => this.#now().getTime());
+    const result = adapter?.review
+      ? await adapter.review({
+          cwd: job.project_root,
+          prompt,
+          maxTurns: REVIEW_TURNS,
+          maxCostUsd: Math.max(0.01, Number(job.max_cost_usd) - Number(job.cost_usd)),
+          clock,
+          ...(active ? { signal: active.controller.signal } : {}),
+        })
+      : null;
+    const verdict = result?.outcome === 'success' ? reviewVerdict(result.text) : null;
+    const note =
+      result === null
+        ? `${ADAPTER_LABELS[reviewer]}にレビューを頼めません`
+        : verdict === null
+          ? (result.note ?? `${ADAPTER_LABELS[reviewer]}が判定を書きませんでした`)
+          : verdict.pass
+            ? 'レビュー合格'
+            : 'レビューで直すべき点あり';
+    const now = this.#now();
+    const status = await withTenant(this.deps.db, tenantId, async (tx) => {
+      await tx
+        .updateTable('agent_job_runs')
+        .set({
+          outcome: result?.outcome ?? 'unavailable',
+          cost_usd: result?.costUsd ?? null,
+          turns: result?.turns ?? null,
+          note: note.slice(0, 300),
+          ended_at: now,
+        })
+        .where('id', '=', runId)
+        .execute();
+      const row = await tx
+        .updateTable('agent_jobs')
+        .set({
+          turns: sql`turns + ${result?.turns ?? 0}`,
+          cost_usd: sql`cost_usd + ${result?.costUsd ?? 0}`,
+          ...(result && result.costUsd === null ? { cost_known: false } : {}),
+          updated_at: now,
+        })
+        .where('id', '=', job.id)
+        .returning('status')
+        .executeTakeFirstOrThrow();
+      return row.status;
+    });
+    if (status !== 'verifying') return 'gone';
+    return { verdict, note };
   }
 
   async #requeue(tenantId: string, id: string): Promise<void> {
