@@ -143,10 +143,12 @@ describe.skipIf(!url)('scheduled requests', () => {
     expect(next - Date.now()).toBeGreaterThan(25 * 60_000);
 
     // まだ時間ではない
-    expect(await harness.schedules!.tick()).toBe(0);
+    expect(await harness.schedules!.tick(tenantId)).toBe(0);
     await makeDue(job.id);
-    expect(await harness.schedules!.tick()).toBe(1);
-    expect(await harness.schedules!.tick()).toBe(0);
+    // 別のテナントだけを見る回は、このテナントの予約を走らせない
+    expect(await harness.schedules!.tick(uuidv7())).toBe(0);
+    expect(await harness.schedules!.tick(tenantId)).toBe(1);
+    expect(await harness.schedules!.tick(tenantId)).toBe(0);
 
     const pending = await notices();
     expect(pending).toEqual([expect.objectContaining({ kind: 'reminder', title: '会議' })]);
@@ -171,7 +173,7 @@ describe.skipIf(!url)('scheduled requests', () => {
     expect(job).toMatchObject({ status: 'active', kind: 'task', text: '競合を調べて' });
 
     await makeDue(job.id);
-    expect(await harness.schedules!.tick()).toBe(1);
+    expect(await harness.schedules!.tick(tenantId)).toBe(1);
     const [started] = await notices();
     expect(started).toMatchObject({ kind: 'scheduled_task' });
     expect(started!.task_id).toBeTruthy();
@@ -193,8 +195,8 @@ describe.skipIf(!url)('scheduled requests', () => {
     const { job } = await create('毎朝8時に今日の予定を教えて');
     // 3 時間寝ていた（その間に過ぎた回は 1 つ）
     await makeDue(job.id, '3 hours');
-    expect(await harness.schedules!.tick()).toBe(1);
-    expect(await harness.schedules!.tick()).toBe(0);
+    expect(await harness.schedules!.tick(tenantId)).toBe(1);
+    expect(await harness.schedules!.tick(tenantId)).toBe(0);
     const [late] = await notices();
     expect(late).toMatchObject({ kind: 'reminder', title: '今日の予定' });
     expect(late!.body).toContain('遅れました');
@@ -227,7 +229,7 @@ describe.skipIf(!url)('scheduled requests', () => {
         .where('id', '=', job.id)
         .execute();
     });
-    await harness.schedules!.tick();
+    await harness.schedules!.tick(tenantId);
     const [problem] = await notices();
     expect(problem).toMatchObject({ kind: 'schedule_problem' });
     expect(problem!.title).toContain('途中で');

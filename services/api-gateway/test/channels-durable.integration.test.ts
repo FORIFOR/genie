@@ -369,7 +369,7 @@ describe.skipIf(!url)('chat channels (durable inbox, Socket Mode)', () => {
         .execute(),
     );
     before = sent.length;
-    expect(await harness.schedules!.tick()).toBe(1);
+    expect(await harness.schedules!.tick(tenantId)).toBe(1);
     expect(sent.slice(before)).toEqual([
       expect.objectContaining({
         url: 'https://slack.com/api/chat.postMessage',

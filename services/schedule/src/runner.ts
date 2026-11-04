@@ -91,17 +91,21 @@ export class ScheduleRunner {
   }
 
   /** 1 回見回る。動かした回数を返す。重ねて呼ばれたら、走っているものを待つ。 */
-  async tick(): Promise<number> {
+  async tick(
+    /** 1 つのテナントだけを見る（試験が、同じ DB の別の試験の予約を走らせないように）。 */
+    only?: string,
+  ): Promise<number> {
     if (this.#ticking) return this.#ticking;
-    this.#ticking = this.#tickOnce().finally(() => {
+    this.#ticking = this.#tickOnce(only).finally(() => {
       this.#ticking = null;
     });
     return this.#ticking;
   }
 
-  async #tickOnce(): Promise<number> {
+  async #tickOnce(only?: string): Promise<number> {
     let ran = 0;
-    for (const tenantId of await this.#deps.store.tenantsNeedingAttention()) {
+    const tenants = await this.#deps.store.tenantsNeedingAttention();
+    for (const tenantId of only ? tenants.filter((t) => t === only) : tenants) {
       try {
         await this.#deps.store.pruneProposals(tenantId);
         for (const job of await this.#deps.store.interruptStalled(tenantId)) {
