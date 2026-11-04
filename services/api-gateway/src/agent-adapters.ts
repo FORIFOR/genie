@@ -11,6 +11,8 @@
  * 出力の本文は持ち出さない。結果の種類と数だけを返す（note は本人に見せる短い理由で、出力を写さない）。
  */
 import { spawn } from 'node:child_process';
+import { existsSync } from 'node:fs';
+import { delimiter, join } from 'node:path';
 
 export type AgentKind = 'claude_code' | 'codex' | 'opencode' | 'browser';
 
@@ -460,6 +462,22 @@ export function reviewArgs(request: AgentReviewRequest, model?: string): string[
   ];
 }
 
+/** ChatGPT アプリ（Mac）に同梱の Codex CLI。PATH に codex が無い Mac ではこれを使う */
+export const CODEX_APP_BIN = '/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex';
+
+/** 使う codex の場所。GENIE_CODEX_BIN → PATH の codex → ChatGPT アプリ同梱、の順。どれも無ければ 'codex'（無いと判定される） */
+export function findCodexBin(
+  env: Record<string, string | undefined> = process.env,
+  exists: (path: string) => boolean = existsSync,
+): string {
+  const chosen = env['GENIE_CODEX_BIN']?.trim();
+  if (chosen) return chosen;
+  for (const dir of (env['PATH'] ?? '').split(delimiter)) {
+    if (dir && exists(join(dir, 'codex'))) return 'codex';
+  }
+  return exists(CODEX_APP_BIN) ? CODEX_APP_BIN : 'codex';
+}
+
 export class CodexAdapter implements AgentAdapter {
   readonly agent = 'codex' as const;
   readonly label = 'Codex';
@@ -469,7 +487,7 @@ export class CodexAdapter implements AgentAdapter {
   constructor(private readonly options: { bin?: string } = {}) {}
 
   #bin(): string {
-    return this.options.bin ?? 'codex';
+    return this.options.bin ?? findCodexBin();
   }
 
   available(): Promise<boolean> {
@@ -495,7 +513,7 @@ export class CodexAdapter implements AgentAdapter {
     );
   }
 
-  /** 読むだけのレビュー（`--sandbox read-only`）。**実機では未確認**（この Mac に codex が無い）。 */
+  /** 読むだけのレビュー（`--sandbox read-only`）。書こうとしても囲いで止まる */
   async review(request: AgentReviewRequest): Promise<AgentReviewResult> {
     const args = ['exec', '--json', '--sandbox', 'read-only', request.prompt];
     return parseCodexReview(

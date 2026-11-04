@@ -278,7 +278,7 @@ LINE に「ログインだけお願いします」とリンク（15 分・本人
 
 - **2 種類の仕事:** `managed`（Genie が起動して進める）と `observed`（本人が直接始めたセッションの取り込み。**読むだけ**で、再開・停止・指示はしない）。
 - **発見:** Claude Code は登録済みの hooks、Codex は `~/.codex/sessions` の記録を読む（種類・セッション・フォルダ・最初の頼みの頭だけ）。OpenCode の自動発見と、ブラウザ担当の接続はまだ無い。
-- **共通の窓口:** `services/api-gateway/src/agent-adapters.ts`。Claude Code は `claude -p`、Codex は `codex exec --json`（Codex の起動は実機で未確認）。Muse などは製品が決まったらここに足す。
+- **共通の窓口:** `services/api-gateway/src/agent-adapters.ts`。Claude Code は `claude -p`、Codex は `codex exec --json`（読むだけのレビューは実機で確認済み。書く仕事での起動は未確認）。Muse などは製品が決まったらここに足す。
 - **完了:** エージェントの言葉では決めない。完了条件（コマンド・成果物・本人の確認）を Genie が確かめる。条件のない仕事は作らない。
 - **本人を待つ:** 失敗にしない。承認を待つあいだは実行時間に数えない（`human_wait_ms`）。カードの期限が切れたら作業を止めて `waiting_human` で待ち、「仕事 N を再開」で同じセッションの続きから、残りの予算で進める。古いカードは使わず、操作が要れば改めて聞く。後の仕事は `waiting_dependency` で待ち、先の仕事が終わったら自動で始まる。再開できるのは仕事を作ってから 7 日（`max_lifetime_hours`）。
 - **止める:** 再試行 3 回・同じ失敗 2 回・時間・手数・費用・1 日の費用（`GENIE_AGENT_DAILY_BUDGET_USD`、既定 5 ドル）。費用が取れない実行は推さず、時間と回数で止める。解くのは本人の「再開」だけ。費用の上限で止めたものは再開できない。
@@ -293,7 +293,7 @@ LINE に「ログインだけお願いします」とリンク（15 分・本人
 
 - **読むだけ:** Claude Code は道具を Read・Grep・Glob と `git diff/status/log/show` に絞り、書く道具は外す。
   それ以外は聞かずに断る（`--permission-mode dontAsk --permission-prompts none`）。本人の設定（許可の一覧・hooks）は読まない
-  （`--setting-sources project`）。LINE に問いは出ない。Codex は `codex exec --sandbox read-only`（**実機では未確認**。この Mac に codex が無い）。
+  （`--setting-sources project`）。LINE に問いは出ない。Codex は `codex exec --sandbox read-only`。2026-11-05 に実機で確認（codex-cli 0.166、ChatGPT アプリ同梱）: 決め打ちの実装を不合格にし、書き込みは囲いで拒否された。codex の場所は `GENIE_CODEX_BIN` → PATH → `/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex` の順に探す。
 - **見る差分:** 仕事を作ったときの HEAD（`agent_jobs.base_sha`）からの差分と未追跡のファイル。エージェントがコミットしても見失わない。
 - **合否:** 返事の最後の `VERDICT: PASS` / `VERDICT: FAIL` だけで決める。判定の無い返事・起動できない・時間切れは
   **合格にせず**止めて（`review_unavailable`）本人に知らせる。

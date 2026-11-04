@@ -8,6 +8,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   ClaudeCodeAdapter,
+  CODEX_APP_BIN,
+  findCodexBin,
   parseClaudeResult,
   parseClaudeReview,
   parseCodexResult,
@@ -254,5 +256,23 @@ describe('reviews by a second agent', () => {
     ).toBe(false);
     expect(reviewVerdict('all good, I think')).toBeNull();
     expect(reviewVerdict(null)).toBeNull();
+  });
+});
+
+describe('where Genie finds codex', () => {
+  const only =
+    (...paths: string[]) =>
+    (p: string) =>
+      paths.includes(p);
+  it('uses the chosen path first, then PATH, then the copy inside the ChatGPT app', () => {
+    expect(findCodexBin({ GENIE_CODEX_BIN: '/x/codex', PATH: '/bin' }, only('/bin/codex'))).toBe(
+      '/x/codex',
+    );
+    expect(findCodexBin({ PATH: '/a:/bin' }, only('/bin/codex', CODEX_APP_BIN))).toBe('codex');
+    expect(findCodexBin({ PATH: '/a:/bin' }, only(CODEX_APP_BIN))).toBe(CODEX_APP_BIN);
+  });
+
+  it('falls back to the bare name when there is none, so it is reported as missing', () => {
+    expect(findCodexBin({ PATH: '/a' }, only())).toBe('codex');
   });
 });
