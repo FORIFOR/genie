@@ -19,13 +19,13 @@
     "体感の複雑さ（層 C）: 段は 5、面は 1 枚、増えた窓 0"
   ],
   "product" : "Genie",
-  "startedAt" : "2026-11-04T16:37:18Z",
+  "startedAt" : "2026-11-04T17:26:40Z",
   "steps" : [
     {
       "front" : "com.astra.desktop",
       "interactions" : 0,
       "keyWindow" : true,
-      "ms" : 28,
+      "ms" : 23,
       "name" : "Home（Dock は待機）",
       "surface" : {
         "h" : 76,
@@ -43,7 +43,7 @@
       "keys" : {
         "esc" : "listening→idle"
       },
-      "ms" : 1035,
+      "ms" : 1024,
       "name" : "Listening",
       "surface" : {
         "h" : 76,
@@ -58,11 +58,11 @@
     {
       "front" : "com.astra.desktop",
       "ids" : {
-        "task" : "CFAD3274-42C8-4B68-BA16-BF622ED36EA3"
+        "task" : "D26C5C01-37EC-4BB0-ABE7-B2975E5FB687"
       },
       "interactions" : 0,
       "keyWindow" : true,
-      "ms" : 1061,
+      "ms" : 1059,
       "name" : "Running",
       "surface" : {
         "h" : 258,
@@ -71,14 +71,14 @@
         "x" : 504,
         "y" : 859
       },
-      "transitionMs" : 187,
+      "transitionMs" : 184,
       "windows" : 2
     },
     {
       "front" : "com.astra.desktop",
       "ids" : {
-        "confirmation" : "D3651AA7-E312-447C-B01F-86420C9D0646",
-        "resolved" : "D3651AA7-E312-447C-B01F-86420C9D0646"
+        "confirmation" : "E922E537-0FE3-4E4E-9A0C-DFE955152342",
+        "resolved" : "E922E537-0FE3-4E4E-9A0C-DFE955152342"
       },
       "interactions" : 2,
       "keyWindow" : true,
@@ -86,7 +86,7 @@
         "cmdReturn" : "approved",
         "return" : "no-op"
       },
-      "ms" : 1809,
+      "ms" : 1811,
       "name" : "Confirmation",
       "surface" : {
         "h" : 258,
@@ -95,7 +95,7 @@
         "x" : 504,
         "y" : 859
       },
-      "transitionMs" : 204,
+      "transitionMs" : 207,
       "windows" : 2
     },
     {
@@ -114,11 +114,11 @@
         "x" : 754,
         "y" : 1041
       },
-      "transitionMs" : 195,
+      "transitionMs" : 187,
       "windows" : 2
     }
   ],
   "success" : true,
-  "totalMs" : 5221,
+  "totalMs" : 5206,
   "windowsOpened" : 0
 }
