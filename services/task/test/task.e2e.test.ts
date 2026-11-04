@@ -408,6 +408,35 @@ describe.skipIf(!url)('task runtime end to end', () => {
         service.decideApproval(tenantId, task.id, userId, approval, 'APPROVED'),
       ).rejects.toMatchObject({ code: 'approval.already_decided' });
     }, 60_000);
+
+    it('lets only one of two simultaneous decisions through (a double tap, or approve and reject at once)', async () => {
+      const { task } = await service.create({
+        tenantId,
+        userId,
+        request: { kind: 'echo', input: { message: 'race', require_approval: true } },
+        idempotencyKey: `k-${uuidv7()}`,
+      });
+      const approval = await waitForApproval(db, tenantId, task.id);
+      const results = await Promise.allSettled([
+        service.decideApproval(tenantId, task.id, userId, approval, 'APPROVED'),
+        service.decideApproval(tenantId, task.id, userId, approval, 'REJECTED'),
+      ]);
+      const won = results.findIndex((r) => r.status === 'fulfilled');
+      expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+      expect(results.find((r) => r.status === 'rejected')).toMatchObject({
+        reason: { code: 'approval.already_decided' },
+      });
+      // 記録に残る決定は、通った方だけ（後から来た方で上書きしない）
+      const row = await withTenant(db, tenantId, (tx) =>
+        tx
+          .selectFrom('approvals')
+          .select('status')
+          .where('id', '=', approval)
+          .executeTakeFirstOrThrow(),
+      );
+      expect(row.status).toBe(won === 0 ? 'APPROVED' : 'REJECTED');
+      await waitForWorkflow(task.id);
+    }, 60_000);
   });
 
   describe('follow-up instructions', () => {

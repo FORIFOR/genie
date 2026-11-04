@@ -501,11 +501,17 @@ export class TaskService {
         throw new GenieError('approval.expired', 'approval expired');
       }
 
-      await tx
+      // 読んだあとに別の決定が入っていたら通さない（二度押し・承認と拒否の同時押し）。
+      // 行の鍵を待ってから条件を見直すので、決められるのは 1 回だけ
+      const decided = await tx
         .updateTable('approvals')
         .set({ status: decision, decided_by: userId, decided_at: new Date() })
         .where('id', '=', approvalId)
-        .execute();
+        .where('status', '=', 'PENDING')
+        .executeTakeFirst();
+      if (Number(decided.numUpdatedRows) === 0) {
+        throw new GenieError('approval.already_decided', 'approval was decided meanwhile');
+      }
 
       return task.workflow_id;
     });
