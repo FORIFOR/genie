@@ -21,7 +21,7 @@
 
   ],
   "product" : "Genie",
-  "startedAt" : "2026-11-05T08:50:53Z",
+  "startedAt" : "2026-11-05T16:25:17Z",
   "steps" : [
     {
       "front" : "com.apple.finder",
@@ -32,7 +32,7 @@
       },
       "interactions" : 1,
       "keyWindow" : true,
-      "ms" : 1044,
+      "ms" : 1042,
       "name" : "マイクの説明",
       "surface" : {
         "h" : 189,
@@ -47,11 +47,11 @@
     {
       "front" : "com.apple.finder",
       "ids" : {
-        "session" : "meeting-5b4051e0-2ecb-455d-a460-caf5195d8e14"
+        "session" : "meeting-cc2c7e9e-9d8e-4120-af40-920e5c0a514b"
       },
       "interactions" : 1,
       "keyWindow" : true,
-      "ms" : 1178,
+      "ms" : 1172,
       "name" : "回復",
       "surface" : {
         "h" : 108,
@@ -70,7 +70,7 @@
       },
       "interactions" : 0,
       "keyWindow" : false,
-      "ms" : 1491,
+      "ms" : 1487,
       "name" : "共有のあと",
       "surface" : {
         "h" : 108,
@@ -89,7 +89,7 @@
       },
       "interactions" : 1,
       "keyWindow" : false,
-      "ms" : 1277,
+      "ms" : 1268,
       "name" : "確認（やめる）",
       "surface" : {
         "h" : 108,
@@ -108,7 +108,7 @@
       },
       "interactions" : 1,
       "keyWindow" : false,
-      "ms" : 2332,
+      "ms" : 2270,
       "name" : "落ちて再開",
       "surface" : {
         "h" : 820,
@@ -121,6 +121,6 @@
     }
   ],
   "success" : true,
-  "totalMs" : 7333,
+  "totalMs" : 7251,
   "windowsOpened" : 0
 }
