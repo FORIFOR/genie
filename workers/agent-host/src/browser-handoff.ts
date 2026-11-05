@@ -52,6 +52,20 @@ export interface HandoffApi {
   ): Promise<void>;
   take(id: string, waitMs: number): Promise<{ inputs: HandoffInput[]; ended: HandoffEnd | null }>;
   end(id: string, state: HandoffEnd): Promise<void>;
+  /**
+   * 隠すところを隠した画面の 1 枚を置く（LINE の「画面を見せて」と、ログインのお願いに添える）。
+   * 置けなくても読むのは続ける。
+   */
+  snapshot?(
+    requestId: string,
+    snap: {
+      jpeg: string;
+      site: string;
+      title: string;
+      stage: 'opened' | 'login' | 'read';
+      masked: number;
+    },
+  ): Promise<void>;
 }
 
 export function httpHandoffApi(config: {
@@ -94,6 +108,9 @@ export function httpHandoffApi(config: {
     },
     async end(id, state) {
       await post(`/v1/browser-handoffs/${id}/end`, { state });
+    },
+    async snapshot(requestId, snap) {
+      await post('/v1/browser-snapshots', { request_id: requestId, ...snap });
     },
   };
 }

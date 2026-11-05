@@ -12,6 +12,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { type TokenResponse, uuidv7 } from '@genie/contracts';
 import { HostBridge } from '@genie/service-agent-host';
 import { HandoffHub, handoffUrlFor } from '../src/browser-handoff.js';
+import { BrowserSnapshots, snapshotReply } from '../src/browser-snapshots.js';
 import { makeTestApp, makeTokens, testDbConfig, type TestApp } from './support.js';
 
 const url = process.env['TEST_DATABASE_URL'];
@@ -21,7 +22,9 @@ describe.skipIf(!url)('browser handoff', () => {
   let harness: TestApp;
   let base = '';
   const hub = new HandoffHub();
-  const said: { userId: string; text: string }[] = [];
+  const said: { userId: string; text: string; image?: string }[] = [];
+  const snapshots = new BrowserSnapshots();
+  const imageUrlFor = (token: string) => `https://genie.example/v1/channels/snapshot/${token}`;
   let deliver = true;
   let publicUrl: string | null = 'https://genie.example';
 
@@ -34,6 +37,16 @@ describe.skipIf(!url)('browser handoff', () => {
         urlFor: (token) => handoffUrlFor({ publicUrl, liffId: null })(token),
         notify: async (_tenantId, userId, text) => {
           said.push({ userId, text });
+          return deliver;
+        },
+        snapshots,
+        imageUrlFor,
+        notifyMessage: async (_tenantId, userId, message) => {
+          said.push({
+            userId,
+            text: message.text,
+            ...(message.image ? { image: message.image.url } : {}),
+          });
           return deliver;
         },
       },
@@ -230,5 +243,90 @@ describe.skipIf(!url)('browser handoff', () => {
     } finally {
       deliver = true;
     }
+  });
+
+  // 本人の設計 2026-11-05: LINE へ画面画像（隠すところを隠したもの）を送る
+  describe('the masked screen of the Genie browser', () => {
+    const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3]).toString('base64');
+    const snap = (c: Awaited<ReturnType<typeof claimed>>, over: Record<string, unknown> = {}) =>
+      harness.app.inject({
+        method: 'POST',
+        url: '/v1/browser-snapshots',
+        headers: c.auth,
+        payload: {
+          host_id: c.hostId,
+          request_id: c.requestId,
+          jpeg: JPEG,
+          site: 'members.example.com',
+          title: 'ログイン',
+          stage: 'login',
+          masked: 2,
+          ...over,
+        },
+      });
+
+    it('keeps only the screen of the step this Mac holds, and only JPEG', async () => {
+      const c = await claimed();
+      expect((await snap(c, { host_id: uuidv7() })).statusCode).toBe(404);
+      const other = await claimed('mail.send');
+      expect((await snap(other)).statusCode).toBe(404);
+      expect((await snap(c, { jpeg: Buffer.from('<svg/>').toString('base64') })).statusCode).toBe(
+        400,
+      );
+      expect((await snap(c, { site: 'http://x/' })).statusCode).toBe(400);
+      expect((await snap(c)).statusCode).toBe(204);
+    });
+
+    it('shows the latest screen on 「画面を見せて」 through a link that serves only that image', async () => {
+      const c = await claimed();
+      const me = (
+        await harness.app.inject({ method: 'GET', url: '/v1/me', headers: c.auth })
+      ).json<{
+        tenant: { id: string };
+      }>();
+      const none = snapshotReply(snapshots, me.tenant.id, c.userId, '画面を見せて', imageUrlFor);
+      expect(none?.text).toContain('いま見られる Genie のブラウザの画面はありません');
+      expect(none?.image).toBeUndefined();
+      expect((await snap(c, { stage: 'read', masked: 3 })).statusCode).toBe(204);
+      const reply = snapshotReply(snapshots, me.tenant.id, c.userId, '今の画面見せて', imageUrlFor);
+      expect(reply?.text).toContain('members.example.com');
+      expect(reply?.text).toContain('3 か所は黒く隠しています');
+      const token = /snapshot\/([A-Za-z0-9_-]{32})$/.exec(reply!.image!.url)![1]!;
+      const image = await harness.app.inject({
+        method: 'GET',
+        url: `/v1/channels/snapshot/${token}`,
+      });
+      expect(image.statusCode).toBe(200);
+      expect(image.headers['content-type']).toBe('image/jpeg');
+      expect(image.headers['cache-control']).toBe('no-store');
+      expect(image.rawPayload.subarray(0, 2)).toEqual(Buffer.from([0xff, 0xd8]));
+      // 新しい画面を置いたら、前のリンクは使えない。知らない秘密も 404
+      expect((await snap(c, { stage: 'read' })).statusCode).toBe(204);
+      expect(
+        (await harness.app.inject({ method: 'GET', url: `/v1/channels/snapshot/${token}` }))
+          .statusCode,
+      ).toBe(404);
+      expect(
+        (
+          await harness.app.inject({
+            method: 'GET',
+            url: `/v1/channels/snapshot/${'a'.repeat(32)}`,
+          })
+        ).statusCode,
+      ).toBe(404);
+      // ほかの文は読まない
+      expect(
+        snapshotReply(snapshots, me.tenant.id, c.userId, '画面の設定を変えて', imageUrlFor),
+      ).toBeNull();
+    });
+
+    it('attaches the login screen to the request to log in', async () => {
+      const c = await claimed();
+      expect((await snap(c, { stage: 'login' })).statusCode).toBe(204);
+      expect((await start(c)).statusCode).toBe(201);
+      const notice = said.at(-1)!;
+      expect(notice.text).toContain('ログインが要るため');
+      expect(notice.image).toMatch(/^https:\/\/genie\.example\/v1\/channels\/snapshot\//);
+    });
   });
 });

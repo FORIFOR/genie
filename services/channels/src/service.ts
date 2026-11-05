@@ -272,6 +272,14 @@ export interface ChannelServiceDeps {
       | { readonly kind: 'permission' }
     >;
   };
+  /**
+   * 「画面を見せて」: Genie のブラウザのいまの画面（隠すところを隠した 1 枚）を返す。読めない文なら null。
+   */
+  readonly browserView?: (
+    tenantId: string,
+    userId: string,
+    text: string,
+  ) => Promise<OutgoingMessage | null>;
   readonly call?: {
     issue(link: ChannelLink, conversationId: string): Promise<OutgoingMessage>;
     /** 家族のグループで、みんなで話す通話のリンク（何人でも入れる。頼みは共有スペースだけ）。 */
@@ -719,6 +727,17 @@ export class ChannelService {
           render.agentApprovalAnswered(instructed === 'decided' ? 'instructed' : instructed),
           message.replyToken,
         );
+        return 'handled';
+      }
+    }
+
+    // 「画面を見せて」: Genie のブラウザのいまの画面
+    if (!message.mention && this.deps.browserView && message.text.trim()) {
+      const view = await this.deps
+        .browserView(link.tenantId, link.userId, message.text)
+        .catch(() => null);
+      if (view) {
+        await this.#reply(message.provider, message, view, message.replyToken);
         return 'handled';
       }
     }
@@ -1461,6 +1480,27 @@ export class ChannelService {
    * 予約のお知らせを、頼まれたチャットのスレッドへ送る。チャットの会話でなければ 'none'。
    * 送れたか分からないときは 'unknown'（送り直しは outbox の規則どおり）。
    */
+  /**
+   * 本人の LINE の 1:1 へ、出来上がったメッセージ（画像つきなど）を送る。LINE をつないでいなければ none。
+   */
+  async notifyUserMessage(
+    tenantId: string,
+    userId: string,
+    message: OutgoingMessage,
+  ): Promise<'delivered' | 'failed' | 'unknown' | 'none'> {
+    const link = (await this.deps.store.listLinks(tenantId, userId)).find(
+      (l) => l.provider === 'line',
+    );
+    if (!link) return 'none';
+    const conversationId = await this.deps.store.conversationFor(
+      link,
+      link.subject,
+      link.subject,
+      () => this.deps.conversations.start(tenantId, userId, titleOf('line')),
+    );
+    return this.#notice(tenantId, conversationId, message);
+  }
+
   async notifyConversation(
     tenantId: string,
     conversationId: string,

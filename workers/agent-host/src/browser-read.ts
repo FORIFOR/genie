@@ -32,6 +32,35 @@ export interface ReadingSession extends HandoffSession {
   goto(url: string, signal: AbortSignal): Promise<void>;
   extract(): Promise<PageText>;
   close(): Promise<void>;
+  /** 隠すところを隠した 1 枚（隠せなければ null。無ければ画面は送らない）。 */
+  maskedScreenshot?(): Promise<{ jpeg: Buffer; masked: number } | null>;
+}
+
+/**
+ * いまの画面を、隠してから gateway に置く（LINE の「画面を見せて」）。隠せない・置けないときは何もしない
+ * （読むのは止めない）。
+ */
+async function snapshot(
+  session: ReadingSession,
+  api: HandoffApi,
+  requestId: string,
+  page: PageText,
+  stage: 'opened' | 'login' | 'read',
+): Promise<void> {
+  if (!api.snapshot || !session.maskedScreenshot) return;
+  try {
+    const shot = await session.maskedScreenshot();
+    if (!shot) return;
+    await api.snapshot(requestId, {
+      jpeg: shot.jpeg.toString('base64'),
+      site: new URL(page.finalUrl).hostname,
+      title: page.title.slice(0, 120),
+      stage,
+      masked: shot.masked,
+    });
+  } catch {
+    /* 画面を置けなくても、読むのは続ける */
+  }
 }
 
 export interface BrowserReadDeps {
@@ -178,7 +207,10 @@ export async function readOrHandOff(
     try {
       await session.goto(url, loading());
       const first = await session.extract();
-      if (!(await session.hasPasswordField())) return first;
+      const login = await session.hasPasswordField();
+      // 画面を置く（ログインのお願いより先に。お願いにこの画面を添える）
+      await snapshot(session, handoff.api, requestId, first, login ? 'login' : 'read');
+      if (!login) return first;
       const site = new URL(first.finalUrl).hostname;
       const done = await handOff(session, handoff.api, {
         requestId,
@@ -190,7 +222,9 @@ export async function readOrHandOff(
       if (done.end !== 'resumed') return { problem: HANDOFF_PROBLEM[done.end] };
       // ログインのあと、頼まれたページを読み直す（ログインのあとに別のページへ移っていることがある）
       await session.goto(url, loading());
-      return await session.extract();
+      const after = await session.extract();
+      await snapshot(session, handoff.api, requestId, after, 'read');
+      return after;
     } finally {
       await session.close();
     }

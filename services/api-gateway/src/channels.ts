@@ -302,6 +302,8 @@ export function channelsFromEnv(
      * （connector-reconnect.ts）。持ち主の 1:1 に、確認より先に送る。
      */
     readonly calendarWriteNotice?: (tenantId: string, userId: string) => Promise<string | null>;
+    /** 「画面を見せて」: Genie のブラウザのいまの画面（browser-snapshots.ts）。 */
+    readonly browserView?: import('@genie/service-channels').ChannelServiceDeps['browserView'];
   },
 ): GatewayChannels | null {
   const timeZone = env['GENIE_TIMEZONE']?.trim() || 'Asia/Tokyo';
@@ -616,6 +618,7 @@ export function channelsFromEnv(
       },
     },
     ...(deps.homeLink ? { homeLink: deps.homeLink } : {}),
+    ...(deps.browserView ? { browserView: deps.browserView } : {}),
     ...(deps.agentApprovals ? { agentApprovals: deps.agentApprovals } : {}),
     artifactText: (tenantId, artifactId) => readArtifactText(deps.library, tenantId, artifactId),
     artifactBody: (tenantId, artifactId) => readArtifactBody(deps.library, tenantId, artifactId),

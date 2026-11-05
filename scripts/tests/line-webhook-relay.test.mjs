@@ -189,7 +189,8 @@ test('passes the reconnect page, status and callback, and nothing else under it'
     assert.equal((await fetch(`${base}/short`)).status, 404);
     assert.equal((await fetch(`${base}/${token}/other`)).status, 404);
     assert.equal(
-      (await fetch(`http://127.0.0.1:${relay.address().port}/v1/connector-reconnects/pending`)).status,
+      (await fetch(`http://127.0.0.1:${relay.address().port}/v1/connector-reconnects/pending`))
+        .status,
       404,
     );
     assert.deepEqual(seen, [
@@ -299,6 +300,44 @@ test('passes the read-only board page and its state, and nothing that writes', a
   }
 });
 
+test('passes the masked browser screen image by its link, and nothing else under it', async () => {
+  const { createServer } = await import('node:http');
+  const seen = [];
+  const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3]);
+  const gateway = createServer((req, res) => {
+    seen.push(`${req.method} ${req.url}`);
+    res.writeHead(200, { 'content-type': 'image/jpeg', 'cache-control': 'no-store' });
+    res.end(jpeg);
+  });
+  await new Promise((r) => gateway.listen(0, '127.0.0.1', r));
+  const relay = createRelay({ gateway: `http://127.0.0.1:${gateway.address().port}` });
+  await new Promise((r) => relay.listen(0, '127.0.0.1', r));
+  const base = `http://127.0.0.1:${relay.address().port}`;
+  const token = 'S'.repeat(32);
+  try {
+    const image = await fetch(`${base}/v1/channels/snapshot/${token}?x=1`);
+    assert.equal(image.status, 200);
+    assert.equal(image.headers.get('content-type'), 'image/jpeg');
+    assert.deepEqual(Buffer.from(await image.arrayBuffer()), jpeg);
+    assert.equal((await fetch(`${base}/v1/channels/snapshot/short`)).status, 404);
+    assert.equal((await fetch(`${base}/v1/channels/snapshot/${token}/x`)).status, 404);
+    assert.equal(
+      (await fetch(`${base}/v1/channels/snapshot/${token}`, { method: 'POST', body: '{}' })).status,
+      404,
+    );
+    // 端末が画面を置く口は外から通さない
+    assert.equal(
+      (await fetch(`${base}/v1/browser-snapshots`, { method: 'POST', body: '{}' })).status,
+      404,
+    );
+    assert.deepEqual(seen, [`GET /v1/channels/snapshot/${token}`]);
+  } finally {
+    await new Promise((r) => relay.close(r));
+    gateway.closeAllConnections?.();
+    await new Promise((r) => gateway.close(r));
+  }
+});
+
 test('passes the read-only work home, its state and ledgers, and nothing else', async () => {
   const { createServer } = await import('node:http');
   const seen = [];
@@ -322,12 +361,14 @@ test('passes the read-only work home, its state and ledgers, and nothing else', 
     assert.equal((await fetch(`${base}/v1/channels/work/${token}/item/x/${id}`)).status, 404);
     assert.equal((await fetch(`${base}/v1/channels/work/${token}/item/s/../../x`)).status, 404);
     assert.equal(
-      (await fetch(`${base}/v1/channels/work/${token}/state`, { method: 'POST', body: '{}' })).status,
+      (await fetch(`${base}/v1/channels/work/${token}/state`, { method: 'POST', body: '{}' }))
+        .status,
       404,
     );
     assert.equal((await fetch(`${base}/v1/work/overview`)).status, 404);
     assert.equal(
-      (await fetch(`${base}/v1/channels/board?liff.state=%2Fw%2F${token}&access_token=secret`)).status,
+      (await fetch(`${base}/v1/channels/board?liff.state=%2Fw%2F${token}&access_token=secret`))
+        .status,
       200,
     );
     // 承認ルール: 一覧は読むだけ。変えられるのは取り消しだけ（本文は渡さない）

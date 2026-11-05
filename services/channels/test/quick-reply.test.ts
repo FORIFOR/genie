@@ -54,4 +54,23 @@ describe('quick replies with their own label', () => {
       { type: 'message', label: '拒否', text: '拒否' },
     ]);
   });
+
+  // Genie のブラウザの画面（隠したもの）は、文の前に画像のメッセージで
+  it('puts an image before the text, only from https', () => {
+    const withImage = lineMessages({
+      text: 'Genie のブラウザの画面です。',
+      image: { url: 'https://genie.example/v1/channels/snapshot/abc' },
+    }) as { type: string; originalContentUrl?: string; previewImageUrl?: string }[];
+    expect(withImage[0]).toEqual({
+      type: 'image',
+      originalContentUrl: 'https://genie.example/v1/channels/snapshot/abc',
+      previewImageUrl: 'https://genie.example/v1/channels/snapshot/abc',
+    });
+    expect(withImage[1]).toMatchObject({ type: 'text', text: 'Genie のブラウザの画面です。' });
+    const plain = lineMessages({
+      text: '画面です。',
+      image: { url: 'http://genie.example/x' },
+    }) as { type: string }[];
+    expect(plain.map((m) => m.type)).toEqual(['text']);
+  });
 });

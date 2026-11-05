@@ -6,6 +6,7 @@
  *   POST /v1/browser-handoffs/:id/frame       画面の 1 枚（メモリで取り次ぐだけ）
  *   POST /v1/browser-handoffs/:id/inputs      本人の操作を取りに来る（長く待つ問い合わせ）
  *   POST /v1/browser-handoffs/:id/end         終わり（ログインが済んで続けた・時間切れ・失敗）
+ *   POST /v1/browser-snapshots                隠すところを隠した画面の 1 枚（「画面を見せて」で LINE に出す）
  * 本人（LINE のリンク。サインインの代わりにリンクの秘密）:
  *   GET  /v1/channels/handoff/:token          操作のページ
  *   WS   /v1/channels/handoff/:token/ws       画面の流れを受け、操作を送る
@@ -24,6 +25,7 @@ import {
   type HandoffStore,
 } from '../browser-handoff.js';
 import { handoffPage } from '../browser-handoff-page.js';
+import type { BrowserSnapshots } from '../browser-snapshots.js';
 
 const TOKEN = /^[A-Za-z0-9_-]{32}$/;
 const ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -51,6 +53,18 @@ const Frame = z
 const Take = z
   .object({ host_id: z.string().regex(ID), wait_ms: z.number().int().min(0).max(25_000) })
   .strict();
+const Snap = z
+  .object({
+    host_id: z.string().regex(ID),
+    request_id: z.string().regex(ID),
+    // 隠すところを隠した 1 枚（JPEG を base64。おおよそ 700 KB まで）
+    jpeg: z.string().min(4).max(950_000),
+    site: z.string(),
+    title: z.string().max(300),
+    stage: z.enum(['opened', 'login', 'read']),
+    masked: z.number().int().min(0).max(10_000),
+  })
+  .strict();
 const End = z
   .object({
     host_id: z.string().regex(ID),
@@ -66,6 +80,15 @@ export interface HandoffRouteDeps {
   readonly urlFor: (token: string) => string | null;
   /** 本人への知らせ（LINE の 1 対 1）。届けられなければ false。 */
   readonly notify: (tenantId: string, userId: string, text: string) => Promise<boolean>;
+  /** 画面の 1 枚の置き場（メモリ）と、LINE が画像を取りに来る URL。無ければ画面は送らない。 */
+  readonly snapshots?: BrowserSnapshots;
+  readonly imageUrlFor?: (token: string) => string | null;
+  /** 画像つきの知らせ（ログインのお願いに、その画面を添える）。届けられなければ false。 */
+  readonly notifyMessage?: (
+    tenantId: string,
+    userId: string,
+    message: import('@genie/service-channels').OutgoingMessage,
+  ) => Promise<boolean>;
   readonly now?: () => Date;
 }
 
@@ -115,9 +138,18 @@ export function registerHandoffHostRoutes(app: App, deps: HandoffRouteDeps): voi
       now: deps.now?.() ?? new Date(),
     });
     deps.hub.open(made.id, made.expiresAt);
-    const delivered = await deps
-      .notify(principal.tenantId, principal.userId, handoffNotice(site, deps.urlFor(made.token)!))
-      .catch(() => false);
+    const text = handoffNotice(site, deps.urlFor(made.token)!);
+    // ログインの画面（隠したもの）があれば添える。どの画面で止まったかが、リンクを開く前に分かる
+    const snap = deps.snapshots?.latest(principal.tenantId, principal.userId);
+    const image =
+      snap && snap.taskId === step.taskId && snap.stage === 'login'
+        ? deps.imageUrlFor?.(snap.token)
+        : null;
+    const delivered = await (
+      image && deps.notifyMessage
+        ? deps.notifyMessage(principal.tenantId, principal.userId, { text, image: { url: image } })
+        : deps.notify(principal.tenantId, principal.userId, text)
+    ).catch(() => false);
     if (!delivered) {
       // 届けられなければ、待っても誰も来ない。すぐに終える
       deps.hub.end(made.id, 'failed');
@@ -151,6 +183,42 @@ export function registerHandoffHostRoutes(app: App, deps: HandoffRouteDeps): voi
     return { inputs: taken.inputs, ended: taken.ended };
   });
 
+  app.post('/v1/browser-snapshots', { bodyLimit: 1024 * 1024 }, async (request, reply) => {
+    const principal = requirePrincipal();
+    const body = Snap.parse(request.body ?? {});
+    if (!deps.snapshots) return reply.status(204).send();
+    const site = body.site.toLowerCase();
+    if (!HOST.test(site))
+      throw new GenieError('common.validation_failed', 'site must be a host name');
+    // その step を、いまこの端末が取っていること（ほかの端末・ほかの人の画面は置かない）
+    const step = await deps.bridge.get(principal.tenantId, body.request_id);
+    if (
+      !step ||
+      step.status !== 'CLAIMED' ||
+      step.hostId !== body.host_id ||
+      step.toolId !== 'browser.read_page'
+    )
+      throw new GenieError('common.not_found', 'no such step');
+    const task = await deps.tasks.get(principal.tenantId, step.taskId).catch(() => null);
+    if (!task || task.created_by !== principal.userId)
+      throw new GenieError('common.not_found', 'no such step');
+    const jpeg = Buffer.from(body.jpeg, 'base64');
+    // JPEG の頭でなければ置かない（LINE に別のものを取りに行かせない）
+    if (jpeg.length < 4 || jpeg[0] !== 0xff || jpeg[1] !== 0xd8)
+      throw new GenieError('common.validation_failed', 'jpeg expected');
+    deps.snapshots.put({
+      tenantId: principal.tenantId,
+      userId: principal.userId,
+      taskId: step.taskId,
+      site,
+      title: body.title.slice(0, 120),
+      stage: body.stage,
+      masked: body.masked,
+      jpeg,
+    });
+    return reply.status(204).send();
+  });
+
   app.post<{ Params: { id: string } }>('/v1/browser-handoffs/:id/end', async (request, reply) => {
     const body = End.parse(request.body ?? {});
     const row = await mine(request.params.id, body.host_id);
@@ -178,6 +246,22 @@ export function registerHandoffViewerRoutes(app: App, deps: HandoffRouteDeps): v
         .status(found && deps.hub.isOpen(found.id) ? 200 : 410)
         .headers({ ...pageHeaders, 'content-type': 'text/html; charset=utf-8' })
         .send(handoffPage());
+    },
+  );
+
+  // LINE が画面の画像を取りに来る（秘密のリンク。30 分で使えなくなる）
+  app.get<{ Params: { token: string } }>(
+    '/v1/channels/snapshot/:token',
+    { config },
+    async (request, reply) => {
+      const snap = TOKEN.test(request.params.token)
+        ? (deps.snapshots?.byToken(request.params.token) ?? null)
+        : null;
+      if (!snap) return reply.status(404).headers(pageHeaders).send();
+      return reply
+        .status(200)
+        .headers({ ...pageHeaders, 'content-type': 'image/jpeg' })
+        .send(snap.jpeg);
     },
   );
 

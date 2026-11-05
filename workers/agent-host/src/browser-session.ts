@@ -15,6 +15,7 @@ import { mkdir } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { isPublicWebUrl } from '@genie/contracts';
+import { MASK_OFF, MASK_ON } from './browser-mask.js';
 
 export interface PageText {
   readonly finalUrl: string;
@@ -236,6 +237,23 @@ export class BrowserSession {
       data: string;
     };
     return Buffer.from(out.data, 'base64');
+  }
+
+  /**
+   * 隠すところを隠した 1 枚（LINE へ送る画面）。隠す層を重ねられなかったら null（隠せない画面は送らない）。
+   * masked は隠した場所の数。撮ったら層は外す（ページは書き換えない）。
+   */
+  async maskedScreenshot(): Promise<{ jpeg: Buffer; masked: number } | null> {
+    const send = (m: string, p?: Record<string, unknown>) => this.#send(m, p);
+    try {
+      const masked = await evaluate(send, MASK_ON);
+      if (typeof masked !== 'number') return null;
+      return { jpeg: await this.screenshot(), masked };
+    } catch {
+      return null;
+    } finally {
+      await evaluate(send, MASK_OFF).catch(() => undefined);
+    }
   }
 
   /** パスワードの欄が選ばれているか（このあいだは画面を残さない・知らせない）。 */

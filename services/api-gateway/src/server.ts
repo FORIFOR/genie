@@ -70,6 +70,7 @@ import { GenieImprover } from './agent-improve.js';
 import { ConnectorReconnects } from './connector-reconnect.js';
 import { AgentSessionStore } from './agent-sessions.js';
 import { HandoffHub, HandoffStore, handoffUrlFor } from './browser-handoff.js';
+import { BrowserSnapshots, snapshotReply } from './browser-snapshots.js';
 import { MediaResolver } from './media.js';
 import { MemoryRateLimiter, RedisRateLimiter, type RateLimiter } from './rate-limit/index.js';
 
@@ -311,6 +312,10 @@ async function main(): Promise<void> {
     timeZone: schedules.tz,
   };
   const callConfig = callConfigFromEnv(process.env);
+  // Genie のブラウザの画面（隠したもの）を、本人ごとに 1 枚だけメモリに置く（browser-snapshots.ts）
+  const snapshots = new BrowserSnapshots();
+  const snapshotUrl = (token: string) =>
+    callConfig.publicUrl ? `${callConfig.publicUrl}/v1/channels/snapshot/${token}` : null;
   const callStore = new CallStore(db);
   // グループの計画（Action Board）。LIFF の ID があれば LINE の中で開くリンク、無ければ公開の先頭（GENIE_PUBLIC_URL）の直のリンク
   const boards = new BoardStore(db);
@@ -416,6 +421,8 @@ async function main(): Promise<void> {
         },
         calendarWriteNotice: (tenantId, userId) =>
           connectorReconnects.calendarWriteNotice(tenantId, userId),
+        browserView: async (tenantId, userId, text) =>
+          snapshotReply(snapshots, tenantId, userId, text, snapshotUrl, schedules.tz),
         homeLink: (tenantId, userId) =>
           homeLinkFor({
             links: workLinks,
@@ -455,6 +462,11 @@ async function main(): Promise<void> {
       }),
       notify: async (tenantId, userId, text) =>
         (await chat.current?.service.notifyUser(tenantId, userId, null, text)) === 'delivered',
+      // 画面の 1 枚（隠したもの）。「画面を見せて」と、ログインのお願いに添える
+      snapshots,
+      imageUrlFor: snapshotUrl,
+      notifyMessage: async (tenantId, userId, message) =>
+        (await chat.current?.service.notifyUserMessage(tenantId, userId, message)) === 'delivered',
     },
     // 予定を読む・ずらす・元に戻す（直前の一覧と変更は、この会話の仕事と成果物から引く）
     calendar: calendarTurnDeps({ tasks, library, timeZone: schedules.tz }),

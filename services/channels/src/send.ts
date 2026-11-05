@@ -40,6 +40,11 @@ export interface OutgoingMessage {
     readonly details: readonly { readonly label: string; readonly value: string }[];
     readonly note: string;
   };
+  /**
+   * 文の前に見せる画像（Genie のブラウザの画面など）。https の URL だけ（LINE が取りに来る）。
+   * LINE は画像のメッセージ、Slack は文のリンクにする。
+   */
+  readonly image?: { readonly url: string; readonly previewUrl?: string };
 }
 
 export interface SendTarget {
@@ -407,6 +412,14 @@ const withQuickReply = (message: unknown, choices: readonly QuickReply[] | null)
 /** 本文（構造のある答えは Flex Message）と、ボタンがあればボタンのテンプレート（本文 160 字・ラベル 20 字・最大 4 つ）。 */
 export function lineMessages(message: OutgoingMessage): unknown[] {
   const messages = lineMessagesWithoutChoices(message);
+  // 画像は文の前に（LINE は 1 回に 5 つまで。画像 + 文 + ボタンで収まる）
+  const image = message.image && /^https:\/\//.test(message.image.url) ? message.image : null;
+  if (image)
+    messages.unshift({
+      type: 'image',
+      originalContentUrl: image.url,
+      previewImageUrl: image.previewUrl ?? image.url,
+    });
   // 押すボタン（承認）があるときは、そちらで答える。選択肢のボタンは足さない
   if (message.buttons?.length || message.link) return messages;
   const last = messages.length - 1;

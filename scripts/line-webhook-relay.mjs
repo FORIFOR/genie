@@ -21,6 +21,8 @@
  *   - GET /v1/channels/work/<32 字のリンク> と、その /state、/item/s|t/<id>（仕事の台帳）
  *   - LINE の中では、上の LIFF の入口に liff.state=/w/<リンク> で入る
  * カードの画像（src/media.ts）も通す: GET /v1/channels/media/<32 字のリンク>（7 日。画像だけ）
+ * Genie のブラウザの画面（src/browser-snapshots.ts。隠したもの）も通す:
+ *   GET /v1/channels/snapshot/<32 字のリンク>（30 分。画像だけ。LINE が取りに来る）
  * ブラウザの引き継ぎ（src/browser-handoff.ts）のページも通す（本人 1 人・15 分のリンク）:
  *   - GET /v1/channels/handoff/<32 字のリンク>（ページ）と、その /ws（画面の流れと本人の操作の WebSocket）
  *   - LINE の中では、上の LIFF の入口に liff.state=/h/<リンク> で入る
@@ -60,6 +62,8 @@ export const RECONNECT_CALLBACK = /^\/v1\/channels\/reconnect\/[A-Za-z0-9_-]{32}
 export const HANDOFF_SOCKET = /^\/v1\/channels\/handoff\/[A-Za-z0-9_-]{32}\/ws$/;
 /** カードの画像（店の写真・地図）。gateway が Google から取り直して返す（キーは外へ出ない）。 */
 export const MEDIA = /^\/v1\/channels\/media\/[A-Za-z0-9_-]{32}$/;
+/** Genie のブラウザの画面（隠したもの。本人の「画面を見せて」で LINE が取りに来る）。 */
+export const SNAPSHOT = /^\/v1\/channels\/snapshot\/[A-Za-z0-9_-]{32}$/;
 
 /** LINE はリンクに ?openExternalBrowser=1 を残したまま開くので、クエリは捨ててから道を見る。 */
 const pathOf = (url) => (url ?? '').split('?')[0];
@@ -78,9 +82,16 @@ export function createRelay({ gateway, hub = null, fetchImpl = fetch, log = () =
     };
     if (
       req.method === 'GET' &&
-      [CALL_PAGE, BOARD_PAGE, WORK_PAGE, BOARD_ENTRY, MEDIA, HANDOFF_PAGE, RECONNECT_PAGE].some((re) =>
-        re.test(pathOf(req.url)),
-      )
+      [
+        CALL_PAGE,
+        BOARD_PAGE,
+        WORK_PAGE,
+        BOARD_ENTRY,
+        MEDIA,
+        SNAPSHOT,
+        HANDOFF_PAGE,
+        RECONNECT_PAGE,
+      ].some((re) => re.test(pathOf(req.url)))
     ) {
       // 通話・計画のページ。中身（HTML / JSON）をそのまま返す。見出しは gateway が付けたものだけ。
       // クエリは捨てる。LIFF の入口だけ liff.state を残す（ほかの値は gateway へ渡さない）

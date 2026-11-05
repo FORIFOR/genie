@@ -217,6 +217,76 @@ describe('reading a page behind a login', () => {
     expect(asked[0]).toMatchObject({ title: '会員のお知らせ' });
   });
 
+  it('leaves a masked screen at the login wall before asking, and again after reading', async () => {
+    const { session } = fakeSession({ loginAfter: 1 });
+    let shots = 0;
+    session.maskedScreenshot = async () => {
+      shots += 1;
+      return { jpeg: Buffer.from([0xff, 0xd8, shots]), masked: 1 };
+    };
+    const { api } = fakeApi([[{ type: 'text', text: 'pw' }]]);
+    const order: string[] = [];
+    const snaps: { stage: string; site: string; masked: number }[] = [];
+    const start = api.start.bind(api);
+    api.start = async (id, site) => {
+      order.push('start');
+      return start(id, site);
+    };
+    api.snapshot = async (_req, snap) => {
+      order.push(`snapshot ${snap.stage}`);
+      snaps.push({ stage: snap.stage, site: snap.site, masked: snap.masked });
+    };
+    const runtime = new BrowserReadRuntime({
+      ask: async () => ({ answer: '1 件です。' }),
+      handoff: { api, open: async () => session },
+    });
+    await runtime.run({
+      id: 'req-3',
+      toolId: 'browser.read_page',
+      args: { url: 'https://members.example.com/news/1', question: '要約して' },
+      approval: null,
+    });
+    // ログインの画面はお願いより先に置く（お願いにその画面を添える）
+    expect(order).toEqual(['snapshot login', 'start', 'snapshot read']);
+    expect(snaps[0]).toEqual({ stage: 'login', site: 'members.example.com', masked: 1 });
+  });
+
+  it('sends no screen it could not mask, and keeps reading when the screen cannot be left', async () => {
+    const { session } = fakeSession({ loginAfter: 0 });
+    session.maskedScreenshot = async () => null;
+    const { api } = fakeApi([]);
+    const snaps: string[] = [];
+    api.snapshot = async (_req, snap) => {
+      snaps.push(snap.stage);
+    };
+    const runtime = new BrowserReadRuntime({
+      ask: async () => ({ answer: 'x' }),
+      handoff: { api, open: async () => session },
+    });
+    // 最初の読みでパスワード欄が無いページにする
+    await session.insertText('x');
+    const out = await runtime.run({
+      id: 'req-4',
+      toolId: 'browser.read_page',
+      args: { url: 'https://members.example.com/news/1', question: '要約して' },
+      approval: null,
+    });
+    expect(out).toMatchObject({ ok: true, result: { read: true } });
+    expect(snaps).toEqual([]);
+    // 置く口が落ちても、読むのは止めない
+    session.maskedScreenshot = async () => ({ jpeg: Buffer.from([0xff, 0xd8]), masked: 0 });
+    api.snapshot = async () => {
+      throw new Error('gateway down');
+    };
+    const again = await runtime.run({
+      id: 'req-5',
+      toolId: 'browser.read_page',
+      args: { url: 'https://members.example.com/news/1', question: '要約して' },
+      approval: null,
+    });
+    expect(again).toMatchObject({ ok: true, result: { read: true } });
+  });
+
   it('tells the person why when the login was not finished', async () => {
     const { session } = fakeSession();
     const { api } = fakeApi([[{ type: 'cancel' }]]);
