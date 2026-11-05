@@ -749,6 +749,34 @@ export class ChannelService {
         await this.#queueAndSend(link, target, null, null, 'notice', reply, message.replyToken);
         return 'handled';
       }
+      // 本人が 1:1 で頼んだ会議（「明日15時から30分 打ち合わせ、Meet作って」）。グループと同じ読み方で、
+      // 確認（承認のカード）をこのトークに出してから Meet 付きで入れる。モデルに任せると「連携が要る」で止まる
+      const meeting =
+        this.deps.meeting && !message.mention
+          ? parseMeetingRequest(message.text, this.#now(), this.deps.meeting.timeZone)
+          : null;
+      if (meeting && this.deps.meeting) {
+        const started = await this.deps.meeting.request(principal, conversationId, {
+          title: meeting.title,
+          start: meeting.start,
+          end: meeting.end,
+          when_label: meeting.whenLabel,
+          time_zone: this.deps.meeting.timeZone,
+          meet_request_id: `genie-${message.eventId.slice(0, 40)}`,
+          ...(meeting.attendees.length ? { attendees: meeting.attendees.join(',') } : {}),
+        });
+        await this.followTask(link.tenantId, conversationId, started.taskId, started.title);
+        const invited = meeting.attendees.length ? `（招待: ${meeting.attendees.join('、')}）` : '';
+        await this.#reply(
+          message.provider,
+          target,
+          render.notice(
+            `会議「${meeting.title}」（${meeting.whenLabel}）${invited}を Google Meet 付きで入れます。このあと届く確認で「予定を入れる」を押してください。`,
+          ),
+          message.replyToken,
+        );
+        return 'handled';
+      }
       const read = await this.#understand(principal, conversationId, message, sender);
       outcome =
         read?.kind === 'reply'
@@ -1047,6 +1075,7 @@ export class ChannelService {
             group_id: group.id,
             group_provider: message.provider,
             meet_request_id: `genie-${(group.messageId ?? message.eventId).slice(0, 40)}`,
+            ...(meeting.attendees.length ? { attendees: meeting.attendees.join(',') } : {}),
             ...(asker ? { requested_by: asker } : {}),
           },
         );
@@ -1760,6 +1789,17 @@ export class ChannelService {
                 : null;
             return render.callResult(report, homeUrl);
           }
+        }
+        // 会議は入れた結果（Meet のリンク・招待）をそのまま返す。作業一覧を開かないとリンクが分からないのでは使えない
+        if (
+          task?.kind === 'calendar.meeting' &&
+          task.result_artifact_id &&
+          this.deps.artifactText
+        ) {
+          const made = await this.deps
+            .artifactText(tenantId, task.result_artifact_id)
+            .catch(() => null);
+          if (made?.trim()) return render.answer(made);
         }
         // 会話の答えは本文そのもの（本人がこのチャットで聞いたこと）。読めなければ、いつもの終わりの知らせ
         if (watch.answerInline && task?.result_artifact_id && this.deps.artifactText) {

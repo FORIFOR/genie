@@ -551,6 +551,8 @@ function eventFrom(args: Record<string, unknown>): CreateEventInput {
     ...(stringList(args['attendees']).length
       ? { attendeeEmails: stringList(args['attendees']) }
       : {}),
+    // 招待のメールは承認カードに出した引数（send_invites: true）のときだけ送る
+    ...(args['send_invites'] === true ? { sendInvites: true } : {}),
     // Meet は承認カードに出した引数（meet: true）のときだけ付ける
     ...(args['meet'] === true ? { meet: true } : {}),
     ...(typeof args['meet_request_id'] === 'string'

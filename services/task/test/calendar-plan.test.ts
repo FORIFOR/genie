@@ -158,4 +158,39 @@ describe('calendar plans', () => {
     expect(none?.markdown).toContain('Meet のリンクは付きませんでした');
     expect(() => formatCalendarArtifact('calendar.meeting', input, [])).toThrow();
   });
+
+  it('puts a meeting the owner asked for in 1:1 on the calendar, inviting only the people on the card', () => {
+    const input = {
+      title: '打ち合わせ',
+      start: '2026-11-06T15:00:00+09:00',
+      end: '2026-11-06T15:30:00+09:00',
+      when_label: '11/6(金) 15:00〜15:30',
+      attendees: 'a@example.com,not-an-email,b@example.jp',
+      requested_by: '本人には出さない',
+    };
+    const step = planTask('calendar.meeting', input).steps[0]!;
+    expect(step.message).toBe(
+      '予定「打ち合わせ」（11/6(金) 15:00〜15:30）を Google Meet 付きでカレンダーに入れます、a@example.com・b@example.jp を招待して',
+    );
+    expect(step.args).toMatchObject({
+      meet: true,
+      attendees: ['a@example.com', 'b@example.jp'],
+      send_invites: true,
+    });
+    const card = approvalSummaryFor(step);
+    expect(card.details).toEqual([
+      { label: '日時', value: '11/6(金) 15:00〜15:30' },
+      { label: '招待する人', value: 'a@example.com、b@example.jp' },
+    ]);
+    expect(card.impact.recovery_note).toContain('このトーク');
+    const made = formatCalendarArtifact('calendar.meeting', input, [
+      { title: '打ち合わせ', conferenceUri: 'https://meet.google.com/x' },
+    ]);
+    expect(made?.markdown).toContain('a@example.com、b@example.jp に招待を送りました。');
+
+    // 招待する人がいなければ、招待は送らない
+    const alone = planTask('calendar.meeting', { ...input, attendees: undefined }).steps[0]!;
+    expect(alone.args).not.toHaveProperty('send_invites');
+    expect(alone.args).not.toHaveProperty('attendees');
+  });
 });

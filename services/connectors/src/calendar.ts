@@ -75,6 +75,8 @@ export interface CreateEventInput {
   readonly meet?: boolean;
   /** Meet を作る頼みの一意な印（同じ承認の再試行で会議を 2 つ作らない）。無ければ予定の中身から作る */
   readonly meetRequestId?: string;
+  /** 招待のメールを送る（`sendUpdates=all`）。承認カードに招待する人を出したときだけ true にする */
+  readonly sendInvites?: boolean;
 }
 
 interface RawEvent {
@@ -194,7 +196,7 @@ export class GoogleCalendarConnector {
    * 予定を作る。**人の承認が要る。**
    *
    * 招待は既定で送らない（`sendUpdates=none`）。送るかどうかは
-   * 承認カードで見せた内容と一致させたいので、ここで勝手に決めない。
+   * 承認カードで見せた内容と一致させたいので、ここで勝手に決めない（`sendInvites` が来たときだけ送る）。
    */
   async create(
     input: CreateEventInput,
@@ -208,7 +210,9 @@ export class GoogleCalendarConnector {
       throw new ConnectorError('provider_error', 'an event needs a title');
     }
     // Meet を付けるときは conferenceDataVersion=1 が要る（無いと createRequest は黙って捨てられる）
-    const path = `${BASE}/calendars/${encodeURIComponent(input.calendarId ?? 'primary')}/events?sendUpdates=none${input.meet ? '&conferenceDataVersion=1' : ''}`;
+    // 招待を送るのは、承認カードに招待する人を出したとき（sendInvites）だけ
+    const updates = input.sendInvites && input.attendeeEmails?.length ? 'all' : 'none';
+    const path = `${BASE}/calendars/${encodeURIComponent(input.calendarId ?? 'primary')}/events?sendUpdates=${updates}${input.meet ? '&conferenceDataVersion=1' : ''}`;
     const raw = await callJson<RawEvent>(
       path,
       {

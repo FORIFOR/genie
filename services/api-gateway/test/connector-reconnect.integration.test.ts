@@ -400,6 +400,8 @@ describe.skipIf(!url)('connector reconnects', () => {
         'カレンダーに予定を入れられるようにして',
         'Googleカレンダーに書き込めるようにして',
         'カレンダーの書き込みを許可して',
+        'Googleカレンダーと連携して',
+        'カレンダー連携して',
       ])
         expect(await store.command(tenantId, userId, text), text).toContain('許可の手続きです');
       for (const text of [

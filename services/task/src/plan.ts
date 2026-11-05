@@ -1161,7 +1161,7 @@ export function approvalSummaryFor(step: TaskStep): ApprovalCard {
   if (step.toolId === 'calendar.create_event' && step.args['meet'] === true)
     return {
       summary: step.message,
-      details: ['頼まれた場所', '頼んだ人', '日時'].flatMap((label) =>
+      details: ['頼まれた場所', '頼んだ人', '日時', '招待する人'].flatMap((label) =>
         typeof step.args[label] === 'string' ? [{ label, value: String(step.args[label]) }] : [],
       ),
       impact: {
@@ -1170,7 +1170,9 @@ export function approvalSummaryFor(step: TaskStep): ApprovalCard {
         scope: 'external',
         reversible: false,
         recovery_note:
-          '入れたあとは Google カレンダーで消せます。Meet のリンクはグループに送ります',
+          typeof step.args['頼まれた場所'] === 'string'
+            ? '入れたあとは Google カレンダーで消せます。Meet のリンクはグループに送ります'
+            : '入れたあとは Google カレンダーで消せます。Meet のリンクはこのトークに送ります',
       },
     };
   const external =

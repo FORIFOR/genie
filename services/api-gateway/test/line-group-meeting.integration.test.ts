@@ -6,6 +6,7 @@
  *   - グループには「持ち主に確認しています」とだけ返す（承認のボタンはグループに出さない）
  *   - 入れたら Meet のリンクをグループへ 1 回だけ送る。見送ったら見送ったと送る
  *   - 会議の言い方でないメンションは、これまでどおり共有スペースへ
+ *   - 持ち主が 1:1 で頼んだ会議も同じ読み方で受け、招待する人を添えて確認を出す（リンクは 1:1 にだけ）
  *   ./infra/db/with-test-db.sh pnpm --filter @genie/service-api-gateway test
  */
 import { createHmac } from 'node:crypto';
@@ -242,7 +243,8 @@ describe.skipIf(!url)('a meeting asked for in a LINE group, approved by the owne
     const afterDone = messages(before);
     const groupLinks = afterDone.filter((m) => m.to === GROUP && m.text.includes(MEET));
     expect(groupLinks).toHaveLength(1);
-    expect(afterDone.some((m) => m.to === 'Uowner')).toBe(true);
+    // 持ち主の 1:1 にも、作業一覧ではなくリンクそのものを
+    expect(afterDone.some((m) => m.to === 'Uowner' && m.text.includes(MEET))).toBe(true);
     before = sent.length;
     await harness.channels!.service.pump(tenantId);
     expect(messages(before)).toEqual([]);
@@ -266,5 +268,46 @@ describe.skipIf(!url)('a meeting asked for in a LINE group, approved by the owne
     await inGroup('Ufriend', '明日の会議は何時？');
     await new Promise((r) => setTimeout(r, 300));
     expect(await meetingTasks()).toHaveLength(before.length);
+  });
+
+  // 実機（2026-11-05）: 持ち主が 1:1 トークで頼んだら、モデルが「連携が要る」と返して止まっていた
+  it('takes a meeting the owner asks for in 1:1, inviting the addresses in the message', async () => {
+    let before = sent.length;
+    const count = (await meetingTasks()).length;
+    await deliver(
+      {
+        type: 'message',
+        source: { type: 'user', userId: 'Uowner' },
+        message: {
+          type: 'text',
+          id: '9100001',
+          text: '@Genie 明日15時から30分 打ち合わせ、guest@example.com も招待して Meet作って',
+        },
+      },
+      'Uowner',
+    );
+    await waitFor(async () => (await meetingTasks()).length === count + 1, '1:1 meeting task');
+    const task = (await meetingTasks())[count]!;
+    expect(task.created_by).toBe(userId);
+    expect(task.input).toMatchObject({ title: '打ち合わせ', attendees: 'guest@example.com' });
+    expect(task.input).not.toHaveProperty('group_id');
+    await waitFor(
+      () => messages(before).some((m) => m.to === 'Uowner' && m.text.includes('予定を入れる')),
+      '1:1 answer',
+    );
+    expect(messages(before).filter((m) => m.to === GROUP)).toEqual([]);
+
+    // 入った → Meet のリンクは 1:1 にだけ。グループには何も送らない
+    before = sent.length;
+    await finish(
+      task.id,
+      'task.completed',
+      `予定「打ち合わせ」をカレンダーに入れました。guest@example.com に招待を送りました。\nGoogle Meet: ${MEET}`,
+    );
+    await harness.channels!.service.pump(tenantId);
+    await harness.channels!.service.pump(tenantId);
+    const done = messages(before);
+    expect(done.some((m) => m.to === 'Uowner' && m.text.includes(MEET))).toBe(true);
+    expect(done.filter((m) => m.to === GROUP)).toEqual([]);
   });
 });

@@ -197,9 +197,18 @@ describe('GoogleCalendarConnector', () => {
     expect(meetRequestId(input)).toBe(meetRequestId({ ...input }));
     expect(meetRequestId({ ...input, title: '別' })).not.toBe(meetRequestId(input));
 
+    // 招待のメールは、承認カードに出したとき（sendInvites）だけ送る
+    await calendar.create(
+      { ...input, attendeeEmails: ['b@example.com'], meet: true, sendInvites: true },
+      proof,
+    );
+    expect(calls[1]!.url).toContain('sendUpdates=all');
+    await calendar.create({ ...input, sendInvites: true }, proof);
+    expect(calls[2]!.url).toContain('sendUpdates=none');
+
     await calendar.create(input, proof);
-    expect(calls[1]!.url).not.toContain('conferenceDataVersion');
-    expect(calls[1]!.body).not.toHaveProperty('conferenceData');
+    expect(calls[3]!.url).not.toContain('conferenceDataVersion');
+    expect(calls[3]!.body).not.toHaveProperty('conferenceData');
   });
 
   it('refuses to write when only the read scope was granted', async () => {

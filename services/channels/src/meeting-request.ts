@@ -8,6 +8,9 @@
  *   時刻: 15時・15時半・15時30分・15:30・午後3時（日が無ければ今日。過ぎた時刻なら読まない）
  *   終わり: 「〜16時」「から16時まで」・「30分」「1時間」「1時間半」。無ければ 1 時間
  *   言葉: Meet・ミート・会議・打ち合わせ・ミーティング・MTG のどれかが要る
+ *   招待: 文の中のメールアドレス（「a@example.com も招待して」）。承認カードに出してから招待を送る
+ *
+ * 持ち主の 1:1 トークで頼まれたときも同じ読み方をする（「@Genie」を付けて送られても題名に入れない）。
  */
 
 export interface MeetingRequest {
@@ -17,7 +20,11 @@ export interface MeetingRequest {
   readonly end: string;
   /** 承認カード・グループへの返事に出す日時（例 11/6(金) 15:00〜15:30） */
   readonly whenLabel: string;
+  /** 招待する人のメールアドレス（文に書かれた順、重なりなし）。無ければ空 */
+  readonly attendees: readonly string[];
 }
+
+const EMAIL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
 
 const WORD = /(?:google\s*)?meet|ミート|会議|打ち?合わ?せ|ミーティング|mtg/i;
 const DOW = ['日', '月', '火', '水', '木', '金', '土'] as const;
@@ -159,7 +166,13 @@ export function parseMeetingRequest(
   now: number,
   timeZone: string,
 ): MeetingRequest | null {
-  const text = half(raw).trim();
+  const attendees = [...new Set((half(raw).match(EMAIL) ?? []).map((e) => e.toLowerCase()))];
+  // メールアドレスと「@Genie」は先に外す（時刻や題名と読み違えないように）
+  const text = half(raw)
+    .replace(new RegExp(`${EMAIL.source}\\s*(?:さん)?\\s*(?:と|や|、|,)?`, 'g'), ' ')
+    .replace(/(?:^|\s)@\S+/g, ' ')
+    .replace(/(?:を|も|と)?\s*(?:招待|呼んで|よんで)(?:して|する)?/g, ' ')
+    .trim();
   if (!WORD.test(text)) return null;
   const at = dayOf(text, now, timeZone);
   let rest = at ? text.replace(at.match, ' ') : text;
@@ -218,5 +231,6 @@ export function parseMeetingRequest(
     start: from.iso,
     end: to.iso,
     whenLabel: label(day, dow, start.hour, start.minute, endHour, endMinute),
+    attendees,
   };
 }

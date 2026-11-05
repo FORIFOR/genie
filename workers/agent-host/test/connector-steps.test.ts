@@ -371,6 +371,25 @@ describe('running a connector step on the device', () => {
     expect(sent[1]!.body).toMatchObject({
       conferenceData: { createRequest: { requestId: 'genie-msg-1' } },
     });
+    expect(sent[1]!.url).toContain('sendUpdates=none');
+
+    // 承認カードに招待する人を出したときだけ、招待を送る
+    await r.run(
+      step({
+        toolId: 'calendar.create_event',
+        args: {
+          title: '打ち合わせ',
+          start: '2026-09-01T15:00:00+09:00',
+          end: '2026-09-01T15:30:00+09:00',
+          meet: true,
+          attendees: ['b@example.com'],
+          send_invites: true,
+        },
+        approval: approved('calendar.create'),
+      }),
+    );
+    expect(sent[2]!.url).toContain('sendUpdates=all');
+    expect(sent[2]!.body).toMatchObject({ attendees: [{ email: 'b@example.com' }] });
   });
 
   // 仕様 v1.0 §11: 承認された「午後にずらして」を、この端末の Google カレンダーで変える

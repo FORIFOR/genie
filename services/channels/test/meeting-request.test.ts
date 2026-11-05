@@ -15,6 +15,7 @@ describe('meeting requests in a group', () => {
       start: '2026-11-06T15:00:00+09:00',
       end: '2026-11-06T15:30:00+09:00',
       whenLabel: '11/6(金) 15:00〜15:30',
+      attendees: [],
     });
     expect(read('11/10 14:00〜15:30 定例MTG')).toMatchObject({
       title: '定例MTG',
@@ -44,6 +45,24 @@ describe('meeting requests in a group', () => {
     expect(read('来週木曜 9時 MTG')?.start).toBe('2026-11-12T09:00:00+09:00');
     // 過ぎた月日は来年
     expect(read('1/8 10時 会議')?.start).toBe('2027-01-08T10:00:00+09:00');
+  });
+
+  it('reads invitees and ignores an @Genie prefix sent in a 1:1 chat', () => {
+    // 実機（2026-11-05）: 1:1 トークで「@Genie …」と送られた
+    expect(read('@Genie 明日15時から30分 打ち合わせ、Meet作って')).toMatchObject({
+      title: '打ち合わせ',
+      start: '2026-11-06T15:00:00+09:00',
+      attendees: [],
+    });
+    expect(
+      read('明日15時から30分 打ち合わせ、Taro.Y@Example.com と b@example.jp も招待して Meet作って'),
+    ).toMatchObject({
+      title: '打ち合わせ',
+      end: '2026-11-06T15:30:00+09:00',
+      attendees: ['taro.y@example.com', 'b@example.jp'],
+    });
+    // メールアドレスだけでは会議にしない
+    expect(read('a@example.com も招待して')).toBeNull();
   });
 
   it('does not read questions, past times or requests without a time', () => {
