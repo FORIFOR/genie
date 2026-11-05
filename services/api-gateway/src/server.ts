@@ -52,7 +52,7 @@ import { calendarTurnDeps } from './calendar-turn.js';
 import { PlacesSearch } from './places.js';
 import { RestaurantGoals } from './restaurant.js';
 import { CallStore, callConfigFromEnv } from './call.js';
-import type { ScheduleRunner } from '@genie/service-schedule';
+import { TodoService, TodoStore, type ScheduleRunner } from '@genie/service-schedule';
 import { VocabularyService, VocabularyStore } from '@genie/service-vocabulary';
 import type { TurnDeps } from '@genie/service-conversation';
 import { assertPathsExist, gatewayConfigFromEnv } from './config.js';
@@ -197,6 +197,8 @@ async function main(): Promise<void> {
   const chat: { current: GatewayChannels | null } = { current: null };
   // 予約: 会話で作り、時間になったら同じ入口（handleTurn）で頼む
   const schedules = scheduleServiceFromEnv(process.env, db);
+  // 締切のある「やること」。締切の朝の知らせは予約で作る
+  const todos = new TodoService(new TodoStore(db), schedules.store, { tz: schedules.tz });
   // 写真・外国語の文を読む（家計簿・料理の目安・予定・訳）。チャットと handleTurn で同じものを使う
   const understand = understandServiceFromEnv(process.env, { db, logger, timeZone: schedules.tz });
   // 1:1・通話・Task Dock の決まった言い方（家族の家計簿・グループへ送る）。グループへの口はチャネルを組んだあとで入る
@@ -335,6 +337,7 @@ async function main(): Promise<void> {
     tasks,
     library,
     schedules: schedules.store,
+    todos,
     tz: schedules.tz,
     openHome: (principal) =>
       openHomeAnswer({ links: workLinks, urlFor: workUrl, principal, now: new Date() }),
@@ -445,6 +448,7 @@ async function main(): Promise<void> {
     },
     phoneConnections: { store: phone.store, clientOf: phone.clientOf },
     schedules,
+    todos,
     vocabulary: new VocabularyService(new VocabularyStore(db)),
     boards,
     media,

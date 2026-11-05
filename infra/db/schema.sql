@@ -1912,6 +1912,29 @@ ALTER TABLE ONLY public.tenants FORCE ROW LEVEL SECURITY;
 
 
 --
+-- Name: todos; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.todos (
+    id uuid NOT NULL,
+    tenant_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    conversation_id uuid,
+    title text NOT NULL,
+    due_date date NOT NULL,
+    status text NOT NULL,
+    reminder_job_id uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    done_at timestamp with time zone,
+    CONSTRAINT todos_status_check CHECK ((status = ANY (ARRAY['open'::text, 'done'::text, 'deleted'::text]))),
+    CONSTRAINT todos_title_check CHECK (((length(title) >= 1) AND (length(title) <= 200)))
+);
+
+ALTER TABLE ONLY public.todos FORCE ROW LEVEL SECURITY;
+
+
+--
 -- Name: transaction_authorization_uses; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2960,6 +2983,14 @@ ALTER TABLE ONLY public.tenants
 
 
 --
+-- Name: todos todos_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.todos
+    ADD CONSTRAINT todos_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: transaction_authorization_uses transaction_authorization_use_tenant_id_provider_mode_accou_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3913,6 +3944,20 @@ CREATE INDEX tasks_recent ON public.tasks USING btree (tenant_id, id DESC);
 --
 
 CREATE UNIQUE INDEX tasks_workflow_id ON public.tasks USING btree (workflow_id);
+
+
+--
+-- Name: todos_one_open_title; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX todos_one_open_title ON public.todos USING btree (tenant_id, user_id, title) WHERE (status = 'open'::text);
+
+
+--
+-- Name: todos_open; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX todos_open ON public.todos USING btree (tenant_id, user_id, due_date) WHERE (status = 'open'::text);
 
 
 --
@@ -5785,6 +5830,38 @@ ALTER TABLE ONLY public.tasks
 
 
 --
+-- Name: todos todos_conversation_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.todos
+    ADD CONSTRAINT todos_conversation_id_fkey FOREIGN KEY (conversation_id) REFERENCES public.conversations(id);
+
+
+--
+-- Name: todos todos_reminder_job_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.todos
+    ADD CONSTRAINT todos_reminder_job_id_fkey FOREIGN KEY (reminder_job_id) REFERENCES public.scheduled_jobs(id);
+
+
+--
+-- Name: todos todos_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.todos
+    ADD CONSTRAINT todos_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: todos todos_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.todos
+    ADD CONSTRAINT todos_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
 -- Name: transaction_authorization_uses transaction_authorization_uses_approval_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7049,6 +7126,19 @@ CREATE POLICY tenants_tenant_isolation ON public.tenants USING ((id = public.ast
 
 
 --
+-- Name: todos; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.todos ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: todos todos_tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY todos_tenant_isolation ON public.todos USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
+
+
+--
 -- Name: transaction_authorization_uses; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -7377,3 +7467,4 @@ INSERT INTO schema_migrations (version) VALUES ('20261031030000');
 INSERT INTO schema_migrations (version) VALUES ('20261031040000');
 INSERT INTO schema_migrations (version) VALUES ('20261105000000');
 INSERT INTO schema_migrations (version) VALUES ('20261105010000');
+INSERT INTO schema_migrations (version) VALUES ('20261105020000');

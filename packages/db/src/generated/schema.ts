@@ -1105,6 +1105,20 @@ export interface Tenants {
   name: string;
 }
 
+export interface Todos {
+  conversation_id: string | null;
+  created_at: Generated<Timestamp>;
+  done_at: Timestamp | null;
+  due_date: Timestamp;
+  id: string;
+  reminder_job_id: string | null;
+  status: string;
+  tenant_id: string;
+  title: string;
+  updated_at: Generated<Timestamp>;
+  user_id: string;
+}
+
 export interface TransactionAuthorizations {
   created_at: Generated<Timestamp>;
   created_by: string;
@@ -1427,6 +1441,7 @@ export interface DB {
   task_instructions: TaskInstructions;
   tasks: Tasks;
   tenants: Tenants;
+  todos: Todos;
   transaction_authorization_uses: TransactionAuthorizationUses;
   transaction_authorizations: TransactionAuthorizations;
   translations: Translations;

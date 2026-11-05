@@ -111,6 +111,11 @@ export interface AppDeps {
    * （`onTurnDeps`）。
    */
   readonly schedules?: import('@genie/service-schedule').ScheduleService;
+  /**
+   * 締切のある「やること」（「金曜までに見積書を出す」「やることは？」「見積書出した」）。予約より先に読む。
+   * 無ければ受けない（予約の言い方だけ）。
+   */
+  readonly todos?: import('@genie/service-schedule').TodoService;
   /** 仕事の見通し（Task Dock の件数と、「今の作業どうなってる？」の答え）。 */
   readonly workDesk?: import('./work-desk.js').WorkDesk;
   /** 仕事のホームのリンク（LINE から開くページ）。 */
@@ -260,7 +265,18 @@ export function buildApp(deps: AppDeps): App {
       conversations: deps.conversations,
       tasks: deps.tasks,
       ...(deps.phone ? { phone: deps.phone } : {}),
-      ...(deps.schedules ? { schedules: deps.schedules } : {}),
+      ...(deps.schedules
+        ? {
+            schedules: deps.todos
+              ? {
+                  // やることの言い方を先に、違えば予約へ
+                  handle: async (principal, conversationId, text) =>
+                    (await deps.todos!.handle(principal, conversationId, text)) ??
+                    deps.schedules!.handle(principal, conversationId, text),
+                }
+              : deps.schedules,
+          }
+        : {}),
       ...(deps.vocabulary ? { vocabulary: deps.vocabulary } : {}),
       ...(deps.understand ? { understand: deps.understand } : {}),
       ...(deps.calendar ? { calendar: deps.calendar } : {}),

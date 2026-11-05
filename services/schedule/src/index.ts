@@ -51,3 +51,13 @@ export {
   type ScheduleRunnerDeps,
   type ScheduledTurnOutcome,
 } from './runner.js';
+export {
+  dueIso,
+  dueLabel,
+  parseTodoRequest,
+  type DueDate,
+  type TodoParseContext,
+  type TodoRequest,
+} from './todo-parse.js';
+export { TodoStore, type Todo, type TodoStatus } from './todo-store.js';
+export { TodoService, type TodoReply } from './todo-service.js';

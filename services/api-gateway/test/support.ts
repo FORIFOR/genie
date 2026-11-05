@@ -33,7 +33,7 @@ import { PlacesSearch } from '../src/places.js';
 import { BoardStore } from '../src/board.js';
 import { MediaResolver } from '../src/media.js';
 import { RestaurantGoals } from '../src/restaurant.js';
-import { ScheduleService, ScheduleStore } from '@genie/service-schedule';
+import { ScheduleService, ScheduleStore, TodoService, TodoStore } from '@genie/service-schedule';
 import { VocabularyService, VocabularyStore } from '@genie/service-vocabulary';
 import {
   ExpenseStore,
@@ -404,6 +404,10 @@ export async function makeTestApp(options: MakeAppOptions): Promise<TestApp> {
     ...(scheduleService
       ? {
           schedules: scheduleService,
+          todos: new TodoService(new TodoStore(db), scheduleService.store, {
+            tz: options.schedules?.tz ?? 'Asia/Tokyo',
+            ...(options.schedules?.now ? { now: options.schedules.now } : {}),
+          }),
           onTurnDeps: (turnDeps: import('@genie/service-conversation').TurnDeps) => {
             turnDepsSeen = turnDeps;
           },

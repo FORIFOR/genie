@@ -20,6 +20,7 @@ import {
   wallClock,
   type ScheduleStore,
   type ScheduledJob,
+  type TodoService,
 } from '@genie/service-schedule';
 import type { LibraryService } from '@genie/service-library';
 import type { TaskService } from '@genie/service-task';
@@ -53,6 +54,8 @@ export interface OverviewInput {
   readonly holds: readonly WorkHold[];
   readonly schedules: readonly ScheduledJob[];
   readonly followups: readonly WaitingFollowup[];
+  /** 締切が過ぎた・今日・明日までの「やること」（1 行ずつ。返事が要るものと一緒に先に出す） */
+  readonly deadlines?: readonly string[];
   readonly now: number;
   readonly tz: string;
 }
@@ -154,6 +157,7 @@ export function composeOverview(input: OverviewInput): Overview {
     else if (status === 'COMPLETED' && sameDay(updated, now, tz)) done.push(taskName(t));
   }
 
+  for (const d of input.deadlines ?? []) attention.push(d);
   for (const j of input.schedules)
     if (j.status === 'disabled')
       attention.push(`予約「${j.name}」は続けて失敗したので止まっています`);
@@ -236,6 +240,8 @@ export interface WorkDeskDeps {
   readonly tasks: Pick<TaskService, 'list' | 'get' | 'listInstructions' | 'approvalHistory'>;
   readonly library: Pick<LibraryService, 'list'>;
   readonly schedules: ScheduleStore | null;
+  /** 締切のある「やること」（気にすることに締切の近いものを出す）。無ければ出さない */
+  readonly todos?: Pick<TodoService, 'attention'>;
   readonly tz: string;
   readonly now?: () => Date;
   /** 「仕事のホームを開いて」への答え（work-home.ts の openHomeAnswer）。無ければ受けない。 */
@@ -287,14 +293,24 @@ export class WorkDesk {
 
   /** 見通しの材料（片方が落ちても、取れたほうで答える）。 */
   async gather(tenantId: string, userId: string): Promise<OverviewInput> {
-    const [tasks, sessions, holds, schedules, followups] = await Promise.all([
+    const [tasks, sessions, holds, schedules, followups, deadlines] = await Promise.all([
       this.#tasks(tenantId, userId),
       this.#sessions.list(tenantId, userId).catch(() => []),
       this.holds.active(tenantId, userId).catch(() => []),
       this.deps.schedules?.list(tenantId, userId).catch(() => []) ?? Promise.resolve([]),
       this.followups(tenantId, userId).catch(() => []),
+      this.deps.todos?.attention({ tenantId, userId }).catch(() => []) ?? Promise.resolve([]),
     ]);
-    return { tasks, sessions, holds, schedules, followups, now: this.#now(), tz: this.deps.tz };
+    return {
+      tasks,
+      sessions,
+      holds,
+      schedules,
+      followups,
+      deadlines,
+      now: this.#now(),
+      tz: this.deps.tz,
+    };
   }
 
   async overview(tenantId: string, userId: string): Promise<Overview> {

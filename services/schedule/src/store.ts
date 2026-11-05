@@ -168,6 +168,8 @@ export class ScheduleStore {
         .where('conversation_id', '=', input.conversationId)
         .where('name', '=', name)
         .where(sql<boolean>`schedule = ${JSON.stringify(input.schedule)}::jsonb`)
+        // 取り消したものは数えない（締切を変えて戻したときなど、もう一度作る）
+        .where('status', 'in', ['active', 'paused', 'done'])
         .executeTakeFirst();
       if (existing) return { job: toJob(existing), created: false };
       const row = await tx

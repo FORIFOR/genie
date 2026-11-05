@@ -78,6 +78,18 @@ const overview = (input: Partial<Parameters<typeof composeOverview>[0]>) =>
   });
 
 describe('the work overview', () => {
+  // 締切の近い「やること」も、確かめてほしいものとして先に出す
+  it('puts deadlines that have passed or are close among what needs the user', () => {
+    const o = overview({
+      deadlines: ['やること「見積書を出す」は今日が締切です'],
+      tasks: [task({})],
+    });
+    const lines = o.text.split('\n');
+    expect(lines[0]).toBe('いま確かめてほしいのは 1 件です。');
+    expect(lines[1]).toBe('・やること「見積書を出す」は今日が締切です');
+    expect(o.counts.needsUser).toBe(1);
+  });
+
   it('says what needs the user first, then what is moving', () => {
     const o = overview({
       sessions: [
