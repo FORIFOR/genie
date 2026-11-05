@@ -71,7 +71,7 @@ export class TodoService {
     if (!request) return null;
     switch (request.kind) {
       case 'add':
-        return this.#add(principal, conversationId, request.title, request.due);
+        return this.add(principal, conversationId, request.title, request.due);
       case 'add-ref': {
         const said = this.#previousText
           ? await this.#previousText(principal, conversationId).catch(() => null)
@@ -82,7 +82,7 @@ export class TodoService {
             answer: `何を${dueLabel(request.due)}までにしますか？「${dueLabel(request.due)}までに見積書を出す」のように、やることの名前を入れて送ってください。`,
             needsClarification: true,
           };
-        return this.#add(principal, conversationId, title, request.due);
+        return this.add(principal, conversationId, title, request.due);
       }
       case 'list':
         return { answer: await this.listText(principal), needsClarification: false };
@@ -93,7 +93,8 @@ export class TodoService {
     }
   }
 
-  async #add(
+  /** やることを置く（締切の朝の知らせも作る）。候補の承認（candidate-service.ts）からも呼ぶ。 */
+  async add(
     principal: { tenantId: string; userId: string },
     conversationId: string,
     title: string,

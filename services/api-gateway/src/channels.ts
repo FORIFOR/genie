@@ -306,6 +306,11 @@ export function channelsFromEnv(
     readonly browserView?: import('@genie/service-channels').ChannelServiceDeps['browserView'];
     /** 「会議の30分前に教えて」: 会議が入ったら知らせを予約する（予約の仕組み、services/schedule）。 */
     readonly remindBefore?: import('@genie/service-schedule').ScheduleService['remindBefore'];
+    /**
+     * 通話の議事録から、予定とやることの候補を拾って提案する（candidate-service.ts）。
+     * 入れるのは本人が「全部入れて」と答えてから。
+     */
+    readonly proposeCandidates?: import('@genie/service-schedule').CandidateService['propose'];
   },
 ): GatewayChannels | null {
   const timeZone = env['GENIE_TIMEZONE']?.trim() || 'Asia/Tokyo';
@@ -733,12 +738,37 @@ export function channelsFromEnv(
                   if (!text) return;
                   // 家族の通話の議事録は、そのグループへ
                   if (session.groupId) await service.postToGroupId('line', session.groupId, text);
-                  else
+                  else {
                     await service.notifyConversation(
                       session.tenantId,
                       session.conversationId,
                       text,
                     );
+                    // 決まったこと・本人の次にやることに日付があれば、予定とやることの候補として見せる
+                    // （Genie がやることは Genie の仕事なので候補にしない）
+                    const m = minutes ?? plainMinutes(record);
+                    const said = [
+                      ...m.outcomes,
+                      ...m.next.filter((n) => n.who === 'you').map((n) => n.what),
+                    ].join('\n');
+                    const proposal =
+                      deps.proposeCandidates && said.trim()
+                        ? await deps
+                            .proposeCandidates(
+                              { tenantId: session.tenantId, userId: session.userId },
+                              session.conversationId,
+                              said,
+                              'call_minutes',
+                            )
+                            .catch(() => null)
+                        : null;
+                    if (proposal)
+                      await service.notifyConversation(
+                        session.tenantId,
+                        session.conversationId,
+                        proposal,
+                      );
+                  }
                 })().catch(() => undefined);
               },
               // 通話の中の頼み。LINE の会話と同じ conversation で handleTurn（Task Dock・チャットと同じ入口）

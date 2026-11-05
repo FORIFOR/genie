@@ -942,6 +942,25 @@ export interface ResearchRuns {
   updated_at: Generated<Timestamp>;
 }
 
+export interface ScheduleCandidates {
+  batch_id: string;
+  conversation_id: string;
+  created_at: Generated<Timestamp>;
+  decided_at: Timestamp | null;
+  due_date: Timestamp | null;
+  end_at: Timestamp | null;
+  excerpt: string;
+  id: string;
+  kind: string;
+  position: number;
+  source: string;
+  start_at: Timestamp | null;
+  status: string;
+  tenant_id: string;
+  title: string;
+  user_id: string;
+}
+
 export interface ScheduledJobs {
   catch_up: Generated<string>;
   consecutive_errors: Generated<number>;
@@ -1429,6 +1448,7 @@ export interface DB {
   plugin_versions: PluginVersions;
   plugins: Plugins;
   research_runs: ResearchRuns;
+  schedule_candidates: ScheduleCandidates;
   scheduled_jobs: ScheduledJobs;
   scheduled_runs: ScheduledRuns;
   schema_migrations: SchemaMigrations;

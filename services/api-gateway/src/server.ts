@@ -52,7 +52,13 @@ import { calendarTurnDeps } from './calendar-turn.js';
 import { PlacesSearch } from './places.js';
 import { RestaurantGoals } from './restaurant.js';
 import { CallStore, callConfigFromEnv } from './call.js';
-import { TodoService, TodoStore, type ScheduleRunner } from '@genie/service-schedule';
+import {
+  CandidateService,
+  CandidateStore,
+  TodoService,
+  TodoStore,
+  type ScheduleRunner,
+} from '@genie/service-schedule';
 import { TodoStore as UndatedTodoStore } from '@genie/service-understand';
 import { previousUserText } from './todo-context.js';
 import { VocabularyService, VocabularyStore } from '@genie/service-vocabulary';
@@ -208,6 +214,8 @@ async function main(): Promise<void> {
       undatedTodos.open({ tenantId: p.tenantId, userId: p.userId, householdId: null }),
     previousText: previousUserText(conversations),
   });
+  // 議事録・貼った文から拾った予定とやることの候補（入れるのは本人が選んでから）
+  const candidates = new CandidateService(new CandidateStore(db), todos, { tz: schedules.tz });
   // 写真・外国語の文を読む（家計簿・料理の目安・予定・訳）。チャットと handleTurn で同じものを使う
   const understand = understandServiceFromEnv(process.env, { db, logger, timeZone: schedules.tz });
   // 1:1・通話・Task Dock の決まった言い方（家族の家計簿・グループへ送る）。グループへの口はチャネルを組んだあとで入る
@@ -435,6 +443,8 @@ async function main(): Promise<void> {
           connectorReconnects.calendarWriteNotice(tenantId, userId),
         remindBefore: (principal, conversationId, event) =>
           schedules.remindBefore(principal, conversationId, event),
+        proposeCandidates: (principal, conversationId, text, source) =>
+          candidates.propose(principal, conversationId, text, source),
         browserView: async (tenantId, userId, text) =>
           snapshotReply(snapshots, tenantId, userId, text, snapshotUrl, schedules.tz),
         homeLink: (tenantId, userId) =>
@@ -458,6 +468,7 @@ async function main(): Promise<void> {
     phoneConnections: { store: phone.store, clientOf: phone.clientOf },
     schedules,
     todos,
+    candidates,
     vocabulary: new VocabularyService(new VocabularyStore(db)),
     boards,
     media,

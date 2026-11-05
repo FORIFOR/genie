@@ -213,6 +213,51 @@ function resolveClock(
   return { ok: true, schedule: { kind: 'at', at: new Date(at).toISOString() } };
 }
 
+/** 文の中の「〜時から」「〜時に」（日の言葉があるものだけ）。終わりの「〜15時」「から16:00まで」も拾う。 */
+const EVENT_SPAN = new RegExp(
+  `${CLOCK_CORE}\\s*(?:(?:から|〜|~|-|－)\\s*(?:(?<eh>\\d{1,2})\\s*時\\s*(?:(?<ehalf>半)|(?<em>\\d{1,2})\\s*分)?|(?<ehh>\\d{1,2}):(?<emm>\\d{2}))?\\s*(?:まで)?|に|開始|スタート|より)?`,
+);
+
+export interface EventTime {
+  /** 始まり（epoch ms） */
+  readonly start: number;
+  /** 終わり（言っていなければ null） */
+  readonly end: number | null;
+  /** 文の中の位置（予定の名前を取り出すため） */
+  readonly index: number;
+  readonly length: number;
+}
+
+/**
+ * 文に書かれた予定の日時（「来週水曜14時から」「11月11日 14:00〜15:00」）。議事録・貼った文から
+ * 予定の候補を拾う（extract.ts）のに使う。**日の言葉が無いもの・繰り返し・過ぎたものは読まない**
+ * （「14時に」だけでは、いつの予定か文からは決められない）。
+ */
+export function findEventTime(rawText: string, context: ParseContext): EventTime | null {
+  const text = normalizeNumbers(rawText);
+  const m = EVENT_SPAN.exec(text);
+  if (!m?.groups || !m.groups['day'] || m.groups['rec']) return null;
+  const resolved = resolveClock(m.groups, context, context.tz);
+  if (!resolved.ok || resolved.schedule.kind !== 'at') return null;
+  const start = Date.parse(resolved.schedule.at);
+  // 過ぎた「11月1日」が来年に回ったもの（文に書かれた日付は、ほぼ過ぎた日のこと）
+  if (start - context.now > 300 * 86_400_000) return null;
+  let end: number | null = null;
+  const eh = m.groups['eh'] ?? m.groups['ehh'];
+  if (eh !== undefined) {
+    let hour = Number(eh);
+    const minute = m.groups['ehalf'] ? 30 : Number(m.groups['em'] ?? m.groups['emm'] ?? 0);
+    const startHour = Number(
+      new Intl.DateTimeFormat('en-GB', { timeZone: context.tz, hour: '2-digit', hourCycle: 'h23' }).format(start),
+    );
+    if (hour < startHour && hour + 12 <= 23) hour += 12;
+    const day = wallClock(start, context.tz);
+    const at = zonedTime(day.year, day.month, day.day, hour, minute, context.tz);
+    if (at > start && at - start <= 12 * 3_600_000) end = at;
+  }
+  return { start, end, index: m.index, length: m[0].length };
+}
+
 /** 「1時間前に」「30分前に」「1時間半前に」（そのあとに知らせる言葉）。 */
 const LEAD =
   /[、,。\s]*(?:(?<h>\d{1,2})\s*時間\s*(?:(?<half>半)|(?<m>\d{1,2})\s*分)?|(?<m2>\d{1,3})\s*分)\s*(?:くらい|ぐらい|ほど)?\s*前\s*(?:に|には)?\s*(?=(?:教えて|おしえて|知らせて|しらせて|お知らせして|リマインドして|リマインド|通知して|声をかけて|呼んで))/;

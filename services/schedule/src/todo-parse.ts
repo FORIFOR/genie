@@ -131,6 +131,45 @@ export function parseTodoRequest(rawText: string, context: TodoParseContext): To
   return { kind: 'add', title, due: dueDate };
 }
 
+/**
+ * 文に書かれた締切（「金曜までに見積書提出」「11/13締切で請求書送付」）。議事録・貼った文から
+ * やることの候補を拾う（extract.ts）のに使う。parseTodoRequest と違い、言い終わりの形は問わない
+ * （議事録は「〜提出」「〜を送付」で終わる）。問い・過ぎた日・名前が無いものは読まない。
+ */
+export function findDeadline(
+  rawText: string,
+  context: TodoParseContext,
+): { readonly title: string; readonly due: DueDate } | null {
+  const text = normalizeNumbers(rawText.trim()).replace(/[／]/g, '/');
+  if (!text || /[?？]/.test(text)) return null;
+  const due = DUE.exec(text);
+  if (!due?.groups) return null;
+  const rest = `${text.slice(0, due.index)} ${text.slice(due.index + due[0].length)}`
+    .replace(/[:：]/g, ' ')
+    .replace(/[。．.！!、,\s]+$/g, '')
+    .replace(/(?:の)?(?:提出|送付)?(?:期限|締め?切り?|〆切)\s*(?:は|が)?\s*$/u, '提出')
+    .trim();
+  const title = tidyTitle(rest)
+    .replace(
+      /(?:する|します|しておく|しておきます|を予定|予定です|とする|とします|で合意|に決定)$/u,
+      '',
+    )
+    .replace(/^(?:[・\-*●○◯■□]\s*|\d+[.)．]\s*|(?:TODO|ToDo|宿題|タスク|対応)\s*[:：]?\s*)+/u, '')
+    .trim();
+  if (title.length < 2 || DEICTIC.test(title)) return null;
+  const dueDate = resolveDue(due.groups['day']!.replace(/\s/g, ''), context);
+  if (!dueDate) return null;
+  const today = wallClock(context.now, context.tz);
+  if (dueIso(dueDate) < dueIso({ year: today.year, month: today.month, day: today.day }))
+    return null;
+  // 「11/1までに出した」（今日が 11/5）は来年の 11/1 に回る。文に書かれた日付が 300 日より先なら、過ぎた日とみなす
+  const ahead =
+    Date.UTC(dueDate.year, dueDate.month - 1, dueDate.day) -
+    Date.UTC(today.year, today.month - 1, today.day);
+  if (ahead > 300 * 86_400_000) return null;
+  return { title, due: dueDate };
+}
+
 /** 「見積書を送らないと」→「見積書を送る」、「資料作成をやる」→「資料作成をやる」 */
 function tidyTitle(rest: string): string {
   return (

@@ -1643,6 +1643,39 @@ ALTER TABLE ONLY public.research_runs FORCE ROW LEVEL SECURITY;
 
 
 --
+-- Name: schedule_candidates; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.schedule_candidates (
+    id uuid NOT NULL,
+    tenant_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    conversation_id uuid NOT NULL,
+    batch_id uuid NOT NULL,
+    "position" integer NOT NULL,
+    kind text NOT NULL,
+    title text NOT NULL,
+    start_at timestamp with time zone,
+    end_at timestamp with time zone,
+    due_date date,
+    source text NOT NULL,
+    excerpt text NOT NULL,
+    status text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    decided_at timestamp with time zone,
+    CONSTRAINT schedule_candidates_check CHECK ((((kind = 'event'::text) AND (start_at IS NOT NULL)) OR ((kind = 'todo'::text) AND (due_date IS NOT NULL)))),
+    CONSTRAINT schedule_candidates_excerpt_check CHECK (((length(excerpt) >= 1) AND (length(excerpt) <= 400))),
+    CONSTRAINT schedule_candidates_kind_check CHECK ((kind = ANY (ARRAY['event'::text, 'todo'::text]))),
+    CONSTRAINT schedule_candidates_position_check CHECK ((("position" >= 1) AND ("position" <= 20))),
+    CONSTRAINT schedule_candidates_source_check CHECK ((source = ANY (ARRAY['text'::text, 'call_minutes'::text]))),
+    CONSTRAINT schedule_candidates_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'added'::text, 'dismissed'::text]))),
+    CONSTRAINT schedule_candidates_title_check CHECK (((length(title) >= 1) AND (length(title) <= 200)))
+);
+
+ALTER TABLE ONLY public.schedule_candidates FORCE ROW LEVEL SECURITY;
+
+
+--
 -- Name: scheduled_jobs; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2887,6 +2920,22 @@ ALTER TABLE ONLY public.research_runs
 
 
 --
+-- Name: schedule_candidates schedule_candidates_batch_id_position_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.schedule_candidates
+    ADD CONSTRAINT schedule_candidates_batch_id_position_key UNIQUE (batch_id, "position");
+
+
+--
+-- Name: schedule_candidates schedule_candidates_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.schedule_candidates
+    ADD CONSTRAINT schedule_candidates_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: scheduled_jobs scheduled_jobs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3797,6 +3846,13 @@ CREATE INDEX research_runs_recent ON public.research_runs USING btree (tenant_id
 --
 
 CREATE UNIQUE INDEX research_runs_task ON public.research_runs USING btree (task_id);
+
+
+--
+-- Name: schedule_candidates_recent; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX schedule_candidates_recent ON public.schedule_candidates USING btree (tenant_id, conversation_id, created_at DESC);
 
 
 --
@@ -5558,6 +5614,30 @@ ALTER TABLE ONLY public.research_runs
 
 
 --
+-- Name: schedule_candidates schedule_candidates_conversation_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.schedule_candidates
+    ADD CONSTRAINT schedule_candidates_conversation_id_fkey FOREIGN KEY (conversation_id) REFERENCES public.conversations(id);
+
+
+--
+-- Name: schedule_candidates schedule_candidates_tenant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.schedule_candidates
+    ADD CONSTRAINT schedule_candidates_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: schedule_candidates schedule_candidates_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.schedule_candidates
+    ADD CONSTRAINT schedule_candidates_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
 -- Name: scheduled_jobs scheduled_jobs_conversation_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6983,6 +7063,19 @@ CREATE POLICY research_runs_tenant_isolation ON public.research_runs USING ((ten
 
 
 --
+-- Name: schedule_candidates; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.schedule_candidates ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: schedule_candidates schedule_candidates_tenant_isolation; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY schedule_candidates_tenant_isolation ON public.schedule_candidates USING ((tenant_id = public.astra_current_tenant())) WITH CHECK ((tenant_id = public.astra_current_tenant()));
+
+
+--
 -- Name: scheduled_jobs; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -7468,3 +7561,4 @@ INSERT INTO schema_migrations (version) VALUES ('20261031040000');
 INSERT INTO schema_migrations (version) VALUES ('20261105000000');
 INSERT INTO schema_migrations (version) VALUES ('20261105010000');
 INSERT INTO schema_migrations (version) VALUES ('20261105020000');
+INSERT INTO schema_migrations (version) VALUES ('20261106010000');

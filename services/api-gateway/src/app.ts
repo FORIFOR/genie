@@ -116,6 +116,8 @@ export interface AppDeps {
    * 無ければ受けない（予約の言い方だけ）。
    */
   readonly todos?: import('@genie/service-schedule').TodoService;
+  /** 議事録・貼った文から拾った予定とやることの候補（提案と、本人の「全部入れて」） */
+  readonly candidates?: import('@genie/service-schedule').CandidateService;
   /** 仕事の見通し（Task Dock の件数と、「今の作業どうなってる？」の答え）。 */
   readonly workDesk?: import('./work-desk.js').WorkDesk;
   /** 仕事のホームのリンク（LINE から開くページ）。 */
@@ -261,6 +263,18 @@ export function buildApp(deps: AppDeps): App {
      * 発話から仕事へ（handleTurn）の依存。Task Dock（HTTP）とチャットで**同じものを使う。**
      * 別々に組むと、片方だけ電話や Work Context が効かない、ということが起きる。
      */
+    // 候補への答え（「全部入れて」）と貼った議事録 → やること（締切つき）の順に読む
+    const planning =
+      deps.todos || deps.candidates
+        ? async (
+            principal: { tenantId: string; userId: string },
+            conversationId: string,
+            text: string,
+          ) =>
+            (await deps.candidates?.handle(principal, conversationId, text)) ??
+            (await deps.todos?.handle(principal, conversationId, text)) ??
+            null
+        : null;
     const turnDeps: TurnDeps = {
       conversations: deps.conversations,
       tasks: deps.tasks,
@@ -273,10 +287,10 @@ export function buildApp(deps: AppDeps): App {
       ...(deps.schedules
         ? {
             schedules:
-              deps.todos && !deps.understand
+              planning && !deps.understand
                 ? {
                     handle: async (principal, conversationId, text) =>
-                      (await deps.todos!.handle(principal, conversationId, text)) ??
+                      (await planning(principal, conversationId, text)) ??
                       deps.schedules!.handle(principal, conversationId, text),
                   }
                 : deps.schedules,
@@ -285,10 +299,10 @@ export function buildApp(deps: AppDeps): App {
       ...(deps.vocabulary ? { vocabulary: deps.vocabulary } : {}),
       ...(deps.understand
         ? {
-            understand: deps.todos
+            understand: planning
               ? {
                   handle: async (principal, conversationId, text) =>
-                    (await deps.todos!.handle(principal, conversationId, text)) ??
+                    (await planning(principal, conversationId, text)) ??
                     deps.understand!.handle(principal, conversationId, text),
                 }
               : deps.understand,

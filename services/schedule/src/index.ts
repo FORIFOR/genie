@@ -61,3 +61,18 @@ export {
 } from './todo-parse.js';
 export { TodoStore, type Todo, type TodoStatus } from './todo-store.js';
 export { TodoService, refTitle, type TodoReply, type TodoServiceOptions } from './todo-service.js';
+export { findEventTime, type EventTime } from './parse.js';
+export { findDeadline } from './todo-parse.js';
+export { extractCandidates, MAX_CANDIDATES, type Candidate } from './extract.js';
+export {
+  CandidateStore,
+  type CandidateSource,
+  type CandidateStatus,
+  type StoredCandidate,
+} from './candidate-store.js';
+export {
+  CandidateService,
+  ANSWER_WINDOW_MS,
+  eventWhen,
+  type CandidateReply,
+} from './candidate-service.js';

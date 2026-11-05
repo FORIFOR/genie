@@ -33,7 +33,14 @@ import { PlacesSearch } from '../src/places.js';
 import { BoardStore } from '../src/board.js';
 import { MediaResolver } from '../src/media.js';
 import { RestaurantGoals } from '../src/restaurant.js';
-import { ScheduleService, ScheduleStore, TodoService, TodoStore } from '@genie/service-schedule';
+import {
+  CandidateService,
+  CandidateStore,
+  ScheduleService,
+  ScheduleStore,
+  TodoService,
+  TodoStore,
+} from '@genie/service-schedule';
 import { TodoStore as UndatedTodoStore } from '@genie/service-understand';
 import { previousUserText } from '../src/todo-context.js';
 import { VocabularyService, VocabularyStore } from '@genie/service-vocabulary';
@@ -264,6 +271,26 @@ export async function makeTestApp(options: MakeAppOptions): Promise<TestApp> {
         ...(options.schedules.now ? { now: options.schedules.now } : {}),
       })
     : null;
+  // 本番（server.ts）と同じく、期限なしの TODO も一覧に並べ、「これ」は直前の文から決める
+  const todoService = scheduleService
+    ? new TodoService(new TodoStore(db), scheduleService.store, {
+        tz: options.schedules?.tz ?? 'Asia/Tokyo',
+        ...(options.schedules?.now ? { now: options.schedules.now } : {}),
+        undated: (p) =>
+          new UndatedTodoStore(db).open({
+            tenantId: p.tenantId,
+            userId: p.userId,
+            householdId: null,
+          }),
+        previousText: previousUserText(conversations),
+      })
+    : null;
+  const candidateService = todoService
+    ? new CandidateService(new CandidateStore(db), todoService, {
+        tz: options.schedules?.tz ?? 'Asia/Tokyo',
+        ...(options.schedules?.now ? { now: options.schedules.now } : {}),
+      })
+    : null;
   let turnDepsSeen: import('@genie/service-conversation').TurnDeps | null = null;
   const agentApprovals = options.agentApprovals
     ? new AgentApprovals({
@@ -340,6 +367,8 @@ export async function makeTestApp(options: MakeAppOptions): Promise<TestApp> {
                 ? {
                     remindBefore: (principal, conversationId, event) =>
                       scheduleService.remindBefore(principal, conversationId, event),
+                    proposeCandidates: (principal, conversationId, text, source) =>
+                      candidateService!.propose(principal, conversationId, text, source),
                   }
                 : {}),
               ...(agentApprovals
@@ -406,18 +435,8 @@ export async function makeTestApp(options: MakeAppOptions): Promise<TestApp> {
     ...(scheduleService
       ? {
           schedules: scheduleService,
-          // 本番（server.ts）と同じく、期限なしの TODO も一覧に並べ、「これ」は直前の文から決める
-          todos: new TodoService(new TodoStore(db), scheduleService.store, {
-            tz: options.schedules?.tz ?? 'Asia/Tokyo',
-            ...(options.schedules?.now ? { now: options.schedules.now } : {}),
-            undated: (p) =>
-              new UndatedTodoStore(db).open({
-                tenantId: p.tenantId,
-                userId: p.userId,
-                householdId: null,
-              }),
-            previousText: previousUserText(conversations),
-          }),
+          todos: todoService!,
+          candidates: candidateService!,
           onTurnDeps: (turnDeps: import('@genie/service-conversation').TurnDeps) => {
             turnDepsSeen = turnDeps;
           },
