@@ -34,6 +34,8 @@ import { BoardStore } from '../src/board.js';
 import { MediaResolver } from '../src/media.js';
 import { RestaurantGoals } from '../src/restaurant.js';
 import { ScheduleService, ScheduleStore, TodoService, TodoStore } from '@genie/service-schedule';
+import { TodoStore as UndatedTodoStore } from '@genie/service-understand';
+import { previousUserText } from '../src/todo-context.js';
 import { VocabularyService, VocabularyStore } from '@genie/service-vocabulary';
 import {
   ExpenseStore,
@@ -404,9 +406,17 @@ export async function makeTestApp(options: MakeAppOptions): Promise<TestApp> {
     ...(scheduleService
       ? {
           schedules: scheduleService,
+          // 本番（server.ts）と同じく、期限なしの TODO も一覧に並べ、「これ」は直前の文から決める
           todos: new TodoService(new TodoStore(db), scheduleService.store, {
             tz: options.schedules?.tz ?? 'Asia/Tokyo',
             ...(options.schedules?.now ? { now: options.schedules.now } : {}),
+            undated: (p) =>
+              new UndatedTodoStore(db).open({
+                tenantId: p.tenantId,
+                userId: p.userId,
+                householdId: null,
+              }),
+            previousText: previousUserText(conversations),
           }),
           onTurnDeps: (turnDeps: import('@genie/service-conversation').TurnDeps) => {
             turnDepsSeen = turnDeps;

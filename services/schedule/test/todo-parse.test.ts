@@ -3,6 +3,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { dueLabel, parseTodoRequest } from '../src/todo-parse.js';
+import { refTitle } from '../src/todo-service.js';
 
 // 2026-11-05（木）12:00 JST
 const NOW = Date.parse('2026-11-05T12:00:00+09:00');
@@ -39,11 +40,21 @@ describe('parseTodoRequest', () => {
   it('leaves requests for Genie, questions and "this" to the usual routing', () => {
     // Genie への頼み（Genie の仕事）は読まない
     expect(read('金曜までに競合を調べてまとめて')).toBeNull();
-    // 「これ」が何かは、この文だけでは分からない
-    expect(read('これを金曜までにやって')).toBeNull();
     expect(read('金曜までに出せる？')).toBeNull();
     expect(read('明日の予定を教えて')).toBeNull();
     expect(read('30分後に通知して')).toBeNull();
+  });
+
+  it('reads "do this by Friday" as a to-do whose name comes from what was said before', () => {
+    for (const text of [
+      'これを金曜までにやって',
+      'それ明日までにお願い',
+      'この件、今週中に対応して',
+      'これを金曜までに出す',
+    ])
+      expect(read(text), text).toMatchObject({ kind: 'add-ref', due: expect.any(Object) });
+    // Genie にやってほしい中身が書いてある頼みは、いつもの振り分けへ
+    expect(read('これを金曜までに調べてまとめて')).toBeNull();
   });
 
   it('reads the list, done and delete', () => {
@@ -57,5 +68,17 @@ describe('parseTodoRequest', () => {
 
   it('labels the due date with the weekday', () => {
     expect(dueLabel({ year: 2026, month: 11, day: 13 })).toBe('11/13(金)');
+  });
+});
+
+describe('refTitle', () => {
+  it('names the to-do from the sentence "this" points at', () => {
+    expect(refTitle('24Call の提案資料を作成して')).toBe('24Call の提案資料を作成');
+    expect(refTitle('見積書の送付をお願いします。')).toBe('見積書の送付');
+    expect(refTitle('取引先に契約書の控えを返送')).toBe('取引先に契約書の控えを返送');
+    // 問い・相づちは名前にしない（聞き返す）
+    expect(refTitle('明日の予定は？')).toBe('');
+    expect(refTitle('はい')).toBe('');
+    expect(refTitle('x'.repeat(80))).toHaveLength(60);
   });
 });

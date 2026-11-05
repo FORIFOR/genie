@@ -66,6 +66,8 @@ describe.skipIf(!url)('to-dos with a deadline', () => {
       dbConfig: testDbConfig(url!, identityUrl),
       tokens: await makeTokens(),
       schedules: {},
+      // 本番と同じく、期限なしの TODO（understand）も効かせる。やることの言い方が先に読まれることを確かめる
+      understand: [],
     });
     app = harness.app;
     const issued = await app.inject({
@@ -133,6 +135,35 @@ describe.skipIf(!url)('to-dos with a deadline', () => {
     expect(rows[0]!.status).toBe('done');
     expect((await job(rows[0]!.reminder_job_id))?.status).toBe('cancelled');
     expect((await say(id, 'やることは？')).answer?.text).toContain('やることはありません');
+  });
+
+  it('shows to-dos with and without a deadline in one list', async () => {
+    const id = await conversation();
+    expect((await say(id, 'ゴミ出しをTODOに追加')).answer?.text).toContain('ゴミ出し');
+    await say(id, '12/24までに年賀状を出す');
+    const listed = (await say(id, 'やることは？')).answer?.text ?? '';
+    expect(listed).toMatch(/1\. 年賀状を出す（12\/24\(.\)まで）/);
+    expect(listed).toContain('期限なし（1 件）');
+    expect(listed).toContain('・ゴミ出し');
+    // 期限なしのものは、いつもどおり名前で済みにできる
+    expect((await say(id, 'ゴミ出し終わった')).answer?.text).toContain('済みにしました');
+    expect((await say(id, 'やることは？')).answer?.text).not.toContain('期限なし');
+    await say(id, '年賀状出した');
+  });
+
+  it('names "do this by Friday" from the message before it', async () => {
+    const id = await conversation();
+    await say(id, '取引先に契約書の控えを返送');
+    const added = await say(id, 'これを12/25までにやって');
+    expect(added.task_id ?? null).toBeNull();
+    expect(added.answer?.text).toMatch(
+      /やることに入れました：「取引先に契約書の控えを返送」（12\/25\(.\)まで）/,
+    );
+    // 直前に何も無ければ、何をかを聞き返す（勝手に名前を作らない）
+    const fresh = await conversation();
+    const asked = await say(fresh, 'これを12/25までにやって');
+    expect(asked.answer?.text).toContain('何を12/25');
+    await say(id, '契約書の控えを返送した');
   });
 
   it('does not turn a request for Genie into a to-do', async () => {

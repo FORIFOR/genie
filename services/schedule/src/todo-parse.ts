@@ -11,9 +11,9 @@
  * 予定（何時から）とは分ける。「金曜までに」は締切で、時刻は持たない（本人の設計 2026-11-05:
  * 「金曜日までに資料を完成させる」はタスクの締切、「木曜の14時から16時に資料を作る」は実行予定）。
  *
- * Genie に頼む言い方（「金曜までに調べて」「これを金曜までにやって」）は読まない。それは Genie の仕事で、
- * いつもの振り分けに任せる。読むのは、本人がやることとして言ったとき（「出す」「しないと」）と、
- * 「やることに追加」「覚えておいて」とはっきり言ったときだけ。
+ * Genie に頼む言い方（「金曜までに調べて」）は読まない。それは Genie の仕事で、いつもの振り分けに任せる。
+ * 読むのは、本人がやることとして言ったとき（「出す」「しないと」）と、「やることに追加」「覚えておいて」と
+ * はっきり言ったとき、それに「これを金曜までにやって」（指すものは直前の話。決めるのは TodoService）だけ。
  */
 import { normalizeNumbers } from './parse.js';
 import { wallClock } from './time.js';
@@ -26,6 +26,8 @@ export interface DueDate {
 
 export type TodoRequest =
   | { readonly kind: 'add'; readonly title: string; readonly due: DueDate }
+  /** 「これを金曜までにやって」: 何をかは直前の話から決める（ここでは決めない） */
+  | { readonly kind: 'add-ref'; readonly due: DueDate }
   | { readonly kind: 'list' }
   | { readonly kind: 'done'; readonly ref: number | string }
   | { readonly kind: 'delete'; readonly ref: number };
@@ -60,6 +62,10 @@ const SELF_ENDING =
 const ASK_GENIE = /(?:て|で)(?:ください|下さい|ね|くれる|ほしい|欲しい)?$|お願い(?:します)?$/;
 
 const DEICTIC = /^(?:これ|それ|あれ|この件|その件|これら|それら)$/;
+
+/** 「これを金曜までにやって」「それ明日までにお願い」: 指すものと、やっておく頼み */
+const DEICTIC_ASK =
+  /^(?:これ|それ|あれ|この件|その件|これら|それら)\s*(?:を|は|も)?[、,]?\s*(?:やって|やっといて|やっておいて|進めて|片付けて|終わらせて|仕上げて|対応して|やること\s*に\s*(?:入れて|追加して))?\s*(?:おいて|ください|下さい|ね|ほしい)?\s*(?:お願い(?:します)?)?$/;
 
 const LIST =
   /^(?:(?:今週|今日|明日|来週)の)?(?:やること|ToDo|todo|TODO|締め?切り?|〆切|期限)(?:の)?(?:一覧|リスト)?(?:は|を)?\s*(?:[?？]|見せて|みせて|教えて|おしえて|ある[?？]?|何[?？]?|なに[?？]?)?[。\s]*$/;
@@ -105,13 +111,23 @@ export function parseTodoRequest(rawText: string, context: TodoParseContext): To
     .replace(/[:：]/g, ' ')
     .replace(/[。．.！!、,\s]+$/g, '')
     .trim();
+  if (DEICTIC_ASK.test(rest)) {
+    const dueDate = resolveDue(due.groups['day']!.replace(/\s/g, ''), context);
+    return dueDate ? { kind: 'add-ref', due: dueDate } : null;
+  }
   if (!explicit) {
     if (ASK_GENIE.test(rest) || !SELF_ENDING.test(rest)) return null;
   }
   const title = tidyTitle(rest);
-  if (!title || DEICTIC.test(title)) return null;
+  if (!title) return null;
   const dueDate = resolveDue(due.groups['day']!.replace(/\s/g, ''), context);
   if (!dueDate) return null;
+  // 「これを金曜までに出す」: 「これ」が何かはこの文に無い。直前の話から決める
+  if (
+    DEICTIC.test(title) ||
+    /^(?:これ|それ|あれ|この件|その件|これら|それら)(?:を|は|も|、)/u.test(title)
+  )
+    return { kind: 'add-ref', due: dueDate };
   return { kind: 'add', title, due: dueDate };
 }
 

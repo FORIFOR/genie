@@ -20,6 +20,26 @@ export interface TodoReply {
   readonly needsClarification: boolean;
 }
 
+export interface TodoServiceOptions {
+  readonly tz?: string;
+  readonly now?: () => number;
+  /**
+   * 期限のないやること（本人の TODO。service-understand の household_todos）。
+   * 「やることは？」の一覧に、締切のあるものの後ろに並べる（予定とタスクは分けるが、やることは 1 つの一覧）。
+   */
+  readonly undated?: (principal: {
+    tenantId: string;
+    userId: string;
+  }) => Promise<readonly { readonly title: string; readonly assignee?: string | null }[]>;
+  /**
+   * 「これを金曜までにやって」の「これ」: この会話で、この発話の 1 つ前に本人が送った文（無ければ null）。
+   */
+  readonly previousText?: (
+    principal: { tenantId: string; userId: string },
+    conversationId: string,
+  ) => Promise<string | null>;
+}
+
 /** 締切の日の何時に知らせるか */
 const REMIND_HOUR = 9;
 
@@ -27,13 +47,18 @@ export class TodoService {
   readonly #tz: string;
   readonly #now: () => number;
 
+  readonly #undated: TodoServiceOptions['undated'];
+  readonly #previousText: TodoServiceOptions['previousText'];
+
   constructor(
     readonly store: TodoStore,
     readonly schedules: ScheduleStore,
-    options: { readonly tz?: string; readonly now?: () => number } = {},
+    options: TodoServiceOptions = {},
   ) {
     this.#tz = options.tz ?? 'Asia/Tokyo';
     this.#now = options.now ?? Date.now;
+    this.#undated = options.undated;
+    this.#previousText = options.previousText;
   }
 
   /** やることの話なら答えを返す。違えば null（いつもの振り分けへ）。 */
@@ -47,6 +72,18 @@ export class TodoService {
     switch (request.kind) {
       case 'add':
         return this.#add(principal, conversationId, request.title, request.due);
+      case 'add-ref': {
+        const said = this.#previousText
+          ? await this.#previousText(principal, conversationId).catch(() => null)
+          : null;
+        const title = said ? refTitle(said) : '';
+        if (!title)
+          return {
+            answer: `何を${dueLabel(request.due)}までにしますか？「${dueLabel(request.due)}までに見積書を出す」のように、やることの名前を入れて送ってください。`,
+            needsClarification: true,
+          };
+        return this.#add(principal, conversationId, title, request.due);
+      }
       case 'list':
         return { answer: await this.listText(principal), needsClarification: false };
       case 'done':
@@ -112,17 +149,28 @@ export class TodoService {
 
   /** 締切の早い順の一覧（Genie の作業の様子や、毎朝のまとめにも使う）。 */
   async listText(principal: { tenantId: string; userId: string }): Promise<string> {
-    const todos = await this.store.open(principal.tenantId, principal.userId);
-    if (todos.length === 0)
+    const [todos, undated] = await Promise.all([
+      this.store.open(principal.tenantId, principal.userId),
+      this.#undated ? this.#undated(principal).catch(() => []) : Promise.resolve([]),
+    ]);
+    if (todos.length === 0 && undated.length === 0)
       return 'やることはありません。「金曜までに見積書を出す」のように言えば、締切つきで覚えます。';
     const lines = todos
       .slice(0, 15)
       .map((t, i) => `${String(i + 1)}. ${t.title}（${this.#when(t)}）`);
+    const loose = undated
+      .slice(0, 10)
+      .map((t) => `・${t.title}${t.assignee ? `（${t.assignee}）` : ''}`);
     return [
-      `やること（${String(todos.length)} 件、締切の早い順）`,
+      todos.length > 0 ? `やること（${String(todos.length)} 件、締切の早い順）` : '',
       ...lines,
       todos.length > 15 ? `ほか ${String(todos.length - 15)} 件。` : '',
-      '済んだら「やること 1 終わった」のように送ってください。',
+      undated.length > 0 ? `期限なし（${String(undated.length)} 件）` : '',
+      ...loose,
+      undated.length > 10 ? `ほか ${String(undated.length - 10)} 件。` : '',
+      todos.length > 0
+        ? '済んだら「やること 1 終わった」や「見積書出した」のように送ってください。'
+        : '済んだら「ゴミ出し終わった」のように送ってください。締切をつけるなら「金曜までに見積書を出す」。',
     ]
       .filter(Boolean)
       .join('\n');
@@ -211,4 +259,23 @@ function core(s: string): string {
       '',
     )
     .replace(/(?:を|は|が|の)$/u, '');
+}
+
+/**
+ * 「これ」が指す直前の文を、やることの名前にする。頼みの終わり（「〜して」「お願い」）と句点を外し、長ければ切る。
+ * 質問や短すぎる文（「はい」「OK」）は名前にしない。
+ */
+export function refTitle(said: string): string {
+  const one = said.replace(/\s+/g, ' ').trim();
+  if (/[?？]$/.test(one)) return '';
+  const t = one
+    .replace(/[。．.！!、,\s]+$/u, '')
+    .replace(
+      /(?:を)?(?:お願い(?:します)?|して(?:ください|下さい|おいて)?|やって(?:ください|おいて)?)$/u,
+      '',
+    )
+    .replace(/[。．.！!、,\s]+$/u, '')
+    .trim();
+  if (t.length < 3 || /^(?:はい|うん|OK|ok|了解|ありがとう)/u.test(t)) return '';
+  return t.length > 60 ? `${t.slice(0, 59)}…` : t;
 }

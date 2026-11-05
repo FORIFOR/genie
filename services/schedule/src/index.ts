@@ -60,4 +60,4 @@ export {
   type TodoRequest,
 } from './todo-parse.js';
 export { TodoStore, type Todo, type TodoStatus } from './todo-store.js';
-export { TodoService, type TodoReply } from './todo-service.js';
+export { TodoService, refTitle, type TodoReply, type TodoServiceOptions } from './todo-service.js';

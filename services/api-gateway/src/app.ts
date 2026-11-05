@@ -265,20 +265,35 @@ export function buildApp(deps: AppDeps): App {
       conversations: deps.conversations,
       tasks: deps.tasks,
       ...(deps.phone ? { phone: deps.phone } : {}),
+      /*
+       * やること（締切つき）は、ほかの言い方より先に読む。期限なしの TODO（understand）の「やることは？」に
+       * 先に取られると、締切つきのものが一覧に出ない（2026-11-06 に見つけた）。一覧は両方を 1 つにして返す。
+       * 読めなければ（null）いつもの順（understand → 辞書 → 予約）へ。
+       */
       ...(deps.schedules
         ? {
-            schedules: deps.todos
-              ? {
-                  // やることの言い方を先に、違えば予約へ
-                  handle: async (principal, conversationId, text) =>
-                    (await deps.todos!.handle(principal, conversationId, text)) ??
-                    deps.schedules!.handle(principal, conversationId, text),
-                }
-              : deps.schedules,
+            schedules:
+              deps.todos && !deps.understand
+                ? {
+                    handle: async (principal, conversationId, text) =>
+                      (await deps.todos!.handle(principal, conversationId, text)) ??
+                      deps.schedules!.handle(principal, conversationId, text),
+                  }
+                : deps.schedules,
           }
         : {}),
       ...(deps.vocabulary ? { vocabulary: deps.vocabulary } : {}),
-      ...(deps.understand ? { understand: deps.understand } : {}),
+      ...(deps.understand
+        ? {
+            understand: deps.todos
+              ? {
+                  handle: async (principal, conversationId, text) =>
+                    (await deps.todos!.handle(principal, conversationId, text)) ??
+                    deps.understand!.handle(principal, conversationId, text),
+                }
+              : deps.understand,
+          }
+        : {}),
       ...(deps.calendar ? { calendar: deps.calendar } : {}),
       ...(deps.work
         ? {
