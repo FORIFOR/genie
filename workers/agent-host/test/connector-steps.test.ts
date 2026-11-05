@@ -393,6 +393,49 @@ describe('running a connector step on the device', () => {
   });
 
   // 仕様 v1.0 §11: 承認された「午後にずらして」を、この端末の Google カレンダーで変える
+  it('invites more people to a meeting with approval, through the actions connection', async () => {
+    const store = memoryStore(connected());
+    const sent: Sent[] = [];
+    const meeting = {
+      id: 'm1',
+      summary: '打ち合わせ',
+      status: 'confirmed',
+      start: { dateTime: '2026-09-01T15:00:00+09:00' },
+      end: { dateTime: '2026-09-01T15:30:00+09:00' },
+    };
+    const fetch = (async (url: string, init: RequestInit) => {
+      const body = init.body ? JSON.parse(init.body as string) : undefined;
+      sent.push({ url, authorization: undefined, body });
+      const reply = init.method === 'PATCH' ? { ...meeting, ...body } : { items: [meeting] };
+      return new Response(JSON.stringify(reply), { status: 200 });
+    }) as unknown as typeof globalThis.fetch;
+    const r = new ConnectorRuntime({
+      secrets: store,
+      credentialRefFor: (p, c) => `keychain:${p}/${c}`,
+      grantedScopes: () => ['calendar.read', 'calendar.write'],
+      fetch,
+      now: () => new Date('2026-08-27T00:00:00.000Z'),
+    });
+    const args = {
+      title: '打ち合わせ',
+      start: '2026-09-01T15:00:00+09:00',
+      end: '2026-09-01T15:30:00+09:00',
+      attendees: ['guest@example.com'],
+      meet_request_id: 'genie-msg-1',
+    };
+    // 承認が無ければ何も送らない
+    const refused = await r.run(step({ toolId: 'calendar.invite_attendees', args }));
+    expect(refused.ok).toBe(false);
+    expect(sent).toEqual([]);
+    const done = await r.run(
+      step({ toolId: 'calendar.invite_attendees', args, approval: approved('calendar.invite') }),
+    );
+    expect(done.ok).toBe(true);
+    expect(sent[0]!.url).toContain('privateExtendedProperty=genieMeetRequest%3Dgenie-msg-1');
+    expect(sent[1]!.url).toContain('/events/m1?sendUpdates=all');
+    expect(sent[1]!.body).toEqual({ attendees: [{ email: 'guest@example.com' }] });
+  });
+
   it('moves a calendar event with approval through the actions connection, returning before and after', async () => {
     const store = memoryStore(connected());
     const sent: Sent[] = [];

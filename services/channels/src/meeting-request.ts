@@ -33,6 +33,8 @@ const DOW = ['日', '月', '火', '水', '木', '金', '土'] as const;
 const half = (text: string) =>
   text
     .replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0))
+    .replace(/[Ａ-Ｚａ-ｚ．＿－]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0))
+    .replace(/＠/g, '@')
     .replace(/：/g, ':')
     .replace(/／/g, '/')
     .replace(/[〜～]/g, '〜');
@@ -233,4 +235,20 @@ export function parseMeetingRequest(
     whenLabel: label(day, dow, start.hour, start.minute, endHour, endMinute),
     attendees,
   };
+}
+
+/**
+ * 作った会議に人を足す頼み（「a@example.com も招待して」「b@example.jp を追加して」）。
+ * メールアドレスと、招待・追加の言葉が要る。日時が書いてあれば新しい会議の頼みなので、ここでは読まない。
+ */
+export function parseInviteRequest(raw: string): readonly string[] | null {
+  const text = half(raw);
+  const emails = [...new Set((text.match(EMAIL) ?? []).map((e) => e.toLowerCase()))];
+  if (emails.length === 0) return null;
+  const rest = text.replace(EMAIL, ' ');
+  if (!/招待|追加|呼んで|よんで|(?:も|を)\s*(?:入れて|いれて|加えて|くわえて)|invite/i.test(rest))
+    return null;
+  // 「?」の付いた問いは頼みではない
+  if (/[?？]/.test(rest)) return null;
+  return emails;
 }

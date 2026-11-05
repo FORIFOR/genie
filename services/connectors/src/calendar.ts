@@ -25,6 +25,13 @@ export const CALENDAR_OPERATIONS = {
     risk: 'EXTERNAL_COMMIT',
     requiresApproval: true,
   },
+  invite: {
+    id: 'calendar.invite',
+    scope: 'calendar.write',
+    // 作った会議に人を足す。招待のメールが相手へ届く（取り消しても届いた事実は消えない）。
+    risk: 'EXTERNAL_COMMIT',
+    requiresApproval: true,
+  },
   move: {
     id: 'calendar.move',
     scope: 'calendar.write',
@@ -33,6 +40,23 @@ export const CALENDAR_OPERATIONS = {
     requiresApproval: true,
   },
 } as const satisfies Record<string, OperationDecl>;
+
+/**
+ * Genie が作った会議に人を足す。会議は Meet の頼みの印（作るときに予定へ残す目印）で探し、
+ * 目印の無い会議（目印を残す前に作ったもの）は、開始・終了・題名がぴったり合う予定で探す。
+ */
+export interface InviteInput {
+  readonly calendarId?: string;
+  readonly meetRequestId?: string;
+  readonly title: string;
+  /** 時差つきの ISO の日時 */
+  readonly start: string;
+  readonly end: string;
+  readonly emails: readonly string[];
+}
+
+/** 予定に残す Genie の目印（extendedProperties.private の名前） */
+export const MEET_REQUEST_PROPERTY = 'genieMeetRequest';
 
 /** 予定の時間を変える。終日予定は日付、時刻つきは日時。**形を混ぜない**（終日を時刻つきにしない）。 */
 export interface MoveEventInput {
@@ -88,6 +112,7 @@ interface RawEvent {
   end?: { dateTime?: string; date?: string; timeZone?: string };
   attendees?: { email?: string; responseStatus?: string; organizer?: boolean }[];
   organizer?: { email?: string };
+  extendedProperties?: { private?: Record<string, string> };
   status?: string;
   htmlLink?: string;
   conferenceData?: { entryPoints?: { uri?: string; entryPointType?: string }[] };
@@ -234,6 +259,10 @@ export class GoogleCalendarConnector {
                     conferenceSolutionKey: { type: 'hangoutsMeet' },
                   },
                 },
+                // あとで「この人も招待して」と言われたときに、この会議を探せるように目印を残す
+                extendedProperties: {
+                  private: { [MEET_REQUEST_PROPERTY]: input.meetRequestId ?? meetRequestId(input) },
+                },
               }
             : {}),
         },
@@ -287,5 +316,95 @@ export class GoogleCalendarConnector {
       signal,
     );
     return { before, after: toEvent(raw) };
+  }
+
+  /**
+   * Genie が作った会議に人を足す。**人の承認が要る。**足した人にだけ招待のメールが届く（`sendUpdates=all`）。
+   * もう入っている人は足さない（足す人がいなければ何も変えない）。会議が見つからなければ失敗にする。
+   */
+  async invite(
+    input: InviteInput,
+    proof: ApprovalProof | undefined,
+    signal?: AbortSignal,
+  ): Promise<{ event: CalendarEvent; added: string[] }> {
+    requireScope(CALENDAR_OPERATIONS.invite, this.#deps.grantedScopes);
+    requireApproval(CALENDAR_OPERATIONS.invite, proof, (this.#deps.now ?? (() => new Date()))());
+    const calendar = encodeURIComponent(input.calendarId ?? 'primary');
+    const raw = await this.#findMeeting(calendar, input, signal);
+    const have = new Set((raw.attendees ?? []).map((a) => (a.email ?? '').toLowerCase()));
+    const added = [...new Set(input.emails.map((e) => e.trim().toLowerCase()))].filter(
+      (e) => e && !have.has(e),
+    );
+    if (added.length === 0) return { event: toEvent(raw), added };
+    // attendees は丸ごと置き換わるので、今の顔ぶれ（返事の状態も）をそのまま残して足す
+    const path = `${BASE}/calendars/${calendar}/events/${encodeURIComponent(raw.id ?? '')}?sendUpdates=all`;
+    const patched = await callJson<RawEvent>(
+      path,
+      {
+        method: 'PATCH',
+        body: { attendees: [...(raw.attendees ?? []), ...added.map((email) => ({ email }))] },
+      },
+      this.#deps,
+      signal,
+    );
+    return { event: toEvent(patched), added };
+  }
+
+  async #findMeeting(
+    calendar: string,
+    input: InviteInput,
+    signal?: AbortSignal,
+  ): Promise<RawEvent> {
+    const live = (items: RawEvent[] | undefined) =>
+      (items ?? []).filter((e) => e.id && e.status !== 'cancelled');
+    if (input.meetRequestId) {
+      const params = new URLSearchParams({
+        privateExtendedProperty: `${MEET_REQUEST_PROPERTY}=${input.meetRequestId}`,
+        singleEvents: 'true',
+        maxResults: '5',
+      });
+      const marked = live(
+        (
+          await callJson<{ items?: RawEvent[] }>(
+            `${BASE}/calendars/${calendar}/events?${params.toString()}`,
+            { method: 'GET' },
+            this.#deps,
+            signal,
+          )
+        ).items,
+      );
+      if (marked[0]) return marked[0];
+    }
+    // 目印の無い会議: 開始・終了・題名がぴったり合うもの。1 つに決まらなければ足さない（違う予定に招待しない）
+    const params = new URLSearchParams({
+      timeMin: input.start,
+      timeMax: input.end,
+      singleEvents: 'true',
+      maxResults: '50',
+    });
+    const same = (a: string | undefined, b: string) =>
+      a !== undefined && Date.parse(a) === Date.parse(b);
+    const matches = live(
+      (
+        await callJson<{ items?: RawEvent[] }>(
+          `${BASE}/calendars/${calendar}/events?${params.toString()}`,
+          { method: 'GET' },
+          this.#deps,
+          signal,
+        )
+      ).items,
+    ).filter(
+      (e) =>
+        (e.summary ?? '') === input.title &&
+        same(e.start?.dateTime, input.start) &&
+        same(e.end?.dateTime, input.end),
+    );
+    if (matches.length === 1) return matches[0]!;
+    throw new ConnectorError(
+      'provider_error',
+      matches.length === 0
+        ? 'the meeting was not found on the calendar'
+        : 'several events match the meeting; not inviting to avoid the wrong one',
+    );
   }
 }

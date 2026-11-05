@@ -540,6 +540,13 @@ export function channelsFromEnv(
     meeting: {
       timeZone,
       request: async (owner, conversationId, input) => {
+        // 予定を作る許可がまだ無ければ、仕事は作らない（確認を先に押すと、許可が足りずに失敗するだけ）。
+        // 許可の手続きのリンクだけを持ち主へ送り、済んだら頼み直してもらう（実機 2026-11-05）
+        const notice = await deps.calendarWriteNotice?.(owner.tenantId, owner.userId);
+        if (notice) {
+          await service.notifyUser(owner.tenantId, owner.userId, conversationId, notice);
+          return null;
+        }
         const key = typeof input['meet_request_id'] === 'string' ? input['meet_request_id'] : null;
         const { task } = await deps.tasks.create({
           tenantId: owner.tenantId,
@@ -552,10 +559,60 @@ export function channelsFromEnv(
           },
           idempotencyKey: key ? `group-meeting:${key}` : `group-meeting:${uuidv7()}`,
         });
-        // 予定を作る許可がまだ無ければ、確認（承認のカード）より先に手続きのリンクを持ち主へ
-        const notice = await deps.calendarWriteNotice?.(owner.tenantId, owner.userId);
-        if (notice) await service.notifyUser(owner.tenantId, owner.userId, conversationId, notice);
         return { taskId: task.id, title: task.title ?? null };
+      },
+      // 作った会議に人を足す。足す先は、この会話で最後に作った会議（30 日以内、見送り・失敗は除く）。終わった会議には足さない
+      invite: async (owner, conversationId, request) => {
+        const last = await deps.tasks.latestOfKind(
+          owner.tenantId,
+          conversationId,
+          'calendar.meeting',
+          new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+          request.groupId ? { key: 'group_id', value: request.groupId } : undefined,
+        );
+        const input = (last?.input ?? {}) as Record<string, unknown>;
+        const text = (key: string) => (typeof input[key] === 'string' ? input[key] : '');
+        if (!last) return { kind: 'none' };
+        // グループからの頼みは、そのグループで頼まれた会議にだけ足す（ほかのグループや 1:1 の会議は見せない）
+        if (request.groupId && text('group_id') !== request.groupId) return { kind: 'none' };
+        if (!(Date.parse(text('end')) > Date.now())) return { kind: 'none' };
+        if (last.status !== 'COMPLETED') return { kind: 'pending', meeting: text('title') };
+        const notice = await deps.calendarWriteNotice?.(owner.tenantId, owner.userId);
+        if (notice) {
+          await service.notifyUser(owner.tenantId, owner.userId, conversationId, notice);
+          return { kind: 'permission' };
+        }
+        const { task } = await deps.tasks.create({
+          tenantId: owner.tenantId,
+          userId: owner.userId,
+          request: {
+            kind: 'calendar.invite',
+            title: `招待: ${text('title')}`.slice(0, 200),
+            input: {
+              title: text('title'),
+              start: text('start'),
+              end: text('end'),
+              when_label: text('when_label'),
+              time_zone: text('time_zone') || timeZone,
+              attendees: request.emails.join(','),
+              ...(text('meet_request_id') ? { meet_request_id: text('meet_request_id') } : {}),
+              ...(request.groupId
+                ? { group_id: request.groupId, group_provider: request.groupProvider ?? 'line' }
+                : {}),
+              ...(request.requestedBy ? { requested_by: request.requestedBy } : {}),
+            },
+            conversation_id: conversationId as never,
+          },
+          // 同じ発言の送り直しで招待を 2 回作らない
+          idempotencyKey: `meeting-invite:${request.eventKey}`,
+        });
+        return {
+          kind: 'started',
+          taskId: task.id,
+          title: task.title ?? null,
+          meeting: text('title'),
+          whenLabel: text('when_label'),
+        };
       },
     },
     ...(deps.homeLink ? { homeLink: deps.homeLink } : {}),

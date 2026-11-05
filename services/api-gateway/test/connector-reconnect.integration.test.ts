@@ -43,6 +43,18 @@ describe('parsePastedCallback', () => {
       code: 'c',
       state: 's',
     });
+    // 前後に文や改行が付いた
+    expect(
+      parsePastedCallback('ページを開けません\n127.0.0.1:50000/callback?code=c&state=s\n'),
+    ).toEqual({ code: 'c', state: 's' });
+    // 手元以外の場所に 127.0.0.1 が紛れていても、別のホストは受けない
+    expect(parsePastedCallback('https://evil.example/?next=127.0.0.1')).toBeNull();
+    expect(
+      parsePastedCallback('https://evil.example/?next=127.0.0.1/callback?code=c&state=s'),
+    ).toBeNull();
+    expect(
+      parsePastedCallback('開けません https://127.0.0.1:1/callback?code=c&state=s'),
+    ).toBeNull();
     // 抜けた形でも、ほかの場所の URL は受けない
     expect(parsePastedCallback('127.0.0.1.evil.example/callback?code=c&state=s')).toBeNull();
     expect(parsePastedCallback('evil.example/callback?code=c&state=s')).toBeNull();

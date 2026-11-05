@@ -11,7 +11,7 @@
  *   - チャットに返すのは外部への送信。本文まで送るかは連携ごとの posting_policy（既定は要約だけ）
  *   - チャットで承認できるのは EXTERNAL_COMMIT だけ。削除・お金・規制のある記録は承認カードへ
  */
-import { parseMeetingRequest } from './meeting-request.js';
+import { parseInviteRequest, parseMeetingRequest } from './meeting-request.js';
 import { parseCallReport, type ChannelProvider } from '@genie/contracts';
 import type {
   InboundChannelAction,
@@ -242,7 +242,35 @@ export interface ChannelServiceDeps {
       owner: { tenantId: string; userId: string },
       conversationId: string,
       input: Record<string, unknown>,
-    ): Promise<{ readonly taskId: string; readonly title: string | null }>;
+    ): Promise<{ readonly taskId: string; readonly title: string | null } | null>;
+    /**
+     * 作った会議に人を足す（「a@example.com も招待して」）。足す先は、この会話で最後に作った、まだ終わっていない会議。
+     * グループからなら、そのグループで頼まれた会議だけ。
+     *   started: 確認（承認のカード）を持ち主の 1:1 に出した / pending: 会議がまだ入っていない
+     *   none: 足す先の会議が無い / permission: 予定を作る許可が無い（手続きのリンクは送ってある）
+     */
+    invite?(
+      owner: { tenantId: string; userId: string },
+      conversationId: string,
+      request: {
+        readonly emails: readonly string[];
+        readonly eventKey: string;
+        readonly groupId?: string;
+        readonly groupProvider?: string;
+        readonly requestedBy?: string;
+      },
+    ): Promise<
+      | {
+          readonly kind: 'started';
+          readonly taskId: string;
+          readonly title: string | null;
+          readonly meeting: string;
+          readonly whenLabel: string;
+        }
+      | { readonly kind: 'pending'; readonly meeting: string }
+      | { readonly kind: 'none' }
+      | { readonly kind: 'permission' }
+    >;
   };
   readonly call?: {
     issue(link: ChannelLink, conversationId: string): Promise<OutgoingMessage>;
@@ -765,6 +793,8 @@ export class ChannelService {
           meet_request_id: `genie-${message.eventId.slice(0, 40)}`,
           ...(meeting.attendees.length ? { attendees: meeting.attendees.join(',') } : {}),
         });
+        // 許可がまだ無い: 手続きのリンクは持ち主へ送ってある。ここでは何も足さない
+        if (!started) return 'handled';
         await this.followTask(link.tenantId, conversationId, started.taskId, started.title);
         const invited = meeting.attendees.length ? `（招待: ${meeting.attendees.join('、')}）` : '';
         await this.#reply(
@@ -776,6 +806,28 @@ export class ChannelService {
           message.replyToken,
         );
         return 'handled';
+      }
+      // 作った会議に人を足す（「a@example.com も招待して」）。足す先の会議が無ければ、いつもどおり Genie へ
+      const invitees =
+        this.deps.meeting?.invite && !message.mention ? parseInviteRequest(message.text) : null;
+      if (invitees && this.deps.meeting?.invite) {
+        const invited = await this.deps.meeting.invite(principal, conversationId, {
+          emails: invitees,
+          eventKey: message.eventId,
+        });
+        if (invited.kind !== 'none') {
+          if (invited.kind === 'started')
+            await this.followTask(link.tenantId, conversationId, invited.taskId, invited.title);
+          const text =
+            invited.kind === 'started'
+              ? `会議「${invited.meeting}」（${invited.whenLabel}）に ${invitees.join('、')} を招待します。このあと届く確認で「招待する」を押してください。`
+              : invited.kind === 'pending'
+                ? `会議「${invited.meeting}」はまだカレンダーに入っていません。先に確認で「予定を入れる」を押してから、もう一度送ってください。`
+                : null;
+          if (text)
+            await this.#reply(message.provider, target, render.notice(text), message.replyToken);
+          return 'handled';
+        }
       }
       const read = await this.#understand(principal, conversationId, message, sender);
       outcome =
@@ -1079,6 +1131,12 @@ export class ChannelService {
             ...(asker ? { requested_by: asker } : {}),
           },
         );
+        if (!started) {
+          await say(
+            '持ち主のカレンダーに予定を入れる許可がまだありません。持ち主に許可をお願いしたので、済んだらもう一度頼んでください。',
+          );
+          return 'handled';
+        }
         await this.followTask(owner.tenantId, conversationId, started.taskId, started.title);
         // 持ち主が自分で頼んだときも、承認は 1:1 トークで取る（グループのボタンは誰でも押せる）
         await say(
@@ -1090,6 +1148,58 @@ export class ChannelService {
           error: errorCode(error),
         });
         await say('会議を入れる準備ができませんでした。少し待ってから、もう一度頼んでください。');
+      }
+      return 'handled';
+    }
+    // 「@Genie a@example.com も招待して」: このグループで頼まれた会議に、持ち主の承認を取ってから人を足す
+    const groupInvitees =
+      group.mentioned && this.deps.meeting?.invite ? parseInviteRequest(message.text) : null;
+    if (groupInvitees && this.deps.meeting?.invite) {
+      const owner = await this.deps.store.findLink(
+        message.provider,
+        message.workspaceId,
+        space.enabledBy,
+      );
+      if (!owner) {
+        await say('使い始めた人の連携が切れているので、招待できません。');
+        return 'handled';
+      }
+      const conversationId = await this.deps.store.conversationFor(
+        owner,
+        owner.subject,
+        owner.subject,
+        () => this.deps.conversations.start(owner.tenantId, owner.userId, titleOf(owner.provider)),
+      );
+      const asker =
+        (await this.deps.senders[message.provider]
+          ?.memberName?.(group.id, message.subject)
+          .catch(() => null)) ?? null;
+      try {
+        const invited = await this.deps.meeting.invite(
+          { tenantId: owner.tenantId, userId: owner.userId },
+          conversationId,
+          {
+            emails: groupInvitees,
+            eventKey: group.messageId ?? message.eventId,
+            groupId: group.id,
+            groupProvider: message.provider,
+            ...(asker ? { requestedBy: asker } : {}),
+          },
+        );
+        if (invited.kind === 'started')
+          await this.followTask(owner.tenantId, conversationId, invited.taskId, invited.title);
+        await say(
+          invited.kind === 'started'
+            ? `会議「${invited.meeting}」（${invited.whenLabel}）に ${groupInvitees.join('、')} を招待してよいか、持ち主に確認しています。`
+            : invited.kind === 'pending'
+              ? `会議「${invited.meeting}」はまだカレンダーに入っていません。持ち主が入れたあとで、もう一度頼んでください。`
+              : invited.kind === 'permission'
+                ? '持ち主のカレンダーに予定を入れる許可がまだありません。持ち主に許可をお願いしたので、済んだらもう一度頼んでください。'
+                : '招待を足す会議が見つかりませんでした。このグループで頼まれた、これからの会議に足せます。',
+        );
+      } catch (error) {
+        this.#log('channel.invite_failed', { provider: message.provider, error: errorCode(error) });
+        await say('招待の準備ができませんでした。少し待ってから、もう一度頼んでください。');
       }
       return 'handled';
     }
@@ -1700,8 +1810,17 @@ export class ChannelService {
   ): Promise<{ destination: string; text: string } | null> {
     const task = await this.deps.tasks.get(tenantId, watch.taskId).catch(() => null);
     const groupId = task?.input?.['group_id'];
-    if (task?.kind !== 'calendar.meeting' || typeof groupId !== 'string' || !groupId) return null;
+    const meetingKind = task?.kind === 'calendar.meeting' || task?.kind === 'calendar.invite';
+    if (!task || !meetingKind || typeof groupId !== 'string' || !groupId) return null;
     const title = typeof task.input?.['title'] === 'string' ? task.input['title'] : '会議';
+    if (task.kind === 'calendar.invite' && kind !== 'completed')
+      return {
+        destination: groupId,
+        text:
+          kind === 'cancelled'
+            ? `会議「${title}」への招待は、持ち主が見送ったので送っていません。`
+            : `会議「${title}」に招待できませんでした。持ち主のトークに理由を送っています。`,
+      };
     if (kind !== 'completed')
       return {
         destination: groupId,
@@ -1792,7 +1911,7 @@ export class ChannelService {
         }
         // 会議は入れた結果（Meet のリンク・招待）をそのまま返す。作業一覧を開かないとリンクが分からないのでは使えない
         if (
-          task?.kind === 'calendar.meeting' &&
+          (task?.kind === 'calendar.meeting' || task?.kind === 'calendar.invite') &&
           task.result_artifact_id &&
           this.deps.artifactText
         ) {

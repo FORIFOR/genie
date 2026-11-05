@@ -139,6 +139,8 @@ export const TOOL_CONNECTOR: Readonly<Record<string, ConnectorKey>> = {
   'calendar.create_event': 'google-calendar-actions',
   // 予定の時間を変える（承認つき。「元に戻して」も同じ道）
   'calendar.move_event': 'google-calendar-actions',
+  // 作った会議に人を足す（承認つき。招待のメールが届く）
+  'calendar.invite_attendees': 'google-calendar-actions',
   'outlook.mail.search': 'outlook',
   'outlook.mail.read': 'outlook',
   'outlook.calendar.list_events': 'outlook',
@@ -291,6 +293,20 @@ export class ConnectorRuntime {
       case 'calendar.create_event':
         return this.googleCalendarActions().create(
           eventFrom(args),
+          step.approval ?? undefined,
+          signal,
+        );
+      case 'calendar.invite_attendees':
+        return this.googleCalendarActions().invite(
+          {
+            ...(typeof args['meet_request_id'] === 'string'
+              ? { meetRequestId: args['meet_request_id'] }
+              : {}),
+            title: requireString(args, 'title'),
+            start: requireString(args, 'start'),
+            end: requireString(args, 'end'),
+            emails: stringList(args['attendees']),
+          },
           step.approval ?? undefined,
           signal,
         );

@@ -78,9 +78,13 @@ export interface PastedCallback {
 /** 貼られた URL から戻りの値を取り出す。手元の戻り先でなければ null（別のページの URL を受けない）。 */
 export function parsePastedCallback(text: string): PastedCallback | null {
   let url: URL;
-  // スマホのブラウザは、コピーするときに http:// を落とすことがある
+  // スマホのブラウザは、コピーするときに http:// を落とすことがある（本人の実機 2026-11-05）。
+  // 前後に「ページを開けません」などの文が付くこともあるので、手元の戻り先の URL だけを抜き出す。
+  // 抜き出すのは、文の頭か空白・日本語の直後から始まるものだけ（別の URL の途中の 127.0.0.1 や https:// は受けない）
   const pasted = text.trim();
-  const whole = /^(?:127\.0\.0\.1|localhost)[:/]/.test(pasted) ? `http://${pasted}` : pasted;
+  const local =
+    /(?:^|[^\x21-\x7e])(?:http:\/\/)?((?:127\.0\.0\.1|localhost)[:/][^\s"'<>」）]*)/i.exec(pasted);
+  const whole = local ? `http://${local[1]!}` : pasted;
   try {
     url = new URL(whole);
   } catch {
@@ -272,8 +276,8 @@ export class ConnectorReconnects {
     if (await this.calendarWritable(tenantId)) return null;
     const link = await this.#issue(tenantId, userId, 'google', 'calendar_write');
     return [
-      'この会議を入れるには、Google カレンダーに予定を入れる許可が要ります（まだもらっていません）。',
-      '先に下の手続きを済ませてから、届く確認で「予定を入れる」を押してください。',
+      '会議を入れるには、Google カレンダーに予定を入れる許可が要ります（まだもらっていません）。',
+      '下の手続きで許可してから、同じ頼みをもう一度送ってください。',
       link,
     ].join('\n');
   }
@@ -620,7 +624,7 @@ textarea { width:100%; font-size:16px; min-height:96px; border-radius:10px; bord
 <p id="wait" class="muted">Mac の Genie の準備を待っています…</p>
 <div id="steps" hidden>
 <section><strong>1. 許可する</strong><p class="muted">開いたページで、いつものアカウントを選んで許可してください。</p><a id="go" class="go" target="_blank" rel="noopener">許可のページを開く</a></section>
-<section><strong>2. 開けなかったページの URL を貼る</strong><p class="muted">許可すると「ページを開けません」と出ます。それで正しいです。そのページのアドレス（http://127.0.0.1 で始まるもの）をコピーして、ここへ戻って貼ってください。</p><textarea id="url" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="http://127.0.0.1…"></textarea><button id="send">送る</button><p id="error" class="warn" hidden></p></section>
+<section><strong>2. 開けなかったページの URL を貼る</strong><p class="muted">許可すると「ページを開けません」と出ます。それで正しいです。そのページのアドレス（127.0.0.1 を含むもの。http:// が付いていなくても大丈夫です）をコピーして、ここへ戻って貼ってください。</p><textarea id="url" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="127.0.0.1…"></textarea><button id="send">送る</button><p id="error" class="warn" hidden></p></section>
 </div>
 <p id="done" hidden></p>
 </main><script>
@@ -647,7 +651,7 @@ $('send').addEventListener('click', async () => {
   const r = await fetch(base + '/callback', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url: $('url').value }) }).then((x) => x.json()).catch(() => ({ result: 'network' }));
   if (r.result === 'ok') { $('url').value = ''; return tick(); }
   $('error').hidden = false;
-  $('error').textContent = r.result === 'wrong_state' ? '今回の手続きの URL ではありません。上のボタンから開き直してください。' : r.result === 'gone' ? 'このリンクは使えません。LINE で頼み直してください。' : 'http://127.0.0.1 で始まる URL をそのまま貼ってください。';
+  $('error').textContent = r.result === 'wrong_state' ? '今回の手続きの URL ではありません。上のボタンから開き直してください。' : r.result === 'gone' ? 'このリンクは使えません。LINE で頼み直してください。' : '127.0.0.1 を含むアドレスを、そのまま貼ってください（http:// は無くても大丈夫です）。';
 });
 tick();
 </script></body></html>`;

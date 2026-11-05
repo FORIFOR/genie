@@ -23,6 +23,7 @@ const LINE_SECRET = 'line-group-meeting-secret';
 const GROUP = 'Cmeeting0001';
 const NAMES: Record<string, string> = { Uowner: '持ち主', Ufriend: '田中' };
 const MEET = 'https://meet.google.com/abc-defg-hij';
+const PERMISSION = '予定を入れる許可が要ります（代役）';
 
 describe.skipIf(!url)('a meeting asked for in a LINE group, approved by the owner', () => {
   let harness: TestApp;
@@ -30,6 +31,8 @@ describe.skipIf(!url)('a meeting asked for in a LINE group, approved by the owne
   let auth: { authorization: string };
   let tenantId: string;
   let userId: string;
+  /** 予定を作る許可があるか（connector-reconnect の代役） */
+  let writable = true;
   const sent: { url: string; body: Record<string, unknown> }[] = [];
   const fetchImpl = vi.fn(async (target: string, init?: RequestInit) => {
     const member = /\/v2\/bot\/group\/[^/]+\/member\/([^/]+)$/.exec(target);
@@ -116,6 +119,15 @@ describe.skipIf(!url)('a meeting asked for in a LINE group, approved by the owne
         .orderBy('created_at')
         .execute(),
     );
+  const inviteTasks = async () =>
+    withTenant(harness.db, tenantId, (tx) =>
+      tx
+        .selectFrom('tasks')
+        .select(['id', 'input', 'status'])
+        .where('kind', '=', 'calendar.invite')
+        .orderBy('created_at')
+        .execute(),
+    );
   const finish = async (taskId: string, type: 'task.completed' | 'task.cancelled', md?: string) => {
     const artifact = md
       ? await harness.library.create({
@@ -158,6 +170,7 @@ describe.skipIf(!url)('a meeting asked for in a LINE group, approved by the owne
       channels: {
         env: { LINE_CHANNEL_SECRET: LINE_SECRET, LINE_CHANNEL_ACCESS_TOKEN: 'line-token' },
         fetchImpl: fetchImpl as unknown as typeof fetch,
+        calendarWriteNotice: async () => (writable ? null : PERMISSION),
       },
     });
     app = harness.app;
@@ -270,6 +283,43 @@ describe.skipIf(!url)('a meeting asked for in a LINE group, approved by the owne
     expect(await meetingTasks()).toHaveLength(before.length);
   });
 
+  // 実機（2026-11-05）: 許可の前に確認を押して、許可が足りずに失敗した。許可が無いうちは確認を出さない
+  it('sends only the permission link while the calendar cannot be written, and asks to ask again', async () => {
+    writable = false;
+    try {
+      const count = (await meetingTasks()).length;
+      let before = sent.length;
+      await inGroup('Ufriend', '明日16時 打ち合わせ Meetで');
+      await waitFor(
+        () =>
+          messages(before).some((m) => m.to === GROUP && m.text.includes('許可がまだありません')),
+        'group told to wait',
+      );
+      expect(messages(before).some((m) => m.to === 'Uowner' && m.text.includes(PERMISSION))).toBe(
+        true,
+      );
+      before = sent.length;
+      await deliver(
+        {
+          type: 'message',
+          source: { type: 'user', userId: 'Uowner' },
+          message: { type: 'text', id: '9100002', text: '明日17時 打ち合わせ Meet作って' },
+        },
+        'Uowner',
+      );
+      await waitFor(
+        () => messages(before).some((m) => m.to === 'Uowner' && m.text.includes(PERMISSION)),
+        '1:1 permission link',
+      );
+      await new Promise((r) => setTimeout(r, 200));
+      // 仕事は作らない（押せる確認を出さない）
+      expect(await meetingTasks()).toHaveLength(count);
+      expect(messages(before).some((m) => m.text.includes('予定を入れる」を押'))).toBe(false);
+    } finally {
+      writable = true;
+    }
+  });
+
   // 実機（2026-11-05）: 持ち主が 1:1 トークで頼んだら、モデルが「連携が要る」と返して止まっていた
   it('takes a meeting the owner asks for in 1:1, inviting the addresses in the message', async () => {
     let before = sent.length;
@@ -309,5 +359,96 @@ describe.skipIf(!url)('a meeting asked for in a LINE group, approved by the owne
     const done = messages(before);
     expect(done.some((m) => m.to === 'Uowner' && m.text.includes(MEET))).toBe(true);
     expect(done.filter((m) => m.to === GROUP)).toEqual([]);
+  });
+
+  // 実機（2026-11-05）: 会議を入れたあとの「horio…@….comも招待して」がモデルに渡り、「まだ作れていません」と返していた
+  it('invites more people to the meeting just made, asking the owner first', async () => {
+    const owner1on1 = (id: string, text: string) =>
+      deliver(
+        {
+          type: 'message',
+          source: { type: 'user', userId: 'Uowner' },
+          message: { type: 'text', id, text },
+        },
+        'Uowner',
+      );
+    // まだ入っていない会議には足さない（先に「予定を入れる」を）
+    let before = sent.length;
+    const count = (await meetingTasks()).length;
+    await owner1on1('9100010', '明日18時から30分 振り返り Meet作って');
+    await waitFor(async () => (await meetingTasks()).length === count + 1, 'meeting');
+    const meeting = (await meetingTasks())[count]!;
+    before = sent.length;
+    await owner1on1('9100011', 'late@example.com も招待して');
+    await waitFor(
+      () =>
+        messages(before).some(
+          (m) => m.to === 'Uowner' && m.text.includes('まだカレンダーに入っていません'),
+        ),
+      'pending answer',
+    );
+    expect(await inviteTasks()).toHaveLength(0);
+
+    // 入った → 足す確認を持ち主に。会議の日時・目印を引き継ぐ
+    await withTenant(harness.db, tenantId, (tx) =>
+      tx.updateTable('tasks').set({ status: 'COMPLETED' }).where('id', '=', meeting.id).execute(),
+    );
+    before = sent.length;
+    await owner1on1('9100012', 'horio.shuhei@saiteku.comも招待して');
+    await waitFor(async () => (await inviteTasks()).length === 1, 'invite task');
+    const [invite] = await inviteTasks();
+    const made = meeting.input as Record<string, string>;
+    expect(invite!.input).toMatchObject({
+      title: '振り返り',
+      start: made['start'],
+      end: made['end'],
+      when_label: made['when_label'],
+      meet_request_id: made['meet_request_id'],
+      attendees: 'horio.shuhei@saiteku.com',
+    });
+    expect(invite!.input).not.toHaveProperty('group_id');
+    await waitFor(
+      () =>
+        messages(before).some((m) => m.to === 'Uowner' && m.text.includes('「招待する」を押して')),
+      'invite answer',
+    );
+    // （LINE の送り直しは同じ webhookEventId で届き、受け口で 1 回にまとまる。もう一度頼まれたときは、
+    //   端末がもう入っている人を足さないので、招待のメールは 2 回届かない: connectors の calendar.test）
+
+    // グループからの招待は、そのグループで頼まれた会議に（あとから 1:1 で会議を作っていても、グループの会議を探す）
+    before = sent.length;
+    await inGroup('Ufriend', 'friend@example.com も招待して');
+    await waitFor(async () => (await inviteTasks()).length === 2, 'group invite task');
+    const fromGroup = (await inviteTasks())[1]!;
+    expect(fromGroup.input).toMatchObject({
+      title: '打ち合わせ',
+      group_id: GROUP,
+      requested_by: '田中',
+      attendees: 'friend@example.com',
+    });
+    await waitFor(
+      () =>
+        messages(before).some((m) => m.to === GROUP && m.text.includes('持ち主に確認しています')),
+      'group invite answer',
+    );
+    // グループには承認のボタンを出さない。足したら結果をグループへ
+    expect(
+      messages(before)
+        .filter((m) => m.to === GROUP)
+        .some((m) => m.text.includes('承認')),
+    ).toBe(false);
+    before = sent.length;
+    await finish(
+      fromGroup.id,
+      'task.completed',
+      '会議「打ち合わせ」（11/6(金) 15:00〜15:30）に friend@example.com を招待しました。',
+    );
+    await harness.channels!.service.pump(tenantId);
+    await harness.channels!.service.pump(tenantId);
+    expect(
+      messages(before).some(
+        (m) => m.to === GROUP && m.text.includes('friend@example.com を招待しました'),
+      ),
+    ).toBe(true);
   });
 });

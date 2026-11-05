@@ -2,7 +2,7 @@
  * グループの「@Genie 明日15時から30分 打ち合わせ、Meet作って」を読む（決まった言い方だけ。モデルは使わない）。
  */
 import { describe, expect, it } from 'vitest';
-import { parseMeetingRequest } from '../src/meeting-request.js';
+import { parseInviteRequest, parseMeetingRequest } from '../src/meeting-request.js';
 
 // 2026-11-05（木）07:00 JST
 const NOW = Date.parse('2026-11-05T07:00:00+09:00');
@@ -73,5 +73,23 @@ describe('meeting requests in a group', () => {
     expect(read('買い物リストに牛乳')).toBeNull();
     // 終わりが始まりより前
     expect(read('明日23時から2時間 会議')).toBeNull();
+  });
+
+  it('reads a request to invite more people to the meeting already made', () => {
+    // 実機（2026-11-05）の言い方
+    expect(parseInviteRequest('horio.shuhei@saiteku.comも招待して')).toEqual([
+      'horio.shuhei@saiteku.com',
+    ]);
+    expect(parseInviteRequest('@Genie A@example.com と b@example.jp を追加して')).toEqual([
+      'a@example.com',
+      'b@example.jp',
+    ]);
+    // 日本語入力の全角の＠も読む
+    expect(parseInviteRequest('ｃ＠ｅｘａｍｐｌｅ．ｃｏｍ も入れて')).toEqual(['c@example.com']);
+    expect(parseInviteRequest('c@example.com も入れて')).toEqual(['c@example.com']);
+    // 招待の言葉が無い・問い・アドレスが無い
+    expect(parseInviteRequest('a@example.com にメールして')).toBeNull();
+    expect(parseInviteRequest('a@example.com は招待した？')).toBeNull();
+    expect(parseInviteRequest('田中さんも招待して')).toBeNull();
   });
 });

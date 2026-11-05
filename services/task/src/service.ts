@@ -275,6 +275,32 @@ export class TaskService {
     return row ?? null;
   }
 
+  /**
+   * その会話で since より後に作った、その種類のいちばん新しい仕事（終わっていなくても）。
+   * 見送った・失敗した仕事は飛ばす（「この人も招待して」を、見送った会議に向けない）。無ければ null。
+   */
+  async latestOfKind(
+    tenantId: string,
+    conversationId: string,
+    kind: string,
+    since: Date,
+    /** input のこの欄がこの値のものだけ（例: グループで頼まれた会議 group_id） */
+    match?: { readonly key: string; readonly value: string },
+  ): Promise<{ id: string; status: string; input: unknown } | null> {
+    const row = await withTenant(this.#db, tenantId, (tx) => {
+      let q = tx
+        .selectFrom('tasks')
+        .select(['id', 'status', 'input'])
+        .where('conversation_id', '=', conversationId)
+        .where('kind', '=', kind)
+        .where('created_at', '>', since)
+        .where('status', 'not in', ['CANCELLED', 'FAILED']);
+      if (match) q = q.where(sql<string>`input ->> ${match.key}`, '=', match.value);
+      return q.orderBy('created_at', 'desc').limit(1).executeTakeFirst();
+    });
+    return row ? { id: row.id, status: String(row.status), input: row.input } : null;
+  }
+
   async list(
     tenantId: string,
     limit: number,

@@ -193,6 +193,10 @@ describe('GoogleCalendarConnector', () => {
       },
     });
     expect(made.conferenceUri).toBe('https://meet.google.com/abc-defg-hij');
+    // あとで「この人も招待して」と言われたときに探せる目印
+    expect(calls[0]!.body).toMatchObject({
+      extendedProperties: { private: { genieMeetRequest: meetRequestId(input) } },
+    });
     // 同じ予定の頼みは同じ印（再試行で会議を 2 つ作らない）。違う予定は違う印
     expect(meetRequestId(input)).toBe(meetRequestId({ ...input }));
     expect(meetRequestId({ ...input, title: '別' })).not.toBe(meetRequestId(input));
@@ -318,6 +322,85 @@ describe('GoogleCalendarConnector', () => {
         ),
       ).rejects.toMatchObject({ reason: 'provider_error' });
       expect(calls).toHaveLength(0);
+    });
+  });
+
+  describe('invite to a meeting Genie made', () => {
+    const inviteProof: ApprovalProof = { ...proof, operationId: 'calendar.invite' };
+    const MEETING = {
+      id: 'm1',
+      summary: '打ち合わせ',
+      status: 'confirmed',
+      start: { dateTime: '2026-11-06T15:00:00+09:00' },
+      end: { dateTime: '2026-11-06T15:30:00+09:00' },
+      attendees: [{ email: 'owner@example.com', responseStatus: 'accepted', organizer: true }],
+      hangoutLink: 'https://meet.google.com/abc',
+    };
+    /** GET（探す）には items を、PATCH（足す）には足したあとの予定を返す */
+    function calendarWith(items: unknown[]) {
+      const calls: { url: string; method: string; body: unknown }[] = [];
+      const fetch = (async (url: string, init: RequestInit) => {
+        const body = init.body ? (JSON.parse(init.body as string) as Record<string, unknown>) : {};
+        calls.push({ url, method: init.method ?? 'GET', body: init.body ? body : undefined });
+        const reply = init.method === 'PATCH' ? { ...MEETING, ...body } : { items };
+        return new Response(JSON.stringify(reply), { status: 200 });
+      }) as unknown as typeof globalThis.fetch;
+      const calendar = new GoogleCalendarConnector({
+        token: async () => 't',
+        fetch,
+        grantedScopes: READ_WRITE,
+        now: NOW,
+      });
+      return { calendar, calls };
+    }
+    const input = {
+      meetRequestId: 'genie-msg-1',
+      title: '打ち合わせ',
+      start: '2026-11-06T15:00:00+09:00',
+      end: '2026-11-06T15:30:00+09:00',
+      emails: ['Guest@Example.com', 'owner@example.com'],
+    };
+
+    it('finds the meeting by its mark and adds only new people, sending invitations', async () => {
+      const { calendar, calls } = calendarWith([MEETING]);
+      const done = await calendar.invite(input, inviteProof);
+      expect(calls[0]!.url).toContain('privateExtendedProperty=genieMeetRequest%3Dgenie-msg-1');
+      expect(calls[1]!.method).toBe('PATCH');
+      expect(calls[1]!.url).toContain('/events/m1?sendUpdates=all');
+      // 今の顔ぶれ（返事の状態も）を残して足す。もう入っている人は足さない
+      expect(calls[1]!.body).toEqual({
+        attendees: [
+          { email: 'owner@example.com', responseStatus: 'accepted', organizer: true },
+          { email: 'guest@example.com' },
+        ],
+      });
+      expect(done.added).toEqual(['guest@example.com']);
+      expect(done.event.conferenceUri).toBe('https://meet.google.com/abc');
+    });
+
+    it('finds a meeting made before the mark by its exact time and title, and never guesses', async () => {
+      // 目印で見つからない → 時刻と題名で 1 つに決まる
+      const other = { ...MEETING, id: 'm2', summary: '別の予定' };
+      const { calendar, calls } = calendarWith([other, MEETING]);
+      const { meetRequestId: _mark, ...first } = input;
+      await calendar.invite(first, inviteProof);
+      expect(calls[0]!.url).toContain('timeMin=2026-11-06T15%3A00%3A00%2B09%3A00');
+      expect(calls[1]!.url).toContain('/events/m1?');
+      // 同じ時刻・題名が 2 つ → 足さない（違う予定に招待しない）
+      const twice = calendarWith([MEETING, { ...MEETING, id: 'm3' }]);
+      await expect(twice.calendar.invite(first, inviteProof)).rejects.toThrow(/several/);
+      expect(twice.calls.some((c) => c.method === 'PATCH')).toBe(false);
+      const none = calendarWith([other]);
+      await expect(none.calendar.invite(first, inviteProof)).rejects.toThrow(/not found/);
+    });
+
+    it('changes nothing when everyone is already there, and refuses without approval', async () => {
+      const { calendar, calls } = calendarWith([MEETING]);
+      const done = await calendar.invite({ ...input, emails: ['OWNER@example.com'] }, inviteProof);
+      expect(done.added).toEqual([]);
+      expect(calls.some((c) => c.method === 'PATCH')).toBe(false);
+      await expect(calendar.invite(input, undefined)).rejects.toBeInstanceOf(ApprovalRequired);
+      await expect(calendar.invite(input, proof)).rejects.toBeInstanceOf(ApprovalRequired);
     });
   });
 });

@@ -193,4 +193,44 @@ describe('calendar plans', () => {
     expect(alone.args).not.toHaveProperty('send_invites');
     expect(alone.args).not.toHaveProperty('attendees');
   });
+
+  it('invites more people to a meeting it made, only with approval', () => {
+    const input = {
+      title: '打ち合わせ',
+      start: '2026-11-06T15:00:00+09:00',
+      end: '2026-11-06T15:30:00+09:00',
+      when_label: '11/6(金) 15:00〜15:30',
+      meet_request_id: 'genie-1',
+      attendees: 'guest@example.com',
+    };
+    const step = planTask('calendar.invite', input).steps[0]!;
+    expect(step).toMatchObject({
+      toolId: 'calendar.invite_attendees',
+      risk: 'EXTERNAL_COMMIT',
+      requiresConfirmation: true,
+      args: { attendees: ['guest@example.com'], meet_request_id: 'genie-1' },
+    });
+    expect(step.message).toContain('招待のメールが届きます');
+    const card = approvalSummaryFor(step);
+    expect(card.impact.primary_action_label).toBe('招待する');
+    expect(card.details).toEqual([
+      { label: '会議', value: '打ち合わせ' },
+      { label: '日時', value: '11/6(金) 15:00〜15:30' },
+      { label: '招待する人', value: 'guest@example.com' },
+    ]);
+    expect(() => planTask('calendar.invite', { ...input, attendees: '' })).toThrow();
+
+    // 答え: 端末が足した人だけを言う。誰も足さなかったら、そう言う
+    expect(
+      formatCalendarArtifact('calendar.invite', input, [
+        { added: ['guest@example.com'], event: { conferenceUri: 'https://meet.google.com/x' } },
+      ])?.markdown,
+    ).toBe(
+      '会議「打ち合わせ」（11/6(金) 15:00〜15:30）に guest@example.com を招待しました。\nGoogle Meet: https://meet.google.com/x',
+    );
+    expect(
+      formatCalendarArtifact('calendar.invite', input, [{ added: [], event: {} }])?.markdown,
+    ).toContain('招待は送っていません');
+    expect(() => formatCalendarArtifact('calendar.invite', input, [])).toThrow();
+  });
 });

@@ -6,7 +6,12 @@
  * （uuidv7 が Web Crypto を触るため、ワークフローのサンドボックスに持ち込めない）。
  * 例外は副作用の無い契約だけを切り出した research / checkout-assistance subpath。
  */
-import { planCalendarAgenda, planCalendarMeeting, planCalendarMove } from './calendar-plan.js';
+import {
+  planCalendarAgenda,
+  planCalendarInvite,
+  planCalendarMeeting,
+  planCalendarMove,
+} from './calendar-plan.js';
 import { asksForJudgment } from '@genie/contracts/research';
 import { CHECKOUT_SERVICES, CheckoutPrepareArgs } from '@genie/contracts/checkout-assistance';
 import { isPublicWebUrl } from '@genie/contracts/browser-read';
@@ -285,6 +290,7 @@ export const KNOWN_TASK_KINDS = [
   'calendar.move',
   // グループで頼まれた会議を Meet 付きで入れる（持ち主の承認つき）
   'calendar.meeting',
+  'calendar.invite',
   'transaction.order',
   'transaction.reconcile',
   'phone.call',
@@ -824,6 +830,8 @@ export function planTask(kind: string, input: Record<string, unknown>): TaskPlan
       return planCalendarMove(input);
     case 'calendar.meeting':
       return planCalendarMeeting(input);
+    case 'calendar.invite':
+      return planCalendarInvite(input);
     case 'info.lookup':
       return planInfoLookup(input);
     case 'office.edit': {
@@ -1155,6 +1163,21 @@ export function approvalSummaryFor(step: TaskStep): ApprovalCard {
         scope: 'external',
         reversible: false,
         recovery_note: '変えたあとも「元に戻して」で、元の時間に戻せます（もう一度確認します）',
+      },
+    };
+  // 作った会議に人を足す: どの会議に・誰を。招待のメールが届くことを先に言う
+  if (step.toolId === 'calendar.invite_attendees')
+    return {
+      summary: step.message,
+      details: ['会議', '日時', '招待する人', '頼まれた場所', '頼んだ人'].flatMap((label) =>
+        typeof step.args[label] === 'string' ? [{ label, value: String(step.args[label]) }] : [],
+      ),
+      impact: {
+        primary_action_label: '招待する',
+        affected_count: Array.isArray(step.args['attendees']) ? step.args['attendees'].length : 1,
+        scope: 'external',
+        reversible: false,
+        recovery_note: '招待のメールは取り消せません。外すときは Google カレンダーで外せます',
       },
     };
   // グループで頼まれた会議: どこから・いつ・何を入れるかだけを見せる（ISO の時刻や Meet の印は見せない）

@@ -137,6 +137,8 @@ export interface MakeAppOptions {
     readonly callEndpoint?: string;
     /** 仕事のホームのリンク（終わりの知らせに付ける）。 */
     readonly homeLink?: import('@genie/service-channels').ChannelServiceDeps['homeLink'];
+    /** 予定を作る許可の知らせ（connector-reconnect の代役。null なら許可済み）。 */
+    readonly calendarWriteNotice?: (tenantId: string, userId: string) => Promise<string | null>;
   };
   /** Claude Code の承認を LINE から（本番と同じくチャットの service へつなぐ）。 */
   readonly agentApprovals?: {
@@ -329,6 +331,9 @@ export async function makeTestApp(options: MakeAppOptions): Promise<TestApp> {
                 ? { callEndpoint: options.channels!.callEndpoint }
                 : {}),
               ...(options.channels!.homeLink ? { homeLink: options.channels!.homeLink } : {}),
+              ...(options.channels!.calendarWriteNotice
+                ? { calendarWriteNotice: options.channels!.calendarWriteNotice }
+                : {}),
               ...(agentApprovals
                 ? {
                     agentApprovals: {

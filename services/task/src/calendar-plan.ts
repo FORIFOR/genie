@@ -137,6 +137,54 @@ export function planCalendarMeeting(input: Record<string, unknown>): TaskPlan {
   };
 }
 
+/**
+ * 作った会議に人を足す（「a@example.com も招待して」）。承認カードには、どの会議に誰を足すかと、
+ * 招待のメールが届くことを出す。会議は Meet の頼みの印（無ければ開始・終了・題名）で探す。
+ */
+export function planCalendarInvite(input: Record<string, unknown>): TaskPlan {
+  const title = str(input, 'title');
+  const when = str(input, 'when_label');
+  const attendees = meetingAttendees(input);
+  if (attendees.length === 0) throw new Error('calendar.invite needs attendees');
+  const inGroup = typeof input['group_id'] === 'string' && input['group_id'] !== '';
+  const from = inGroup
+    ? typeof input['group_name'] === 'string' && input['group_name']
+      ? `グループ「${input['group_name']}」`
+      : 'グループ'
+    : null;
+  const asker =
+    inGroup && typeof input['requested_by'] === 'string' && input['requested_by']
+      ? `${input['requested_by']}さん`
+      : null;
+  return {
+    steps: [
+      {
+        index: 0,
+        toolId: 'calendar.invite_attendees',
+        risk: 'EXTERNAL_COMMIT',
+        surface: 'local',
+        requiresConfirmation: true,
+        message: `${from ? `${from}${asker ? `の${asker}` : ''}から: ` : ''}会議「${title}」（${when}）に ${attendees.join('・')} を招待します（招待のメールが届きます）`,
+        args: {
+          title,
+          start: str(input, 'start'),
+          end: str(input, 'end'),
+          attendees,
+          ...(typeof input['meet_request_id'] === 'string'
+            ? { meet_request_id: input['meet_request_id'] }
+            : {}),
+          会議: title,
+          日時: when,
+          招待する人: attendees.join('、'),
+          ...(from ? { 頼まれた場所: from } : {}),
+          ...(asker ? { 頼んだ人: asker } : {}),
+        },
+      },
+    ],
+    artifact: { type: 'DOCUMENT', title: `招待: ${title}`, mimeType: 'text/markdown' },
+  };
+}
+
 /** 会議の仕事の input の attendees（「a@x.com,b@y.com」）。メールアドレスの形のものだけ */
 function meetingAttendees(input: Record<string, unknown>): string[] {
   const raw = input['attendees'];
@@ -219,6 +267,24 @@ export function formatCalendarArtifact(
     return {
       title: `予定の変更: ${title}`,
       markdown: `予定「${title}」を ${when} に変更しました。元に戻すときは「元に戻して」と送ってください。`,
+    };
+  }
+  if (kind === 'calendar.invite') {
+    const made = results[0] as { added?: unknown; event?: { conferenceUri?: unknown } } | undefined;
+    const title = typeof input['title'] === 'string' ? input['title'] : '（題名なし）';
+    const when = typeof input['when_label'] === 'string' ? input['when_label'] : '';
+    if (!made || typeof made !== 'object' || !Array.isArray(made.added))
+      throw new Error('招待した結果が端末から返っていません');
+    const added = made.added.filter((e): e is string => typeof e === 'string');
+    const meet =
+      typeof made.event?.conferenceUri === 'string'
+        ? `\nGoogle Meet: ${made.event.conferenceUri}`
+        : '';
+    return {
+      title: `招待: ${title}`,
+      markdown: added.length
+        ? `会議「${title}」（${when}）に ${added.join('、')} を招待しました。${meet}`
+        : `会議「${title}」（${when}）には、もう全員入っていました。招待は送っていません。${meet}`,
     };
   }
   if (kind === 'calendar.meeting') {
