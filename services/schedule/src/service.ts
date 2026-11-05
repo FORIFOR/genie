@@ -85,6 +85,42 @@ export class ScheduleService {
     return this.#propose(principal, conversationId, parsed);
   }
 
+  /**
+   * 予定の何分前に知らせる（「会議の30分前に教えて」と一緒に頼まれた会議が入ったとき）。
+   * 本人がはっきり頼んだので確かめずに動かす。もう過ぎていれば null。同じものは 1 つだけ。
+   */
+  async remindBefore(
+    principal: { tenantId: string; userId: string },
+    conversationId: string,
+    event: { readonly title: string; readonly start: string; readonly beforeMinutes: number },
+  ): Promise<{ readonly at: number; readonly label: string } | null> {
+    const start = Date.parse(event.start);
+    const at = start - event.beforeMinutes * 60_000;
+    if (!Number.isFinite(at) || at <= this.#now()) return null;
+    const hm = (t: number) =>
+      new Intl.DateTimeFormat('ja-JP', {
+        timeZone: this.#tz,
+        hour: '2-digit',
+        minute: '2-digit',
+      }).format(t);
+    const schedule: Schedule = { kind: 'at', at: new Date(at).toISOString() };
+    const payload: SchedulePayload = {
+      kind: 'reminder',
+      text: `${event.title}（${hm(start)}から）`,
+    };
+    await this.store.addConfirmed({
+      tenantId: principal.tenantId,
+      userId: principal.userId,
+      conversationId,
+      name: scheduleName(schedule, payload, this.#tz),
+      schedule,
+      payload,
+      tz: this.#tz,
+      nextRunAt: new Date(at),
+    });
+    return { at, label: formatWhen(at, this.#tz) };
+  }
+
   async #propose(
     principal: { tenantId: string; userId: string },
     conversationId: string,

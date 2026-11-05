@@ -28,6 +28,23 @@ describe('meeting requests in a group', () => {
     });
   });
 
+  // 「30分前に教えて」は会議の長さではなく、始まる前の知らせ（題名にも入れない）
+  it('reads "remind me N minutes before" apart from the length of the meeting', () => {
+    expect(read('明日の14時から打ち合わせ。30分前に教えて')).toEqual({
+      title: '打ち合わせ',
+      start: '2026-11-06T14:00:00+09:00',
+      end: '2026-11-06T15:00:00+09:00',
+      whenLabel: '11/6(金) 14:00〜15:00',
+      attendees: [],
+      remindBeforeMinutes: 30,
+    });
+    expect(read('明日15時から30分 打ち合わせ、1時間前に通知して')).toMatchObject({
+      end: '2026-11-06T15:30:00+09:00',
+      remindBeforeMinutes: 60,
+    });
+    expect(read('明日15時から30分 打ち合わせ')).not.toHaveProperty('remindBeforeMinutes');
+  });
+
   it('reads afternoon, weekdays and next week', () => {
     // 「午後3時〜4時」の 4 時は午後
     expect(read('来週月曜 午後3時から4時まで 会議お願い')).toMatchObject({

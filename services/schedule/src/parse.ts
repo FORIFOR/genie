@@ -89,13 +89,12 @@ const DAY_WORD =
   '今日|きょう|明日|あした|あす|明後日|あさって|今夜|今晩|来週の?[日月火水木金土]曜日?|今週の?[日月火水木金土]曜日?|[日月火水木金土]曜日?|\\d{1,2}\\s*月\\s*\\d{1,2}\\s*日|\\d{1,2}\\s*日';
 const RECURRING =
   '毎日|毎朝|毎晩|毎夜|毎夕|平日|週末|土日|毎週(?:\\s*[日月火水木金土](?:曜日?)?\\s*[・、と]?)+|毎月\\s*\\d{1,2}\\s*日';
-const CLOCK = new RegExp(
+const CLOCK_CORE =
   `(?:(?<rec>${RECURRING})\\s*(?:の)?\\s*)?` +
-    `(?:(?<day>${DAY_WORD})\\s*(?:の)?\\s*)?` +
-    `(?<mod>午前|午後|朝|夜|夕方|昼|深夜)?\\s*` +
-    `(?:(?<h>\\d{1,2})\\s*時\\s*(?:(?<half>半)|(?<m>\\d{1,2})\\s*分)?|(?<hh>\\d{1,2}):(?<mm>\\d{2}))` +
-    `\\s*(?:ちょうど)?\\s*(?:になったら|ごろに|頃に|ごろ|頃|に)`,
-);
+  `(?:(?<day>${DAY_WORD})\\s*(?:の)?\\s*)?` +
+  `(?<mod>午前|午後|朝|夜|夕方|昼|深夜)?\\s*` +
+  `(?:(?<h>\\d{1,2})\\s*時\\s*(?:(?<half>半)|(?<m>\\d{1,2})\\s*分)?|(?<hh>\\d{1,2}):(?<mm>\\d{2}))`;
+const CLOCK = new RegExp(`${CLOCK_CORE}\\s*(?:ちょうど)?\\s*(?:になったら|ごろに|頃に|ごろ|頃|に)`);
 const RELATIVE =
   /(?:(?<h>\d{1,3})\s*時間\s*(?:(?<m>\d{1,3})\s*分)?|(?<m2>\d{1,4})\s*分)\s*(?:後|あと|ご)\s*に/;
 const EVERY = /(?:(?<n>\d{1,3})\s*(?<unit>分|時間)\s*(?:おき|ごと|毎)|毎時間?)\s*に?/;
@@ -143,11 +142,33 @@ export function parseScheduleRequest(rawText: string, context: ParseContext): Pa
     return finish({ kind: 'every', everyMs, anchorMs }, action);
   }
 
+  // 「明日15時に資料確認。1時間前に通知して」「14時から面談、30分前に教えて」: 予定の時刻より前に知らせる
+  const lead = LEAD.exec(text);
+  if (lead?.groups) return leadReminder(text, lead, context, tz);
+
   const clock = CLOCK.exec(text);
   if (!clock?.groups) return null;
   const action = remainder(text, clock);
   if (!action) return null;
-  const g = clock.groups;
+  const resolved = resolveClock(clock.groups, context, tz);
+  if (!resolved.ok) return resolved.failure;
+  return finish(resolved.schedule, action);
+}
+
+type Resolved =
+  | { readonly ok: true; readonly schedule: Schedule }
+  | { readonly ok: false; readonly failure: ParseResult | null };
+
+/** 時刻の言い方（CLOCK の組）を、1 回か繰り返しの時刻にする。 */
+function resolveClock(
+  g: Record<string, string | undefined>,
+  context: ParseContext,
+  tz: string,
+): Resolved {
+  const fail = (reason: 'past' | 'invalid_time'): Resolved => ({
+    ok: false,
+    failure: { ok: false, reason },
+  });
   let hour = Number(g['h'] ?? g['hh']);
   const minute = g['half'] ? 30 : Number(g['m'] ?? g['mm'] ?? 0);
   const rec = g['rec']?.replace(/\s/g, '') ?? null;
@@ -162,26 +183,26 @@ export function parseScheduleRequest(rawText: string, context: ParseContext): Pa
     day === '今夜' ||
     day === '今晩';
   const am = g['mod'] === '午前' || g['mod'] === '朝' || g['mod'] === '深夜' || rec === '毎朝';
-  if (minute > 59 || hour > 24) return { ok: false, reason: 'invalid_time' };
+  if (minute > 59 || hour > 24) return fail('invalid_time');
   if (pm && hour < 12) hour += 12;
   else if (g['mod'] === '昼' && hour < 6) hour += 12;
   // 「明日 3 時」「毎日 5 時」の 1〜6 時は午後と読む（言い直しで確かめる）
   else if (!am && !pm && g['h'] !== undefined && hour >= 1 && hour <= 6 && (day || rec)) hour += 12;
   if (hour === 24) hour = 0;
-  if (hour > 23) return { ok: false, reason: 'invalid_time' };
+  if (hour > 23) return fail('invalid_time');
 
   if (rec) {
     const schedule = recurringSchedule(rec, hour, minute, tz);
-    return schedule ? finish(schedule, action) : null;
+    return schedule ? { ok: true, schedule } : { ok: false, failure: null };
   }
 
   const now = wallClock(context.now, tz);
   if (day) {
     const date = resolveDay(day, now);
-    if (!date) return { ok: false, reason: 'invalid_time' };
+    if (!date) return fail('invalid_time');
     const at = zonedTime(date.year, date.month, date.day, hour, minute, tz);
-    if (at <= context.now) return { ok: false, reason: 'past' };
-    return finish({ kind: 'at', at: new Date(at).toISOString() }, action);
+    if (at <= context.now) return fail('past');
+    return { ok: true, schedule: { kind: 'at', at: new Date(at).toISOString() } };
   }
   // 日の言葉が無い: 今日のその時刻、過ぎていれば（午前午後の指定が無ければ 12 時間後、それも過ぎていれば）明日
   const candidates = [zonedTime(now.year, now.month, now.day, hour, minute, tz)];
@@ -189,7 +210,62 @@ export function parseScheduleRequest(rawText: string, context: ParseContext): Pa
     candidates.push(zonedTime(now.year, now.month, now.day, hour + 12, minute, tz));
   candidates.push(zonedTime(now.year, now.month, now.day + 1, hour, minute, tz));
   const at = candidates.find((t) => t > context.now)!;
-  return finish({ kind: 'at', at: new Date(at).toISOString() }, action);
+  return { ok: true, schedule: { kind: 'at', at: new Date(at).toISOString() } };
+}
+
+/** 「1時間前に」「30分前に」「1時間半前に」（そのあとに知らせる言葉）。 */
+const LEAD =
+  /[、,。\s]*(?:(?<h>\d{1,2})\s*時間\s*(?:(?<half>半)|(?<m>\d{1,2})\s*分)?|(?<m2>\d{1,3})\s*分)\s*(?:くらい|ぐらい|ほど)?\s*前\s*(?:に|には)?\s*(?=(?:教えて|おしえて|知らせて|しらせて|お知らせして|リマインドして|リマインド|通知して|声をかけて|呼んで))/;
+/** 予定の時刻（「15時に」「14時から」「9:30〜」）。 */
+const EVENT_CLOCK = new RegExp(`${CLOCK_CORE}\\s*(?:から|〜|~|に|開始|スタート)`);
+
+/**
+ * 予定の何分前に知らせる頼み。知らせるのは 1 回だけ（繰り返しの予定は読まない）。
+ * 知らせの文は「資料確認（15:00から）」のように、予定の名前と始まる時刻。
+ */
+function leadReminder(
+  text: string,
+  lead: RegExpExecArray,
+  context: ParseContext,
+  tz: string,
+): ParseResult | null {
+  const g = lead.groups!;
+  const before =
+    g['m2'] !== undefined
+      ? Number(g['m2'])
+      : Number(g['h']) * 60 + (g['half'] ? 30 : Number(g['m'] ?? 0));
+  if (before < 1 || before > 60 * 24) return null;
+  const rest = `${text.slice(0, lead.index)} ${text.slice(lead.index + lead[0].length)}`;
+  const clock = EVENT_CLOCK.exec(rest);
+  if (!clock?.groups || clock.groups['rec']) return null;
+  const resolved = resolveClock(clock.groups, context, tz);
+  if (!resolved.ok) return resolved.failure;
+  if (resolved.schedule.kind !== 'at') return null;
+  const start = Date.parse(resolved.schedule.at);
+  const at = start - before * 60_000;
+  if (at <= context.now) return { ok: false, reason: 'past' };
+  const title =
+    `${rest.slice(0, clock.index)} ${rest.slice(clock.index + clock[0].length)}`
+      .replace(REMINDER_ENDING, '')
+      .replace(/(?:の予定|予定)?(?:が|は)?\s*(?:あります|ある|です|だ)(?:から|ので)?/g, ' ')
+      .replace(/[、,。．.！!\s]+/g, ' ')
+      .replace(/^(?:\s|の|を|に|は|で)+|(?:\s|の|を|に|は|で|って|と)+$/g, '')
+      .trim()
+      .slice(0, 80) || '予定';
+  const hm = new Intl.DateTimeFormat('ja-JP', {
+    timeZone: tz,
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(start);
+  const action = text.replace(/[。．.！!\s]+$/, '');
+  return {
+    ok: true,
+    request: {
+      schedule: { kind: 'at', at: new Date(at).toISOString() },
+      action,
+      payload: { kind: 'reminder', text: `${title}（${hm}から）` },
+    },
+  };
 }
 
 function recurringSchedule(rec: string, hour: number, minute: number, tz: string): Schedule | null {

@@ -22,7 +22,13 @@ export interface MeetingRequest {
   readonly whenLabel: string;
   /** 招待する人のメールアドレス（文に書かれた順、重なりなし）。無ければ空 */
   readonly attendees: readonly string[];
+  /** 「30分前に教えて」: 始まる何分前に LINE で知らせるか。頼まれていなければ無い */
+  readonly remindBeforeMinutes?: number;
 }
+
+/** 「30分前に教えて」「1時間前に通知して」（会議の長さと読み違えないよう、先に外す） */
+const LEAD =
+  /[、,。\s]*(?:(\d{1,2})\s*時間\s*(?:(半)|(\d{1,2})\s*分)?|(\d{1,3})\s*分)\s*(?:くらい|ぐらい|ほど)?\s*前\s*(?:に|には)?\s*(?:教えて|おしえて|知らせて|しらせて|お知らせして|リマインドして|リマインド|通知して|声をかけて)(?:ください|下さい|ね|ほしい|欲しい)?/;
 
 const EMAIL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
 
@@ -170,12 +176,19 @@ export function parseMeetingRequest(
 ): MeetingRequest | null {
   const attendees = [...new Set((half(raw).match(EMAIL) ?? []).map((e) => e.toLowerCase()))];
   // メールアドレスと「@Genie」は先に外す（時刻や題名と読み違えないように）
-  const text = half(raw)
+  let text = half(raw)
     .replace(new RegExp(`${EMAIL.source}\\s*(?:さん)?\\s*(?:と|や|、|,)?`, 'g'), ' ')
     .replace(/(?:^|\s)@\S+/g, ' ')
     .replace(/(?:を|も|と)?\s*(?:招待|呼んで|よんで)(?:して|する)?/g, ' ')
     .trim();
   if (!WORD.test(text)) return null;
+  const lead = LEAD.exec(text);
+  const remindBeforeMinutes = lead
+    ? lead[4] !== undefined
+      ? Number(lead[4])
+      : Number(lead[1]) * 60 + (lead[2] ? 30 : Number(lead[3] ?? 0))
+    : undefined;
+  if (lead) text = `${text.slice(0, lead.index)} ${text.slice(lead.index + lead[0].length)}`.trim();
   const at = dayOf(text, now, timeZone);
   let rest = at ? text.replace(at.match, ' ') : text;
   const start = timeOf(rest);
@@ -234,6 +247,7 @@ export function parseMeetingRequest(
     end: to.iso,
     whenLabel: label(day, dow, start.hour, start.minute, endHour, endMinute),
     attendees,
+    ...(remindBeforeMinutes && remindBeforeMinutes <= 24 * 60 ? { remindBeforeMinutes } : {}),
   };
 }
 

@@ -421,6 +421,8 @@ async function main(): Promise<void> {
         },
         calendarWriteNotice: (tenantId, userId) =>
           connectorReconnects.calendarWriteNotice(tenantId, userId),
+        remindBefore: (principal, conversationId, event) =>
+          schedules.remindBefore(principal, conversationId, event),
         browserView: async (tenantId, userId, text) =>
           snapshotReply(snapshots, tenantId, userId, text, snapshotUrl, schedules.tz),
         homeLink: (tenantId, userId) =>

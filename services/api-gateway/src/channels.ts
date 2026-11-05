@@ -304,6 +304,8 @@ export function channelsFromEnv(
     readonly calendarWriteNotice?: (tenantId: string, userId: string) => Promise<string | null>;
     /** 「画面を見せて」: Genie のブラウザのいまの画面（browser-snapshots.ts）。 */
     readonly browserView?: import('@genie/service-channels').ChannelServiceDeps['browserView'];
+    /** 「会議の30分前に教えて」: 会議が入ったら知らせを予約する（予約の仕組み、services/schedule）。 */
+    readonly remindBefore?: import('@genie/service-schedule').ScheduleService['remindBefore'];
   },
 ): GatewayChannels | null {
   const timeZone = env['GENIE_TIMEZONE']?.trim() || 'Asia/Tokyo';
@@ -563,6 +565,28 @@ export function channelsFromEnv(
         });
         return { taskId: task.id, title: task.title ?? null };
       },
+      // 会議が入った: 頼まれていれば「始まる何分前」の知らせを予約する（同じものは 1 つだけ）
+      ...(deps.remindBefore
+        ? {
+            remind: async (tenantId: string, taskId: string) => {
+              const task = await deps.tasks.get(tenantId, taskId);
+              const input = (task.input ?? {}) as Record<string, unknown>;
+              const before = Number(input['remind_before_minutes']);
+              const start = typeof input['start'] === 'string' ? input['start'] : '';
+              if (!task.conversation_id || !start || !(before > 0) || before > 24 * 60) return null;
+              const made = await deps.remindBefore!(
+                { tenantId, userId: task.created_by },
+                task.conversation_id,
+                {
+                  title: typeof input['title'] === 'string' ? input['title'] : '会議',
+                  start,
+                  beforeMinutes: before,
+                },
+              );
+              return made?.label ?? null;
+            },
+          }
+        : {}),
       // 作った会議に人を足す。足す先は、この会話で最後に作った会議（30 日以内、見送り・失敗は除く）。終わった会議には足さない
       invite: async (owner, conversationId, request) => {
         const last = await deps.tasks.latestOfKind(

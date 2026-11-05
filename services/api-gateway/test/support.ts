@@ -334,6 +334,12 @@ export async function makeTestApp(options: MakeAppOptions): Promise<TestApp> {
               ...(options.channels!.calendarWriteNotice
                 ? { calendarWriteNotice: options.channels!.calendarWriteNotice }
                 : {}),
+              ...(scheduleService
+                ? {
+                    remindBefore: (principal, conversationId, event) =>
+                      scheduleService.remindBefore(principal, conversationId, event),
+                  }
+                : {}),
               ...(agentApprovals
                 ? {
                     agentApprovals: {

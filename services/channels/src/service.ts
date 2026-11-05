@@ -110,6 +110,17 @@ export function isQuestion(text: string): boolean {
   );
 }
 
+/** 「30 分」「1 時間」「1 時間 30 分」 */
+function leadLabel(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return h === 0
+    ? `${String(m)} 分`
+    : m === 0
+      ? `${String(h)} 時間`
+      : `${String(h)} 時間 ${String(m)} 分`;
+}
+
 export interface ChannelTaskView {
   readonly title: string | null;
   readonly result_artifact_id: string | null;
@@ -243,6 +254,11 @@ export interface ChannelServiceDeps {
       conversationId: string,
       input: Record<string, unknown>,
     ): Promise<{ readonly taskId: string; readonly title: string | null } | null>;
+    /**
+     * 「30分前に教えて」と一緒に頼まれた会議が入ったら、その時刻に知らせる予約を作る（同じものは 1 つだけ）。
+     * 返すのは知らせる時刻の言い方（「11/6(金) 13:30」）。もう過ぎている・作れないときは null。
+     */
+    remind?(tenantId: string, taskId: string): Promise<string | null>;
     /**
      * 作った会議に人を足す（「a@example.com も招待して」）。足す先は、この会話で最後に作った、まだ終わっていない会議。
      * グループからなら、そのグループで頼まれた会議だけ。
@@ -811,6 +827,9 @@ export class ChannelService {
           time_zone: this.deps.meeting.timeZone,
           meet_request_id: `genie-${message.eventId.slice(0, 40)}`,
           ...(meeting.attendees.length ? { attendees: meeting.attendees.join(',') } : {}),
+          ...(meeting.remindBeforeMinutes
+            ? { remind_before_minutes: String(meeting.remindBeforeMinutes) }
+            : {}),
         });
         // 許可がまだ無い: 手続きのリンクは持ち主へ送ってある。ここでは何も足さない
         if (!started) return 'handled';
@@ -820,7 +839,7 @@ export class ChannelService {
           message.provider,
           target,
           render.notice(
-            `会議「${meeting.title}」（${meeting.whenLabel}）${invited}を Google Meet 付きで入れます。このあと届く確認で「予定を入れる」を押してください。`,
+            `会議「${meeting.title}」（${meeting.whenLabel}）${invited}を Google Meet 付きで入れます。このあと届く確認で「予定を入れる」を押してください。${meeting.remindBeforeMinutes ? `入ったら、始まる ${leadLabel(meeting.remindBeforeMinutes)}前にこのトークでお知らせします。` : ''}`,
           ),
           message.replyToken,
         );
@@ -1958,7 +1977,15 @@ export class ChannelService {
           const made = await this.deps
             .artifactText(tenantId, task.result_artifact_id)
             .catch(() => null);
-          if (made?.trim()) return render.answer(made);
+          // 「30分前に教えて」と頼まれていれば、ここで知らせを予約する（作れたときだけそう言う）
+          const remindAt =
+            task.kind === 'calendar.meeting' &&
+            typeof task.input?.['remind_before_minutes'] === 'string' &&
+            this.deps.meeting?.remind
+              ? await this.deps.meeting.remind(tenantId, watch.taskId).catch(() => null)
+              : null;
+          const remindLine = remindAt ? `\n${remindAt} に、このトークでお知らせします。` : '';
+          if (made?.trim()) return render.answer(`${made.trim()}${remindLine}`);
         }
         // 会話の答えは本文そのもの（本人がこのチャットで聞いたこと）。読めなければ、いつもの終わりの知らせ
         if (watch.answerInline && task?.result_artifact_id && this.deps.artifactText) {

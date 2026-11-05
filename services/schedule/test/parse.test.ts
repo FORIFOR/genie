@@ -270,3 +270,40 @@ describe('call reminders', () => {
     expect(parseScheduleRequest('明日の10時に歯医者って教えて', ctx)).not.toBeNull();
   });
 });
+
+// 「明日の15時に24Callの資料を確認。1時間前に通知して」: 予定の時刻ではなく、その前に知らせる
+describe('reminders before an event', () => {
+  it('reminds N minutes or hours before the time of the event', () => {
+    const a = ok('明日の15時に24Callの資料を確認。1時間前に通知して');
+    expect(a.schedule).toEqual({
+      kind: 'at',
+      at: new Date(jst('2026-10-22T14:00:00')).toISOString(),
+    });
+    expect(a.payload).toEqual({ kind: 'reminder', text: '24Callの資料を確認（15:00から）' });
+    const b = ok('明日の14時から打ち合わせ。30分前に教えて');
+    expect(b.schedule).toEqual({
+      kind: 'at',
+      at: new Date(jst('2026-10-22T13:30:00')).toISOString(),
+    });
+    expect(b.payload).toEqual({ kind: 'reminder', text: '打ち合わせ（14:00から）' });
+    const c = ok('明日9時半から歯医者、1時間半前に知らせて');
+    expect(c.schedule).toEqual({
+      kind: 'at',
+      at: new Date(jst('2026-10-22T08:00:00')).toISOString(),
+    });
+    expect(c.payload).toEqual({ kind: 'reminder', text: '歯医者（09:30から）' });
+  });
+
+  it('says the time has passed when the reminder would be in the past', () => {
+    // 10:15 に「10時半からの面談の30分前」はもう過ぎている
+    expect(parse('今日の10時半から面談、30分前に教えて')).toEqual({ ok: false, reason: 'past' });
+  });
+
+  it('keeps plain reminders and "N minutes later" as before', () => {
+    expect(ok('30分後に会議だって教えて').payload).toEqual({ kind: 'reminder', text: '会議' });
+    expect(ok('明日14時に資料を確認するって教えて').payload).toEqual({
+      kind: 'reminder',
+      text: '資料を確認する',
+    });
+  });
+});

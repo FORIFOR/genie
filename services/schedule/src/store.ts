@@ -145,6 +145,51 @@ export class ScheduleStore {
     });
   }
 
+  /**
+   * 本人が別の頼みの中ではっきり言った知らせ（「会議の30分前に教えて」）を、確かめずに動かす。
+   * 同じ会話・同じ名前・同じ時刻の予約があれば、新しく作らずそれを返す（何度呼んでも 1 つ）。
+   */
+  async addConfirmed(input: {
+    tenantId: string;
+    userId: string;
+    conversationId: string;
+    name: string;
+    schedule: Schedule;
+    payload: SchedulePayload;
+    tz: string;
+    nextRunAt: Date;
+  }): Promise<{ job: ScheduledJob; created: boolean }> {
+    return withTenant(this.db, input.tenantId, async (tx) => {
+      const name = input.name.slice(0, 300);
+      const existing = await tx
+        .selectFrom('scheduled_jobs')
+        .selectAll()
+        .where('user_id', '=', input.userId)
+        .where('conversation_id', '=', input.conversationId)
+        .where('name', '=', name)
+        .where(sql<boolean>`schedule = ${JSON.stringify(input.schedule)}::jsonb`)
+        .executeTakeFirst();
+      if (existing) return { job: toJob(existing), created: false };
+      const row = await tx
+        .insertInto('scheduled_jobs')
+        .values({
+          id: uuidv7(),
+          tenant_id: input.tenantId,
+          user_id: input.userId,
+          conversation_id: input.conversationId,
+          name,
+          status: 'active',
+          schedule: JSON.stringify(input.schedule),
+          payload: JSON.stringify(input.payload),
+          tz: input.tz,
+          next_run_at: input.nextRunAt,
+        })
+        .returningAll()
+        .executeTakeFirstOrThrow();
+      return { job: toJob(row), created: true };
+    });
+  }
+
   /** この会話で確かめ中の予約（期限内のもの）。 */
   async proposalFor(tenantId: string, conversationId: string): Promise<ScheduledJob | null> {
     return withTenant(this.db, tenantId, async (tx) => {

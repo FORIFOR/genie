@@ -172,6 +172,7 @@ describe.skipIf(!url)('a meeting asked for in a LINE group, approved by the owne
         fetchImpl: fetchImpl as unknown as typeof fetch,
         calendarWriteNotice: async () => (writable ? null : PERMISSION),
       },
+      schedules: {},
     });
     app = harness.app;
     const issued = await app.inject({
@@ -359,6 +360,63 @@ describe.skipIf(!url)('a meeting asked for in a LINE group, approved by the owne
     const done = messages(before);
     expect(done.some((m) => m.to === 'Uowner' && m.text.includes(MEET))).toBe(true);
     expect(done.filter((m) => m.to === GROUP)).toEqual([]);
+  });
+
+  // 「明日の14時から打ち合わせ。30分前に教えて」: 会議が入ったら、始まる 30 分前の知らせを 1 つだけ予約する
+  it('books a reminder before the meeting once it is in the calendar', async () => {
+    let before = sent.length;
+    const count = (await meetingTasks()).length;
+    await deliver(
+      {
+        type: 'message',
+        source: { type: 'user', userId: 'Uowner' },
+        message: { type: 'text', id: '9100009', text: '明日の14時から打ち合わせ。30分前に教えて' },
+      },
+      'Uowner',
+    );
+    await waitFor(async () => (await meetingTasks()).length === count + 1, 'meeting with lead');
+    const task = (await meetingTasks())[count]!;
+    expect(task.input).toMatchObject({ title: '打ち合わせ', remind_before_minutes: '30' });
+    await waitFor(
+      () =>
+        messages(before).some(
+          (m) => m.to === 'Uowner' && m.text.includes('始まる 30 分前にこのトークでお知らせします'),
+        ),
+      'lead answer',
+    );
+    const reminders = async () =>
+      withTenant(harness.db, tenantId, (tx) =>
+        tx
+          .selectFrom('scheduled_jobs')
+          .select(['status', 'schedule', 'payload', 'conversation_id'])
+          .where('user_id', '=', userId)
+          .where('name', 'like', '%打ち合わせ（14:00から）%')
+          .execute(),
+      );
+    expect(await reminders()).toEqual([]);
+
+    before = sent.length;
+    await finish(
+      task.id,
+      'task.completed',
+      `予定「打ち合わせ」をカレンダーに入れました。\nGoogle Meet: ${MEET}`,
+    );
+    await harness.channels!.service.pump(tenantId);
+    await harness.channels!.service.pump(tenantId);
+    const done = messages(before).filter((m) => m.to === 'Uowner');
+    expect(
+      done.some((m) => m.text.includes(MEET) && m.text.includes('このトークでお知らせします')),
+    ).toBe(true);
+    const rows = await reminders();
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ status: 'active', conversation_id: task.conversation_id });
+    const startAt = Date.parse(String((task.input as Record<string, unknown>)['start']));
+    expect(Date.parse((rows[0]!.schedule as { at: string }).at)).toBe(startAt - 30 * 60_000);
+    expect(rows[0]!.payload).toEqual({ kind: 'reminder', text: '打ち合わせ（14:00から）' });
+
+    // 見回りをもう一度回しても、知らせは 1 つのまま
+    await harness.channels!.service.pump(tenantId);
+    expect(await reminders()).toHaveLength(1);
   });
 
   // 実機（2026-11-05）: 会議を入れたあとの「horio…@….comも招待して」がモデルに渡り、「まだ作れていません」と返していた
