@@ -18,21 +18,21 @@
     "その時刻の音声へ戻る（再生が未実装。飾りは置かない判断）"
   ],
   "observations" : [
-    "全体の連続感（層 C）: 面は Dock → Workspace → Library の 3 枚。同じ id meeting-ae82bd51-6996-4118-ad71-d6100bd9b3c4 が通ったか: true"
+    "全体の連続感（層 C）: 面は Dock → Workspace → Library の 3 枚。同じ id meeting-b912436a-cb13-4182-b4e2-54844c5301c7 が通ったか: true"
   ],
   "product" : "Genie",
-  "startedAt" : "2026-11-05T16:25:06Z",
+  "startedAt" : "2026-11-05T16:44:26Z",
   "steps" : [
     {
       "front" : "com.apple.finder",
       "ids" : {
-        "dock" : "meeting-ae82bd51-6996-4118-ad71-d6100bd9b3c4",
-        "recording" : "meeting-ae82bd51-6996-4118-ad71-d6100bd9b3c4",
-        "session" : "meeting-ae82bd51-6996-4118-ad71-d6100bd9b3c4"
+        "dock" : "meeting-b912436a-cb13-4182-b4e2-54844c5301c7",
+        "recording" : "meeting-b912436a-cb13-4182-b4e2-54844c5301c7",
+        "session" : "meeting-b912436a-cb13-4182-b4e2-54844c5301c7"
       },
       "interactions" : 1,
       "keyWindow" : false,
-      "ms" : 1152,
+      "ms" : 1144,
       "name" : "Meeting",
       "surface" : {
         "h" : 108,
@@ -41,7 +41,7 @@
         "x" : 454,
         "y" : 1009
       },
-      "transitionMs" : 188,
+      "transitionMs" : 181,
       "windows" : 1
     },
     {
@@ -52,7 +52,7 @@
       },
       "interactions" : 1,
       "keyWindow" : false,
-      "ms" : 1181,
+      "ms" : 1192,
       "name" : "Notes",
       "surface" : {
         "h" : 227,
@@ -61,25 +61,25 @@
         "x" : 454,
         "y" : 890
       },
-      "transitionMs" : 185,
+      "transitionMs" : 195,
       "windows" : 1
     },
     {
       "front" : "com.apple.finder",
       "ids" : {
-        "session" : "meeting-ae82bd51-6996-4118-ad71-d6100bd9b3c4",
-        "workspace" : "meeting-ae82bd51-6996-4118-ad71-d6100bd9b3c4"
+        "session" : "meeting-b912436a-cb13-4182-b4e2-54844c5301c7",
+        "workspace" : "meeting-b912436a-cb13-4182-b4e2-54844c5301c7"
       },
       "interactions" : 1,
       "keyWindow" : true,
-      "ms" : 1303,
+      "ms" : 1301,
       "name" : "Workspace",
       "surface" : {
         "h" : 680,
         "key" : true,
         "w" : 1080,
         "x" : 324,
-        "y" : 232
+        "y" : 231
       },
       "transitionMs" : 90,
       "windows" : 2
@@ -88,11 +88,11 @@
       "front" : "com.apple.finder",
       "ids" : {
         "decisions" : "1",
-        "session" : "meeting-ae82bd51-6996-4118-ad71-d6100bd9b3c4"
+        "session" : "meeting-b912436a-cb13-4182-b4e2-54844c5301c7"
       },
       "interactions" : 1,
       "keyWindow" : true,
-      "ms" : 2587,
+      "ms" : 2541,
       "name" : "終える",
       "surface" : {
         "h" : 184,
@@ -107,19 +107,19 @@
     {
       "front" : "com.astra.desktop",
       "ids" : {
-        "opened" : "meeting-ae82bd51-6996-4118-ad71-d6100bd9b3c4",
-        "session" : "meeting-ae82bd51-6996-4118-ad71-d6100bd9b3c4"
+        "opened" : "meeting-b912436a-cb13-4182-b4e2-54844c5301c7",
+        "session" : "meeting-b912436a-cb13-4182-b4e2-54844c5301c7"
       },
       "interactions" : 1,
       "keyWindow" : true,
-      "ms" : 1137,
+      "ms" : 1117,
       "name" : "Library",
       "surface" : {
         "h" : 820,
         "key" : true,
         "w" : 1240,
         "x" : 244,
-        "y" : 213
+        "y" : 212
       },
       "windows" : 2
     },
@@ -131,14 +131,14 @@
       },
       "interactions" : 1,
       "keyWindow" : true,
-      "ms" : 659,
+      "ms" : 660,
       "name" : "Source",
       "surface" : {
         "h" : 820,
         "key" : true,
         "w" : 1240,
         "x" : 244,
-        "y" : 213
+        "y" : 212
       },
       "windows" : 2
     },
@@ -150,19 +150,19 @@
       },
       "interactions" : 1,
       "keyWindow" : true,
-      "ms" : 1877,
+      "ms" : 1883,
       "name" : "読み戻す",
       "surface" : {
         "h" : 820,
         "key" : true,
         "w" : 1240,
         "x" : 244,
-        "y" : 213
+        "y" : 212
       },
       "windows" : 2
     }
   ],
   "success" : true,
-  "totalMs" : 9899,
+  "totalMs" : 9841,
   "windowsOpened" : 0
 }
