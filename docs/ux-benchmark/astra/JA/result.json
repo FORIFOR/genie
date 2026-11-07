@@ -19,13 +19,13 @@
     "体感の複雑さ（層 C）: 段は 5、面は 1 枚、増えた窓 0"
   ],
   "product" : "Genie",
-  "startedAt" : "2026-11-05T16:44:19Z",
+  "startedAt" : "2026-11-07T09:49:20Z",
   "steps" : [
     {
       "front" : "com.astra.desktop",
       "interactions" : 0,
       "keyWindow" : true,
-      "ms" : 28,
+      "ms" : 23,
       "name" : "Home（Dock は待機）",
       "surface" : {
         "h" : 76,
@@ -43,7 +43,7 @@
       "keys" : {
         "esc" : "listening→idle"
       },
-      "ms" : 1028,
+      "ms" : 982,
       "name" : "Listening",
       "surface" : {
         "h" : 76,
@@ -58,11 +58,11 @@
     {
       "front" : "com.astra.desktop",
       "ids" : {
-        "task" : "0272D6E4-C5B2-48B6-8447-F1DD624B9240"
+        "task" : "989183FA-324F-43E0-9E08-7AE61D162086"
       },
       "interactions" : 0,
       "keyWindow" : true,
-      "ms" : 1061,
+      "ms" : 1060,
       "name" : "Running",
       "surface" : {
         "h" : 258,
@@ -77,8 +77,8 @@
     {
       "front" : "com.astra.desktop",
       "ids" : {
-        "confirmation" : "9C840CA6-3D53-40FE-B505-6E0AA00B58A6",
-        "resolved" : "9C840CA6-3D53-40FE-B505-6E0AA00B58A6"
+        "confirmation" : "357D17CC-D634-46E6-8E62-C89D56ED2315",
+        "resolved" : "357D17CC-D634-46E6-8E62-C89D56ED2315"
       },
       "interactions" : 2,
       "keyWindow" : true,
@@ -86,7 +86,7 @@
         "cmdReturn" : "approved",
         "return" : "no-op"
       },
-      "ms" : 1800,
+      "ms" : 1802,
       "name" : "Confirmation",
       "surface" : {
         "h" : 258,
@@ -95,7 +95,7 @@
         "x" : 504,
         "y" : 859
       },
-      "transitionMs" : 204,
+      "transitionMs" : 207,
       "windows" : 2
     },
     {
@@ -105,7 +105,7 @@
       "keys" : {
         "esc" : "result→idle"
       },
-      "ms" : 1279,
+      "ms" : 1286,
       "name" : "Done",
       "surface" : {
         "h" : 76,
@@ -119,6 +119,6 @@
     }
   ],
   "success" : true,
-  "totalMs" : 5198,
+  "totalMs" : 5156,
   "windowsOpened" : 0
 }
