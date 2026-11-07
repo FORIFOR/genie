@@ -1,8 +1,8 @@
 /**
- * 答えの Markdown → LINE の Flex Message。
+ * 答えの Markdown → LINE の文のメッセージ（部分コピーできる）と、Flex Message。
  */
 import { describe, expect, it } from 'vitest';
-import { answerFlex, lineMessages, parseAnswer } from '../src/index.js';
+import { answerFlex, answerText, lineMessages, parseAnswer } from '../src/index.js';
 import { channelMessages } from '../src/index.js';
 
 const FLIGHTS = [
@@ -91,9 +91,7 @@ describe('answer → Flex Message', () => {
     ]);
   });
 
-  it('sends structured answers as Flex, and splits a long answer into a carousel', () => {
-    const [first] = lineMessages(channelMessages.answer(FLIGHTS)) as Json[];
-    expect(first).toMatchObject({ type: 'flex' });
+  it('keeps the Flex builder: a long answer splits into a carousel', () => {
     const long = Array.from(
       { length: 60 },
       (_, i) => `- **項目 ${String(i)}**: ${'説明の文。'.repeat(8)}`,
@@ -105,15 +103,55 @@ describe('answer → Flex Message', () => {
     for (const page of pages) expect(Buffer.byteLength(JSON.stringify(page))).toBeLessThan(10_000);
   });
 
-  it('falls back to text when the answer is too long to read in a few bubbles', () => {
+  it('sends structured answers as copyable text (no Flex), with headings, bullets and links written out', () => {
+    const messages = lineMessages(channelMessages.answer(FLIGHTS)) as Json[];
+    expect(messages).toHaveLength(1);
+    expect(messages[0]).toMatchObject({ type: 'text' });
+    expect(messages[0]!['text']).toBe(
+      [
+        '年末年始の熊本〜東京（羽田）間の便を調べました！',
+        '',
+        '安さを狙うなら、羽田発着では ソラシドエア（1日5往復・ANA共同運航）が一番の有力候補です。',
+        '',
+        '・ 航空会社ごとの目安（片道）',
+        '　・ ソラシドエア: 最安候補（2万〜3万円台後半が目安）',
+        '　・ ANA / JAL: 3万〜4万円台',
+        '・ 予約・空席確認リンク',
+        '　・ ソラシドエア（https://www.solaseedair.jp/） / https://www.ana.co.jp/',
+      ].join('\n'),
+    );
+    expect(answerText('こうします。\n\n## 手順\n\n1. 開く\n2. 押す\n\n---\n\n終わり')).toEqual([
+      'こうします。\n\n【手順】\n\n1. 開く\n2. 押す\n\n―――\n\n終わり',
+    ]);
+  });
+
+  it('splits a long answer into several text messages, and cuts what does not fit', () => {
+    const long = Array.from(
+      { length: 60 },
+      (_, i) => `- **項目 ${String(i)}**: ${'説明の文。'.repeat(20)}`,
+    ).join('\n');
+    const pages = answerText(long);
+    expect(pages.length).toBeGreaterThan(1);
+    for (const page of pages) expect(page.length).toBeLessThanOrEqual(4_800);
+    // 項目の途中で切らない
+    expect(pages[1]!.startsWith('・ 項目')).toBe(true);
     const huge = Array.from(
       { length: 400 },
-      (_, i) => `- **${String(i)}** ${'長い文。'.repeat(10)}`,
+      (_, i) => `- **${String(i)}** ${'長い文。'.repeat(20)}`,
     ).join('\n');
     expect(answerFlex(huge, 'huge')).toBeNull();
-    expect(lineMessages({ text: 'huge', markdown: huge })).toEqual([
-      { type: 'text', text: 'huge' },
-    ]);
+    const cut = answerText(huge);
+    expect(cut).toHaveLength(4);
+    expect(cut[3]!.endsWith('…（続きは Genie で）')).toBe(true);
+    // 確認のボタンがあるときは、ボタンの分を空けて 4 通まで（LINE は 1 回 5 通まで）
+    const withButtons = lineMessages({
+      text: 'huge',
+      markdown: huge,
+      buttons: [{ label: 'はい', value: 'yes' }],
+    }) as Json[];
+    expect(withButtons.length).toBeLessThanOrEqual(5);
+    expect(withButtons.at(-1)).toMatchObject({ type: 'template' });
+    expect(lineMessages({ text: 'huge', markdown: huge }).length).toBeLessThanOrEqual(5);
   });
 
   it('keeps the link-button template for messages that open something', () => {

@@ -1,14 +1,20 @@
 /**
- * Genie の答え（Markdown）を、LINE の Flex Message にする。**純粋関数。**
+ * Genie の答え（Markdown）を、LINE で送る形にする。**純粋関数。**
  *
- * LINE の文のメッセージは太字も箇条書きも描かない。見出し・太字・箇条書き・リンクのある答えは、
- * 暗い吹き出しの Flex Message にして、太字は span、箇条書きは記号と字下げ、リンクは下のボタンにする。
- * 一言の答え（構造の無いもの）は、いつもどおり文のメッセージで送る（null を返す）。
+ * LINE へは answerText（文のメッセージ）で送る。Flex Message の字は長押しで選べず、一部だけ写せない
+ * （本人の要望 2026-11-07「文章指定でコピーできないと不便」）。文のメッセージは太字を描かないので、
+ * 見出しは【】、箇条書きは「・」と字下げ、リンクは「名前（URL）」にする。
  *
- * 作れないとき（大きすぎる・空）も null。呼ぶ側は文のメッセージに戻す。
+ * answerFlex（暗い吹き出しの Flex Message）は残してあるが、いまは LINE の答えには使わない。
  */
 
-type Inline = { readonly text: string; readonly bold?: boolean; readonly link?: boolean };
+type Inline = {
+  readonly text: string;
+  readonly bold?: boolean;
+  readonly link?: boolean;
+  /** リンク先（文のメッセージでは「名前（URL）」と書く） */
+  readonly url?: string;
+};
 
 type Block =
   | { readonly kind: 'heading'; readonly inline: readonly Inline[] }
@@ -56,7 +62,13 @@ export function parseInline(
   const push = (part: Inline) => {
     if (!part.text) return;
     const last = out[out.length - 1];
-    if (last && !!last.bold === !!part.bold && !!last.link === !!part.link) {
+    if (
+      last &&
+      !last.url &&
+      !part.url &&
+      !!last.bold === !!part.bold &&
+      !!last.link === !!part.link
+    ) {
       out[out.length - 1] = { ...last, text: last.text + part.text };
     } else out.push(part);
   };
@@ -67,11 +79,11 @@ export function parseInline(
     push({ text: source.slice(at, m.index) });
     if (m[1] ?? m[2]) push({ text: (m[1] ?? m[2])!, bold: true });
     else if (m[3] && m[4]) {
-      push({ text: m[3], link: true });
+      push({ text: m[3], link: true, url: m[4] });
       links.push({ label: m[3], url: m[4] });
     } else if (m[5]) push({ text: m[5] });
     else if (m[6]) {
-      push({ text: m[6], link: true });
+      push({ text: m[6], link: true, url: m[6] });
       links.push({ label: m[6], url: m[6] });
     }
     at = m.index + m[0].length;
@@ -293,4 +305,68 @@ export function answerFlex(markdown: string, plain: string): Record<string, unkn
     altText,
     contents: bubbles.length === 1 ? bubbles[0] : { type: 'carousel', contents: bubbles },
   };
+}
+
+/** LINE の文のメッセージ 1 通の上限（5,000 字）より少し小さく。 */
+const TEXT_CHARS = 4_800;
+
+const plainInline = (inline: readonly Inline[]) =>
+  inline.map((p) => (p.url && p.url !== p.text ? `${p.text}（${p.url}）` : p.text)).join('');
+
+function blockText(block: Block): string {
+  switch (block.kind) {
+    case 'heading':
+      return `【${plainInline(block.inline)}】`;
+    case 'paragraph':
+      return plainInline(block.inline);
+    case 'code':
+      return block.text;
+    case 'rule':
+      return '―――';
+    case 'item': {
+      const marker = /^\d/.test(block.marker) ? block.marker : '・';
+      return `${'　'.repeat(block.depth)}${marker} ${plainInline(block.inline)}`;
+    }
+  }
+}
+
+/**
+ * 答えの Markdown を、LINE の文のメッセージにする（長押しの「部分コピー」で一部だけ写せるように。
+ * Flex Message の字は選べない）。見出しは【】、箇条書きは「・」と字下げ、太字の記号は外し、リンクは
+ * 「名前（URL）」と書く（LINE が URL を押せるようにする）。
+ *
+ * 長い答えは段落の切れ目で分ける。`maxMessages` を超える分は捨て、最後に「続きは Genie で」と書く。
+ */
+export function answerText(markdown: string, maxMessages = 4): string[] {
+  const { blocks } = parseAnswer(markdown);
+  const parts: string[] = [];
+  blocks.forEach((block, i) => {
+    const line = blockText(block);
+    if (!line.trim()) return;
+    const previous = blocks[i - 1];
+    // 箇条書きの続きは詰め、それ以外の切れ目は 1 行あける
+    const tight = block.kind === 'item' && previous?.kind === 'item';
+    parts.push(parts.length === 0 ? line : tight ? `\n${line}` : `\n\n${line}`);
+  });
+  const pages: string[] = [];
+  let page = '';
+  for (const part of parts) {
+    if (page && page.length + part.length > TEXT_CHARS) {
+      pages.push(page);
+      page = part.replace(/^\n+/, '');
+    } else page += part;
+    // 1 つで上限を超える段落は、字数で切る
+    while (page.length > TEXT_CHARS) {
+      pages.push(page.slice(0, TEXT_CHARS));
+      page = page.slice(TEXT_CHARS);
+    }
+  }
+  if (page.trim()) pages.push(page);
+  if (pages.length > maxMessages) {
+    const kept = pages.slice(0, maxMessages);
+    const tail = '\n…（続きは Genie で）';
+    kept[kept.length - 1] = kept[kept.length - 1]!.slice(0, TEXT_CHARS - tail.length) + tail;
+    return kept;
+  }
+  return pages;
 }

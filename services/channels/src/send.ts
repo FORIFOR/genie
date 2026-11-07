@@ -11,7 +11,7 @@
  */
 import type { ChannelProvider } from '@genie/contracts';
 import { approvalCard, cardFor } from './cards.js';
-import { answerFlex } from './rich.js';
+import { answerText } from './rich.js';
 
 export interface OutgoingButton {
   readonly label: string;
@@ -449,14 +449,19 @@ function lineMessagesWithoutChoices(message: OutgoingMessage): unknown[] {
     const card = approvalCard(message.approval, message.buttons, message.approval.note);
     if (card) return [card];
   }
-  // 予定・天気・ニュースはカード。構造のある答えは暗い吹き出し（Flex Message）。作れなければ文のまま
+  // 予定・天気・ニュースはカード。答えは文のメッセージ（長押しの「部分コピー」で写せるように。
+  // Flex Message の字は選べない）。Markdown は見出し【】・箇条書き「・」の文にする
   const card = message.card ? cardFor(message.card) : null;
   // 店の候補・予約は、問いかけ（「何時ごろ行く？」）の文を先に、カードをあとに。予定・天気はカードだけ（同じ文）
   if (card && /"schema":"genie\.(?:places|booking)\/v1"/.test(message.card ?? ''))
     return [{ type: 'text', text: message.text.slice(0, 4900) }, card];
   if (card) return [card];
-  const rich = message.markdown ? answerFlex(message.markdown, message.text) : null;
-  const messages: unknown[] = [rich ?? { type: 'text', text: message.text.slice(0, 4900) }];
+  const pages = message.markdown
+    ? answerText(message.markdown, message.buttons?.length ? 4 : 5)
+    : [];
+  const messages: unknown[] = (pages.length ? pages : [message.text.slice(0, 4900)]).map(
+    (text) => ({ type: 'text', text }),
+  );
   if (message.buttons?.length) {
     messages.push({
       type: 'template',

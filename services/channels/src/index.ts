@@ -62,7 +62,7 @@ export {
   type SendTarget,
 } from './send.js';
 export * as channelMessages from './render.js';
-export { answerFlex, parseAnswer, type ParsedAnswer } from './rich.js';
+export { answerFlex, answerText, parseAnswer, type ParsedAnswer } from './rich.js';
 export type { PostingPolicy } from './render.js';
 export {
   LINK_CODE_LENGTH,
