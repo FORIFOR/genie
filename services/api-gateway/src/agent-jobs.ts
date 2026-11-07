@@ -302,8 +302,13 @@ export class AgentJobs {
 
   start(intervalMs = 15_000): void {
     if (this.#timer) return;
-    void this.recover().then(() => this.tick());
-    this.#timer = setInterval(() => void this.tick(), intervalMs);
+    // 保存サービスが一時的に止まっても、取りこぼした失敗で gateway ごと落とさない
+    const failed = (error: unknown) =>
+      this.deps.log?.('agent_jobs.tick_failed', { error: (error as Error).message });
+    void this.recover()
+      .then(() => this.tick())
+      .catch(failed);
+    this.#timer = setInterval(() => void this.tick().catch(failed), intervalMs);
     this.#timer.unref?.();
   }
 

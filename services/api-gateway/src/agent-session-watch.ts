@@ -138,9 +138,14 @@ export class AgentSessionWatch {
 
   start(intervalMs = 15_000): void {
     if (this.#timer) return;
-    this.#timer = setInterval(() => void this.tick(), intervalMs);
+    // 保存サービスが一時的に止まっても、取りこぼした失敗で gateway ごと落とさない（2026-11-08 実際に落ちた）
+    const tick = () =>
+      void this.tick().catch((error: unknown) =>
+        this.deps.log?.('agent_session_watch.tick_failed', { error: (error as Error).message }),
+      );
+    this.#timer = setInterval(tick, intervalMs);
     this.#timer.unref?.();
-    void this.tick();
+    tick();
   }
 
   stop(): void {
