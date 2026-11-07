@@ -3,6 +3,9 @@
  *
  *   返事が要る（承認・質問・失敗）状態が 1 分続いた … 「Claude Code が承認を待っています」
  *   作業中のまま 15 分届かない                    … 「止まっているかもしれません」（推した状態だと言い分ける）
+ *   応答を終えて 1 分、次の頼みが来ない           … 「作業を終えました」（本人の要望 2026-11-07
+ *     「実装が終了したら、タスクが完了したら通知して」）。知らせるのは、本人が頼んだ回か、変更・テストの
+ *     あった回だけ（機械の知らせに答えただけの回は黙る）。Codex は回の中身が読めないので、終わるたびに知らせる
  *
  * 知らせる先は Mac の通知（user_notices → NoticeInbox）と、つないでいれば本人のチャット（LINE）。
  * 同じ待ちは 1 回だけ。本人が止めたセッションは知らせない。
@@ -18,6 +21,7 @@ import { withIdentity, withTenant, type DbHandle } from '@genie/db';
 import { ADAPTER_LABELS } from './agent-adapters.js';
 import {
   attentionFor,
+  NEEDS_USER_NOTIFY_MS,
   type AgentSession,
   type AgentState,
   type UserPolicy,
@@ -48,8 +52,21 @@ export interface AgentSessionNotice {
   readonly chat: string;
 }
 
+/** 終えた 1 回の応答に何があったか（agent_session_marks から読む）。 */
+export interface TurnSummary {
+  /** 本人の頼み・追加の指示で始まった回 */
+  readonly asked: boolean;
+  readonly changed: boolean;
+  readonly testPassed: boolean;
+  readonly testFailed: boolean;
+}
+
 /** いま知らせることがあるか。無ければ null（作業中・待機・止めた・終わった）。 */
-export function noticeFor(s: AgentSession, now: number): AgentSessionNotice | null {
+export function noticeFor(
+  s: AgentSession,
+  now: number,
+  turn: TurnSummary | null = null,
+): AgentSessionNotice | null {
   const attention = attentionFor(s, now);
   const tool = ADAPTER_LABELS[s.source];
   // 「Claude Code が」/「Claude Code（genie）が」
@@ -70,6 +87,32 @@ export function noticeFor(s: AgentSession, now: number): AgentSessionNotice | nu
       title: `${tool} が${what}`,
       body: `${name}${s.project && s.title ? `（${s.project}）` : ''}。ターミナルで確かめてください。`,
       chat: `🔔 ${subject}${what}。Mac のターミナルで確かめてください。`,
+    };
+  }
+  // 応答を終えて 1 分たった（その間に次の頼みが来ていない）
+  if (
+    attention === 'idle' &&
+    s.state === 'idle' &&
+    now - s.stateSince.getTime() >= NEEDS_USER_NOTIFY_MS &&
+    (s.source === 'codex' ||
+      (turn !== null && (turn.asked || turn.changed || turn.testPassed || turn.testFailed)))
+  ) {
+    const check = !turn
+      ? ''
+      : turn.testFailed && !turn.testPassed
+        ? '（テストが失敗したままです）'
+        : turn.testPassed
+          ? turn.changed
+            ? '（変更あり・テストは通っています）'
+            : '（テストは通っています）'
+          : turn.changed
+            ? '（変更あり・テストはまだです）'
+            : '';
+    return {
+      key: `done:${s.stateSince.toISOString()}`,
+      title: `${tool} が作業を終えました${check}`,
+      body: `${name}${s.project && s.title ? `（${s.project}）` : ''}。結果をターミナルで確かめてください。`,
+      chat: `✅ ${subject}作業を終えました${check}。結果を Mac のターミナルで確かめてください。`,
     };
   }
   if (attention === 'stalled_suspected') {
@@ -169,7 +212,31 @@ export class AgentSessionWatch {
         endReason: row.end_reason,
         createdAt: new Date(row.created_at),
       };
-      const notice = noticeFor(session, now.getTime());
+      // 応答を終えた回なら、その回に何があったか（直前の区切りから、この区切りまでの印）
+      let turn: TurnSummary | null = null;
+      if (session.state === 'idle') {
+        const marks = await tx
+          .selectFrom('agent_session_marks')
+          .select(['kind'])
+          .where('session_id', '=', id)
+          .where('at', '<=', session.stateSince)
+          .orderBy('at', 'desc')
+          .limit(200)
+          .execute();
+        const kinds: string[] = [];
+        for (const [i, m] of marks.entries()) {
+          // いちばん新しい turn_ended はこの回の終わり。次に出てくる turn_ended が前の回の終わり
+          if (m.kind === 'turn_ended' && i > 0) break;
+          kinds.push(m.kind);
+        }
+        turn = {
+          asked: kinds.includes('request') || kinds.includes('instruction'),
+          changed: kinds.includes('changed'),
+          testPassed: kinds.includes('test_passed'),
+          testFailed: kinds.includes('test_failed'),
+        };
+      }
+      const notice = noticeFor(session, now.getTime(), turn);
       const fresh = notice && notice.key !== row.notified_key ? notice : null;
       // 知らせたら、次の出来事が来るまで見ない（出来事が見る時刻を決め直す）
       await tx

@@ -81,6 +81,8 @@ const ClaudeHook = z.object({
   message: z.string().optional(),
   reason: z.string().optional(),
   error: z.string().optional(),
+  // Stop の応答の最後の文。本人への問いかを見るだけで、残さない
+  last_assistant_message: z.string().optional(),
   // 確かめ（変更・テスト）の判定にだけ読む。コマンドの文は残さない
   tool_name: z.string().max(80).optional(),
   // 形は道具ごとに違う。形が合わなくても出来事ごと捨てない
@@ -185,6 +187,9 @@ export function registerAgentSessionRoutes(app: App, deps: AgentSessionRouteDeps
         ...(h.message === undefined ? {} : { message: h.message }),
         ...(h.reason === undefined ? {} : { reason: h.reason }),
         ...(h.error === undefined ? {} : { error: h.error }),
+        ...(h.last_assistant_message === undefined
+          ? {}
+          : { lastMessage: h.last_assistant_message }),
         ...(h.tool_name === undefined ? {} : { toolName: h.tool_name }),
         ...(typeof commandOf(h.tool_input) === 'string'
           ? { command: commandOf(h.tool_input)! }

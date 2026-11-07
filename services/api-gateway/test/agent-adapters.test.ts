@@ -132,6 +132,56 @@ describe('finding Codex sessions', () => {
     expect(parseCodexRollout('{"type":"other"}', '')).toBeNull();
   });
 
+  it('sees a Codex turn that asked the user as waiting for their answer', () => {
+    const row = (type: string, payload: Record<string, unknown>) =>
+      JSON.stringify({ type, payload });
+    const asked = [
+      row('event_msg', { type: 'task_started' }),
+      row('response_item', {
+        type: 'function_call',
+        name: 'request_user_input_async',
+        call_id: 'c1',
+      }),
+      // _async は受け付けの返事がすぐ来る。本人の答えは次の頼みで届く
+      row('response_item', { type: 'function_call_output', call_id: 'c1', output: 'ok' }),
+      row('event_msg', { type: 'task_complete', last_agent_message: '上の 2 つから選んで。' }),
+    ].join('\n');
+    expect(parseCodexRollout(head, asked)).toMatchObject({
+      state: 'waiting_user',
+      waiting: 'input',
+    });
+    // 本人が答えたら、また動いている
+    expect(
+      parseCodexRollout(
+        head,
+        `${asked}\n${row('event_msg', { type: 'user_message', message: 'A' })}`,
+      )?.state,
+    ).toBe('working');
+    // 最後の文が問いの回も
+    expect(
+      parseCodexRollout(
+        head,
+        row('event_msg', { type: 'task_complete', last_agent_message: 'このまま進めますか？' }),
+      ),
+    ).toMatchObject({ state: 'waiting_user', waiting: 'input' });
+    expect(
+      parseCodexRollout(
+        head,
+        row('event_msg', { type: 'task_complete', last_agent_message: '直しました。' }),
+      )?.state,
+    ).toBe('idle');
+    const waiting = parseCodexRollout(
+      head,
+      row('event_msg', { type: 'task_complete', last_agent_message: 'どれにしますか？' }),
+    )!;
+    expect(eventsFor(waiting, false).map((e) => e.event)).toEqual(['Elicitation']);
+    expect(
+      eventsFor(parseCodexRollout(head, tail('exec_approval_request'))!, false)[0]!.event,
+    ).toBe('PermissionRequest');
+    // 起こし直したあとの読み直しは知らせない印をつける
+    expect(eventsFor(waiting, true, true).every((e) => e.quiet)).toBe(true);
+  });
+
   it('turns the state into the same events hooks send', () => {
     const found = parseCodexRollout(head, tail('task_complete'))!;
     expect(eventsFor(found, true).map((e) => e.event)).toEqual([

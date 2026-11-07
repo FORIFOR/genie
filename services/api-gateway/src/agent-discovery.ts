@@ -14,12 +14,19 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { withIdentity, type DbHandle } from '@genie/db';
 import type { AgentJobs } from './agent-jobs.js';
-import type { AgentConnection, AgentSessionStore, HookEvent } from './agent-sessions.js';
+import {
+  asksUser,
+  type AgentConnection,
+  type AgentSessionStore,
+  type HookEvent,
+} from './agent-sessions.js';
 
 const HEAD_BYTES = 1024 * 1024;
 const TAIL_BYTES = 256 * 1024;
 const RECENT_MS = 24 * 3600_000;
 const MAX_FILES = 200;
+/** 初めて読んだ記録がこれより前に止まっていれば、知らせない（読み直しただけ）。 */
+const STALE_MS = 5 * 60_000;
 
 export type DiscoveredState = 'working' | 'waiting_user' | 'idle';
 
@@ -28,6 +35,8 @@ export interface DiscoveredSession {
   readonly cwd: string | null;
   readonly prompt: string | null;
   readonly state: DiscoveredState;
+  /** 待っているのが承認か、本人の答え（request_user_input・問いで終えた応答）か */
+  readonly waiting?: 'permission' | 'input';
 }
 
 function lines(text: string): Record<string, unknown>[] {
@@ -62,25 +71,67 @@ export function parseCodexRollout(head: string, tail: string): DiscoveredSession
   }
   if (!sessionId) return null;
   let state: DiscoveredState = 'working';
+  let waiting: 'permission' | 'input' | undefined;
+  // この回に本人へ答えを求めたか（request_user_input）。_async は受け付けの返事がすぐ来て、本人の答えは
+  // 次の頼み（user_message）として届く（2026-11-07 の実物）。同期のものは答え（出力）が来るまで待ち
+  let askedThisTurn = false;
+  const pendingSync = new Set<string>();
   for (const row of lines(tail)) {
     const payload = row['payload'] as Record<string, unknown> | undefined;
+    if (row['type'] === 'response_item' && payload) {
+      const callId = typeof payload['call_id'] === 'string' ? payload['call_id'] : null;
+      const name = typeof payload['name'] === 'string' ? payload['name'] : '';
+      if (payload['type'] === 'function_call' && /^request_user_input/.test(name)) {
+        askedThisTurn = true;
+        if (callId && !/_async$/.test(name)) pendingSync.add(callId);
+        state = 'waiting_user';
+        waiting = 'input';
+      } else if (payload['type'] === 'function_call_output' && callId) {
+        if (pendingSync.delete(callId) && pendingSync.size === 0 && waiting === 'input') {
+          state = 'working';
+          waiting = undefined;
+        }
+      }
+      continue;
+    }
     if (row['type'] !== 'event_msg' || typeof payload?.['type'] !== 'string') continue;
     const kind = payload['type'];
-    if (/approval_request$/.test(kind)) state = 'waiting_user';
-    else if (kind === 'task_complete' || kind === 'turn_aborted') state = 'idle';
-    else if (
-      kind === 'task_started' ||
-      kind === 'user_message' ||
-      /^exec_command|^patch_apply/.test(kind)
-    )
+    if (/approval_request$/.test(kind)) {
+      state = 'waiting_user';
+      waiting = 'permission';
+    } else if (kind === 'task_complete') {
+      // この回に問いを出したか、最後の文が本人への問いなら、返事を待っている（文は見るだけで持ち出さない）
+      const last = payload['last_agent_message'];
+      const asks = askedThisTurn || asksUser(typeof last === 'string' ? last : undefined);
+      state = asks ? 'waiting_user' : 'idle';
+      waiting = asks ? 'input' : undefined;
+    } else if (kind === 'turn_aborted') {
+      state = 'idle';
+      waiting = undefined;
+    } else if (kind === 'task_started' || kind === 'user_message') {
       state = 'working';
+      waiting = undefined;
+      askedThisTurn = false;
+      pendingSync.clear();
+    } else if (/^exec_command|^patch_apply/.test(kind) && waiting !== 'input') {
+      state = 'working';
+      waiting = undefined;
+    }
   }
-  return { sessionId, cwd, prompt, state };
+  return { sessionId, cwd, prompt, state, ...(waiting ? { waiting } : {}) };
 }
 
 /** 状態を hooks の出来事の形にする（入口を 1 つにする）。 */
-export function eventsFor(found: DiscoveredSession, firstSeen: boolean): HookEvent[] {
-  const base = { sessionId: found.sessionId, ...(found.cwd ? { cwd: found.cwd } : {}) };
+export function eventsFor(
+  found: DiscoveredSession,
+  firstSeen: boolean,
+  quiet = false,
+): HookEvent[] {
+  const base = {
+    sessionId: found.sessionId,
+    ...(found.cwd ? { cwd: found.cwd } : {}),
+    ...(quiet ? { quiet: true } : {}),
+  };
   const events: HookEvent[] = [];
   if (firstSeen) {
     events.push({ ...base, event: 'SessionStart' });
@@ -90,7 +141,9 @@ export function eventsFor(found: DiscoveredSession, firstSeen: boolean): HookEve
     ...base,
     event:
       found.state === 'waiting_user'
-        ? 'PermissionRequest'
+        ? found.waiting === 'input'
+          ? 'Elicitation'
+          : 'PermissionRequest'
         : found.state === 'idle'
           ? 'Stop'
           : 'PreToolUse',
@@ -187,7 +240,8 @@ export class AgentDiscovery {
   /** 新しく動いた記録を見る。返すのは出来事にしたセッションの数。 */
   async tick(): Promise<number> {
     const root = this.deps.codexRoot ?? join(homedir(), '.codex', 'sessions');
-    const since = (this.deps.now?.() ?? new Date()).getTime() - RECENT_MS;
+    const now = (this.deps.now?.() ?? new Date()).getTime();
+    const since = now - RECENT_MS;
     const files = await recentFiles(root, since);
     if (files.length === 0) return 0;
     const connection = await this.#owner();
@@ -200,7 +254,9 @@ export class AgentDiscovery {
       const found = parseCodexRollout(head, tail);
       this.#seen.set(file.path, { mtime: file.mtime, state: found?.state ?? 'working' });
       if (!found) continue;
-      for (const event of eventsFor(found, !before)) {
+      // Genie を起こし直したあとに初めて読む古い記録は、状態だけ戻して知らせない（今さらの「終わりました」を出さない）
+      const quiet = !before && now - file.mtime > STALE_MS;
+      for (const event of eventsFor(found, !before, quiet)) {
         const session = await this.deps.store.record(connection, event);
         await this.deps.jobs.observe(
           connection.tenantId,

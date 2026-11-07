@@ -10,6 +10,7 @@
  *   PermissionRequest・承認の Notification … waiting_user（permission）
  *   入力待ちの Notification                … waiting_user（input）
  *   Stop                                 … idle。**「仕事が終わった」ではない。**応答が終わっただけ
+ *                                          ただし最後の文が本人への問いなら waiting_user（input）
  *   StopFailure                          … error
  *   SessionEnd                           … ended
  *
@@ -21,6 +22,8 @@
  *
  * 知らせ（第 3 段）: 出来事が届くたびに、見回り（agent-session-watch.ts）が次に見る時刻 check_after を決め直す。
  *   返事が要る（waiting_user・error）… その状態になってから NEEDS_USER_NOTIFY_MS 後
+ *   応答を終えた（Stop）            … NEEDS_USER_NOTIFY_MS 後（本人の頼みか、変更・テストのあった回なら
+ *                                     「終わりました」。すぐ次の頼みが来れば見ない。本人の要望 2026-11-07）
  *   作業中                          … 最後の出来事から STALL_AFTER_MS 後（「止まっているかも」）
  *   待機・終わり・本人が止めた・保留  … 見ない（null）
  *
@@ -104,6 +107,30 @@ export interface HookEvent {
   readonly toolName?: string;
   /** Bash のコマンド。テストかどうかを見るだけで、残さない。 */
   readonly command?: string;
+  /** 応答の最後の文（Stop の last_assistant_message）。本人への問いかを見るだけで、残さない。 */
+  readonly lastMessage?: string;
+  /** 前のことを読み直しただけ（Genie を起こし直したあとの Codex の記録など）。知らせない。 */
+  readonly quiet?: boolean;
+}
+
+/**
+ * 応答の最後が本人への問い・頼みか（「どちらにしますか？」「〜を教えてください」）。純粋関数。
+ * 最後の 2 段落だけを見る（途中の「例えば〜ですか？」で待ちにしない）。
+ */
+export function asksUser(text: string | undefined): boolean {
+  if (!text) return false;
+  const tail = text
+    .replace(/```[\s\S]*?```/g, ' ')
+    .split(/\n\s*\n/)
+    .map((p) => p.replace(/[*_`>#]/g, '').trim())
+    .filter(Boolean)
+    .slice(-2)
+    .join('\n');
+  if (!tail) return false;
+  if (/[?？]\s*[)）」』]*\s*$/m.test(tail)) return true;
+  return /(?:教えて|選んで|決めて|返事を|答えて|お知らせ)(?:ください|下さい)|(?:ますか|ですか|でしょうか)[。．]?\s*$|ご確認(?:を)?お願いします|\b(?:let me know|which (?:one|option)|should I|do you want|would you like)\b/im.test(
+    tail,
+  );
 }
 
 /** フォルダの名前だけ（フルパスは残さない）。 */
@@ -178,7 +205,10 @@ export function transitionFor(e: HookEvent): Transition | null {
       return null;
     }
     case 'Stop':
-      return { state: 'idle', waitingReason: null, turnEnded: true };
+      // 最後の文が本人への問いなら、返事を待っている（応答を終えただけではない）
+      return asksUser(e.lastMessage)
+        ? { state: 'waiting_user', waitingReason: 'input', turnEnded: true }
+        : { state: 'idle', waitingReason: null, turnEnded: true };
     case 'StopFailure':
       return { state: 'error', waitingReason: short(e.error ?? e.reason, 60) ?? 'stop_failure' };
     case 'SessionEnd':
@@ -244,7 +274,8 @@ export function marksFor(
     marks.push(next.waitingReason === 'permission' ? 'waiting_permission' : 'waiting_input');
   if (moved && next.state === 'error') marks.push('error');
   if (moved && next.state === 'ended') marks.push('ended');
-  if (e.event === 'Stop' && prev && prev.state !== 'idle' && next.state === 'idle')
+  // 問いで終えた応答も、応答の終わり（区切り）として残す
+  if (e.event === 'Stop' && prev && prev.state !== 'idle' && next.state !== 'working')
     marks.push('turn_ended');
   if (e.event === 'PostToolUse' || e.event === 'PostToolUseFailure') {
     if (check === 'changed' && (prev?.checkState ?? 'none') !== 'changed') marks.push('changed');
@@ -276,8 +307,12 @@ export function checkAfterFor(s: {
   userPolicy: UserPolicy;
   stateSince: Date;
   lastActivityAt: Date;
+  /** いま応答を終えた（Stop）。終わりの知らせのために 1 分後に見る */
+  turnEnded?: boolean;
 }): Date | null {
   if (s.userPolicy === 'paused_by_user') return null;
+  if (s.state === 'idle' && s.turnEnded)
+    return new Date(s.stateSince.getTime() + NEEDS_USER_NOTIFY_MS);
   if (s.state === 'waiting_user' || s.state === 'error')
     return new Date(s.stateSince.getTime() + NEEDS_USER_NOTIFY_MS);
   // attentionFor は「STALL_AFTER_MS を超えたら」なので 1ms 後に見る
@@ -527,12 +562,15 @@ export class AgentSessionStore {
             state_since: now,
             ...(hold ? { held_by: hold, user_policy: 'paused_by_user' } : {}),
             ...(check ? { check_state: check, checked_at: now } : {}),
-            check_after: checkAfterFor({
-              state: t?.state ?? 'idle',
-              userPolicy: hold ? 'paused_by_user' : 'watch',
-              stateSince: now,
-              lastActivityAt: now,
-            }),
+            check_after: e.quiet
+              ? null
+              : checkAfterFor({
+                  state: t?.state ?? 'idle',
+                  userPolicy: hold ? 'paused_by_user' : 'watch',
+                  stateSince: now,
+                  lastActivityAt: now,
+                  turnEnded: !!t?.turnEnded,
+                }),
             turn_ended_at: t?.turnEnded ? now : null,
             ended_at: t?.ended ? now : null,
             end_reason: t?.ended?.reason ?? null,
@@ -582,12 +620,17 @@ export class AgentSessionStore {
           ...(check && check !== current.check_state
             ? { check_state: check, checked_at: now }
             : {}),
-          check_after: checkAfterFor({
-            state,
-            userPolicy: hold ? 'paused_by_user' : (current.user_policy as UserPolicy),
-            stateSince,
-            lastActivityAt: now,
-          }),
+          // 読み直しただけの出来事では見ない（古い待ち・終わりを今さら知らせない）
+          check_after: e.quiet
+            ? null
+            : checkAfterFor({
+                state,
+                userPolicy: hold ? 'paused_by_user' : (current.user_policy as UserPolicy),
+                stateSince,
+                lastActivityAt: now,
+                // Stop のあとに遅れて届いた道具の出来事・idle_prompt でも、終わりの知らせの予定を消さない
+                turnEnded: keepState ? current.turn_ended_at !== null : !!t.turnEnded,
+              }),
           updated_at: now,
         })
         .where('id', '=', current.id)

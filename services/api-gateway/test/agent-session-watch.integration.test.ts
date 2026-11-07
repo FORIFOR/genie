@@ -5,7 +5,9 @@
  *   - 承認待ちが 1 分続いたら、Mac の通知とチャットへ 1 回だけ知らせる（同じ待ちに出来事が重ねて届いても二度出さない）
  *   - ターミナルの前ですぐ承認したものは知らせない
  *   - 作業中のまま 15 分届かなければ「止まっているかもしれません」と知らせる（推した状態だと言い分ける）
- *   - 応答を終えた（Stop）だけのセッションは知らせない
+ *   - 本人が頼んだ回・変更やテストのあった回の応答を終えて 1 分たったら「作業を終えました」と知らせる
+ *     （機械の知らせに答えただけの回・すぐ次を頼んだ回・読み直しただけの出来事は知らせない）
+ *   - 問いで終えた応答は「あなたの返事を待っています」
  *   - 本人が止めたセッションは知らせない。戻したら、まだ待っているものは知らせる
  *   - チャットへの文に頼みの頭を載せない
  *   - Mac は GET /v1/notices で agent_session のお知らせを受け取れる
@@ -182,13 +184,44 @@ describe.skipIf(!url)('agent session notices (Claude Code)', () => {
     expect(await tickFor(connection.tenantId)).toBe(2);
   });
 
-  it('does not tell anyone about a session that only finished its response', async () => {
+  it('tells the user a minute after a requested piece of work ends, once', async () => {
     const { connection } = await signIn();
-    await store.record(connection, { event: 'UserPromptSubmit', sessionId: 'w4', prompt: 'x' });
+    await store.record(connection, {
+      event: 'UserPromptSubmit',
+      sessionId: 'w4',
+      cwd: '/Users/me/genie',
+      prompt: '請求の画面を直して',
+    });
+    await store.record(connection, { event: 'PostToolUse', sessionId: 'w4', toolName: 'Edit' });
+    await store.record(connection, {
+      event: 'PostToolUse',
+      sessionId: 'w4',
+      toolName: 'Bash',
+      command: 'pnpm -s test',
+    });
     later(1000);
-    await store.record(connection, { event: 'Stop', sessionId: 'w4' });
-    // Claude Code は応答を終えて時間がたつと「入力を待っています」を送ってくる。返事待ちではない（2026-10-29 の実物）
-    later(111_000);
+    await store.record(connection, {
+      event: 'Stop',
+      sessionId: 'w4',
+      lastMessage: '直して、テストも通りました。',
+    });
+    // Stop の直後に遅れて届いた道具の出来事でも、知らせの予定は消えない
+    await store.record(connection, { event: 'PostToolUse', sessionId: 'w4', toolName: 'Read' });
+    later(NEEDS_USER_NOTIFY_MS / 2);
+    expect(await tickFor(connection.tenantId)).toBe(0);
+    later(NEEDS_USER_NOTIFY_MS / 2 + 1000);
+    expect(await tickFor(connection.tenantId)).toBe(1);
+    expect((await notices(connection.tenantId))[0]).toMatchObject({
+      title: 'Claude Code が作業を終えました（変更あり・テストは通っています）',
+      body: expect.stringContaining('請求の画面を直して（genie）'),
+    });
+    const said = chats.filter((c) => c.tenantId === connection.tenantId);
+    expect(said.map((c) => c.text)).toEqual([
+      '✅ Claude Code（genie）が作業を終えました（変更あり・テストは通っています）。結果を Mac のターミナルで確かめてください。',
+    ]);
+    expect(said[0]!.text).not.toContain('請求');
+    // Claude Code は応答を終えて時間がたつと「入力を待っています」を送ってくる。二度は知らせない（2026-10-29 の実物）
+    later(51_000);
     await store.record(connection, {
       event: 'Notification',
       sessionId: 'w4',
@@ -196,6 +229,51 @@ describe.skipIf(!url)('agent session notices (Claude Code)', () => {
       message: 'Claude is waiting for your input',
     });
     later(STALL_AFTER_MS * 2);
+    expect(await tickFor(connection.tenantId)).toBe(1);
+  });
+
+  it('says a response that ended with a question is waiting for the user', async () => {
+    const { connection } = await signIn();
+    await store.record(connection, { event: 'UserPromptSubmit', sessionId: 'w4q', prompt: 'x' });
+    await store.record(connection, {
+      event: 'Stop',
+      sessionId: 'w4q',
+      lastMessage: '2 つの案があります。どちらで進めますか？',
+    });
+    later(NEEDS_USER_NOTIFY_MS + 1000);
+    expect(await tickFor(connection.tenantId)).toBe(1);
+    expect((await notices(connection.tenantId))[0]!.title).toBe(
+      'Claude Code があなたの返事を待っています',
+    );
+  });
+
+  it('stays quiet for turns the user did not ask for, answered right away, or only replayed', async () => {
+    const { connection } = await signIn();
+    // 機械の知らせ（<task-notification>）に答えただけで、何も変えていない回
+    await store.record(connection, {
+      event: 'UserPromptSubmit',
+      sessionId: 'w4m',
+      prompt: '<task-notification>done</task-notification>',
+    });
+    await store.record(connection, {
+      event: 'Stop',
+      sessionId: 'w4m',
+      lastMessage: '動いています。',
+    });
+    // 本人がターミナルの前にいて、すぐ次を頼んだ回
+    await store.record(connection, { event: 'UserPromptSubmit', sessionId: 'w4r', prompt: 'x' });
+    await store.record(connection, { event: 'Stop', sessionId: 'w4r' });
+    later(20_000);
+    await store.record(connection, { event: 'UserPromptSubmit', sessionId: 'w4r', prompt: 'y' });
+    // 読み直しただけの出来事（Genie を起こし直したあとの Codex の記録）
+    await store.record(connection, {
+      event: 'UserPromptSubmit',
+      sessionId: 'w4s',
+      prompt: 'x',
+      quiet: true,
+    });
+    await store.record(connection, { event: 'Stop', sessionId: 'w4s', quiet: true });
+    later(NEEDS_USER_NOTIFY_MS * 2);
     expect(await tickFor(connection.tenantId)).toBe(0);
   });
 

@@ -4,12 +4,14 @@
  * 見ること:
  *   - 「応答を終えた（Stop）」を「仕事が終わった」にしない（idle で、ended ではない）
  *   - 承認・入力の待ちは waiting_user（Dock では needs_user）
+ *   - 最後の文が本人への問いで終えた応答（Stop）も、返事を待っている（waiting_user・input）
  *   - 本人が止めたものは、静かでも「止まっているかも」と言わない
  *   - 名前に残すのは頼みの頭だけで、鍵らしい文字列は伏せる。フォルダは名前だけ
  */
 import { describe, expect, it } from 'vitest';
 import {
   STALL_AFTER_MS,
+  asksUser,
   attentionFor,
   projectName,
   titleFrom,
@@ -47,6 +49,38 @@ describe('agent session events', () => {
     expect(
       transitionFor({ event: 'SessionEnd', sessionId: 'x', reason: 'prompt_input_exit' }),
     ).toMatchObject({ state: 'ended', ended: { reason: 'prompt_input_exit' } });
+  });
+
+  it('treats a response that ends by asking the user as waiting for their answer', () => {
+    expect(
+      transitionFor({
+        event: 'Stop',
+        sessionId: 'x',
+        lastMessage: '直しました。\n\nどちらの案で進めますか？',
+      }),
+    ).toMatchObject({ state: 'waiting_user', waitingReason: 'input', turnEnded: true });
+    expect(
+      transitionFor({ event: 'Stop', sessionId: 'x', lastMessage: '直して、テストも通りました。' }),
+    ).toMatchObject({ state: 'idle', turnEnded: true });
+  });
+
+  it('tells a question to the user apart from a report', () => {
+    for (const asking of [
+      'どちらにしますか？',
+      '進めてよいですか',
+      'LINE で試したら「確かめて」と送ってください。\n\n**どれを先にやるか教えてください。**',
+      'Which option should I take?',
+      '直しました。\n\n- A 案\n- B 案\n\n使う案を選んでください。',
+    ])
+      expect(asksUser(asking), asking).toBe(true);
+    for (const report of [
+      '直しました。テストは通っています。',
+      '例えば「明日は？」と聞けば答えます。\n\nコミットは 1 つで、push はしていません。',
+      '```\nwhat?\n```\n\n終わりました。',
+      '',
+      undefined,
+    ])
+      expect(asksUser(report), String(report)).toBe(false);
   });
 
   it('marks approvals and questions as waiting for the user', () => {
