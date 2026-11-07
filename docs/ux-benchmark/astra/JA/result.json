@@ -19,13 +19,13 @@
     "体感の複雑さ（層 C）: 段は 5、面は 1 枚、増えた窓 0"
   ],
   "product" : "Genie",
-  "startedAt" : "2026-11-07T09:49:20Z",
+  "startedAt" : "2026-11-07T12:54:40Z",
   "steps" : [
     {
       "front" : "com.astra.desktop",
       "interactions" : 0,
       "keyWindow" : true,
-      "ms" : 23,
+      "ms" : 22,
       "name" : "Home（Dock は待機）",
       "surface" : {
         "h" : 76,
@@ -43,7 +43,7 @@
       "keys" : {
         "esc" : "listening→idle"
       },
-      "ms" : 982,
+      "ms" : 983,
       "name" : "Listening",
       "surface" : {
         "h" : 76,
@@ -58,11 +58,11 @@
     {
       "front" : "com.astra.desktop",
       "ids" : {
-        "task" : "989183FA-324F-43E0-9E08-7AE61D162086"
+        "task" : "083883C4-91E5-46F7-81BB-0AED4CD4064B"
       },
       "interactions" : 0,
       "keyWindow" : true,
-      "ms" : 1060,
+      "ms" : 1038,
       "name" : "Running",
       "surface" : {
         "h" : 258,
@@ -71,14 +71,14 @@
         "x" : 504,
         "y" : 859
       },
-      "transitionMs" : 183,
+      "transitionMs" : 184,
       "windows" : 2
     },
     {
       "front" : "com.astra.desktop",
       "ids" : {
-        "confirmation" : "357D17CC-D634-46E6-8E62-C89D56ED2315",
-        "resolved" : "357D17CC-D634-46E6-8E62-C89D56ED2315"
+        "confirmation" : "DFBA277C-7FED-48F8-9A3E-58C7C5601D92",
+        "resolved" : "DFBA277C-7FED-48F8-9A3E-58C7C5601D92"
       },
       "interactions" : 2,
       "keyWindow" : true,
@@ -86,7 +86,7 @@
         "cmdReturn" : "approved",
         "return" : "no-op"
       },
-      "ms" : 1802,
+      "ms" : 1808,
       "name" : "Confirmation",
       "surface" : {
         "h" : 258,
@@ -95,7 +95,7 @@
         "x" : 504,
         "y" : 859
       },
-      "transitionMs" : 207,
+      "transitionMs" : 204,
       "windows" : 2
     },
     {
@@ -105,7 +105,7 @@
       "keys" : {
         "esc" : "result→idle"
       },
-      "ms" : 1286,
+      "ms" : 1270,
       "name" : "Done",
       "surface" : {
         "h" : 76,
@@ -114,11 +114,11 @@
         "x" : 754,
         "y" : 1041
       },
-      "transitionMs" : 195,
+      "transitionMs" : 187,
       "windows" : 2
     }
   ],
   "success" : true,
-  "totalMs" : 5156,
+  "totalMs" : 5123,
   "windowsOpened" : 0
 }
