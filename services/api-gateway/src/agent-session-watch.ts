@@ -66,11 +66,15 @@ export function noticeFor(
   s: AgentSession,
   now: number,
   turn: TurnSummary | null = null,
+  /** 別の PC の hooks から届いたセッションなら、その PC の名前（この Mac なら null） */
+  device: string | null = null,
 ): AgentSessionNotice | null {
   const attention = attentionFor(s, now);
   const tool = ADAPTER_LABELS[s.source];
-  // 「Claude Code が」/「Claude Code（genie）が」
-  const subject = s.project ? `${tool}（${s.project}）が` : `${tool} が`;
+  // 「Claude Code が」/「Claude Code（genie）が」/「Claude Code（genie・MacBook Air）が」
+  const where = [s.project, device].filter(Boolean).join('・');
+  const subject = where ? `${tool}（${where}）が` : `${tool} が`;
+  const terminal = `${device ?? 'Mac'} のターミナル`;
   const name = s.title ?? s.project ?? '名前のないセッション';
   if (attention === 'needs_user') {
     const what =
@@ -86,7 +90,7 @@ export function noticeFor(
       ),
       title: `${tool} が${what}`,
       body: `${name}${s.project && s.title ? `（${s.project}）` : ''}。ターミナルで確かめてください。`,
-      chat: `🔔 ${subject}${what}。Mac のターミナルで確かめてください。`,
+      chat: `🔔 ${subject}${what}。${terminal}で確かめてください。`,
     };
   }
   // 応答を終えて 1 分たった（その間に次の頼みが来ていない）
@@ -112,7 +116,7 @@ export function noticeFor(
       key: `done:${s.stateSince.toISOString()}`,
       title: `${tool} が作業を終えました${check}`,
       body: `${name}${s.project && s.title ? `（${s.project}）` : ''}。結果をターミナルで確かめてください。`,
-      chat: `✅ ${subject}作業を終えました${check}。結果を Mac のターミナルで確かめてください。`,
+      chat: `✅ ${subject}作業を終えました${check}。結果を ${terminal}で確かめてください。`,
     };
   }
   if (attention === 'stalled_suspected') {
@@ -241,7 +245,14 @@ export class AgentSessionWatch {
           testFailed: kinds.includes('test_failed'),
         };
       }
-      const notice = noticeFor(session, now.getTime(), turn);
+      // 別の PC の hooks の鍵から届いたセッションなら、その PC の名前を知らせに入れる
+      const connection = await tx
+        .selectFrom('agent_connections')
+        .select('device')
+        .where('id', '=', row.connection_id)
+        .executeTakeFirst();
+      const device = connection?.device ?? null;
+      const notice = noticeFor(session, now.getTime(), turn, device);
       const fresh = notice && notice.key !== row.notified_key ? notice : null;
       // 知らせたら、次の出来事が来るまで見ない（出来事が見る時刻を決め直す）
       await tx

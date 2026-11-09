@@ -423,3 +423,61 @@ test('passes /line/webhook to a local hub only when one is given', async () => {
   assert.deepEqual(calls, ['http://127.0.0.1:8790/line/webhook']);
   assert.throws(() => createRelay({ gateway: 'http://127.0.0.1:1', hub: 'https://example.com' }));
 });
+
+test('passes the other computer’s Claude Code hooks with their key, and nothing else of the agent API', async () => {
+  const seen = [];
+  const gateway = createServer((req, res) => {
+    let body = '';
+    req.on('data', (c) => (body += c));
+    req.on('end', () => {
+      seen.push(
+        `${req.method} ${req.url} ${req.headers.authorization ?? '-'} ${req.headers.cookie ?? '-'} ${body}`,
+      );
+      res.writeHead(req.url.endsWith('/wait') ? 202 : 200, { 'content-type': 'application/json' });
+      res.end('{"ok":true}');
+    });
+  });
+  await new Promise((r) => gateway.listen(0, '127.0.0.1', r));
+  const relay = createRelay({ gateway: `http://127.0.0.1:${gateway.address().port}` });
+  await new Promise((r) => relay.listen(0, '127.0.0.1', r));
+  const base = `http://127.0.0.1:${relay.address().port}`;
+  const key = `gac_${'k'.repeat(43)}`;
+  const id = '0190a3b4-1111-7222-8333-944445555666';
+  const code = 'p'.repeat(43);
+  const post = (path, headers = { authorization: `Bearer ${key}` }) =>
+    fetch(base + path, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie: 'c=1', ...headers },
+      body: '{"hook_event_name":"Stop"}',
+    });
+  try {
+    assert.equal((await post('/v1/agent-events/claude-code')).status, 200);
+    assert.equal((await post('/v1/agent-approvals/claude-code')).status, 200);
+    assert.equal((await post(`/v1/agent-approvals/${id}/wait`)).status, 202);
+    assert.equal((await fetch(`${base}/v1/agent-pair/${code}`)).status, 200);
+    // 鍵の無い・形の違う鍵は gateway まで行かない
+    assert.equal((await post('/v1/agent-events/claude-code', {})).status, 401);
+    assert.equal(
+      (await post('/v1/agent-events/claude-code', { authorization: 'Bearer a b' })).status,
+      401,
+    );
+    // ほかのエージェントの道（鍵の発行・一覧・仕事を頼む）は通さない
+    assert.equal((await post('/v1/agent-connections')).status, 404);
+    assert.equal((await post('/v1/agent-connections/remote')).status, 404);
+    assert.equal((await post('/v1/agent-jobs')).status, 404);
+    assert.equal((await post('/v1/agent-events/claude-code?x=1')).status, 404);
+    assert.equal((await post('/v1/agent-approvals/not-an-id/wait')).status, 404);
+    assert.equal((await fetch(`${base}/v1/agent-pair/short`)).status, 404);
+    assert.equal((await fetch(`${base}/v1/agent-sessions`)).status, 404);
+    const body = '{"hook_event_name":"Stop"}';
+    assert.deepEqual(seen, [
+      `POST /v1/agent-events/claude-code Bearer ${key} - ${body}`,
+      `POST /v1/agent-approvals/claude-code Bearer ${key} - ${body}`,
+      `POST /v1/agent-approvals/${id}/wait Bearer ${key} - ${body}`,
+      `GET /v1/agent-pair/${code} - - `,
+    ]);
+  } finally {
+    relay.close();
+    gateway.close();
+  }
+});

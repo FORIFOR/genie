@@ -406,9 +406,10 @@ export class AgentApprovals {
     return at !== undefined && at >= since.getTime();
   }
 
-  async #project(cwd: string | undefined): Promise<ProjectInfo | null> {
+  async #project(cwd: string | undefined, remote: boolean): Promise<ProjectInfo | null> {
     if (!cwd) return null;
-    const found = await this.deps.projectOf?.(cwd).catch(() => null);
+    // 別の PC の道は、この Mac の git で読まない（同じ名前のフォルダがあっても別物）
+    const found = remote ? null : await this.deps.projectOf?.(cwd).catch(() => null);
     return found ?? { root: cwd, name: basename(cwd) || cwd, branch: null };
   }
 
@@ -464,7 +465,7 @@ export class AgentApprovals {
         .where('external_session_id', '=', event.sessionId)
         .executeTakeFirst(),
     );
-    const project = await this.#project(event.cwd);
+    const project = await this.#project(event.cwd, Boolean(connection.device));
     const root = project?.root ?? event.cwd ?? '/';
     const questions = askedQuestions(event.toolName, event.toolInput);
     const isQuestion = event.toolName === 'AskUserQuestion';

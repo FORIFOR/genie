@@ -5,6 +5,10 @@
  *   node scripts/claude-code-hooks.mjs install     鍵を発行してキーチェーンに置き、~/.claude/settings.json に hooks を足す
  *   node scripts/claude-code-hooks.mjs status      つながっているか（鍵の値は出さない）
  *   node scripts/claude-code-hooks.mjs uninstall   hooks を外し、鍵を取り消してキーチェーンから消す
+ *   node scripts/claude-code-hooks.mjs remote --name "MacBook Air"
+ *       別の PC（Mac）につなぐ 1 行のコマンドを出す（10 分・1 回。その PC のターミナルで流す。
+ *       公開の入口 GENIE_PUBLIC_URL を通って届く。services/api-gateway/src/remote-hooks.ts）
+ *   node scripts/claude-code-hooks.mjs remote-revoke --name "MacBook Air"   その PC の鍵を取り消す
  *
  * settings.json は**足すだけ・外すだけ**。ほかの hooks や設定には触らない（書く前に .bak を残す）。
  * hooks はすべて async（Claude Code は Genie の返事を待たない）。送り先は手元の gateway だけ。
@@ -40,7 +44,8 @@ export const HOOK_EVENTS = Object.freeze([
   'SessionEnd',
 ]);
 
-const HELP = `使い方: node scripts/claude-code-hooks.mjs <install|status|uninstall> [--state-dir DIR] [--settings FILE]`;
+const HELP = `使い方: node scripts/claude-code-hooks.mjs <install|status|uninstall> [--state-dir DIR] [--settings FILE]
+        node scripts/claude-code-hooks.mjs <remote|remote-revoke> --name "PC の名前"`;
 
 function parseArgs(argv) {
   const options = {
@@ -51,6 +56,7 @@ function parseArgs(argv) {
   for (let i = 1; i < argv.length; i += 2) {
     if (argv[i] === '--state-dir') options.stateDir = argv[i + 1];
     else if (argv[i] === '--settings') options.settings = argv[i + 1];
+    else if (argv[i] === '--name') options.name = argv[i + 1];
     else throw new Error(`知らない指定です: ${argv[i]}`);
   }
   return options;
@@ -187,11 +193,43 @@ async function signIn(stateDir) {
 }
 
 async function main(options) {
-  if (!['install', 'status', 'uninstall'].includes(options.command)) {
+  if (!['install', 'status', 'uninstall', 'remote', 'remote-revoke'].includes(options.command)) {
     console.log(HELP);
     return;
   }
   const { base, access } = await signIn(resolve(options.stateDir));
+  if (options.command === 'remote' || options.command === 'remote-revoke') {
+    const name = (options.name ?? '').trim();
+    if (!name)
+      throw new Error('--name で、その PC の名前を指定してください（例: --name "MacBook Air"）。');
+    if (options.command === 'remote-revoke') {
+      const items = (await api(base, '/v1/agent-connections', { token: access })).items ?? [];
+      const mine = items.filter((c) => c.device === name);
+      for (const c of mine)
+        await api(base, `/v1/agent-connections/${c.id}`, { method: 'DELETE', token: access });
+      console.log(
+        mine.length
+          ? `「${name}」の鍵を取り消しました。その PC の hooks は、次から何も届けません。`
+          : `「${name}」の鍵はありません。`,
+      );
+      return;
+    }
+    const made = await api(base, '/v1/agent-connections/remote', {
+      method: 'POST',
+      token: access,
+      body: { device: name },
+    });
+    const until = new Date(made.expires_at).toLocaleTimeString('ja-JP', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    console.log(
+      `「${name}」のターミナルで、次の 1 行を流してください（${until} まで・1 回だけ）:\n\n  ${made.command}\n\n` +
+        'その PC の Claude Code の知らせと承認が、この Mac の Genie を通って LINE に届きます。\n' +
+        '公開の入口の URL が変わったら（トンネルを立ち上げ直したら）、もう一度出し直してください。',
+    );
+    return;
+  }
   const settings = await readSettings(options.settings);
   const connections = (await api(base, '/v1/agent-connections', { token: access })).items ?? [];
 
@@ -203,7 +241,11 @@ async function main(options) {
           gateway: base,
           hooks: `${installed.length}/${HOOK_EVENTS.length}`,
           keychain: (await hasKey(base)) ? 'ある' : 'ない',
-          connections: connections.map((c) => ({ label: c.label, last_seen_at: c.last_seen_at })),
+          connections: connections.map((c) => ({
+            label: c.label,
+            ...(c.device ? { device: c.device } : {}),
+            last_seen_at: c.last_seen_at,
+          })),
         },
         null,
         2,
@@ -213,7 +255,8 @@ async function main(options) {
   }
 
   // つなぎ直し・外すときは、前に発行した Claude Code の鍵を取り消す（使われない鍵を残さない）
-  for (const c of connections.filter((c) => c.source === 'claude_code'))
+  // 別の PC に渡した鍵（device のあるもの）は、この Mac のつなぎ直しでは取り消さない
+  for (const c of connections.filter((c) => c.source === 'claude_code' && !c.device))
     await api(base, `/v1/agent-connections/${c.id}`, { method: 'DELETE', token: access });
 
   if (options.command === 'uninstall') {

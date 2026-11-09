@@ -137,6 +137,8 @@ export interface MakeAppOptions {
   readonly dataSources?: DataSourceResolver;
   /** 電話（Oathra）の代役。省略すると電話の頼みは受けない。 */
   readonly phone?: import('../src/app.js').AppDeps['phone'];
+  /** 公開の入口（GENIE_PUBLIC_URL）。別の PC の Claude Code をつなぐ試験だけ渡す。 */
+  readonly publicUrl?: string;
   /** チャット（Slack / LINE）。env は本番と同じ名前、外への送信は fetchImpl が受ける。 */
   readonly channels?: {
     readonly env: NodeJS.ProcessEnv;
@@ -323,6 +325,7 @@ export async function makeTestApp(options: MakeAppOptions): Promise<TestApp> {
     rateLimiter: new MemoryRateLimiter(),
     logger: createLogger({ service: 'test', level: 'silent' }, sink),
     tokens: options.tokens,
+    ...(options.publicUrl ? { publicUrl: options.publicUrl } : {}),
     tasks,
     conversations,
     library,

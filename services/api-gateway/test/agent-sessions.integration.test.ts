@@ -307,3 +307,139 @@ describe.skipIf(!url)('agent sessions (Claude Code hooks)', () => {
     ).toBe('working');
   });
 });
+
+/**
+ * 別の PC の Claude Code（remote-hooks.ts）。Mac で 10 分・1 回のコマンドを出し、別の PC がそれで鍵を受け取る。
+ */
+describe.skipIf(!url)('agent sessions from another computer', () => {
+  let harness: TestApp;
+  let app: App;
+  const publicUrl = 'https://genie-test.trycloudflare.com';
+
+  beforeAll(async () => {
+    harness = await makeTestApp({
+      dbConfig: testDbConfig(url!, identityUrl),
+      tokens: await makeTokens(),
+      publicUrl,
+    });
+    app = harness.app;
+  });
+
+  afterAll(async () => {
+    await harness?.close();
+  });
+
+  const signIn = async () => {
+    const issued = await app.inject({
+      method: 'POST',
+      url: '/v1/auth/dev/token',
+      payload: { email: `r-${uuidv7()}@example.com`, display_name: 'R' },
+    });
+    return { authorization: `Bearer ${issued.json<TokenResponse>().access_token}` };
+  };
+
+  const pair = async (auth: { authorization: string }, device: string) => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/agent-connections/remote',
+      headers: auth,
+      payload: { device },
+    });
+    expect(res.statusCode).toBe(201);
+    const body = res.json<{ command: string; expires_at: string }>();
+    const code = /\/v1\/agent-pair\/([A-Za-z0-9_-]{43}) \| sh$/.exec(body.command)?.[1];
+    expect(body.command.startsWith(`curl -fsSL ${publicUrl}/v1/agent-pair/`)).toBe(true);
+    return code!;
+  };
+
+  const fetchInstaller = (code: string) =>
+    app.inject({ method: 'GET', url: `/v1/agent-pair/${code}` });
+
+  const tokenIn = (script: string) => /'(gac_[A-Za-z0-9_-]{43})'/.exec(script)?.[1];
+
+  const hook = (token: string) =>
+    app.inject({
+      method: 'POST',
+      url: '/v1/agent-events/claude-code',
+      headers: { authorization: `Bearer ${token}` },
+      payload: {
+        hook_event_name: 'SessionStart',
+        session_id: `s-${uuidv7()}`,
+        cwd: '/Users/other/Projects/genie',
+      },
+    });
+
+  it('gives the other computer its own key once, through a one-time command', async () => {
+    const auth = await signIn();
+    const code = await pair(auth, 'MacBook Air');
+
+    // ログインなしで取りに来られる（合言葉が鍵の代わり）。2 回目は使えない
+    const first = await fetchInstaller(code);
+    expect(first.statusCode).toBe(200);
+    expect(first.headers['content-type']).toContain('text/x-shellscript');
+    expect(first.headers['cache-control']).toBe('no-store');
+    expect(first.body).toContain(`base='${publicUrl}'`);
+    const token = tokenIn(first.body);
+    expect(token).toBeDefined();
+    const again = await fetchInstaller(code);
+    expect(again.statusCode).toBe(404);
+    expect(again.body).not.toContain('gac_');
+    expect((await fetchInstaller('x'.repeat(43))).statusCode).toBe(404);
+
+    expect((await hook(token!)).statusCode).toBe(202);
+    const listed = (
+      await app.inject({ method: 'GET', url: '/v1/agent-connections', headers: auth })
+    ).json<{ items: { label: string; device: string | null }[] }>().items;
+    expect(listed).toEqual([
+      expect.objectContaining({ label: 'Claude Code（MacBook Air）', device: 'MacBook Air' }),
+    ]);
+
+    // 同じ PC をつなぎ直すと、前の鍵は使えなくなる
+    const second = tokenIn((await fetchInstaller(await pair(auth, 'MacBook Air'))).body);
+    expect((await hook(token!)).statusCode).toBe(401);
+    expect((await hook(second!)).statusCode).toBe(202);
+  });
+
+  it('refuses names that could break the shell, and works only for the signed-in user', async () => {
+    const auth = await signIn();
+    const bad = await app.inject({
+      method: 'POST',
+      url: '/v1/agent-connections/remote',
+      headers: auth,
+      payload: { device: "Air'; echo hi" },
+    });
+    expect(bad.statusCode).toBe(400);
+    const anonymous = await app.inject({
+      method: 'POST',
+      url: '/v1/agent-connections/remote',
+      payload: { device: 'MacBook Air' },
+    });
+    expect(anonymous.statusCode).toBe(401);
+  });
+});
+
+describe.skipIf(!url)('agent sessions from another computer without a public URL', () => {
+  it('does not hand out a command nobody could reach', async () => {
+    const harness = await makeTestApp({
+      dbConfig: testDbConfig(url!, identityUrl),
+      tokens: await makeTokens(),
+    });
+    try {
+      const issued = await harness.app.inject({
+        method: 'POST',
+        url: '/v1/auth/dev/token',
+        payload: { email: `n-${uuidv7()}@example.com`, display_name: 'N' },
+      });
+      const res = await harness.app.inject({
+        method: 'POST',
+        url: '/v1/agent-connections/remote',
+        headers: { authorization: `Bearer ${issued.json<TokenResponse>().access_token}` },
+        payload: { device: 'MacBook Air' },
+      });
+      expect(res.statusCode).toBe(503);
+      expect(res.body).not.toContain('agent-pair');
+    } finally {
+      await harness.close();
+    }
+  });
+});

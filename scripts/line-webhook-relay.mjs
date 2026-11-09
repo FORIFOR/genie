@@ -30,6 +30,10 @@
  *   - GET /v1/channels/reconnect/<32 字のリンク> と、その /status。POST その /callback（貼られた URL。4KB まで）
  * 仕事のホームの承認ルールの取り消しも通す: POST /v1/channels/work/<リンク>/rules/<id>/revoke（本文なし）。
  *   一覧は GET /v1/channels/work/<リンク>/rules（読むだけ）
+ * 別の PC の Claude Code の hooks も通す（services/api-gateway/src/remote-hooks.ts。鍵は gateway が確かめる）:
+ *   - POST /v1/agent-events/claude-code、POST /v1/agent-approvals/claude-code、POST /v1/agent-approvals/<id>/wait
+ *     渡す見出しは content-type と authorization だけ。本文 4 MB まで（道具の出力が大きい出来事は 413 で捨てる）
+ *   - GET /v1/agent-pair/<43 字の合言葉>（その PC に入れるスクリプト。10 分・1 回）
  * 中継（公式アカウント 1 つ、docs/LINE_HUB.ja.md）を手元で動かすときは、`--hub` で
  *   - POST /line/webhook を中継へ通す（LINE の Webhook URL はこちらにする）
  * ほかはすべて 404。
@@ -64,6 +68,12 @@ export const HANDOFF_SOCKET = /^\/v1\/channels\/handoff\/[A-Za-z0-9_-]{32}\/ws$/
 export const MEDIA = /^\/v1\/channels\/media\/[A-Za-z0-9_-]{32}$/;
 /** Genie のブラウザの画面（隠したもの。本人の「画面を見せて」で LINE が取りに来る）。 */
 export const SNAPSHOT = /^\/v1\/channels\/snapshot\/[A-Za-z0-9_-]{32}$/;
+/** 別の PC の Claude Code の hooks（鍵つき）。 */
+export const AGENT_HOOK =
+  /^\/v1\/(?:agent-events\/claude-code|agent-approvals\/claude-code|agent-approvals\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/wait)$/;
+export const AGENT_HOOK_MAX_BODY = 4 * 1024 * 1024;
+/** 別の PC に入れるスクリプト（合言葉つき）。 */
+export const AGENT_PAIR = /^\/v1\/agent-pair\/[A-Za-z0-9_-]{43}$/;
 
 /** LINE はリンクに ?openExternalBrowser=1 を残したまま開くので、クエリは捨ててから道を見る。 */
 const pathOf = (url) => (url ?? '').split('?')[0];
@@ -91,6 +101,7 @@ export function createRelay({ gateway, hub = null, fetchImpl = fetch, log = () =
         SNAPSHOT,
         HANDOFF_PAGE,
         RECONNECT_PAGE,
+        AGENT_PAIR,
       ].some((re) => re.test(pathOf(req.url)))
     ) {
       // 通話・計画のページ。中身（HTML / JSON）をそのまま返す。見出しは gateway が付けたものだけ。
@@ -141,6 +152,58 @@ export function createRelay({ gateway, hub = null, fetchImpl = fetch, log = () =
           },
         );
         upstream.on('error', () => done(502));
+        upstream.end(body);
+      });
+      return undefined;
+    }
+    if (req.method === 'POST' && AGENT_HOOK.test(req.url ?? '')) {
+      const auth = req.headers['authorization'];
+      if (typeof auth !== 'string' || !/^Bearer [A-Za-z0-9_-]{20,200}$/.test(auth)) {
+        req.resume();
+        return done(401);
+      }
+      const chunks = [];
+      let size = 0;
+      let tooLarge = false;
+      req.on('data', (chunk) => {
+        size += chunk.length;
+        if (size > AGENT_HOOK_MAX_BODY) {
+          tooLarge = true;
+          req.destroy();
+          return;
+        }
+        chunks.push(chunk);
+      });
+      req.on('close', () => {
+        if (tooLarge && !res.headersSent) done(413);
+      });
+      req.on('end', () => {
+        if (tooLarge) return;
+        const body = Buffer.concat(chunks);
+        // 承認の待ち（長く待つ問い合わせ）は 25 秒まで。少し長めに待つ
+        const upstream = httpRequest(
+          new URL(req.url ?? '', gateway),
+          {
+            method: 'POST',
+            timeout: 40_000,
+            headers: {
+              'content-type': 'application/json',
+              'content-length': body.length,
+              authorization: auth,
+            },
+          },
+          (answer) => {
+            res.writeHead(answer.statusCode ?? 502, {
+              'content-type': answer.headers['content-type'] ?? 'application/json',
+              'cache-control': 'no-store',
+            });
+            answer.pipe(res);
+          },
+        );
+        upstream.on('timeout', () => upstream.destroy());
+        upstream.on('error', () => {
+          if (!res.headersSent) done(502);
+        });
         upstream.end(body);
       });
       return undefined;

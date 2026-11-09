@@ -124,6 +124,8 @@ export interface AppDeps {
   readonly workLinks?: import('./work-home.js').WorkLinkStore;
   /** Claude Code の承認を LINE から（agent-approvals.ts）。 */
   readonly agentApprovals?: import('./agent-approvals.js').AgentApprovals;
+  /** 公開の入口（GENIE_PUBLIC_URL）。別の PC の Claude Code はここを通って届く */
+  readonly publicUrl?: string | null;
   /** エージェントの仕事（agent-jobs.ts）。 */
   readonly agentJobs?: import('./agent-jobs.js').AgentJobs;
   /** メール・予定の接続が切れたときの知らせと、LINE からのつなぎ直し。 */
@@ -224,6 +226,7 @@ export function buildApp(deps: AppDeps): App {
     db: deps.db,
     ...(deps.agentApprovals ? { approvals: deps.agentApprovals } : {}),
     ...(deps.agentJobs ? { jobs: deps.agentJobs } : {}),
+    ...(deps.publicUrl ? { publicUrl: deps.publicUrl } : {}),
   });
   if (deps.workDesk) registerWorkDeskRoutes(app, deps.workDesk);
   if (deps.workDesk && deps.workLinks)

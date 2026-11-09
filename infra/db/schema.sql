@@ -180,6 +180,8 @@ CREATE TABLE public.agent_connections (
     last_seen_at timestamp with time zone,
     revoked_at timestamp with time zone,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
+    device text,
+    CONSTRAINT agent_connections_device_check CHECK (((device IS NULL) OR ((length(device) >= 1) AND (length(device) <= 40)))),
     CONSTRAINT agent_connections_label_check CHECK (((length(label) >= 1) AND (length(label) <= 80))),
     CONSTRAINT agent_connections_source_check CHECK ((source = ANY (ARRAY['claude_code'::text, 'codex'::text, 'opencode'::text])))
 );
@@ -7562,3 +7564,4 @@ INSERT INTO schema_migrations (version) VALUES ('20261105000000');
 INSERT INTO schema_migrations (version) VALUES ('20261105010000');
 INSERT INTO schema_migrations (version) VALUES ('20261105020000');
 INSERT INTO schema_migrations (version) VALUES ('20261106010000');
+INSERT INTO schema_migrations (version) VALUES ('20261109010000');

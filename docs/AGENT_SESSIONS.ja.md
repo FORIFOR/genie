@@ -25,6 +25,38 @@ node scripts/claude-code-hooks.mjs uninstall   # hooks を外し、鍵を取り�
   hooks が読むときにパスワードを聞かれない。Genie.app の鍵（`com.astra.mac`）とは分けてある
   （出来事のたびに Genie.app を起こさないため）。この鍵でできるのは、自分のセッションの状態を送ることだけ。
 
+### 別の PC の Claude Code（2026-11-09、`services/api-gateway/src/remote-hooks.ts`）
+
+本人の要望「別のPCのclaude codeも通知が来るようにできませんか？」。別の Mac の Claude Code の知らせ・質問・
+承認のカードも、この Mac の Genie を通って LINE に届く。
+
+```sh
+# この Mac で（プレビューと公開の入口 --public-url が動いているとき）
+node scripts/claude-code-hooks.mjs remote --name "MacBook Air"
+#   → curl -fsSL https://<公開の入口>/v1/agent-pair/<合言葉> | sh   （10 分・1 回だけ）
+# その PC のターミナルで、出た 1 行を流す
+node scripts/claude-code-hooks.mjs remote-revoke --name "MacBook Air"   # その PC の鍵を取り消す
+# その PC で hooks を外すとき: ~/.genie/claude-code-hooks-uninstall.sh
+```
+
+- 届く道: その PC → 公開の入口（LINE の Webhook と同じトンネル）→ `scripts/line-webhook-relay.mjs` → gateway。
+  中継が通すのは `POST /v1/agent-events/claude-code`、`POST /v1/agent-approvals/claude-code`、
+  `POST /v1/agent-approvals/<id>/wait`（`authorization: Bearer` の形のものだけ・本文 4 MB まで）と
+  `GET /v1/agent-pair/<合言葉>` だけ。鍵の発行・一覧・仕事を頼む道は外から呼べない。
+- 鍵は PC ごと（`agent_connections.device` にその PC の名前）。同じ名前でつなぎ直すと前の鍵は取り消す。
+  この Mac の `install` / `uninstall` は、別の PC の鍵に触らない。
+- 合言葉は gateway のメモリにだけ置く（10 分・1 回。gateway を立ち上げ直したら出し直す）。平文の鍵は、
+  合言葉で取りに来た 1 回の応答（HTTPS）にだけ載り、その PC のキーチェーン（`com.astra.agent-hook`、
+  アカウントは公開の入口の URL）に `security -i` の標準入力で置く。
+- その PC に置くのは `~/.genie/` の 3 つのスクリプトと、`~/.claude/settings.json` の hooks（足すだけ・前の分は `.bak`）。
+  送り先は `https://` の入口だけ。届かなくても Claude Code は待たない（承認の問いはその PC の画面に残る）。
+- 知らせの文は「Claude Code（genie・MacBook Air）が…MacBook Air のターミナルで確かめてください」。
+- 別の PC の cwd はこの Mac の道ではないので、この Mac の git で読まない（承認のプロジェクト名はフォルダ名だけ）。
+  Genie の仕事（agent_jobs）にも取り込まない。
+- まだ: 公開の入口の URL は、トンネル（cloudflared の quick tunnel）を立ち上げ直すと変わる。そのときは
+  `remote` を出し直す（LINE の Webhook URL と同じ）。変わらない URL にするには名前つきのトンネルが要る。
+  Windows・Linux の入れ方は無い（Mac だけ）。
+
 ## 状態の決め方
 
 | 出来事                                 | state                      | 備考                                                                         |

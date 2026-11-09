@@ -88,6 +88,7 @@ export interface AgentApprovals {
 
 export interface AgentConnections {
   created_at: Generated<Timestamp>;
+  device: string | null;
   id: string;
   label: string;
   last_seen_at: Timestamp | null;

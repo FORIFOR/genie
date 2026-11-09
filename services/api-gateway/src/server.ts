@@ -477,6 +477,7 @@ async function main(): Promise<void> {
     workLinks,
     agentApprovals,
     agentJobs,
+    publicUrl: callConfig.publicUrl,
     connectorReconnects,
     // ブラウザの引き継ぎ（Genie 専用のブラウザがログインの壁で止まったら、本人が LINE から操作する）
     handoffs: {

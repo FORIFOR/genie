@@ -91,6 +91,11 @@ export interface AgentConnection {
   readonly tenantId: string;
   readonly userId: string;
   readonly source: AgentSource;
+  /**
+   * 別の PC に渡した hooks の鍵なら、その PC の名前（この Mac なら null）。
+   * 届く cwd はその PC の中の道なので、この Mac の git やフォルダで読まない。
+   */
+  readonly device?: string | null;
 }
 
 /** hooks の出来事。残す項目だけに絞ったもの。 */
@@ -430,6 +435,8 @@ export class AgentSessionStore {
     userId: string;
     source: AgentSource;
     label: string;
+    /** 別の PC に渡す鍵なら、その PC の名前 */
+    device?: string | null;
   }): Promise<{ id: string; token: string }> {
     const id = uuidv7();
     const token = TOKEN_PREFIX + randomBytes(32).toString('base64url');
@@ -442,6 +449,7 @@ export class AgentSessionStore {
           user_id: input.userId,
           source: input.source,
           label: input.label,
+          device: input.device ?? null,
           token_hash: hash(token),
         })
         .execute(),
@@ -473,7 +481,7 @@ export class AgentSessionStore {
     return withTenant(this.db, tenantId, (tx) =>
       tx
         .selectFrom('agent_connections')
-        .select(['id', 'source', 'label', 'last_seen_at', 'created_at'])
+        .select(['id', 'source', 'label', 'device', 'last_seen_at', 'created_at'])
         .where('user_id', '=', userId)
         .where('revoked_at', 'is', null)
         .orderBy('created_at', 'desc')
@@ -506,11 +514,20 @@ export class AgentSessionStore {
         .executeTakeFirst(),
     );
     if (!row || row.revoked_at) return null;
+    // PC の名前は名乗りの役（astra_identity）には見せていない列なので、テナントの内側で読む
+    const extra = await withTenant(this.db, row.tenant_id, (tx) =>
+      tx
+        .selectFrom('agent_connections')
+        .select('device')
+        .where('id', '=', row.id)
+        .executeTakeFirst(),
+    );
     return {
       id: row.id,
       tenantId: row.tenant_id,
       userId: row.user_id,
       source: row.source as AgentSource,
+      device: extra?.device ?? null,
     };
   }
 

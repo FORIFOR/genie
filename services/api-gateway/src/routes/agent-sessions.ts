@@ -4,6 +4,8 @@
  *   POST   /v1/agent-connections               hooks の鍵を発行する（本人。平文はこの応答だけ）
  *   GET    /v1/agent-connections               発行した鍵の一覧（平文は出さない）
  *   DELETE /v1/agent-connections/:id           鍵を取り消す
+ *   POST   /v1/agent-connections/remote        別の PC につなぐ 10 分・1 回のコマンドを出す（remote-hooks.ts）
+ *   GET    /v1/agent-pair/:code                別の PC がそのコマンドで取りに来る入れ方（鍵はこの応答だけ）
  *   POST   /v1/agent-events/claude-code        Claude Code の hooks の受け口（鍵で名乗る。ログインは要らない）
  *   POST   /v1/agent-approvals/claude-code     Claude Code が許可を求めた → 本人の LINE にカード（agent-approvals.ts）
  *   POST   /v1/agent-approvals/:id/wait        hooks が LINE の答えを取りに来る（長く待つ問い合わせ）
@@ -24,6 +26,14 @@ import { bearerToken } from '../auth/tokens.js';
 import { AgentSessionStore, attentionFor, type AgentSession } from '../agent-sessions.js';
 import { hookOutput, type AgentApprovals } from '../agent-approvals.js';
 import { JobRefused, type AgentJobs } from '../agent-jobs.js';
+import {
+  DEVICE_NAME,
+  PAIR_CODE,
+  PairingCodes,
+  installerScript,
+  pairCommand,
+  publicBase,
+} from '../remote-hooks.js';
 
 export interface AgentSessionRouteDeps {
   readonly db: DbHandle;
@@ -31,6 +41,9 @@ export interface AgentSessionRouteDeps {
   readonly approvals?: AgentApprovals;
   /** エージェントの仕事（セッションを仕事に結び付ける・仕事を頼む）。 */
   readonly jobs?: AgentJobs;
+  /** 公開の入口（GENIE_PUBLIC_URL）。別の PC はここを通って届く。無ければ別の PC にはつながない */
+  readonly publicUrl?: string | null;
+  readonly pairing?: PairingCodes;
   readonly now?: () => Date;
 }
 
@@ -47,6 +60,9 @@ const Wait = z.object({ wait_ms: z.number().int().min(0).max(25_000) });
 const Connect = z.object({
   source: z.literal('claude_code'),
   label: z.string().trim().min(1).max(80).default('Claude Code'),
+});
+const Remote = z.object({
+  device: z.string().trim().regex(DEVICE_NAME, 'PC の名前は文字・数字・空白・. _ - の 40 字まで'),
 });
 const Patch = z.object({ user_policy: z.enum(['watch', 'paused_by_user']) });
 const JobBody = z.object({
@@ -140,6 +156,57 @@ export function registerAgentSessionRoutes(app: App, deps: AgentSessionRouteDeps
     return { id: issued.id, source: body.source, label: body.label, token: issued.token };
   });
 
+  const pairing = deps.pairing ?? new PairingCodes(now);
+
+  app.post('/v1/agent-connections/remote', async (request, reply) => {
+    const principal = requirePrincipal();
+    const body = Remote.parse(request.body ?? {});
+    const base = publicBase(deps.publicUrl);
+    if (!base)
+      throw new GenieError(
+        'common.unavailable',
+        '公開の入口（GENIE_PUBLIC_URL の https）が無いので、別の PC からは届きません。',
+      );
+    const issued = pairing.issue({
+      tenantId: principal.tenantId,
+      userId: principal.userId,
+      device: body.device,
+    });
+    reply.code(201);
+    return {
+      device: body.device,
+      expires_at: issued.expiresAt.toISOString(),
+      command: pairCommand(base, issued.code),
+    };
+  });
+
+  // 別の PC が取りに来る。合言葉が鍵の代わり（10 分・1 回）。そのたびに前の同じ PC の鍵は取り消す
+  app.get<{ Params: { code: string } }>(
+    '/v1/agent-pair/:code',
+    { config: { auth: false } },
+    async (request, reply) => {
+      const base = publicBase(deps.publicUrl);
+      const found = PAIR_CODE.test(request.params.code) ? pairing.take(request.params.code) : null;
+      reply
+        .header('content-type', 'text/x-shellscript; charset=utf-8')
+        .header('cache-control', 'no-store');
+      if (!found || !base) {
+        reply.code(404);
+        return "#!/bin/sh\necho 'このコマンドは使えません（10 分の期限切れか、使い済み）。Genie の Mac で出し直してください。' >&2\nexit 1\n";
+      }
+      for (const c of await store.connections(found.tenantId, found.userId))
+        if (c.device === found.device) await store.revoke(found.tenantId, found.userId, c.id);
+      const issued = await store.connect({
+        tenantId: found.tenantId,
+        userId: found.userId,
+        source: 'claude_code',
+        label: `Claude Code（${found.device}）`,
+        device: found.device,
+      });
+      return installerScript({ base, token: issued.token, device: found.device });
+    },
+  );
+
   app.get('/v1/agent-connections', async () => {
     const principal = requirePrincipal();
     const rows = await store.connections(principal.tenantId, principal.userId);
@@ -148,6 +215,7 @@ export function registerAgentSessionRoutes(app: App, deps: AgentSessionRouteDeps
         id: r.id,
         source: r.source,
         label: r.label,
+        device: r.device,
         last_seen_at: r.last_seen_at ? new Date(r.last_seen_at).toISOString() : null,
         created_at: new Date(r.created_at).toISOString(),
       })),
@@ -195,10 +263,12 @@ export function registerAgentSessionRoutes(app: App, deps: AgentSessionRouteDeps
           ? { command: commandOf(h.tool_input)! }
           : {}),
       });
-      // どの仕事のセッションか（本人が直接始めたものは、読むだけの仕事として取り込む）
-      await deps.jobs
-        ?.observe(connection.tenantId, connection.userId, session, h.cwd)
-        .catch(() => undefined);
+      // どの仕事のセッションか（本人が直接始めたものは、読むだけの仕事として取り込む）。
+      // 別の PC のセッションは Genie の仕事にしない（その PC のフォルダはこの Mac に無い）
+      if (!connection.device)
+        await deps.jobs
+          ?.observe(connection.tenantId, connection.userId, session, h.cwd)
+          .catch(() => undefined);
       // LINE に出した承認のうち、Mac で答え済みになったものを取り下げる
       await deps.approvals
         ?.observe(connection, {
