@@ -1,0 +1,25 @@
+=== 基準点から変わっていない computer-use ファイル ===
+UNCHANGED scripts/build-computer-helper.sh
+UNCHANGED scripts/computer-model-compare.mjs
+UNCHANGED scripts/computer-use.mjs
+UNCHANGED scripts/test-background-computer.sh
+UNCHANGED scripts/test-native-input.sh
+UNCHANGED scripts/tests/computer-use.test.mjs
+CHANGED   tools/computer-use/BackgroundAX.swift
+UNCHANGED tools/computer-use/BackgroundAXTests.swift
+UNCHANGED tools/computer-use/BackgroundFixture.swift
+UNCHANGED tools/computer-use/BackgroundNativeInput.swift
+CHANGED   tools/computer-use/BackgroundNativeTests.swift
+CHANGED   tools/computer-use/genie-computer.swift
+UNCHANGED tools/computer-use/NativeInputFixture.swift
+UNCHANGED tools/computer-use/PrivateSPIBridge.swift
+UNCHANGED tools/computer-use/test-app.swift
+UNCHANGED workers/agent-host/src/cloud-vision-budget.ts
+CHANGED   workers/agent-host/src/computer-vision-device.ts
+CHANGED   workers/agent-host/src/computer-vision-policy.ts
+CHANGED   workers/agent-host/src/computer-vision-prompts.ts
+CHANGED   workers/agent-host/src/computer-vision.ts
+CHANGED   workers/agent-host/test/background-vision.node.mjs
+UNCHANGED workers/agent-host/test/cloud-budget.node.mjs
+UNCHANGED workers/agent-host/test/computer-vision-integration.node.mjs
+CHANGED   workers/agent-host/test/computer-vision.node.mjs

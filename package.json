@@ -1,6 +1,7 @@
 {
   "name": "genie",
   "private": true,
+  "license": "MIT",
   "version": "0.1.4",
   "type": "module",
   "packageManager": "pnpm@10.12.2",
@@ -66,7 +67,9 @@
     "verify:session": "apps/genie-macos/.build/debug/GenieMac --selftest session && apps/genie-macos/.build/debug/GenieMac --selftest sessionsync",
     "verify:swift-roundtrip": "./scripts/verify-swift-roundtrip.sh",
     "verify:ui-scale": "apps/genie-macos/.build/debug/GenieMac --selftest uiscale",
-    "verify:visual": "apps/genie-macos/.build/debug/GenieMac --selftest sessionshots /tmp/astra-visual && apps/genie-macos/.build/debug/GenieMac --selftest sessionshots /tmp/astra-visual-dark dark"
+    "verify:visual": "apps/genie-macos/.build/debug/GenieMac --selftest sessionshots /tmp/astra-visual && apps/genie-macos/.build/debug/GenieMac --selftest sessionshots /tmp/astra-visual-dark dark",
+    "secrets": "node scripts/secrets.mjs",
+    "line-hub": "node scripts/line-hub.mjs"
   },
   "devDependencies": {
     "@types/node": "catalog:",

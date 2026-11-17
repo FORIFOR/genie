@@ -23,6 +23,8 @@ OAuth provider verification, consent-screen branding and public access restricti
 
 ## Recovery
 
+- Renewal refused by the provider: Genie tells you once on LINE. Send 「Google をつなぎ直して」 for a personal 15-minute link, allow access in the phone browser, then paste the address of the page that fails to open (`http://127.0.0.1…`). The Mac app holds the PKCE verifier, exchanges the code and saves to the Keychain, so tokens and the verifier never leave the Mac. The Mac and Genie must be running.
+
 - Closed/denied authorization: retry **接続**. No ungranted service is marked connected.
 - Partial consent: **接続を完了** to add the remaining service.
 - Network/session failure: **再確認**, then retry the connection.

@@ -11,7 +11,10 @@ import SwiftUI
 ///   - 窓を増やさない・焦点を奪わない
 extension SelfTest {
     @MainActor
-    static func replyFlowGate() {
+    static func replyFlowGate() async {
+        // 確認は止まらずに待つ（`Confirm.approve` は async）。ここでも run loop を空回しせず、
+        // 待つ間は suspend して、通常のイベントループに Dock の描画と答えを任せる。
+        func settleRunLoop(_ s: Double) async { try? await Task.sleep(nanoseconds: UInt64(s * 1_000_000_000)) }
         var fail: [String] = []
         func check(_ ok: Bool, _ msg: String) { if !ok { fail.append(msg) } }
         var rows: [String] = []
@@ -55,14 +58,14 @@ extension SelfTest {
         var sent: [ReplyFlow.Draft] = []
         var connectAsked = 0
         WindowCoordinator.shared.showVoiceHUD()
-        settleRunLoop(0.5)
+        await settleRunLoop(0.5)
         let windowsBefore = NSApp.windows.filter { $0.isVisible }.count
         let keyBefore = NSApp.keyWindow
 
         // 2a. 押さなければ送らない（取消）
-        flow.sender = { d in sent.append(d); return .sent(taskId: "t") }
+        flow.sender = { d, _ in sent.append(d); return .sent(taskId: "t") }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { GenieStateStore.shared.resolveConfirmation(approved: false) }
-        let cancelled = flow.present(draft)
+        let cancelled = await flow.present(draft)
         check(cancelled == .cancelled && sent.isEmpty, "取消なのに送った")
         row("draft_shown_before_send", "PASS")
 
@@ -70,7 +73,7 @@ extension SelfTest {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
             GenieStateStore.shared.resolveConfirmation(approved: true, edits: ["__preview": "直した本文です。"])
         }
-        let ok = flow.present(draft)
+        let ok = await flow.present(draft)
         check(ok == .sent(taskId: "t") && sent.last?.body == "直した本文です。", "直した本文が送られない \(String(describing: sent.last?.body))")
         check(sent.count == 1, "送信が 1 回ではない (\(sent.count))")
         row("edited_body_sent", "PASS")
@@ -78,7 +81,7 @@ extension SelfTest {
         // 2c. 送る接続が無い → 理由 → 接続 → 確認へ戻る（自動では送らない）→ 押して送る
         sent.removeAll()
         var state = 0
-        flow.sender = { d in
+        flow.sender = { d, _ in
             state += 1
             if state == 1 { return .needsConnection(pluginId: "com.astra.gmail", connectorId: "gmail-actions") }
             sent.append(d); return .sent(taskId: "t2")
@@ -87,7 +90,7 @@ extension SelfTest {
         // 1 回目の「送る」→ 接続の確認（接続する）→ 接続完了 → 確認カードに戻る → 2 回目の「送る」
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { GenieStateStore.shared.resolveConfirmation(approved: true) }      // 送る
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { GenieStateStore.shared.resolveConfirmation(approved: true) }      // 接続する
-        let first = flow.present(draft)
+        let first = await flow.present(draft)
         check(first == .needsConnection(pluginId: "com.astra.gmail", connectorId: "gmail-actions"), "接続が要ると言わない \(first)")
         check(connectAsked == 1, "接続を始めていない")
         check(flow.pendingDraft != nil, "下書きを覚えていない")
@@ -95,14 +98,14 @@ extension SelfTest {
         // 接続完了。**ここで自動送信しない。**確認カードが出直すので、取消して確かめる。
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { GenieStateStore.shared.resolveConfirmation(approved: false) }
         ConnectorState.shared.installActionsStatus(pluginId: "com.astra.gmail", connectorId: "gmail-actions", .connected)
-        settleRunLoop(1.2)
+        await settleRunLoop(1.2)
         check(sent.isEmpty, "接続しただけで送った（permission grant auto-send）")
         check(flow.pendingDraft == nil, "接続後に確認へ戻っていない")
         check(flow.presentedCount >= 4, "接続後に確認カードが出直していない (\(flow.presentedCount))")
         row("permission_grant_auto_send", sent.isEmpty ? "0" : "FAIL")
         // 本人がもう一度「送る」を押したときだけ送る
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { GenieStateStore.shared.resolveConfirmation(approved: true) }
-        let second = flow.present(draft)
+        let second = await flow.present(draft)
         check(second == .sent(taskId: "t2") && sent.count == 1, "2 回目の送るで送られない")
         row("jit_send_permission", "PASS")
         row("external_confirmation", "100%")
@@ -118,34 +121,34 @@ extension SelfTest {
         check(outlookDraft.source == "outlook_mail" && outlookDraft.inReplyTo == "AAMk1", "Outlook の返信先（provider message id）")
         var askedFor: (String, String)?
         flow.connector = { p, c in connectAsked += 1; askedFor = (p, c); return true }
-        flow.sender = { d in
+        flow.sender = { d, _ in
             state += 1
             if state == 1 { let c = ReplyFlow.actionsConnection(for: d.source); return .needsConnection(pluginId: c.pluginId, connectorId: c.connectorId) }
             sent.append(d); return .sent(taskId: "t3")
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { GenieStateStore.shared.resolveConfirmation(approved: true) }
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { GenieStateStore.shared.resolveConfirmation(approved: true) }
-        let o1 = flow.present(outlookDraft)
+        let o1 = await flow.present(outlookDraft)
         check(o1 == .needsConnection(pluginId: "com.astra.outlook", connectorId: "outlook-actions"), "Outlook の送る接続を求めない \(o1)")
         check(askedFor?.0 == "com.astra.outlook" && askedFor?.1 == "outlook-actions", "Outlook の接続先が違う")
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { GenieStateStore.shared.resolveConfirmation(approved: false) }
         ConnectorState.shared.installActionsStatus(pluginId: "com.astra.outlook", connectorId: "outlook-actions", .connected)
-        settleRunLoop(1.2)
+        await settleRunLoop(1.2)
         check(sent.isEmpty && flow.pendingDraft == nil, "Outlook: 接続しただけで送った / 確認へ戻らない")
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { GenieStateStore.shared.resolveConfirmation(approved: true, edits: ["__preview": "直した Outlook 本文"]) }
-        let o2 = flow.present(outlookDraft)
+        let o2 = await flow.present(outlookDraft)
         check(o2 == .sent(taskId: "t3") && sent.last?.body == "直した Outlook 本文", "Outlook: 2 回目の送るで直した本文が送られない")
         row("outlook_oauth_completion_auto_send", "0")
         row("outlook_edited_text_sent", "PASS")
 
         // 3. 静かさ
-        settleRunLoop(0.3)
+        await settleRunLoop(0.3)
         check(NSApp.windows.filter { $0.isVisible }.count == windowsBefore, "窓が増えた")
         check(NSApp.keyWindow === keyBefore, "焦点が動いた")
         row("focus_theft", "0"); row("extra_window", "0")
 
         flow.resetForTest()
-        flow.sender = { d in ReplyFlow.sendThroughCloud(d) }
+        flow.sender = { d, approval in ReplyFlow.sendThroughCloud(d, approval: approval) }
         for r in rows { FileHandle.standardError.write(("REPLY_UI\t" + r + "\n").data(using: .utf8)!) }
         if fail.isEmpty { print("SELFTEST_OK replyflow: \(rows.count) 行"); exit(0) }
         print("SELFTEST_FAIL replyflow: \(fail.joined(separator: " / "))"); exit(1)

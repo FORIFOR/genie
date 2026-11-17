@@ -15,6 +15,7 @@ import {
 } from '@genie/contracts';
 import { withTenant } from '@genie/db';
 import { appendEvent } from '@genie/service-task';
+import { HostBridge } from '@genie/service-agent-host';
 import { makeTestApp, makeTokens, testDbConfig, type TestApp } from './support.js';
 import type { App } from '../src/fastify.js';
 
@@ -93,6 +94,113 @@ describe.skipIf(!url)('task and artifact http surface', () => {
 
   afterAll(async () => {
     await harness?.close();
+  });
+
+  it('revokes the authenticated claimed host step when the task is cancelled through HTTP', async () => {
+    const created = (await createTask(`authority-${uuidv7()}`)).json<Task>();
+    const hostResponse = await app.inject({
+      method: 'POST',
+      url: '/v1/agent-hosts/heartbeat',
+      headers: auth,
+      payload: { device_label: 'authority-test', models: ['test'] },
+    });
+    expect(hostResponse.statusCode).toBe(200);
+    const hostId = hostResponse.json<{ id: string }>().id;
+    const bridge = new HostBridge({ db: harness.db });
+    const request = await bridge.request({
+      tenantId,
+      taskId: created.id,
+      stepIndex: 0,
+      toolId: 'mail.send',
+      args: {},
+    });
+    const claimed = await app.inject({
+      method: 'POST',
+      url: '/v1/host-steps/claim',
+      headers: auth,
+      payload: { host_id: hostId },
+    });
+    expect(claimed.statusCode).toBe(200);
+    expect(claimed.json<{ id: string }>().id).toBe(request.id);
+    const authority = () =>
+      app.inject({
+        method: 'POST',
+        url: `/v1/host-steps/${request.id}/authority`,
+        headers: auth,
+        payload: { host_id: hostId },
+      });
+    expect((await authority()).json()).toEqual({ allowed: true });
+    const anonymous = await app.inject({
+      method: 'POST',
+      url: `/v1/host-steps/${request.id}/authority`,
+      payload: { host_id: hostId },
+    });
+    expect(anonymous.statusCode).toBe(401);
+    const cancelled = await app.inject({
+      method: 'POST',
+      url: `/v1/tasks/${created.id}/cancel`,
+      headers: auth,
+      payload: { reason: 'user_requested' },
+    });
+    expect(cancelled.statusCode).toBe(200);
+    expect((await authority()).json()).toEqual({ allowed: false });
+    // Stopping future input must not discard a receipt for an input already sent.
+    const completed = await app.inject({
+      method: 'POST',
+      url: `/v1/host-steps/${request.id}/complete`,
+      headers: auth,
+      payload: { host_id: hostId, result: { status: 'accepted', providerOrderId: 'already-sent' } },
+    });
+    expect(completed.statusCode).toBe(204);
+    expect(await bridge.get(tenantId, request.id)).toMatchObject({
+      status: 'DONE',
+      result: { providerOrderId: 'already-sent' },
+    });
+  });
+
+  it('persists unknown order identity on the failed host request for read-only reconciliation', async () => {
+    const created = (await createTask(`unknown-${uuidv7()}`)).json<Task>();
+    const host = await app.inject({
+      method: 'POST',
+      url: '/v1/agent-hosts/heartbeat',
+      headers: auth,
+      payload: { device_label: 'unknown-result-test', models: ['test'] },
+    });
+    const hostId = host.json<{ id: string }>().id;
+    const bridge = new HostBridge({ db: harness.db });
+    const request = await bridge.request({
+      tenantId,
+      taskId: created.id,
+      stepIndex: 0,
+      toolId: 'transaction.submit',
+      args: {},
+    });
+    await bridge.claimNext({ tenantId, hostId });
+    const result = {
+      status: 'unknown',
+      provider: 'fixture',
+      mode: 'simulation',
+      account: 'account',
+      orderKey: 'order-1',
+      quoteHash: 'a'.repeat(64),
+    };
+    const failed = await app.inject({
+      method: 'POST',
+      url: `/v1/host-steps/${request.id}/fail`,
+      headers: auth,
+      payload: {
+        host_id: hostId,
+        error: { code: 'transaction.result_unknown', message: '受付状況を照会してください。' },
+        result,
+      },
+    });
+    expect(failed.statusCode).toBe(204);
+    expect(await bridge.get(tenantId, request.id)).toMatchObject({
+      status: 'FAILED',
+      result,
+      error: { code: 'transaction.result_unknown' },
+    });
+    expect(await bridge.claimNext({ tenantId, hostId })).toBeNull();
   });
 
   describe('POST /v1/tasks', () => {

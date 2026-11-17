@@ -117,14 +117,41 @@ export class HostLanguageModel implements LanguageModel {
     );
   }
 
+  async followUp(question: string, claims: readonly string[], max: number): Promise<string[]> {
+    const result = await this.#ask('llm.follow_up', { question, claims: [...claims], max });
+    return stringsOf(result, 'queries').slice(0, max);
+  }
+
+  async assess(question: string, claims: readonly string[]): Promise<Finding[]> {
+    const result = await this.#ask('llm.assess', { question, claims: [...claims] });
+    const raw = Array.isArray((result as { assessments?: unknown })?.assessments)
+      ? (result as { assessments: unknown[] }).assessments
+      : [];
+    return groundedFindings(
+      raw.map((item) => ({
+        text: stringOf(item, 'text'),
+        supports: Array.isArray((item as { supports?: unknown })?.supports)
+          ? (item as { supports: unknown[] }).supports.filter(
+              (n): n is number => typeof n === 'number',
+            )
+          : [],
+      })),
+      claims.length,
+    );
+  }
+
   async answer(
     question: string,
     context?: string,
     attachments?: readonly VisualAttachment[],
+    history?: readonly { readonly role: 'user' | 'genie'; readonly text: string }[],
   ): Promise<string> {
     const result = await this.#ask('llm.answer', {
       question,
       ...(context ? { context } : {}),
+      ...(history && history.length > 0
+        ? { history: history.map((h) => ({ role: h.role, text: h.text })) }
+        : {}),
       // 画像は id で渡す。端末が `visual-context/<id>.png` を読む。画素は cloud を通らない。
       ...(attachments && attachments.length > 0
         ? { images: attachments.map((a) => ({ id: a.id, kind: a.kind, label: a.label })) }

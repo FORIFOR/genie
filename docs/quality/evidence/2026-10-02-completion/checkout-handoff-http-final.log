@@ -1,0 +1,10 @@
+
+ RUN  v3.2.7 /Users/shuhei/Projects/genie
+
+ ✓ services/api-gateway/test/conversations-transaction.integration.test.ts (20 tests) 471ms
+
+ Test Files  1 passed (1)
+      Tests  20 passed (20)
+   Start at  06:12:08
+   Duration  1.46s (transform 307ms, setup 0ms, collect 757ms, tests 471ms, environment 0ms, prepare 29ms)
+

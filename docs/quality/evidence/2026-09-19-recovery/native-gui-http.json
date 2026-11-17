@@ -1,0 +1,136 @@
+[
+  {
+    "method": "POST",
+    "path": "/v1/auth/dev/token",
+    "status": 200,
+    "dropped": false
+  },
+  {
+    "method": "POST",
+    "path": "/v1/conversations",
+    "status": 201,
+    "dropped": false
+  },
+  {
+    "method": "POST",
+    "path": "/v1/conversations/01a0b91f-e633-7000-9db6-48430d9e813e/turns",
+    "status": 202,
+    "dropped": true,
+    "task_id": "01a0b91f-e69c-7000-809d-536234c24460"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/conversations/01a0b91f-e633-7000-9db6-48430d9e813e/requests/db36906e-121a-463e-9f15-5513fad1ab06",
+    "status": 200,
+    "dropped": false
+  },
+  {
+    "method": "GET",
+    "path": "/v1/tasks/01a0b91f-e69c-7000-809d-536234c24460",
+    "status": 200,
+    "dropped": false
+  },
+  {
+    "method": "GET",
+    "path": "/v1/tasks/01a0b91f-e69c-7000-809d-536234c24460",
+    "status": 200,
+    "dropped": false
+  },
+  {
+    "method": "GET",
+    "path": "/v1/tasks/01a0b91f-e69c-7000-809d-536234c24460",
+    "status": 200,
+    "dropped": false
+  },
+  {
+    "method": "GET",
+    "path": "/v1/tasks/01a0b91f-e69c-7000-809d-536234c24460",
+    "status": 200,
+    "dropped": false
+  },
+  {
+    "method": "GET",
+    "path": "/v1/tasks/01a0b91f-e69c-7000-809d-536234c24460",
+    "status": 200,
+    "dropped": false
+  },
+  {
+    "method": "GET",
+    "path": "/v1/tasks/01a0b91f-e69c-7000-809d-536234c24460",
+    "status": 200,
+    "dropped": false
+  },
+  {
+    "method": "GET",
+    "path": "/v1/tasks/01a0b91f-e69c-7000-809d-536234c24460",
+    "status": 200,
+    "dropped": false
+  },
+  {
+    "method": "GET",
+    "path": "/v1/tasks/01a0b91f-e69c-7000-809d-536234c24460",
+    "status": 200,
+    "dropped": false
+  },
+  {
+    "method": "GET",
+    "path": "/v1/tasks/01a0b91f-e69c-7000-809d-536234c24460",
+    "status": 200,
+    "dropped": false
+  },
+  {
+    "method": "GET",
+    "path": "/v1/tasks/01a0b91f-e69c-7000-809d-536234c24460",
+    "status": 200,
+    "dropped": false
+  },
+  {
+    "method": "GET",
+    "path": "/v1/artifacts/01a0b920-0ad7-7000-b60a-36d94808099f/content",
+    "status": 200,
+    "dropped": false
+  },
+  {
+    "method": "POST",
+    "path": "/v1/auth/dev/token",
+    "status": 200,
+    "dropped": false
+  },
+  {
+    "method": "POST",
+    "path": "/v1/conversations",
+    "status": 201,
+    "dropped": false
+  },
+  {
+    "method": "POST",
+    "path": "/v1/conversations/01a0b921-2f49-7000-b282-00e8047b73be/turns",
+    "status": 202,
+    "dropped": true,
+    "task_id": "01a0b921-2f86-7000-8020-f077ef7a7440"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/conversations/01a0b921-2f49-7000-b282-00e8047b73be/requests/b338f30e-b819-4569-a78c-8f08c8f8712c",
+    "status": 200,
+    "dropped": false
+  },
+  {
+    "method": "GET",
+    "path": "/v1/tasks/01a0b921-2f86-7000-8020-f077ef7a7440",
+    "status": 200,
+    "dropped": false
+  },
+  {
+    "method": "GET",
+    "path": "/v1/tasks/01a0b921-2f86-7000-8020-f077ef7a7440",
+    "status": 200,
+    "dropped": false
+  },
+  {
+    "method": "GET",
+    "path": "/v1/artifacts/01a0b921-3801-7000-9c04-6d31a3ce2cb7/content",
+    "status": 200,
+    "dropped": false
+  }
+]

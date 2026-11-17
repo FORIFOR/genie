@@ -1,0 +1,11 @@
+Evidence: /private/tmp/genie-background-native.VKSDod
+STAGE route ax_press by element point 310,633 local 130,168
+STAGE route ax_value by element point 335,772 local 155,307
+STAGE route ax_value by element point 335,772 local 155,307
+TEST capture
+TEST click
+TEST capture for text
+TEST type
+TEST append preserves existing native text
+TEST append refuses a value changed after preview during marker travel
+FAIL Failure(code: "stale_frame")

@@ -8,9 +8,10 @@
 #   → もう一度起動し直しても ready のまま
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+source "$ROOT/scripts/build-resource-env.sh"
 cd "$ROOT/apps/genie-macos"
-swift build >/dev/null
-BIN="$(swift build --show-bin-path)/GenieMac"
+swift build --jobs "$GENIE_SWIFT_BUILD_JOBS" >/dev/null
+BIN="$(swift build --jobs "$GENIE_SWIFT_BUILD_JOBS" --show-bin-path)/GenieMac"
 DB="$(mktemp -t astra-experience).sqlite"
 trap 'rm -f "$DB" "$DB"-wal "$DB"-shm' EXIT
 

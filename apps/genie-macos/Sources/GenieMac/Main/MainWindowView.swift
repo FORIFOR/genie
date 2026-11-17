@@ -71,6 +71,8 @@ final class MainData: ObservableObject {
     @Published var apps: [String] = []
     @Published var library: [String] = []
     @Published var connected = false
+    @Published private(set) var connectionIssue: GatewayConnectionIssue?
+    let credentialRecovery = GatewayCredentialRecovery()
     private let base = ProcessInfo.processInfo.environment["ASTRA_GATEWAY_URL"] ?? "http://127.0.0.1:3000"
 
     private var session: GatewaySession?
@@ -79,7 +81,10 @@ final class MainData: ObservableObject {
     private var configuredToken: String?
 
     /// A Dock action can arrive before the main window has ever opened.
-    func ensureConnected(reconnect: Bool = false) async -> Bool {
+    func ensureConnected(reconnect: Bool = false, afterUserAction: Bool = false) async -> Bool {
+        if reconnect || afterUserAction {
+            guard credentialRecovery.resumeForUserSubmission() else { return false }
+        } else if credentialRecovery.holdsAutomaticConnection { return false }
         if reconnect && loading {
             for _ in 0..<150 {
                 if !loading { break }
@@ -96,7 +101,25 @@ final class MainData: ObservableObject {
         return false
     }
 
+    private var lastAutoReconnect = Date.distantPast
+    /// 続けて入り直した回数。つながったら 0 に戻す。
+    private var autoReconnects = 0
+    /// 入り直すまでの間（30 秒から倍にして 5 分まで）。一律 5 分だと、サービスを起動し直すたびに
+    /// 最初の入り直しが再起動の途中に当たって失敗し、次まで 5 分つながらなかった（2026-10-19 11:39〜11:44）。
+    static func autoReconnectInterval(after attempts: Int) -> TimeInterval {
+        min(300, 30 * pow(2, Double(min(attempts, 4))))
+    }
+
+    static func isLoopback(_ base: String) -> Bool {
+        guard let host = URL(string: base)?.host else { return false }
+        return ["127.0.0.1", "localhost", "::1"].contains(host)
+    }
+
     func load(reauthenticate: Bool = false) {
+        guard !credentialRecovery.holdsAutomaticConnection else { return }
+        guard !DesktopConnectionBootstrap.isInvalid else {
+            connected = false; connectionIssue = .configuration; return
+        }
         if refreshLoop == nil {
             refreshLoop = Task { [weak self] in
                 while !Task.isCancelled {
@@ -111,7 +134,13 @@ final class MainData: ObservableObject {
         if session == nil {
             let isolatedRoot = ProcessInfo.processInfo.environment["ASTRA_DATA_ROOT"]
             let key = "astra.dev.identity.\(base)" + (isolatedRoot.map { ".data-root.\($0)" } ?? "")
-            let identity = UserDefaults.standard.string(forKey: key) ?? UUID().uuidString.lowercased()
+            let identity: String
+            if let selected = ProcessInfo.processInfo.environment["ASTRA_DESKTOP_IDENTITY"] {
+                guard let uuid = UUID(uuidString: selected) else {
+                    loading = false; connected = false; connectionIssue = .configuration; return
+                }
+                identity = uuid.uuidString.lowercased()
+            } else { identity = UserDefaults.standard.string(forKey: key) ?? UUID().uuidString.lowercased() }
             UserDefaults.standard.set(identity, forKey: key)
             session = GatewaySession.desktop(base: base, identity: identity)
         }
@@ -121,17 +150,28 @@ final class MainData: ObservableObject {
             do {
                 if configuredToken == nil {
                     let reachable = await Task.detached { [base] in GenieCoreBridge.reachable(base) }.value
-                    guard reachable else { return }
+                    guard reachable else {
+                        GenieLog.write("connection", "unreachable")
+                        connected = false; connectionIssue = .unreachable; return
+                    }
                 }
                 let tokens = try await session.tokens(reauthenticate: reauthenticate)
+                if !connected || connectionIssue != nil { GenieLog.write("connection", "connected") }
+                connected = true; connectionIssue = nil; autoReconnects = 0
                 guard configuredToken != tokens.accessToken else { return }
                 let renewal = configuredToken != nil
                 configuredToken = tokens.accessToken
-                connected = true
                 RecordingWorkspaceState.shared.configureBackend(base: base, token: tokens.accessToken)
                 VoiceHUDState.shared.configureBackend(base: base, token: tokens.accessToken, renewal: renewal)
                 InitialProfileStore.shared.configureBackend(base: base, token: tokens.accessToken, renewal: renewal)
                 WorkContextStore.shared.configureBackend(base: base, token: tokens.accessToken)
+                BriefStore.shared.configureBackend(base: base, token: tokens.accessToken)
+                NoticeInbox.shared.configureBackend(base: base, token: tokens.accessToken)
+                DictationVocabularyStore.shared.configureBackend(base: base, token: tokens.accessToken)
+                ScheduleBoard.shared.configureBackend(base: base, token: tokens.accessToken)
+                AgentSessionsBoard.shared.configureBackend(base: base, token: tokens.accessToken)
+                WorkOverviewBoard.shared.configureBackend(base: base, token: tokens.accessToken)
+                ChatChannelsBoard.shared.configureBackend(base: base, token: tokens.accessToken)
                 ConnectorState.shared.configureBackend(base: base, token: tokens.accessToken)
                 ReplyFlow.shared.configureBackend(base: base, token: tokens.accessToken)
                 RecordingRuntime.shared.configureBackend(base: base, accessToken: tokens.accessToken)
@@ -150,8 +190,29 @@ final class MainData: ObservableObject {
                 }
             } catch {
                 connected = false
-                NSLog("Genie: 接続の認証を更新できませんでした。再接続が必要です。")
+                connectionIssue = GatewayConnectionIssue.classify(error)
+                NSLog("Genie: 接続を利用できません（%@）。", connectionIssue?.diagnosticCode ?? "unknown")
+                // 中身（トークン・URL の秘密）は書かない。種類と Keychain の状態コードだけ。
+                GenieLog.write("connection", "unavailable: \(connectionIssue?.diagnosticCode ?? "unknown") (\(GenieLog.clip(String(describing: error), 120)))")
+                // この Mac の中のサービス（127.0.0.1）で更新が途切れた（サービスの再起動中など）なら、同じ利用者として
+                // 入り直す。別の利用者・別の端末は作らない（同じ開発用の本人 ID で入る）。外のサービスでは本人の操作を待つ。
+                // 繰り返しすぎない（30 秒から倍にして 5 分に 1 回まで）。2026-10-05、ボタンを押すまで何も頼めない状態が続いた。
+                if connectionIssue == .reconnect, !reauthenticate, Self.isLoopback(base),
+                   Date().timeIntervalSince(lastAutoReconnect) > Self.autoReconnectInterval(after: autoReconnects) {
+                    lastAutoReconnect = Date()
+                    autoReconnects += 1
+                    GenieLog.write("connection", "local service: signing in again as the same user")
+                    loading = false
+                    load(reauthenticate: true)
+                }
             }
+        }
+    }
+
+    func confirmCredentialReadAfterUserRequest() async {
+        guard connectionIssue == .credentialAccess, !loading, let session else { return }
+        await credentialRecovery.confirm {
+            try await session.confirmCredentialReadAfterUserRequest()
         }
     }
 }

@@ -2,6 +2,7 @@
   "name": "@genie/tts",
   "version": "0.0.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "description": "読み上げ。差し替え口と、最初の音までの計測。正本 §27、§23。",
   "main": "./dist/index.js",

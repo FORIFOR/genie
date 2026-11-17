@@ -1,0 +1,113 @@
+
+> @genie/service-task@0.0.0 test /Users/shuhei/Projects/genie/services/task
+> vitest run --passWithNoTests test/replay-history.test.ts
+
+
+ RUN  v3.2.7 /Users/shuhei/Projects/genie/services/task
+
+time=2026-09-19T18:58:55.297 level=WARN msg="Cluster Id in Cluster Metadata config is not a valid uuid. Generating a new Cluster Id" component=metadata-initializer
+Temporal CLI 1.8.3 (Server 1.31.2, UI 2.50.1)
+
+Temporal Server:      localhost:52300
+Temporal Persistence: in-memory
+Temporal Metrics:     http://localhost:52301/metrics
+2026-09-19T09:58:55.815Z [INFO] asset workflow-bundle-f73d3e770c5e62444cb6.js 1.58 MiB [emitted] [immutable] (name: main)
+runtime modules 1.34 KiB 4 modules
+modules by path ../../node_modules/.pnpm/ 438 KiB
+  modules by path ../../node_modules/.pnpm/@temporalio+common@1.22.0/node_modules/@temporal...(truncated) 161 KiB 35 modules
+  modules by path ../../node_modules/.pnpm/@temporalio+workflow@1.22.0/node_modules/@tempor...(truncated) 202 KiB 26 modules
+  modules by path ../../node_modules/.pnpm/nexus-rpc@0.0.2/node_modules/nexus-rpc/lib/ 22.3 KiB 13 modules
+  ../../node_modules/.pnpm/long@5.3.2/node_modules/long/umd/index.js 49.8 KiB [built] [code generated]
+  ../../node_modules/.pnpm/ms@3.0.0-canary.1/node_modules/ms/dist/index.cjs 3.41 KiB [built] [code generated]
+modules by path ../../../../../../private/var/folders/xn/mdmvpkwd0yx4tcr7rvn_3xv80000gn/T/genie-...(truncated) 31.9 KiB
+  ../../../../../../private/var/folders/xn/mdmvpkwd0yx4tcr7rvn_3xv80000gn/T/genie-...(truncated) 536 bytes [built] [code generated]
+  ../../../../../../private/var/folders/xn/mdmvpkwd0yx4tcr7rvn_3xv80000gn/T/genie-...(truncated) 15.5 KiB [built] [code generated]
+  ../../../../../../private/var/folders/xn/mdmvpkwd0yx4tcr7rvn_3xv80000gn/T/genie-...(truncated) 15.9 KiB [built] [code generated]
+optional modules 30 bytes [optional]
+  __temporal_custom_payload_converter (ignored) 15 bytes [optional] [built] [code generated]
+  __temporal_custom_failure_converter (ignored) 15 bytes [optional] [built] [code generated]
+webpack 5.109.2 compiled successfully in 281 ms { sdkComponent: 'worker', taskQueue: 'genie-previous-revision-replay' }
+2026-09-19T09:58:55.817Z [INFO] Workflow bundle created {
+  sdkComponent: 'worker',
+  taskQueue: 'genie-previous-revision-replay',
+  size: '1.58MB'
+}
+2026-09-19T09:58:55.931Z [INFO] Worker state changed {
+  sdkComponent: 'worker',
+  taskQueue: 'genie-previous-revision-replay',
+  state: 'RUNNING'
+}
+2026-09-19T09:58:55.932Z [INFO] No Nexus services registered, not polling for Nexus tasks { sdkComponent: 'worker', taskQueue: 'genie-previous-revision-replay' }
+2026-09-19T09:58:56.019Z [INFO] Worker state changed {
+  sdkComponent: 'worker',
+  taskQueue: 'genie-previous-revision-replay',
+  state: 'STOPPING'
+}
+2026-09-19T09:58:56.019Z [INFO] Worker state changed {
+  sdkComponent: 'worker',
+  taskQueue: 'genie-previous-revision-replay',
+  state: 'DRAINING'
+}
+2026-09-19T09:58:56.022Z [INFO] Worker state changed {
+  sdkComponent: 'worker',
+  taskQueue: 'genie-previous-revision-replay',
+  state: 'DRAINED'
+}
+2026-09-19T09:58:56.022Z [INFO] Worker state changed {
+  sdkComponent: 'worker',
+  taskQueue: 'genie-previous-revision-replay',
+  state: 'STOPPED'
+}
+ ❯ test/replay-history.test.ts (3 tests | 3 failed) 814ms
+   × capture previous-revision histories on an isolated real Temporal server 810ms
+     → toProto3JSON: don't know how to convert value json/plain
+   × previous-revision workflow replay with old void terminal activities > replays completed history without nondeterminism 3ms
+     → fromProto3JSONToInternalRepresentation: google.protobuf.Timestamp must be a string but got object
+   × previous-revision workflow replay with old void terminal activities > replays cancelled history without nondeterminism 1ms
+     → fromProto3JSONToInternalRepresentation: google.protobuf.Timestamp must be a string but got object
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/replay-history.test.ts > capture previous-revision histories on an isolated real Temporal server
+Error: toProto3JSON: don't know how to convert value json/plain
+ ❯ convertSingleValue ../../node_modules/.pnpm/proto3-json-serializer@2.0.2/node_modules/proto3-json-serializer/typescript/src/toproto3json.ts:50:11
+ ❯ toProto3JSON ../../node_modules/.pnpm/proto3-json-serializer@2.0.2/node_modules/proto3-json-serializer/typescript/src/toproto3json.ts:149:13
+ ❯ ../../node_modules/.pnpm/proto3-json-serializer@2.0.2/node_modules/proto3-json-serializer/typescript/src/toproto3json.ts:137:22
+ ❯ toProto3JSON ../../node_modules/.pnpm/proto3-json-serializer@2.0.2/node_modules/proto3-json-serializer/typescript/src/toproto3json.ts:134:27
+ ❯ toProto3JSON ../../node_modules/.pnpm/proto3-json-serializer@2.0.2/node_modules/proto3-json-serializer/typescript/src/toproto3json.ts:167:21
+ ❯ toProto3JSON ../../node_modules/.pnpm/proto3-json-serializer@2.0.2/node_modules/proto3-json-serializer/typescript/src/toproto3json.ts:167:21
+ ❯ ../../node_modules/.pnpm/proto3-json-serializer@2.0.2/node_modules/proto3-json-serializer/typescript/src/toproto3json.ts:137:22
+ ❯ toProto3JSON ../../node_modules/.pnpm/proto3-json-serializer@2.0.2/node_modules/proto3-json-serializer/typescript/src/toproto3json.ts:134:27
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  test/replay-history.test.ts > previous-revision workflow replay with old void terminal activities > replays completed history without nondeterminism
+ FAIL  test/replay-history.test.ts > previous-revision workflow replay with old void terminal activities > replays cancelled history without nondeterminism
+Error: fromProto3JSONToInternalRepresentation: google.protobuf.Timestamp must be a string but got object
+ ❯ fromProto3JSONToInternalRepresentation ../../node_modules/.pnpm/proto3-json-serializer@2.0.2/node_modules/proto3-json-serializer/typescript/src/fromproto3json.ts:115:13
+ ❯ fromProto3JSONToInternalRepresentation ../../node_modules/.pnpm/proto3-json-serializer@2.0.2/node_modules/proto3-json-serializer/typescript/src/fromproto3json.ts:202:33
+ ❯ ../../node_modules/.pnpm/proto3-json-serializer@2.0.2/node_modules/proto3-json-serializer/typescript/src/fromproto3json.ts:151:11
+ ❯ fromProto3JSONToInternalRepresentation ../../node_modules/.pnpm/proto3-json-serializer@2.0.2/node_modules/proto3-json-serializer/typescript/src/fromproto3json.ts:150:29
+ ❯ fromProto3JSON ../../node_modules/.pnpm/proto3-json-serializer@2.0.2/node_modules/proto3-json-serializer/typescript/src/fromproto3json.ts:214:24
+ ❯ historyFromJSON ../../node_modules/.pnpm/@temporalio+common@1.22.0/node_modules/@temporalio/common/src/proto-utils.ts:104:32
+ ❯ Worker.validateHistory ../../node_modules/.pnpm/@temporalio+worker@1.22.0/node_modules/@temporalio/worker/src/worker.ts:717:29
+ ❯ Worker.runReplayHistory ../../node_modules/.pnpm/@temporalio+worker@1.22.0/node_modules/@temporalio/worker/src/worker.ts:629:28
+ ❯ test/replay-history.test.ts:84:20
+     82|       expect(provenance.revision).toBe(revision);
+     83|       expect(json).not.toContain('task-terminal-outcome-v1');
+     84|       await Worker.runReplayHistory({ workflowsPath }, JSON.parse(json…
+       |                    ^
+     85|     }, 30000);
+     86|   }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed (3)
+   Start at  18:58:54
+   Duration  1.15s (transform 26ms, setup 0ms, collect 158ms, tests 814ms, environment 0ms, prepare 35ms)
+
+/Users/shuhei/Projects/genie/services/task:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @genie/service-task@0.0.0 test: `vitest run --passWithNoTests test/replay-history.test.ts`
+Exit status 1

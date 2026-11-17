@@ -10,10 +10,12 @@ import type { StartedWorkflow, TaskRuntime } from './types.js';
 
 export interface RecordedSignal {
   readonly workflowId: string;
-  readonly kind: 'approve' | 'cancel';
+  readonly kind: 'approve' | 'cancel' | 'instruct';
   readonly approvalId?: string;
   readonly decision?: 'APPROVED' | 'REJECTED';
   readonly reason?: string;
+  readonly requestId?: string;
+  readonly text?: string;
 }
 
 export class InMemoryTaskRuntime implements TaskRuntime {
@@ -35,6 +37,11 @@ export class InMemoryTaskRuntime implements TaskRuntime {
   ): Promise<void> {
     this.#assertRunning(workflowId);
     this.signals.push({ workflowId, kind: 'approve', approvalId, decision });
+  }
+
+  async instruct(workflowId: string, instruction: { requestId: string; text: string }): Promise<void> {
+    this.#assertRunning(workflowId);
+    this.signals.push({ workflowId, kind: 'instruct', ...instruction });
   }
 
   async cancel(workflowId: string, reason: string): Promise<void> {

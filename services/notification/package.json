@@ -2,6 +2,7 @@
   "name": "@genie/service-notification",
   "version": "0.0.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "description": "Proactive heartbeat and the rules for when Genie may interrupt.",
   "main": "./dist/index.js",

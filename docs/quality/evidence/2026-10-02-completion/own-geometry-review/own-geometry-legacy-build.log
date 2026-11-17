@@ -1,0 +1,25 @@
+scripts/tests/OwnAccessibilityGeometryHarness.swift:71:40: warning: 'accessibilityAttributeNames()' was deprecated in macOS 10.10: Use the NSAccessibility protocol methods instead (see NSAccessibilityProtocols.h) [#DeprecatedDeclaration]
+69 |                 func describe(_ value: Any, depth: Int = 0) {
+70 |                     guard depth < 8, let object = value as? NSObject else { return }
+71 |                     let names = object.accessibilityAttributeNames()
+   |                                        `- warning: 'accessibilityAttributeNames()' was deprecated in macOS 10.10: Use the NSAccessibility protocol methods instead (see NSAccessibilityProtocols.h) [#DeprecatedDeclaration]
+72 |                     let keys: [NSAccessibility.Attribute] = [.identifier, .role, .title, .value, .position, .size, .enabled]
+73 |                     var values: [String: String] = [:]
+
+scripts/tests/OwnAccessibilityGeometryHarness.swift:74:114: warning: 'accessibilityAttributeValue' was deprecated in macOS 10.10: Use the NSAccessibility protocol methods instead (see NSAccessibilityProtocols.h) [#DeprecatedDeclaration]
+72 |                     let keys: [NSAccessibility.Attribute] = [.identifier, .role, .title, .value, .position, .size, .enabled]
+73 |                     var values: [String: String] = [:]
+74 |                     for key in keys where names.contains(key) { values[key.rawValue] = String(describing: object.accessibilityAttributeValue(key)) }
+   |                                                                                                                  `- warning: 'accessibilityAttributeValue' was deprecated in macOS 10.10: Use the NSAccessibility protocol methods instead (see NSAccessibilityProtocols.h) [#DeprecatedDeclaration]
+75 |                     print("OWN_ATTRIBUTES \(depth) \(type(of: object)) \(values)")
+76 |                     if names.contains(.children), let children = object.accessibilityAttributeValue(.children) as? [Any] {
+
+scripts/tests/OwnAccessibilityGeometryHarness.swift:76:73: warning: 'accessibilityAttributeValue' was deprecated in macOS 10.10: Use the NSAccessibility protocol methods instead (see NSAccessibilityProtocols.h) [#DeprecatedDeclaration]
+74 |                     for key in keys where names.contains(key) { values[key.rawValue] = String(describing: object.accessibilityAttributeValue(key)) }
+75 |                     print("OWN_ATTRIBUTES \(depth) \(type(of: object)) \(values)")
+76 |                     if names.contains(.children), let children = object.accessibilityAttributeValue(.children) as? [Any] {
+   |                                                                         `- warning: 'accessibilityAttributeValue' was deprecated in macOS 10.10: Use the NSAccessibility protocol methods instead (see NSAccessibilityProtocols.h) [#DeprecatedDeclaration]
+77 |                         for child in children { describe(child, depth: depth + 1) }
+78 |                     }
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>

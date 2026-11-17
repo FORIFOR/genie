@@ -1,0 +1,55 @@
+Evidence: /private/tmp/genie-native-input.3RMkox
+STAGE route native_key by element point 1410,897 local 230,272
+STAGE route native_mouse by coords point 1310,732 local 130,107
+STAGE route ax_press by element point 1515,747 local 335,122
+STAGE route native_mouse by element point 1490,797 local 310,172
+STAGE takeover-marker session_stopped
+STAGE takeover-marker human_takeover:pointer-over-target
+{
+  "axlessClickDelivered" : true,
+  "axlessElementClickedById" : true,
+  "badgeDrawnOnSmallTarget" : true,
+  "cancelledTaskSendsNoKeys" : true,
+  "candidateCount" : 4,
+  "clickInterruptedAfterDispatchReportsUnknown" : true,
+  "cursorUnchanged" : true,
+  "elementPressUsedAX" : true,
+  "epochStartsAtZero" : true,
+  "expiringGrantNotReused" : true,
+  "explicitStopNotResumable" : true,
+  "frameCarriesEpoch" : true,
+  "freshFrameCarriesNewEpoch" : true,
+  "frontmostUnchanged" : true,
+  "grantNotReusedForNewRecipient" : true,
+  "grantSurvivesRunEnd" : true,
+  "interruptionClearedOnResume" : true,
+  "interruptionKeptWhileWaiting" : true,
+  "keyDowns" : 6,
+  "keysConfirmedLiterally" : true,
+  "keysFollowedTheNamedField" : true,
+  "keysRefusedWhenAnotherWindowHasFocus" : true,
+  "keyUps" : 6,
+  "liveGrantReused" : true,
+  "noInputAfterStop" : true,
+  "noModifierResidue" : true,
+  "nothingSentOnStaleGeneration" : true,
+  "nothingTypedOnRefusal" : true,
+  "oldFrameStillRefusedAfterResume" : true,
+  "oldSnapshotCannotRelabelEpoch" : true,
+  "partialKeysReleasedWithoutSendingRemainder" : true,
+  "partialKeysReportInterruption" : true,
+  "pressReleaseBalanced" : true,
+  "resumeAdvancesEpoch" : true,
+  "resumedAfterQuiet" : true,
+  "resumeWaitsWhileHumanActive" : true,
+  "staleGenerationRefused" : true,
+  "startedClean" : true,
+  "status" : "PASS",
+  "stopBetweenHoverAndMouseDownRefused" : true,
+  "stoppedGrantNotReused" : true,
+  "stoppedSessionRefused" : true,
+  "typedOnce" : true,
+  "typedText" : "kakiku",
+  "typeIntoNonTextRefused" : true,
+  "unknownElementRefused" : true
+}

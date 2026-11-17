@@ -1,0 +1,192 @@
+{
+  "recordedAt": "2026-10-01T20:56:46.151572+00:00",
+  "classification": "Independent read-only saved-image/source/AX evidence review; reviewer did not implement the captured UI/profile, capture images, launch native apps, or run gates in this review.",
+  "candidate": {
+    "bundle": "com.astra.mac",
+    "binarySha256": "2880bc06f89e4a468d8c9c2981fc2916b87265ee0868cedce86fe1348fa3d74e",
+    "profile": "macos-27.0.1-2x-safe-top-32",
+    "sourceHashes": {
+      "apps/genie-macos/Sources/GenieMac/App/SelfTest.swift": "578a56beb54e54cc6fdbd65856683c5ef62f0691dce0ae34248cc4f76e9ecc3a",
+      "apps/genie-macos/Sources/GenieMac/App/UIGeometry.swift": "b3bfc20eadf3aace76f76d1cf95f01132f5b162ead06ac07466416323ffa24e2",
+      "apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDView.swift": "c0f4bb75e1e943f99bbbd87bc4a9d6c4264e574aabcd9a61d0efd897d77c156e",
+      "shared/design/tokens.json": "be327706eb98299146b413ba28b0003ec7e325a3b7c8cbacff0d527a0f3111ae"
+    }
+  },
+  "visualReview": {
+    "status": "PASS",
+    "scope": "Visibility, clipping, hierarchy and overlap in the 32 saved synthetic native captures; not behavior, contrast certification or whole product completion",
+    "method": "Opened every current PNG with view_image, plus ten root references and four accepted safe-top-32 references. Current /private/tmp files match permanent copies by SHA-256.",
+    "currentImagesViewed": 32,
+    "referenceImagesViewed": 14,
+    "observations": [
+      {
+        "images": [
+          "01",
+          "02",
+          "02b"
+        ],
+        "observation": "The label, lamp/G mark, recording button and listening input/mute/escape remain visible below the blank camera band. Blue outlined listening mark is distinct from preparing. Three HUDs deliberately stay dark in both appearances; no cropped mark or text.",
+        "dimension": "220x76 / 600x100 / 600x100; capture top inset 32pt. Matches approved safe-top-32 dimensions, not root 220x44 / 600x53."
+      },
+      {
+        "images": [
+          "03",
+          "03b",
+          "04",
+          "05"
+        ],
+        "observation": "Live and paused status are distinguishable, red Stop remains visible, transcript rows fit, original/translation tabs remain separate, expanded retrieval sources fit above lower edge. RAG expansion reduces transcript viewport rather than overlaps composer. Dark cards retain distinct edges.",
+        "dimension": "1080x680"
+      },
+      {
+        "images": [
+          "06",
+          "07",
+          "12"
+        ],
+        "observation": "Home heading, text entry, provider disclosure, three sample choices and secondary entry controls are visible. Apps cards retain service labels and setup actions. Recording-now has visible elapsed time, status, open memo and Stop. Sidebar/chrome are subdued in these nonkey-window captures; no hidden primary content.",
+        "limit": "Home provider text is the isolated selftest generic fallback, not evidence of a normal saved external-model launch. Recording-now uses dynamic 05:45/05:46 titles; these 12 supporting images are not proposed stable golden references."
+      },
+      {
+        "images": [
+          "08"
+        ],
+        "observation": "Summary, decisions, next action, transcript selection and right provenance panel remain readable. Relative to old reference, sidebar/body start moves left about 8px while outer1240x820 and right source-column boundary remain stable. Native toolbar/sidebar treatment changes; no resulting truncation or overlapping text.",
+        "limit": "Cannot assign the total pixel difference to OS alone from different-source reference images. Main/detail is not one of six AX geometry states; no independent exact child-frame PASS is claimed."
+      },
+      {
+        "images": [
+          "09",
+          "09b",
+          "09c"
+        ],
+        "observation": "Microphone absence, local recognizer unavailability and denied Speech have distinct readable explanations; settings links remain visible. Japanese copy wraps inside left card without cropping. Muted unavailable summary controls remain visually secondary. Dark warning treatment preserves readable message and source state."
+      },
+      {
+        "images": [
+          "10",
+          "11"
+        ],
+        "observation": "Agent timeline fits three states above composer; meeting canvas retains four semantic note groups, speaker/time/source references and separate transcript column. No content overlaps the footer or Stop control."
+      }
+    ],
+    "findings": []
+  },
+  "geometryReview": {
+    "status": "PASS",
+    "scope": "Capture coverage and source explanation, not repeatability gate",
+    "method": "Read six raw system AX snapshots, recompute positive required-key checks and compare exact x/y/w/h against saved reference without normalization.",
+    "requiredOccurrences": 43,
+    "allPositive": true,
+    "commonWithSafeTop26": 37,
+    "commonWithin2pt": 30,
+    "commonOver2pt": 7,
+    "newIdentifiers": 6,
+    "explanations": [
+      "dockOpenActions now uses explicit maxHeight infinity and rectangular content shape; AX frame grows 62x19 to66x44, while idle window220x76 and record48x32 remain stable.",
+      "Agent geometry contracts/shifts35pt, matching prior continuous-surface/presence-mark removal of progress/PLAN. Button sizes/title placement preserved.",
+      "Six added container/input/control identifiers are new measurable coverage, not old checks silently discarded."
+    ],
+    "limits": [
+      "recordingWorkspace AX identifier is a34x14 title; actual window1080x680 comes from separate window key.",
+      "AX leaf bounds do not prove full hit area, enabled/action behavior, keyboard/VoiceOver access or every control.",
+      "Geometry states are synthetic and not a journey/window-continuity proof.",
+      "No second capture/geometry-comparison run performed by reviewer."
+    ]
+  },
+  "comparison": {
+    "rootThreeHudDimensionFailures": "Expected mismatch against pre-safe-area and older UI source; do not erase original FAIL.",
+    "sevenRootLightLuminanceDiagnosticPercent": {
+      "03-recording-workspace": 1.0890846793930495,
+      "04-recording-transcript": 1.5296133137542829,
+      "05-recording-rag": 1.7559960841899167,
+      "08-meeting-detail": 4.826204783786968,
+      "09-permission-denied": 1.0544134442812856,
+      "10-agent-timeline": 1.1237559145048133,
+      "11-meeting-canvas": 2.420868004568445
+    },
+    "acceptedSafeTop26LargeSurfaces": "Six light surfaces differ0..0.1122% sampled luminance; detail4.6848%. Dark detail7.3972%. These are saved Pillow diagnostics, not AppKit native gate.",
+    "priorMacOS27Candidate": "16 of20 file-exact; remaining diagnostic luminance differences0..0.1570%. This supports visual stability across packaging identity but is not a new native gate.",
+    "sourceEvidence": [
+      "DS-01 and notch-safe-area approval explain32pt band.",
+      "presence-mark round2 records lamp/G and blue accent; transcript-modes records two modes.",
+      "continuous-surface records35pt shorter agent state."
+    ]
+  },
+  "recommendation": {
+    "candidateAdoption": "No visual objection to proceeding with a separate macos-27.0.1-2x-safe-top-32 candidate profile, preserving root and macOS26 references and original failures. This is a source-aware environment baseline, not a claim that all changes came from OS rendering.",
+    "formalAcceptancePending": [
+      "Second independent capture compared with geometry at unchanged2pt tolerance",
+      "Native AppKit golden comparison at unchanged0.5%",
+      "Density at unchanged1.5pp using actual safe-area metadata",
+      "Shape/occupation and overall gate as required by existing round"
+    ],
+    "noToleranceChanges": true,
+    "noGoldenOrSourceEdits": true,
+    "releaseApproval": false
+  },
+  "reviewedEvidenceSha256": {
+    "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/manifest.json": "be91404f25386d156c4ad3b2d92b6c34d58168339664a074f2a5dfff11a19a49",
+    "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/geometry/coverage.json": "87ea879465ab4b976829330448386cb00ffbb055f3c2f3a177438af44b82d6a9",
+    "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/geometry/baseline-comparison.json": "07dc696fe95cce5b1d541d5135a6bba7e881f8eab9596eb1fc7fefb97a539646",
+    "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/geometry/snapshots/01-idle.json": "fdc93f6a5aaa24744322a4b1edfe8fdd57d9ec0b2284db7d7ff7e9e9e5a43b1a",
+    "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/geometry/snapshots/02-listening.json": "f2f97d1ae90952e56fa90776e08d6185cc2812ee36b845ec7c6b8fc58775901f",
+    "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/geometry/snapshots/03-task-dock.json": "fabb2986c696f1b9bb037c7522e1b2eb23397e04022bf9070d8f159bc9523146",
+    "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/geometry/snapshots/04-meeting.json": "1f3ea3a351c3dfd66ab19057022efe8cd370559690a3707615142fad08874d1e",
+    "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/geometry/snapshots/05-meeting-notes.json": "c4005764fcdf858a98203ec2b13397aead72d53bd304d6999add4eef3a735789",
+    "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/geometry/snapshots/06-workspace.json": "4928b6a89f9d2da569e05a7b7fef10037ab9f4eb64f5ea220e23056707a5d6f1",
+    "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/geometry/exit.json": "65a4320fc0d9eb0714f726503f1f658581ab95ddeacddbcda1ff2c4e43234957",
+    "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/light/exit.json": "65a4320fc0d9eb0714f726503f1f658581ab95ddeacddbcda1ff2c4e43234957",
+    "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/dark/exit.json": "65a4320fc0d9eb0714f726503f1f658581ab95ddeacddbcda1ff2c4e43234957"
+  },
+  "viewedImageSha256": {
+    "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/light/images/01-voice-hud-idle.png": "2c778cb1e01b9b9950627e3d8484fc3bfc7e764a0819060ca667fc3352cdea77",
+    "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/light/images/02-voice-hud-listening.png": "5a313cbaf3a824d6db75a0156989fb0660fda4fd6ec7f7c35a3d97c37599c3d7",
+    "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/light/images/02b-voice-hud-preparing.png": "4a6ecc05188c465a61176886ca557c1acb8224ab541736dca574fcef9ba6acee",
+    "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/light/images/03-recording-workspace.png": "0a45cf8143f972dd348bf223e6204ef2ba5f1568a4647647ca05ab55ecf707b7",
+    "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/light/images/03b-recording-paused.png": "1aee97053f76af56c01f775ca61d22bb69bb7e57e930aae22e19fc31b510b914",
+    "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/light/images/04-recording-transcript.png": "fd088de487bb72861ab0e33cbcffe49981670a870a51599dfdafe26ec6b70543",
+    "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/light/images/05-recording-rag.png": "03c614da16f5432ec5e7cdd4a92b3b124af81f33f2cdc045d05c14ae34cfafd3",
+    "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/light/images/06-main-home.png": "1afa6bdbb0c6f43981db5dd9a0b5b24b8a40f14533639dddb46110757fcabcc3",
+    "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/light/images/07-apps.png": "7424845db7b9899bbf8d716b61283f80821ffcb01797f2e7c10828e662df58e8",
+    "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/light/images/08-meeting-detail.png": "625d9d266ce005be7ec71eb39d336d036c2b0e48ec92f63151bf219f6835ebc3",
+    "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/light/images/09-permission-denied.png": "d573c33bbb8351bbc04275b09ecfd2c12222454bb69772100624a4185988e6ac",
+    "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/light/images/09b-stt-unavailable.png": "81207aa3e943e647e23f86c35757f972db4b946d4b37da024cc07130f04b52f8",
+    "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/light/images/09c-speech-denied.png": "e4983027c62bce8f10ab4c142c77415dc3896f235209c1316961bb4d388e0ffa",
+    "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/light/images/10-agent-timeline.png": "2325c6b2b63f1e7c9648df2f6c6030efd121f686a63b5973ac74067961c1a837",
+    "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/light/images/11-meeting-canvas.png": "9a5ce23b8bcf62bf275f225c85482b3ff1f7d97e35b509671417fbfd8c992e35",
+    "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/light/images/12-recording-now.png": "b82c176df1b56a26847b39af63157ff9e4beb82f0ce5e5b6f7dfb7ff6078b8a2",
+    "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/dark/images/01-voice-hud-idle.png": "2c778cb1e01b9b9950627e3d8484fc3bfc7e764a0819060ca667fc3352cdea77",
+    "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/dark/images/02-voice-hud-listening.png": "5a313cbaf3a824d6db75a0156989fb0660fda4fd6ec7f7c35a3d97c37599c3d7",
+    "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/dark/images/02b-voice-hud-preparing.png": "4a6ecc05188c465a61176886ca557c1acb8224ab541736dca574fcef9ba6acee",
+    "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/dark/images/03-recording-workspace.png": "a0c7fd8244af3f3f2b1340abc424a5312325fddcccba3e1a3aa6a6fc89ee4954",
+    "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/dark/images/03b-recording-paused.png": "0ecdded202a272d907080d753b2bbc6ad7129194e2ec8589f436ebe25490edbf",
+    "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/dark/images/04-recording-transcript.png": "fa664749cb25807716bc4d9a076e4c7251d5b792cd2d27f304c07358469967fb",
+    "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/dark/images/05-recording-rag.png": "57edd79abd09f0708c9ca7423909dea4156ca922f0932f606bb7633585475bf5",
+    "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/dark/images/06-main-home.png": "7e64f35f7ee9005a4170a8fdfe07d3c883c0a95f57622b6558b5b015dc572d4f",
+    "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/dark/images/07-apps.png": "2d5c23c834d409e26ed25f2bdd4c5c08be96491227dabebfadd65f51fcf827c8",
+    "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/dark/images/08-meeting-detail.png": "909f09e09d20c7d6c9c79960ca0dbc825e9dd6de40589a717190dbedc849914a",
+    "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/dark/images/09-permission-denied.png": "8632ce794f6e0d06bb4da26e566989302a109ef4c70a85d7bfb4ac3b2c736653",
+    "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/dark/images/09b-stt-unavailable.png": "30b8dcfb7dca1c3f522d800607adb83db0e53d5f6510431392d4c692c9b09278",
+    "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/dark/images/09c-speech-denied.png": "7123fec47aadea949d41c937707e54837867e08634d4af29b8ebc8587a6ddfd8",
+    "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/dark/images/10-agent-timeline.png": "e1c0959c99db8d67aaffe65df9ec2a16c462f28737d41cd26629138aff886d23",
+    "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/dark/images/11-meeting-canvas.png": "09c104a26b631a9fb1f10310d408cca11241b31781860b9ef1570b58982439d0",
+    "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/dark/images/12-recording-now.png": "6728d98d46acce5afd2354f7061581f21771d711f2342cdb36687c18938e2ad3"
+  },
+  "viewedReferenceSha256": {
+    "docs/golden-screenshots/01-voice-hud-idle.png": "94f074bb0e8f414add8dd6fdbad3272d5f7241dc1effba2d94f217645371dae3",
+    "docs/golden-screenshots/02-voice-hud-listening.png": "0ab0f37540fa9a13f084975fd6d41572e877f13b04a20a14ce573a6cf70f6085",
+    "docs/golden-screenshots/02b-voice-hud-preparing.png": "d113a42ec3772c8d2855ccde3de869876bfb5a414a917b46ee453a780dfcc3a2",
+    "docs/golden-screenshots/03-recording-workspace.png": "90f36ebd2045c1408e837654e663d87c518168c1009113648df6402eeb9adecf",
+    "docs/golden-screenshots/04-recording-transcript.png": "0d2ff7118f1e2e56bd5a31b157464e0830af736a79d08abf5d8228495dd56c94",
+    "docs/golden-screenshots/05-recording-rag.png": "ad16e51372fc91e22376372ecd82b4debd8c9ff7cd2394f20133c52ddca465f9",
+    "docs/golden-screenshots/08-meeting-detail.png": "975b03f64e7fd9b9c7317ccda6a2705d69466daa39db6ebcb10257b96987a7d6",
+    "docs/golden-screenshots/09-permission-denied.png": "110d3667d92c1866844ebf9b0bdc28a554189a93d5bb85f653b2c366e6ce5be2",
+    "docs/golden-screenshots/10-agent-timeline.png": "9267b6270163557c942894e9f95969b2dbd05c6eef8abe0f0d959e35e10f31b3",
+    "docs/golden-screenshots/11-meeting-canvas.png": "45b0876d22b2907bbef07d2525b1ba66a3b52821076e669334f574bab1af6142",
+    "docs/golden-screenshots/environments/macos-26.6.2-2x-safe-top-32/light/01-voice-hud-idle.png": "caa4acf3fbd0f415f4aabff66ac4b851547c257d1fe49a4d81b3de94ec2b958e",
+    "docs/golden-screenshots/environments/macos-26.6.2-2x-safe-top-32/light/02-voice-hud-listening.png": "6935e11952f4b36cb435724cecac52a0c864ca25d098d5d56974e10337785218",
+    "docs/golden-screenshots/environments/macos-26.6.2-2x-safe-top-32/light/02b-voice-hud-preparing.png": "8d1100189fa365bc1cbad7ceb34346d64ab513c9998ae0a60201d1346e96477a",
+    "docs/golden-screenshots/environments/macos-26.6.2-2x-safe-top-32/light/08-meeting-detail.png": "6782058a0d12aa26608f14e51442feb4acc7328d845ce149aa180ddac61860e6"
+  }
+}

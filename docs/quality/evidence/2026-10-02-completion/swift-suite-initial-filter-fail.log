@@ -1,0 +1,18 @@
+macOS_swift_unit: 	 Executed 285 tests, with 1 test skipped and 0 failures (0 unexpected) in 14.232 (14.251) seconds
+NOT_RUN: macOS_swift_unit 	 Executed 285 tests, with 1 test skipped and 0 failures (0 unexpected) in 14.232 (14.251) seconds
+Test Case '-[GenieMacTests.CodexTranslationProcessTests testApplicationShutdownEntrypointCleansOwnedChildAndContext]' skipped (0.001 seconds).
+macOS_swift_shutdown: 	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.001) seconds
+[0/1] Planning build
+warning: No matching test cases were run
+Test Suite 'Selected tests' started at 2026-10-02 03:32:03.410.
+Test Suite 'genie-macosPackageTests.xctest' started at 2026-10-02 03:32:03.411.
+Test Suite 'genie-macosPackageTests.xctest' passed at 2026-10-02 03:32:03.411.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
+Test Suite 'Selected tests' passed at 2026-10-02 03:32:03.411.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.001) seconds
+◇ Test run started.
+↳ Testing Library Version: 1902
+↳ Target Platform: arm64e-apple-macos14.0
+✔ Test run with 0 tests in 0 suites passed after 0.001 seconds.
+FAIL: macOS_swift_shutdown (exit 0; expected 1 nonzero tests)
+macOS_swift_external_translation: 	 Executed 1 test, with 0 failures (0 unexpected) in 4.961 (4.963) seconds

@@ -1,0 +1,106 @@
+# PUBLIC DIAGNOSTIC EXCERPT — not the full original sample
+# Original SHA-256: 1e61cd50ca32cb97ce5345344e20dbcfac6ac265293a22fd75cf680ea561c269
+# Original lines 1–100 retained; loaded-image inventory omitted.
+# Original thread/sample counts and stack frames are unchanged; user home path is masked.
+# Private original location and transformation: ../2026-10-02-completion/publication-redactions.json
+
+Analysis of sampling GenieMac (pid 85691) every 1 millisecond
+Process:         GenieMac [85691]
+Path:            /private/tmp/*/GenieTransactionMemory.app/Contents/MacOS/GenieMac
+Load Address:    0x1021f8000
+Identifier:      com.genie.transaction-preview
+Version:         0.1.4 (0.1.4)
+Code Type:       ARM64
+Platform:        macOS
+Parent Process:  launchd [1]
+Target Type:     live task
+
+Date/Time:       2026-10-02 03:06:25.082 +0900
+Launch Time:     2026-10-02 02:45:53.779 +0900
+OS Version:      macOS 27.0.1 (26A434)
+Report Version:  7
+Analysis Tool:   /usr/bin/sample
+
+Physical footprint:         66.5M
+Physical footprint (peak):  311.8M
+Idle exit:                  untracked
+----
+
+Call graph:
+    867 Thread_1729349   DispatchQueue_1: com.apple.main-thread  (serial)
+    + 867 start  (in dyld) + 6688  [0x19ffcfe80]
+    +   867 GenieMac_main  (in GenieMac) + 104  [0x102228508]  main.swift:9
+    +     867 -[NSApplication run]  (in AppKit) + 396  [0x1a4a0f90c]
+    +       867 -[NSApplication(NSEventRouting) nextEventMatchingMask:untilDate:inMode:dequeue:]  (in AppKit) + 292  [0x1a529426c]
+    +         867 -[NSApplication(NSEventRouting) _nextEventMatchingEventMask:untilDate:inMode:dequeue:]  (in AppKit) + 780  [0x1a5294748]
+    +           867 _DPSNextEvent  (in AppKit) + 580  [0x1a4a1c4fc]
+    +             867 _DPSBlockUntilNextEventMatchingListInMode  (in AppKit) + 292  [0x1a4d5f29c]
+    +               867 _BlockUntilNextEventMatchingListInMode  (in HIToolbox) + 48  [0x1ada1e380]
+    +                 867 ReceiveNextEventCommon  (in HIToolbox) + 492  [0x1ad89b91c]
+    +                   867 RunCurrentEventLoopInMode  (in HIToolbox) + 320  [0x1ad898590]
+    +                     867 _CFRunLoopRunSpecificWithOptions  (in CoreFoundation) + 536  [0x1a053f82c]
+    +                       867 __CFRunLoopRun  (in CoreFoundation) + 1980  [0x1a046565c]
+    +                         867 __CFRUNLOOP_IS_SERVICING_THE_MAIN_DISPATCH_QUEUE__  (in CoreFoundation) + 16  [0x1a04a39cc]
+    +                           867 _dispatch_main_queue_callback_4CF  (in libdispatch.dylib) + 44  [0x1a01f3a4c]
+    +                             867 _dispatch_main_queue_drain  (in libdispatch.dylib) + 176  [0x1a01f3b0c]
+    +                               867 _dispatch_main_queue_drain.cold.6  (in libdispatch.dylib) + 612  [0x1a021c8bc]
+    +                                 867 _dispatch_source_invoke  (in libdispatch.dylib) + 848  [0x1a01faf7c]
+    +                                   867 _dispatch_source_latch_and_call  (in libdispatch.dylib) + 392  [0x1a01fc2a8]
+    +                                     867 _dispatch_continuation_pop  (in libdispatch.dylib) + 596  [0x1a01e91b4]
+    +                                       867 _dispatch_client_callout  (in libdispatch.dylib) + 16  [0x1a01fe5a0]
+    +                                         867 thunk for @escaping @callee_guaranteed () -> ()  (in GenieMac) + 28  [0x102440448]  /<compiler-generated>:0
+    +                                           867 closure #2 in GenieAppDelegate.applicationDidFinishLaunching(_:)  (in GenieMac) + 96  [0x10239c060]  GenieAppDelegate.swift:27
+    +                                             867 -[NSApplication terminate:]  (in AppKit) + 788  [0x1a4c21540]
+    +                                               867 -[NSApplication _shouldTerminate]  (in AppKit) + 1192  [0x1a4c2f264]
+    +                                                 867 -[NSApplication(NSEventRouting) nextEventMatchingMask:untilDate:inMode:dequeue:]  (in AppKit) + 292  [0x1a529426c]
+    +                                                   867 -[NSApplication(NSEventRouting) _nextEventMatchingEventMask:untilDate:inMode:dequeue:]  (in AppKit) + 780  [0x1a5294748]
+    +                                                     867 _DPSNextEvent  (in AppKit) + 580  [0x1a4a1c4fc]
+    +                                                       867 _DPSBlockUntilNextEventMatchingListInMode  (in AppKit) + 292  [0x1a4d5f29c]
+    +                                                         867 _BlockUntilNextEventMatchingListInMode  (in HIToolbox) + 48  [0x1ada1e380]
+    +                                                           867 ReceiveNextEventCommon  (in HIToolbox) + 492  [0x1ad89b91c]
+    +                                                             867 RunCurrentEventLoopInMode  (in HIToolbox) + 320  [0x1ad898590]
+    +                                                               867 _CFRunLoopRunSpecificWithOptions  (in CoreFoundation) + 536  [0x1a053f82c]
+    +                                                                 867 __CFRunLoopRun  (in CoreFoundation) + 1172  [0x1a0465334]
+    +                                                                   867 __CFRunLoopServiceMachPort  (in CoreFoundation) + 160  [0x1a0466aec]
+    +                                                                     867 mach_msg  (in libsystem_kernel.dylib) + 24  [0x1a0360fac]
+    +                                                                       867 mach_msg_overwrite  (in libsystem_kernel.dylib) + 480  [0x1a0369a28]
+    +                                                                         867 mach_msg2_internal  (in libsystem_kernel.dylib) + 76  [0x1a03738e0]
+    +                                                                           867 mach_msg2_trap  (in libsystem_kernel.dylib) + 8  [0x1a0360c20]
+    867 Thread_1729481: com.apple.NSEventThread
+    + 867 thread_start  (in libsystem_pthread.dylib) + 8  [0x1a03a0cec]
+    +   867 _pthread_start  (in libsystem_pthread.dylib) + 136  [0x1a03a5d00]
+    +     867 _NSEventThread  (in AppKit) + 184  [0x1a4b40844]
+    +       867 _CFRunLoopRunSpecificWithOptions  (in CoreFoundation) + 536  [0x1a053f82c]
+    +         867 __CFRunLoopRun  (in CoreFoundation) + 1172  [0x1a0465334]
+    +           867 __CFRunLoopServiceMachPort  (in CoreFoundation) + 160  [0x1a0466aec]
+    +             867 mach_msg  (in libsystem_kernel.dylib) + 24  [0x1a0360fac]
+    +               867 mach_msg_overwrite  (in libsystem_kernel.dylib) + 480  [0x1a0369a28]
+    +                 867 mach_msg2_internal  (in libsystem_kernel.dylib) + 76  [0x1a03738e0]
+    +                   867 mach_msg2_trap  (in libsystem_kernel.dylib) + 8  [0x1a0360c20]
+    867 Thread_1729616: com.apple.NSURLConnectionLoader
+    + 867 thread_start  (in libsystem_pthread.dylib) + 8  [0x1a03a0cec]
+    +   867 _pthread_start  (in libsystem_pthread.dylib) + 136  [0x1a03a5d00]
+    +     867 __NSThread__start__  (in Foundation) + 732  [0x1a1b62ca8]
+    +       867 +[__CFN_CoreSchedulingSetRunnable _run:]  (in CFNetwork) + 392  [0x1a698838c]
+    +         867 _CFRunLoopRunSpecificWithOptions  (in CoreFoundation) + 536  [0x1a053f82c]
+    +           867 __CFRunLoopRun  (in CoreFoundation) + 1172  [0x1a0465334]
+    +             867 __CFRunLoopServiceMachPort  (in CoreFoundation) + 160  [0x1a0466aec]
+    +               867 mach_msg  (in libsystem_kernel.dylib) + 24  [0x1a0360fac]
+    +                 867 mach_msg_overwrite  (in libsystem_kernel.dylib) + 480  [0x1a0369a28]
+    +                   867 mach_msg2_internal  (in libsystem_kernel.dylib) + 76  [0x1a03738e0]
+    +                     867 mach_msg2_trap  (in libsystem_kernel.dylib) + 8  [0x1a0360c20]
+    867 Thread_1773245
+    + 867 start_wqthread  (in libsystem_pthread.dylib) + 8  [0x1a03a0ce0]
+    +   867 _pthread_wqthread  (in libsystem_pthread.dylib) + 368  [0x1a03a1fe8]
+    +     867 __workq_kernreturn  (in libsystem_kernel.dylib) + 8  [0x1a03629ec]
+    867 Thread_1782967
+      867 start_wqthread  (in libsystem_pthread.dylib) + 8  [0x1a03a0ce0]
+        867 _pthread_wqthread  (in libsystem_pthread.dylib) + 368  [0x1a03a1fe8]
+          867 __workq_kernreturn  (in libsystem_kernel.dylib) + 8  [0x1a03629ec]
+
+Total number in stack (recursive counted multiple, when >=5):
+
+Sort by top of stack, same collapsed (when >= 5):
+        mach_msg2_trap  (in libsystem_kernel.dylib)        2601
+        __workq_kernreturn  (in libsystem_kernel.dylib)        1734
+

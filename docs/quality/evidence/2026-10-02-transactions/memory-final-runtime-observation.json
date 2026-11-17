@@ -1,0 +1,16 @@
+{
+  "observed_at": "2026-10-01T17:54:12.949712+00:00",
+  "model": {
+    "modelProvider": "codex",
+    "model": "gpt-6-sol",
+    "port": 43180,
+    "dockerContext": "colima-genie-transactions-20261002"
+  },
+  "app": "85691 164624 08:19 /private/tmp/genie-transactions-20261002/GenieTransactionMemory.app/Contents/MacOS/GenieMac",
+  "memory_free": "System-wide memory free percentage: 62%",
+  "memory_pressure_level": "1",
+  "swap": "total = 3072.00M  used = 2607.94M  free = 464.06M  (encrypted)",
+  "loaded_ollama_models": "NAME    ID    SIZE    PROCESSOR    CONTEXT    UNTIL",
+  "containers": "genie-preview-f68d0fef8411-temporal-1 Up 8 minutes (healthy)\ngenie-preview-f68d0fef8411-redis-1 Up 8 minutes (healthy)\ngenie-preview-f68d0fef8411-postgres-1 Up 8 minutes (healthy)",
+  "scope": "Observed current machine with unrelated workloads; not a controlled benchmark. Container memory is inside the dedicated 2 GiB VM. No user stream settings changed."
+}

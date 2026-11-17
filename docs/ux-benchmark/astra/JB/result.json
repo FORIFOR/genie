@@ -18,21 +18,21 @@
     "その時刻の音声へ戻る（再生が未実装。飾りは置かない判断）"
   ],
   "observations" : [
-    "全体の連続感（層 C）: 面は Dock → Workspace → Library の 3 枚。同じ id meeting-f2e154b9-b7b0-4cb3-ae82-e3eb6b16adbe が通ったか: true"
+    "全体の連続感（層 C）: 面は Dock → Workspace → Library の 3 枚。同じ id meeting-3f62db67-7ae0-4f03-aaf3-451921302a2d が通ったか: true"
   ],
-  "product" : "Astra",
-  "startedAt" : "2026-09-11T16:57:42Z",
+  "product" : "Genie",
+  "startedAt" : "2026-11-09T10:50:46Z",
   "steps" : [
     {
       "front" : "com.apple.finder",
       "ids" : {
-        "dock" : "meeting-f2e154b9-b7b0-4cb3-ae82-e3eb6b16adbe",
-        "recording" : "meeting-f2e154b9-b7b0-4cb3-ae82-e3eb6b16adbe",
-        "session" : "meeting-f2e154b9-b7b0-4cb3-ae82-e3eb6b16adbe"
+        "dock" : "meeting-3f62db67-7ae0-4f03-aaf3-451921302a2d",
+        "recording" : "meeting-3f62db67-7ae0-4f03-aaf3-451921302a2d",
+        "session" : "meeting-3f62db67-7ae0-4f03-aaf3-451921302a2d"
       },
       "interactions" : 1,
       "keyWindow" : false,
-      "ms" : 1163,
+      "ms" : 1143,
       "name" : "Meeting",
       "surface" : {
         "h" : 108,
@@ -52,7 +52,7 @@
       },
       "interactions" : 1,
       "keyWindow" : false,
-      "ms" : 1218,
+      "ms" : 1186,
       "name" : "Notes",
       "surface" : {
         "h" : 227,
@@ -61,105 +61,108 @@
         "x" : 454,
         "y" : 890
       },
-      "transitionMs" : 180,
+      "transitionMs" : 194,
       "windows" : 1
     },
     {
       "front" : "com.apple.finder",
       "ids" : {
-        "session" : "meeting-f2e154b9-b7b0-4cb3-ae82-e3eb6b16adbe",
-        "workspace" : "meeting-f2e154b9-b7b0-4cb3-ae82-e3eb6b16adbe"
+        "session" : "meeting-3f62db67-7ae0-4f03-aaf3-451921302a2d",
+        "workspace" : "meeting-3f62db67-7ae0-4f03-aaf3-451921302a2d"
       },
       "interactions" : 1,
       "keyWindow" : true,
-      "ms" : 1283,
+      "ms" : 1303,
       "name" : "Workspace",
       "surface" : {
         "h" : 680,
         "key" : true,
         "w" : 1080,
         "x" : 324,
-        "y" : 239
+        "y" : 233
       },
-      "transitionMs" : 96,
+      "transitionMs" : 85,
       "windows" : 2
     },
     {
       "front" : "com.apple.finder",
       "ids" : {
         "decisions" : "1",
-        "session" : "meeting-f2e154b9-b7b0-4cb3-ae82-e3eb6b16adbe"
+        "session" : "meeting-3f62db67-7ae0-4f03-aaf3-451921302a2d"
       },
       "interactions" : 1,
       "keyWindow" : true,
-      "ms" : 2545,
+      "ms" : 2538,
       "name" : "終える",
       "surface" : {
-        "h" : 161,
+        "h" : 184,
         "key" : true,
         "w" : 520,
         "x" : 604,
-        "y" : 956
+        "y" : 933
       },
-      "transitionMs" : 201,
+      "transitionMs" : 205,
       "windows" : 1
     },
     {
+      "front" : "com.astra.desktop",
       "ids" : {
-        "opened" : "meeting-f2e154b9-b7b0-4cb3-ae82-e3eb6b16adbe",
-        "session" : "meeting-f2e154b9-b7b0-4cb3-ae82-e3eb6b16adbe"
+        "opened" : "meeting-3f62db67-7ae0-4f03-aaf3-451921302a2d",
+        "session" : "meeting-3f62db67-7ae0-4f03-aaf3-451921302a2d"
       },
       "interactions" : 1,
       "keyWindow" : true,
-      "ms" : 1189,
+      "ms" : 1132,
       "name" : "Library",
       "surface" : {
         "h" : 820,
         "key" : true,
         "w" : 1240,
         "x" : 244,
-        "y" : 216
+        "y" : 213
       },
       "windows" : 2
     },
     {
+      "front" : "com.astra.desktop",
       "ids" : {
         "shown" : "Ken|10:42",
         "want" : "Ken|10:42"
       },
       "interactions" : 1,
       "keyWindow" : true,
-      "ms" : 662,
+      "ms" : 658,
       "name" : "Source",
       "surface" : {
         "h" : 820,
         "key" : true,
         "w" : 1240,
         "x" : 244,
-        "y" : 216
+        "y" : 213
       },
       "windows" : 2
     },
     {
+      "front" : "com.astra.desktop",
       "ids" : {
         "shown" : "Ken|10:42",
         "transcriptRows" : "3"
       },
       "interactions" : 1,
       "keyWindow" : true,
-      "ms" : 1904,
+      "ms" : 1871,
       "name" : "読み戻す",
       "surface" : {
         "h" : 820,
         "key" : true,
         "w" : 1240,
         "x" : 244,
-        "y" : 216
+        "y" : 213
       },
       "windows" : 2
     }
   ],
   "success" : true,
-  "totalMs" : 9966,
+  "totalMs" : 9835,
   "windowsOpened" : 0
 }

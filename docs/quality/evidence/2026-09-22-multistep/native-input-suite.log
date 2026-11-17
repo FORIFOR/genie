@@ -1,0 +1,48 @@
+Evidence: /tmp/genie-native-input.gSFU9v
+STAGE route native_key by coords point 1410,897 local 230,100
+STAGE route native_mouse by coords point 1310,732 local 130,265
+STAGE route ax_press by element point 1515,747 local 335,250
+STAGE route native_mouse by element point 1490,797 local 310,200
+STAGE takeover-marker session_stopped
+STAGE takeover-marker human_takeover:pointer-over-target
+{
+  "axlessClickDelivered" : true,
+  "axlessElementClickedById" : true,
+  "badgeDrawnOnSmallTarget" : true,
+  "candidateCount" : 4,
+  "cursorUnchanged" : true,
+  "elementPressUsedAX" : true,
+  "epochStartsAtZero" : true,
+  "expiringGrantNotReused" : true,
+  "explicitStopNotResumable" : true,
+  "frameCarriesEpoch" : true,
+  "freshFrameCarriesNewEpoch" : true,
+  "frontmostUnchanged" : true,
+  "grantSurvivesRunEnd" : true,
+  "interruptionClearedOnResume" : true,
+  "interruptionKeptWhileWaiting" : true,
+  "keyDowns" : 6,
+  "keysConfirmedLiterally" : true,
+  "keysFollowedTheNamedField" : true,
+  "keysRefusedWhenAnotherWindowHasFocus" : true,
+  "keyUps" : 6,
+  "liveGrantReused" : true,
+  "noInputAfterStop" : true,
+  "noModifierResidue" : true,
+  "nothingSentOnStaleGeneration" : true,
+  "nothingTypedOnRefusal" : true,
+  "oldFrameStillRefusedAfterResume" : true,
+  "pressReleaseBalanced" : true,
+  "resumeAdvancesEpoch" : true,
+  "resumedAfterQuiet" : true,
+  "resumeWaitsWhileHumanActive" : true,
+  "staleGenerationRefused" : true,
+  "startedClean" : true,
+  "status" : "PASS",
+  "stoppedGrantNotReused" : true,
+  "stoppedSessionRefused" : true,
+  "typedOnce" : true,
+  "typedText" : "kakiku",
+  "typeIntoNonTextRefused" : true,
+  "unknownElementRefused" : true
+}

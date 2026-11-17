@@ -1,0 +1,7 @@
+Evidence: /tmp/genie-background-native.Plx4Tm
+TEST identity org.genie.background.target nil
+TEST capture
+TEST click
+TEST capture for text
+[Verify.BackgroundAX.Element(path: [1], role: "AXButton", subrole: "", identifier: "", title: "Show details", valueHash: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", x: 29.0, y: 143.0, width: 202.0, height: 50.0), Verify.BackgroundAX.Element(path: [3], role: "AXButton", subrole: "AXCloseButton", identifier: "", title: "", valueHash: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", x: 8.0, y: 8.0, width: 16.0, height: 16.0), Verify.BackgroundAX.Element(path: [4], role: "AXButton", subrole: "AXZoomButton", identifier: "", title: "", valueHash: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", x: 54.0, y: 8.0, width: 16.0, height: 16.0), Verify.BackgroundAX.Element(path: [5], role: "AXButton", subrole: "AXMinimizeButton", identifier: "", title: "", valueHash: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", x: 31.0, y: 8.0, width: 16.0, height: 16.0)]
+FAIL Failure(code: "field_missing")

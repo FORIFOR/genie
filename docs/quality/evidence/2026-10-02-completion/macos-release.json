@@ -1,0 +1,14 @@
+{
+  "recordedAt": "2026-10-01T18:37:25.150683+00:00",
+  "executor": "pointer_ui",
+  "command": "GENIE_SWIFT_BUILD_JOBS=1 CARGO_BUILD_JOBS=1 bash scripts/package-macos-app.sh",
+  "exitCode": 0,
+  "result": "release build, strict signature, headless facts launch PASS",
+  "ordinaryAppLaunch": "NOT_RUN: waiting for root-scoped preview wiring",
+  "sha256": {
+    "apps/genie-macos/.build/Genie.app/Contents/MacOS/GenieMac": "8794cae479b2f0312aedbf140c93937bab28475f0f03784cc55bab915a2b2159",
+    "apps/genie-macos/Sources/GenieMac/App/GenieAppDelegate.swift": "bf1c0eacaa29c57a2c1fdfb073f05c14bc4848c8957ed306fda3fc195765ac03",
+    "apps/genie-macos/Sources/GenieMac/App/TerminationDispatch.swift": "04dd23a83bfe172f726f34380c6d58d813bbda71455fc95c2b55485357050497",
+    "docs/quality/evidence/2026-10-02-completion/macos-release-package.log": "20774727865d6aa3e1dde9d8c56918d81ad507e862446dd8cd5a481a8f230375"
+  }
+}

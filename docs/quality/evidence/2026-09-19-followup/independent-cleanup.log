@@ -1,0 +1,8 @@
+genie-quality-terminal-20260919
+genie-preview-bc88eb4a5b5f-temporal-1 6933-6935/tcp, 6939/tcp, 7234-7235/tcp, 7239/tcp, 127.0.0.1:57965->7233/tcp
+genie-preview-bc88eb4a5b5f-redis-1 127.0.0.1:57964->6379/tcp
+genie-preview-bc88eb4a5b5f-postgres-1 127.0.0.1:57963->5432/tcp
+astra-temporal-ui 0.0.0.0:8233->8080/tcp, [::]:8233->8080/tcp
+astra-temporal 6933-6935/tcp, 6939/tcp, 7234-7235/tcp, 7239/tcp, 0.0.0.0:7233->7233/tcp, [::]:7233->7233/tcp
+astra-postgres 0.0.0.0:5433->5432/tcp, [::]:5433->5432/tcp
+astra-redis 0.0.0.0:6380->6379/tcp, [::]:6380->6379/tcp

@@ -1,0 +1,24 @@
+test_entry_prompts_include_ui_skill_and_no_false_evidence_rule (test_bundle.BundleTests.test_entry_prompts_include_ui_skill_and_no_false_evidence_rule) ... ok
+test_evaluation_ids_unique_and_twelve_cases_present (test_bundle.BundleTests.test_evaluation_ids_unique_and_twelve_cases_present) ... ok
+test_evidence_template_does_not_claim_passes (test_bundle.BundleTests.test_evidence_template_does_not_claim_passes) ... ok
+test_expected_skill_inventory_matches_installer (test_bundle.BundleTests.test_expected_skill_inventory_matches_installer) ... ok
+test_shared_contract_copies_match (test_bundle.BundleTests.test_shared_contract_copies_match) ... ok
+test_claude_only (test_install.InstallerTests.test_claude_only) ... ok
+test_codex_only (test_install.InstallerTests.test_codex_only) ... ok
+test_conflict_prevents_all_new_copies (test_install.InstallerTests.test_conflict_prevents_all_new_copies) ... ok
+test_dry_run_creates_nothing (test_install.InstallerTests.test_dry_run_creates_nothing) ... ok
+test_existing_ui_conflict_stops_before_copy (test_install.InstallerTests.test_existing_ui_conflict_stops_before_copy) ... ok
+test_install_both_exact_copies (test_install.InstallerTests.test_install_both_exact_copies) ... ok
+test_non_repo_refused (test_install.InstallerTests.test_non_repo_refused) ... ok
+test_nondirectory_ancestor_is_refused (test_install.InstallerTests.test_nondirectory_ancestor_is_refused) ... ok
+test_repeated_skill_selection_is_deduplicated (test_install.InstallerTests.test_repeated_skill_selection_is_deduplicated) ... ok
+test_symlink_ancestor_refused (test_install.InstallerTests.test_symlink_ancestor_refused) ... ok
+test_ui_only_both (test_install.InstallerTests.test_ui_only_both) ... ok
+test_unknown_skill_is_rejected_without_changes (test_install.InstallerTests.test_unknown_skill_is_rejected_without_changes) ... ok
+test_upgrade_preserves_four_existing_skills (test_install.InstallerTests.test_upgrade_preserves_four_existing_skills) ... ok
+test_worktree_git_file_is_accepted (test_install.InstallerTests.test_worktree_git_file_is_accepted) ... ok
+
+----------------------------------------------------------------------
+Ran 19 tests in 0.059s
+
+OK

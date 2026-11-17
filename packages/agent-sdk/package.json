@@ -2,6 +2,7 @@
   "name": "@genie/agent-sdk",
   "version": "0.0.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "description": "Authoring surface for skills, tools and delegation used by core and plugin agents.",
   "main": "./dist/index.js",

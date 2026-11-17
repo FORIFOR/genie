@@ -15,10 +15,15 @@ import {
   workflowInfo,
 } from '@temporalio/workflow';
 import {
+  COMPUTER_RUN_SEGMENTS,
+  COMPUTER_RUN_SEGMENT_ENDED,
   planTask,
   requiresSingleAttempt,
   isMeteredStep,
+  withInstructions,
   withMeetingSummary,
+  withTransactionQuote,
+  transactionResultTitle,
   type TaskPlan,
 } from './plan.js';
 
@@ -31,7 +36,12 @@ import {
  * ずれていないことは試験で見張る。
  */
 const HOST_OFFLINE_TYPE = 'HostOffline';
-import type { TaskActivities } from './activity-types.js';
+class TransactionDispatchCancelled extends Error {}
+import type {
+  TaskActivities,
+  FailureFinalization,
+  UnknownTransactionResult,
+} from './activity-types.js';
 
 const persistence = proxyActivities<TaskActivities>({
   startToCloseTimeout: '30 seconds',
@@ -114,6 +124,13 @@ export interface ApprovalDecisionSignal {
 export const approveSignal = defineSignal<[ApprovalDecisionSignal]>('approve');
 export const cancelSignal = defineSignal<[{ reason: string }]>('cancel');
 
+export interface InstructionSignal {
+  readonly requestId: string;
+  readonly text: string;
+}
+/** 動いている仕事への追加指示。次の段の前で反映する（段の途中には割り込まない）。 */
+export const instructSignal = defineSignal<[InstructionSignal]>('instruct');
+
 export interface TaskStateSnapshot {
   readonly status: string;
   readonly stepIndex: number;
@@ -156,6 +173,15 @@ const HOST_WAIT_ROUND_CHECKS = 60;
  */
 const MAX_HOST_WAIT_ROUNDS = 24;
 
+function hasFailureType(error: unknown, type: string): boolean {
+  let current: unknown = error;
+  for (let depth = 0; depth < 8 && current !== null && current !== undefined; depth += 1) {
+    if ((current as { type?: string }).type === type) return true;
+    current = (current as { cause?: unknown }).cause;
+  }
+  return false;
+}
+
 /** 端末が落ちているだけか。**失敗と混ぜない。** */
 function isHostOffline(error: unknown): boolean {
   let current: unknown = error;
@@ -178,6 +204,16 @@ export async function TaskWorkflow(input: TaskWorkflowInput): Promise<TaskResult
   });
   setHandler(cancelSignal, (signal) => {
     cancelRequested = signal.reason;
+  });
+  // 受け取った追加指示（まだ反映していない）と、反映済みの指示の本文（以後のすべての段に持ち越す）。
+  const pendingInstructions: InstructionSignal[] = [];
+  const instructionTexts: string[] = [];
+  const seenInstructions = new Set<string>();
+  setHandler(instructSignal, (signal) => {
+    // 送り直された同じ指示は一度だけ（保存と合図の間で落ちたときの送り直し）。
+    if (seenInstructions.has(signal.requestId)) return;
+    seenInstructions.add(signal.requestId);
+    pendingInstructions.push(signal);
   });
 
   let plan: TaskPlan;
@@ -210,63 +246,117 @@ export async function TaskWorkflow(input: TaskWorkflowInput): Promise<TaskResult
   });
 
   const results: unknown[] = [];
+  let transactionTitle: string | null = null;
+  let transactionSubmission: FailureFinalization['transactionSubmission'];
 
-  for (const step of plan.steps) {
-    stepIndex = step.index;
+  for (const planned of plan.steps) {
+    stepIndex = planned.index;
+    transactionSubmission = undefined;
 
     if (cancelRequested !== null) {
       return finishCancelled(input, cancelRequested);
     }
 
-    const approval = await persistence.requestApprovalIfNeeded(input, step);
-    if (approval) {
-      awaitingApprovalId = approval.approvalId;
-      status = 'WAITING_APPROVAL';
-
-      const decided = await condition(
-        () => decisions.has(approval.approvalId) || cancelRequested !== null,
-        APPROVAL_TIMEOUT_MS,
+    /*
+     * 追加指示はここ（段と段の間）で反映する。承認を求める前なので、承認は足した後の内容に対して出る。
+     * 指示が届いていないときは何もしない（既存の履歴の再生に新しい手順を足さない）。
+     */
+    if (pendingInstructions.length > 0 && patched('task-instructions-v1')) {
+      const taken = pendingInstructions.splice(0);
+      await persistence.applyInstructions(
+        input,
+        taken.map((i) => i.requestId),
+        planned.index,
+      );
+      instructionTexts.push(...taken.map((i) => i.text));
+    }
+    try {
+      const step = withTransactionQuote(
+        withInstructions(planned, instructionTexts),
+        plan.steps,
+        results,
       );
 
-      if (cancelRequested !== null) return finishCancelled(input, cancelRequested);
+      const approval = await persistence.requestApprovalIfNeeded(input, step);
+      if (approval) {
+        awaitingApprovalId = approval.approvalId;
+        status = 'WAITING_APPROVAL';
 
-      if (!decided) {
-        await persistence.expireApproval(input, approval.approvalId);
-        await persistence.failTask(input, {
-          code: 'task.approval_timeout',
-          message: 'approval was not granted in time',
-          step_index: step.index,
-          retryable: false,
-        });
-        status = 'FAILED';
-        return { artifactId: null, status: 'FAILED' };
+        const decided = await condition(
+          () => decisions.has(approval.approvalId) || cancelRequested !== null,
+          approval.timeoutMs ?? APPROVAL_TIMEOUT_MS,
+        );
+
+        if (cancelRequested !== null) return finishCancelled(input, cancelRequested);
+
+        if (!decided) {
+          await persistence.expireApproval(input, approval.approvalId);
+          await persistence.failTask(input, {
+            code: 'task.approval_timeout',
+            message: 'approval was not granted in time',
+            step_index: step.index,
+            retryable: false,
+          });
+          status = 'FAILED';
+          return { artifactId: null, status: 'FAILED' };
+        }
+
+        if (decisions.get(approval.approvalId) === 'REJECTED') {
+          await persistence.rejectApproval(input, approval.approvalId, step.index);
+          status = 'CANCELLED';
+          return { artifactId: null, status: 'CANCELLED' };
+        }
+
+        await persistence.acceptApproval(input, approval.approvalId);
+        awaitingApprovalId = null;
+        status = 'RUNNING';
       }
 
-      if (decisions.get(approval.approvalId) === 'REJECTED') {
-        await persistence.rejectApproval(input, approval.approvalId, step.index);
-        status = 'CANCELLED';
-        return { artifactId: null, status: 'CANCELLED' };
-      }
-
-      await persistence.acceptApproval(input, approval.approvalId);
-      awaitingApprovalId = null;
-      status = 'RUNNING';
-    }
-
-    /*
-     * step の失敗を**必ず記録してから**投げ直す。
-     *
-     * ここを素通しにしていた間、tool が失敗するとワークフローだけが落ち、
-     * `tasks` の行は RUNNING のまま残っていた。Work タブでは永久に
-     * 「進行中」に見える。**気づけない失敗**が一番まずい。
-     */
-    try {
+      /*
+       * step の失敗を**必ず記録してから**投げ直す。
+       *
+       * ここを素通しにしていた間、tool が失敗するとワークフローだけが落ち、
+       * `tasks` の行は RUNNING のまま残っていた。Work タブでは永久に
+       * 「進行中」に見える。**気づけない失敗**が一番まずい。
+       */
       const effective = patched('reuse-meeting-summary-v1')
         ? withMeetingSummary(step, plan.steps, results)
         : step;
-      results.push(await runStepWaitingForHost(effective));
+      const result =
+        effective.toolId === 'computer.run' && patched('computer-run-segments-v1')
+          ? await runComputerSegments(effective)
+          : await runStepWaitingForHost(effective);
+      transactionTitle = transactionResultTitle(effective, result) ?? transactionTitle;
+      results.push(result);
     } catch (error) {
-      await failWith(step.index, error);
+      if (error instanceof TransactionDispatchCancelled && cancelRequested !== null) {
+        return finishCancelled(input, cancelRequested);
+      }
+      if (planned.toolId.startsWith('transaction.') && patched('transaction-cancel-failure-v1')) {
+        // A claimed host may report unknown after Stop, before Temporal receives
+        // its cancel signal. Persistence arbitrates against the DB stop request.
+        const outcome = await failWith(planned.index, error, {
+          preserveCancellation: true,
+          ...(cancelRequested !== null ? { cancellationReason: cancelRequested } : {}),
+          ...(transactionSubmission && patched('transaction-unknown-fallback-v1')
+            ? { transactionSubmission }
+            : {}),
+        });
+        if (outcome && outcome.status !== 'FAILED') return outcome;
+        throw error;
+      }
+      // transaction.* は上の専用の経路だけを通る（古い履歴の再生で命令を変えない）。
+      if (!planned.toolId.startsWith('transaction.') && patched('step-cancel-preserve-v1')) {
+        // 受け付けた停止を、後から来た step の失敗や timeout で FAILED に書き換えない。
+        // 止めたかどうかは記録側が tasks の行で決める（合図が遅れて届いても同じ結果）。
+        const outcome = await failWith(planned.index, error, {
+          preserveCancellation: true,
+          ...(cancelRequested !== null ? { cancellationReason: cancelRequested } : {}),
+        });
+        if (outcome && outcome.status !== 'FAILED') return outcome;
+        throw error;
+      }
+      await failWith(planned.index, error);
       throw error;
     }
 
@@ -276,7 +366,20 @@ export async function TaskWorkflow(input: TaskWorkflowInput): Promise<TaskResult
   if (cancelRequested !== null) return finishCancelled(input, cancelRequested);
 
   try {
-    const artifactId = await tools.composeArtifact(input, plan.artifact, results);
+    const artifactId = await tools.composeArtifact(
+      input,
+      transactionTitle ? { ...plan.artifact, title: transactionTitle } : plan.artifact,
+      results,
+    );
+    if (patched('task-terminal-outcome-v1')) {
+      if (cancelRequested !== null) return finishCancelled(input, cancelRequested);
+      const outcome = await persistence.completeTask(input, artifactId);
+      if (outcome.status === 'CANCELLING') {
+        return finishCancelled(input, cancelRequested ?? 'user_requested');
+      }
+      status = outcome.status;
+      return outcome;
+    }
     await persistence.completeTask(input, artifactId);
     status = 'COMPLETED';
     return { artifactId, status: 'COMPLETED' };
@@ -297,8 +400,43 @@ export async function TaskWorkflow(input: TaskWorkflowInput): Promise<TaskResult
    *   - 待ちには終わりを置く。永久に PAUSED のまま残すと、
    *     結局それは気づかれない失敗になる
    */
+  /**
+   * 画面操作を、1 回の承認のまま区切って続ける（目的ごとに 1 回の承認）。
+   *
+   * 1 区切りは 12 操作・5 分まで。上限で止まり、進んでいて、届いたか分からない入力が無いときだけ
+   * 端末が「続けてよい」と返す（`COMPUTER_RUN_SEGMENT_ENDED`）。それ以外の止まり方
+   * （支払い・送信の手前、サインイン待ちの期限、モデルの失敗）は、これまでどおり失敗として返す。
+   * 区切りごとに別の受け渡し（requestKey）にする。同じ鍵だと、終わった前の区切りが返ってくる。
+   */
+  async function runComputerSegments(step: TaskPlan['steps'][number]): Promise<unknown> {
+    for (let segment = 0; ; segment += 1) {
+      const part =
+        segment === 0
+          ? step
+          : { ...step, requestKey: `segment-${segment}`, args: { ...step.args, segment } };
+      try {
+        return await runStepWaitingForHost(part);
+      } catch (error) {
+        if (
+          !hasFailureType(error, COMPUTER_RUN_SEGMENT_ENDED) ||
+          segment + 1 >= COMPUTER_RUN_SEGMENTS ||
+          cancelRequested !== null ||
+          pendingInstructions.length > 0
+        )
+          throw error;
+      }
+    }
+  }
+
   async function runStepWaitingForHost(step: TaskPlan['steps'][number]): Promise<unknown> {
     for (let round = 0; ; round += 1) {
+      if (step.toolId === 'transaction.submit') {
+        if (cancelRequested !== null) throw new TransactionDispatchCancelled();
+        if (pendingInstructions.length > 0)
+          throw new Error(
+            '確認待ちの間に注文の追加指示が届きました。内容を反映した新しい見積もりを確認してください。',
+          );
+      }
       try {
         const executor =
           step.toolId === 'meeting.transcribe' && patched('long-meeting-stt-v1')
@@ -314,6 +452,8 @@ export async function TaskWorkflow(input: TaskWorkflowInput): Promise<TaskResult
                     patched('general-generation-single-attempt-v1')))
               ? singleAttemptTools
               : tools;
+        if (step.toolId === 'transaction.submit')
+          transactionSubmission = { stepIndex: step.index, args: step.args };
         return await executor.executeStep(input, step);
       } catch (error) {
         if (!isHostOffline(error) || round >= MAX_HOST_WAIT_ROUNDS) throw error;
@@ -353,10 +493,15 @@ export async function TaskWorkflow(input: TaskWorkflowInput): Promise<TaskResult
   }
 
   /** 失敗を記録する。記録そのものが落ちても、元の失敗を握りつぶさない。 */
-  async function failWith(stepIdx: number | null, error: unknown): Promise<void> {
+  async function failWith(
+    stepIdx: number | null,
+    error: unknown,
+    finalization?: FailureFinalization,
+  ): Promise<TaskResult | undefined> {
     status = 'FAILED';
     try {
-      await persistence.failTask(input, {
+      const transactionResult = finalization ? transactionResultOf(error) : undefined;
+      const payload = {
         code: 'task.step_failed',
         message: messageOf(error),
         step_index: stepIdx,
@@ -365,10 +510,36 @@ export async function TaskWorkflow(input: TaskWorkflowInput): Promise<TaskResult
         recovery: recoveryFor(error),
         // 何を試して、何が使えなかったか。無ければ null（作らない）。
         handoff_explanation: explanationOf(error),
-      });
+        ...(transactionResult ? { transaction_result: transactionResult } : {}),
+      };
+      // No third argument or changed payload on the unpatched replay path.
+      const outcome = finalization
+        ? await persistence.failTask(input, payload, finalization)
+        : await persistence.failTask(input, payload);
+      if (finalization && outcome) {
+        status = outcome.status;
+        return outcome;
+      }
     } catch {
       // 記録に失敗しても、元の失敗を投げ直すのは呼び出し側の責任
     }
+  }
+
+  function transactionResultOf(error: unknown): UnknownTransactionResult | undefined {
+    let current = error;
+    for (let depth = 0; depth < 8 && current !== null && current !== undefined; depth += 1) {
+      const details = (current as { details?: unknown }).details;
+      if (Array.isArray(details)) {
+        for (const detail of details) {
+          // executeStep validated and bound this dedicated detail to the quote.
+          const value = (detail as { transactionResult?: UnknownTransactionResult } | null)
+            ?.transactionResult;
+          if (value?.status === 'unknown') return value;
+        }
+      }
+      current = (current as { cause?: unknown }).cause;
+    }
+    return undefined;
   }
 
   /**
@@ -428,7 +599,11 @@ export async function TaskWorkflow(input: TaskWorkflowInput): Promise<TaskResult
 
   async function finishCancelled(wf: TaskWorkflowInput, reason: string): Promise<TaskResult> {
     // 実行中の外部書き込みは中断しない。中途半端な副作用を作らない（正本 §24）
-    await persistence.cancelTask(wf, reason);
+    const outcome = await persistence.cancelTask(wf, reason);
+    if (patched('task-terminal-outcome-v1')) {
+      status = outcome.status;
+      return outcome;
+    }
     status = 'CANCELLED';
     return { artifactId: null, status: 'CANCELLED' };
   }

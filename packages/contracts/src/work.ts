@@ -225,6 +225,8 @@ export const WorkPriority = z.object({
   factors: z.array(WorkPressureFactor),
   /** 出所。**空にしない。** */
   sources: z.array(Provenance).min(1),
+  /** 本人が「自分の TODO」と確認した（`confirm`）。false はメール等からの推測（候補）。 */
+  confirmed: z.boolean().default(false),
 });
 export type WorkPriority = z.infer<typeof WorkPriority>;
 
@@ -245,6 +247,8 @@ export const OwedItem = z.object({
   due_at: Timestamp.nullable(),
   project: z.string().max(200).nullable(),
   sources: z.array(Provenance).min(1),
+  /** 本人が「自分の TODO」と確認した（`confirm`）。false はメール等からの推測（候補）。 */
+  confirmed: z.boolean().default(false),
 });
 export type OwedItem = z.infer<typeof OwedItem>;
 
@@ -274,12 +278,17 @@ export type WorkContext = z.infer<typeof WorkContext>;
 
 // -------------------------------------------------------------- correction
 
-/** 利用者の訂正。**1 操作**で反映し、以後の推論に効く。 */
+/**
+ * 利用者の訂正。**1 操作**で反映し、以後の推論に効く。
+ * `confirm` だけは項目を消さず、本人が確認した TODO（登録済み）にする。
+ * 「自分の担当ではない」は `dismiss`（note に理由）。
+ */
 export const WORK_CORRECTION_ACTIONS = [
   'dismiss',
   'not_priority',
   'done',
   'wrong_project',
+  'confirm',
 ] as const;
 export const WorkCorrection = z.object({
   item_id: z.string().min(1).max(300),
@@ -544,6 +553,29 @@ export const InitialProfileSections = z.object({
   work_pattern: z.array(z.string().trim().min(1).max(200)).max(3),
   open_items: z.number().int().min(0).max(5000),
 });
+/** Initial body analysis stays local. Only bounded findings and source IDs leave the worker. */
+export const INITIAL_PROFILE_MAIL_LIMIT = 100;
+export const InitialProfileClaim = z
+  .object({
+    text: z.string().trim().min(1).max(200),
+    source_ids: z.array(z.string().min(1).max(200)).min(1).max(INITIAL_PROFILE_MAIL_LIMIT),
+  })
+  .strict();
+export const InitialProfileAnalysis = z
+  .object({
+    version: z.literal(2),
+    status: z.enum(['complete', 'partial', 'unavailable']),
+    selected_count: z.number().int().min(0).max(INITIAL_PROFILE_MAIL_LIMIT),
+    analyzed_count: z.number().int().min(0).max(INITIAL_PROFILE_MAIL_LIMIT),
+    analyzed_ids: z.array(z.string().min(1).max(200)).max(INITIAL_PROFILE_MAIL_LIMIT),
+    excluded_ids: z.array(z.string().min(1).max(200)).max(INITIAL_PROFILE_MAIL_LIMIT),
+    focus: z.array(InitialProfileClaim).max(5),
+    priorities: z.array(InitialProfileClaim).max(5),
+    open_items: z.array(InitialProfileClaim).max(30),
+  })
+  .strict();
+export type InitialProfileClaim = z.infer<typeof InitialProfileClaim>;
+export type InitialProfileAnalysis = z.infer<typeof InitialProfileAnalysis>;
 export const InitialProfile = z.object({
   id: z.uuid(),
   provider: z.enum(['google', 'microsoft']),
@@ -553,6 +585,7 @@ export const InitialProfile = z.object({
   outcomes: z.array(InitialProfileOutcome).max(4),
   sections: InitialProfileSections.nullable(),
   profile: PersonalizationProfile.nullable(),
+  analysis: InitialProfileAnalysis.nullable().default(null),
 });
 export type InitialProfile = z.infer<typeof InitialProfile>;
 export type InitialProfileOutcome = z.infer<typeof InitialProfileOutcome>;

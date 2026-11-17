@@ -113,7 +113,12 @@ final class PermissionExperienceTests: XCTestCase {
         Permissions.simulatedMicrophone = .denied
         let voice = VoiceHUDState.shared
         let mode = voice.mode
-        voice.beginListening()
+        voice.beginDictation()
+        XCTAssertEqual(voice.mode, mode)
+        XCTAssertEqual(PermissionGuideCoordinator.shared.state, .microphoneIntro)
+        PermissionGuideCoordinator.shared.stop()
+        voice.beginConversation()
+        XCTAssertFalse(voice.conversation.isActive, "許可が無いのに会話を始めた")
         XCTAssertEqual(voice.mode, mode)
         XCTAssertEqual(PermissionGuideCoordinator.shared.state, .microphoneIntro)
     }

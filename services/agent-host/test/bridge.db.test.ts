@@ -10,7 +10,7 @@
  *   - 取りに来ないものを、やってみて駄目だったことにしない
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { uuidv7 } from '@genie/contracts';
+import { canonicalSha256, uuidv7 } from '@genie/contracts';
 import { createDb, withIdentity, withTenant, type DbHandle } from '@genie/db';
 import { AgentHostService } from '../src/service.js';
 import { HostBridge } from '../src/bridge.js';
@@ -104,6 +104,8 @@ describe.skipIf(!url)('the host bridge', () => {
 
   it('says a device is there while it keeps answering', async () => {
     expect(await bridge.hasOnlineHost(tenantId, userId)).toBe(true);
+    expect(await bridge.hasOnlineHost(tenantId, userId, hostId)).toBe(true);
+    expect(await bridge.hasOnlineHost(tenantId, userId, uuidv7())).toBe(false);
     // 90 秒応答が無ければ、居ないものとして扱う
     clock += 200_000;
     expect(await bridge.hasOnlineHost(tenantId, userId)).toBe(false);
@@ -242,6 +244,296 @@ describe.skipIf(!url)('the host bridge', () => {
 
   it('hands back nothing when there is nothing to do', async () => {
     expect(await bridge.claimNext({ tenantId, hostId })).toBeNull();
+  });
+
+  it('routes Orca status to its selected user-owned host', async () => {
+    const taskId = await makeTask();
+    await expect(
+      bridge.request({
+        tenantId,
+        taskId,
+        stepIndex: 0,
+        toolId: 'coding.orca.status',
+        args: { host_id: hostId },
+      }),
+    ).rejects.toMatchObject({ code: 'host.capability_denied' });
+    const placed = await bridge.request({
+      tenantId,
+      userId,
+      taskId,
+      stepIndex: 0,
+      toolId: 'coding.orca.status',
+      args: { host_id: hostId },
+    });
+    expect(await bridge.claimNext({ tenantId, hostId: otherHostId })).toBeNull();
+    expect((await bridge.claimNext({ tenantId, hostId }))?.id).toBe(placed.id);
+  });
+
+  it('routes an approved Orca launch only to its target host and checks revocation', async () => {
+    const taskId = await makeTask();
+    const args = {
+      host_id: hostId,
+      path: '/projects/app',
+      agent: 'codex',
+      prompt: 'Implement auth',
+    };
+    const inputsHash = await canonicalSha256(args);
+    const approvalId = uuidv7();
+    const expiresAt = new Date(Date.now() + 60_000);
+    await withTenant(db, tenantId, (tx) =>
+      tx
+        .insertInto('approvals')
+        .values({
+          id: approvalId,
+          tenant_id: tenantId,
+          task_id: taskId,
+          step_index: 0,
+          risk: 'REVERSIBLE_WRITE',
+          summary: 'Launch',
+          details: JSON.stringify({ inputsHash }),
+          editable_fields: JSON.stringify([]),
+          status: 'APPROVED',
+          expires_at: expiresAt,
+          decided_by: userId,
+          decided_at: new Date(),
+        })
+        .execute(),
+    );
+    const approval = {
+      approvalId,
+      operationId: 'coding.orca.launch',
+      decision: 'APPROVED' as const,
+      decidedBy: userId,
+      decidedAt: new Date().toISOString(),
+      expiresAt: expiresAt.toISOString(),
+      inputsHash,
+    };
+    await expect(
+      bridge.request({
+        tenantId,
+        userId,
+        taskId,
+        stepIndex: 0,
+        toolId: 'coding.orca.launch',
+        args,
+      }),
+    ).rejects.toMatchObject({ code: 'host.capability_denied' });
+    const placed = await bridge.request({
+      tenantId,
+      userId,
+      taskId,
+      stepIndex: 0,
+      toolId: 'coding.orca.launch',
+      args,
+      approval,
+    });
+    expect(await bridge.claimNext({ tenantId, hostId: otherHostId })).toBeNull();
+    expect((await bridge.claimNext({ tenantId, hostId }))?.id).toBe(placed.id);
+    expect(await bridge.executionAllowed({ tenantId, userId, requestId: placed.id, hostId })).toBe(
+      true,
+    );
+    await withTenant(db, tenantId, (tx) =>
+      tx
+        .updateTable('approvals')
+        .set({ status: 'REJECTED' })
+        .where('id', '=', approvalId)
+        .execute(),
+    );
+    expect(await bridge.executionAllowed({ tenantId, userId, requestId: placed.id, hostId })).toBe(
+      false,
+    );
+  });
+
+  it('durably claims one late Orca switch and rejects a second replacement', async () => {
+    const taskId = await makeTask();
+    const args = {
+      host_id: hostId,
+      path: '/projects/app',
+      agent: 'claude',
+      fallback_agent: 'codex',
+      prompt: 'Implement auth',
+    };
+    const inputsHash = await canonicalSha256(args);
+    const approvalId = uuidv7();
+    const expiresAt = new Date(clock + 60_000);
+    await withTenant(db, tenantId, (tx) =>
+      tx
+        .insertInto('approvals')
+        .values({
+          id: approvalId,
+          tenant_id: tenantId,
+          task_id: taskId,
+          step_index: 0,
+          risk: 'REVERSIBLE_WRITE',
+          summary: 'Launch',
+          details: JSON.stringify({ inputsHash }),
+          editable_fields: JSON.stringify([]),
+          status: 'APPROVED',
+          expires_at: expiresAt,
+          decided_by: userId,
+          decided_at: now(),
+        })
+        .execute(),
+    );
+    const approval = {
+      approvalId,
+      operationId: 'coding.orca.launch',
+      decision: 'APPROVED' as const,
+      decidedBy: userId,
+      decidedAt: now().toISOString(),
+      expiresAt: expiresAt.toISOString(),
+      inputsHash,
+    };
+    const request = await bridge.request({
+      tenantId,
+      userId,
+      taskId,
+      stepIndex: 0,
+      toolId: 'coding.orca.launch',
+      args,
+      approval,
+    });
+    await bridge.claimNext({ tenantId, hostId });
+    await bridge.complete({
+      tenantId,
+      hostId,
+      requestId: request.id,
+      result: {
+        state: 'launched',
+        agent: 'claude',
+        terminal: 'term_123e4567-e89b-42d3-a456-426614174000',
+      },
+    });
+    await withTenant(db, tenantId, (tx) =>
+      tx.updateTable('tasks').set({ status: 'COMPLETED' }).where('id', '=', taskId).execute(),
+    );
+    const identity = { tenantId, userId, hostId, requestId: request.id };
+    expect(await bridge.listOrcaSupervisions({ tenantId, userId, hostId })).toMatchObject([
+      { requestId: request.id, agent: 'claude', fallbackAgent: 'codex' },
+    ]);
+    expect(await bridge.getOrcaSupervision({ tenantId, userId, taskId })).toMatchObject({
+      state: 'monitoring',
+    });
+    expect(await bridge.getOrcaSupervision({ tenantId, userId: uuidv7(), taskId })).toBeNull();
+    expect(await bridge.listOrcaSupervisions({ tenantId, userId, hostId: otherHostId })).toEqual(
+      [],
+    );
+    expect(await bridge.beginOrcaSwitch({ ...identity, hostId: otherHostId })).toBe(false);
+    expect(await bridge.beginOrcaSwitch(identity)).toBe(true);
+    expect(await bridge.beginOrcaSwitch(identity)).toBe(false);
+    const outcome = {
+      state: 'switched' as const,
+      agent: 'codex' as const,
+      terminal: 'term_223e4567-e89b-42d3-a456-426614174000',
+    };
+    expect(await bridge.finishOrcaSupervision({ ...identity, outcome })).toMatchObject({
+      taskId,
+      outcome,
+    });
+    expect(await bridge.finishOrcaSupervision({ ...identity, outcome })).toMatchObject({
+      taskId,
+      outcome,
+    });
+    expect(await bridge.getOrcaSupervision({ tenantId, userId, taskId })).toMatchObject({
+      state: 'switched',
+      outcome,
+    });
+    expect(await bridge.listOrcaSupervisions({ tenantId, userId, hostId })).toEqual([]);
+  });
+
+  it('does not dispatch queued or new work after task cancellation or completion', async () => {
+    for (const status of ['CANCELLING', 'CANCELLED', 'COMPLETED', 'FAILED']) {
+      const taskId = await makeTask();
+      await bridge.request({
+        tenantId,
+        taskId,
+        stepIndex: 0,
+        toolId: 'transaction.submit',
+        args: {},
+      });
+      await withTenant(db, tenantId, (tx) =>
+        tx.updateTable('tasks').set({ status }).where('id', '=', taskId).execute(),
+      );
+      expect(await bridge.claimNext({ tenantId, hostId })).toBeNull();
+      await expect(
+        bridge.request({ tenantId, taskId, stepIndex: 1, toolId: 'transaction.submit', args: {} }),
+      ).rejects.toMatchObject({ code: 'common.conflict' });
+    }
+  });
+
+  it('withdraws only an unclaimed request of a task that no longer runs', async () => {
+    const setStatus = (taskId: string, status: string): Promise<unknown> =>
+      withTenant(db, tenantId, (tx) =>
+        tx.updateTable('tasks').set({ status }).where('id', '=', taskId).execute(),
+      );
+    const place = async (taskId: string) =>
+      bridge.request({ tenantId, taskId, stepIndex: 0, toolId: 'llm.answer', args: {} });
+
+    // 動いている仕事の依頼は取り下げない。端末がこれから取りに来る。
+    const runningTask = await makeTask();
+    const running = await place(runningTask);
+    expect(await bridge.withdrawUnclaimed(tenantId, running.id)).toBe(false);
+    expect(await bridge.get(tenantId, running.id)).toMatchObject({ status: 'PENDING' });
+
+    // 端末が取った依頼は、止めた後も取り下げない。結果は端末だけが言える。
+    expect((await bridge.claimNext({ tenantId, hostId }))?.id).toBe(running.id);
+    await setStatus(runningTask, 'CANCELLING');
+    expect(await bridge.withdrawUnclaimed(tenantId, running.id)).toBe(false);
+    expect(await bridge.get(tenantId, running.id)).toMatchObject({ status: 'CLAIMED', hostId });
+
+    // 止めた仕事の、誰も取っていない依頼だけが消える。二度目は何もしない。
+    const stoppedTask = await makeTask();
+    const stopped = await place(stoppedTask);
+    await setStatus(stoppedTask, 'CANCELLING');
+    expect(await bridge.withdrawUnclaimed(tenantId, stopped.id)).toBe(true);
+    expect(await bridge.get(tenantId, stopped.id)).toBeNull();
+    expect(await bridge.withdrawUnclaimed(tenantId, stopped.id)).toBe(false);
+    expect(await bridge.claimNext({ tenantId, hostId })).toBeNull();
+  });
+
+  it('revokes claimed execution on cancellation while still accepting the actual sent receipt', async () => {
+    const taskId = await makeTask();
+    const request = await bridge.request({
+      tenantId,
+      taskId,
+      stepIndex: 0,
+      toolId: 'mail.send',
+      args: {},
+    });
+    const input = { tenantId, userId, requestId: request.id, hostId };
+    expect(await bridge.executionAllowed(input)).toBe(false);
+    await bridge.claimNext({ tenantId, hostId });
+    expect(await bridge.executionAllowed(input)).toBe(true);
+    expect(await bridge.executionAllowed({ ...input, hostId: otherHostId })).toBe(false);
+    expect(await bridge.executionAllowed({ ...input, userId: uuidv7() })).toBe(false);
+    await withTenant(db, tenantId, (tx) =>
+      tx.updateTable('tasks').set({ status: 'CANCELLING' }).where('id', '=', taskId).execute(),
+    );
+    expect(await bridge.executionAllowed(input)).toBe(false);
+    await bridge.complete({
+      ...input,
+      result: { status: 'accepted', providerOrderId: 'already-sent' },
+    });
+    expect(await bridge.get(tenantId, request.id)).toMatchObject({
+      status: 'DONE',
+      result: { status: 'accepted', providerOrderId: 'already-sent' },
+    });
+  });
+
+  it('does not grant authority to an expired claimed request', async () => {
+    const taskId = await makeTask();
+    const request = await bridge.request({
+      tenantId,
+      taskId,
+      stepIndex: 0,
+      toolId: 'mail.send',
+      args: {},
+    });
+    await bridge.claimNext({ tenantId, hostId });
+    clock += 60_000;
+    expect(await bridge.executionAllowed({ tenantId, userId, requestId: request.id, hostId })).toBe(
+      false,
+    );
   });
 
   it('takes the result only from the device that claimed the step', async () => {

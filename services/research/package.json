@@ -2,6 +2,7 @@
   "name": "@genie/service-research",
   "version": "0.0.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "description": "Research planning, search adapters, evidence ledger and report generation.",
   "main": "./dist/index.js",

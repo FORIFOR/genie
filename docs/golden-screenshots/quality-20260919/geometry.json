@@ -1,0 +1,130 @@
+{
+  "composer-940-dark" : {
+    "height" : 672,
+    "width" : 940
+  },
+  "composer-940-light" : {
+    "height" : 672,
+    "width" : 940
+  },
+  "composer-1162-dark" : {
+    "height" : 768,
+    "width" : 1162
+  },
+  "composer-1162-light" : {
+    "height" : 768,
+    "width" : 1162
+  },
+  "connections-940-dark" : {
+    "height" : 672,
+    "width" : 940
+  },
+  "connections-940-light" : {
+    "height" : 672,
+    "width" : 940
+  },
+  "connections-1162-dark" : {
+    "height" : 768,
+    "width" : 1162
+  },
+  "connections-1162-light" : {
+    "height" : 768,
+    "width" : 1162
+  },
+  "detail-940-dark" : {
+    "height" : 672,
+    "width" : 940
+  },
+  "detail-940-light" : {
+    "height" : 672,
+    "width" : 940
+  },
+  "detail-1162-dark" : {
+    "height" : 768,
+    "width" : 1162
+  },
+  "detail-1162-light" : {
+    "height" : 768,
+    "width" : 1162
+  },
+  "home-940-dark" : {
+    "height" : 672,
+    "width" : 940
+  },
+  "home-940-light" : {
+    "height" : 672,
+    "width" : 940
+  },
+  "home-1162-dark" : {
+    "height" : 768,
+    "width" : 1162
+  },
+  "home-1162-light" : {
+    "height" : 768,
+    "width" : 1162
+  },
+  "interrupted-940-dark" : {
+    "height" : 672,
+    "width" : 940
+  },
+  "interrupted-940-light" : {
+    "height" : 672,
+    "width" : 940
+  },
+  "interrupted-1162-dark" : {
+    "height" : 768,
+    "width" : 1162
+  },
+  "interrupted-1162-light" : {
+    "height" : 768,
+    "width" : 1162
+  },
+  "result-940-dark" : {
+    "height" : 672,
+    "width" : 940
+  },
+  "result-940-light" : {
+    "height" : 672,
+    "width" : 940
+  },
+  "result-1162-dark" : {
+    "height" : 768,
+    "width" : 1162
+  },
+  "result-1162-light" : {
+    "height" : 768,
+    "width" : 1162
+  },
+  "tasks-940-dark" : {
+    "height" : 672,
+    "width" : 940
+  },
+  "tasks-940-light" : {
+    "height" : 672,
+    "width" : 940
+  },
+  "tasks-1162-dark" : {
+    "height" : 768,
+    "width" : 1162
+  },
+  "tasks-1162-light" : {
+    "height" : 768,
+    "width" : 1162
+  },
+  "working-940-dark" : {
+    "height" : 672,
+    "width" : 940
+  },
+  "working-940-light" : {
+    "height" : 672,
+    "width" : 940
+  },
+  "working-1162-dark" : {
+    "height" : 768,
+    "width" : 1162
+  },
+  "working-1162-light" : {
+    "height" : 768,
+    "width" : 1162
+  }
+}

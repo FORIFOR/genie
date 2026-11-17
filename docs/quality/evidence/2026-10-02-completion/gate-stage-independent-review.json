@@ -1,0 +1,75 @@
+{
+  "schema": 1,
+  "recordedAt": "2026-10-01T23:05:48.836323+00:00",
+  "reviewer": "/root/verification_audit",
+  "status": "PASS",
+  "statusScope": "New combined release-stage identity/content and generated binding consistency only; no app launch/install or full gate by reviewer.",
+  "candidate": "/private/tmp/genie-transactions-20261002/user-app-gate-stage/Genie.app",
+  "executableSha256": {
+    "installed": "a01378c92ef466086c4e6e0c1f8263e66a9da61ec24d026c86ef6cda0f678801",
+    "canonical": "96081ca2b8f67b4e2891a160ca2293ab7e05618b97d05998b4d1bb5852f668df",
+    "candidate": "8b46350c5bb3a4330320689898171c59a5fd0dc9cf1947dd6548a4d4f2af668d"
+  },
+  "checks": {
+    "freshCodesignDeepStrictExit": 0,
+    "designatedRequirementMatchesInstalled": true,
+    "installedIdentityVersionAndUIElementPreserved": true,
+    "infoDifferencesFromCanonical": [
+      "CFBundleExecutable",
+      "CFBundleIdentifier",
+      "LSUIElement"
+    ],
+    "inventory": {
+      "Resources": {
+        "allEntries": 108,
+        "regularFiles": 54,
+        "symlinks": 0,
+        "equal": true
+      },
+      "Frameworks": {
+        "allEntries": 156,
+        "regularFiles": 88,
+        "symlinks": 9,
+        "equal": true
+      }
+    },
+    "machineCodeComparison": {
+      "normalization": "Exclude embedded LC_CODE_SIGNATURE payload; zero its dataoff/datasize and __LINKEDIT vmsize/filesize. All remaining actual Mach-O bytes equal without rewriting binaries.",
+      "equal": true,
+      "sha256": "05b73039fcd969d1af7e15c49b8f825f04b148a12f0a7a36e2a0e5e2348ce5fe"
+    },
+    "sourceHashesMatch": {
+      "apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift": "e71fc95da88a408ffccb27c7985b40c7e5be6818a8974cb225a045e54159c345",
+      "apps/genie-macos/Sources/GenieMac/App/SelfTestMicRelease.swift": "61ecb7ddb1abd35cb83190ba75caf0450830282ba2d1e1347b81df7e9b0b19ff",
+      "apps/genie-macos/Tests/GenieMacTests/ConversationWiringTests.swift": "7ac4faa4d309147e9336391223084f2a94a816cd165ead389602b28a19fda7bd",
+      "core/genie-core/src/api.rs": "914c671cd14837d89a5d60cc467b13339d331c0154389790c977bad91779df79",
+      "scripts/verify-journeys.sh": "42245fce220c9f1d022f5a5b4d3e3b7201579345ecb71b6006c702fcd7a70af2",
+      "scripts/tests/test_journey_launcher.py": "956be6065ce586e971d7134968ec50e96d14d76921d1d35773da9ce251a05d2f",
+      "apps/genie-macos/Sources/GenieCore/genie_core.swift": "eead7f6a8e939d25167a9d38926a127c05f06bb126dff4de97b533ca908dca15",
+      "apps/genie-macos/Sources/GenieCoreFFI/include/genie_coreFFI.h": "26d0865dc5454805c37a98135100c8e1bf9e878560108d50076bea946423afad",
+      "apps/genie-macos/Sources/GenieCoreFFI/include/module.modulemap": "c23a9725a56d6e5ca25b6ddd6de5e0849d1d77f4f93d3e00ecf9f1088a1bdbc1"
+    },
+    "coreArchive": {
+      "path": "/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a",
+      "sha256": "55fa96e8cc6c0604a5934fee0d250cac3e7f5d105b32550f06cc10d7345ca6c5"
+    },
+    "namedRustChecksumReadOnly": {
+      "symbol": "_uniffi_genie_core_checksum_func_api_reachable",
+      "instructions": "mov w0, #59910; ret",
+      "checksum": 59910,
+      "agreesWithGeneratedSwiftExpected": true
+    },
+    "packageLog": {
+      "sha256": "5267c06e0ad88ffff36ad688ef4767154f6e90fd9bc7a75512dc76eecd434a64",
+      "observed": "New release Linking GenieMac with current static archive path; strict signing and packaged --selftest facts completed (launch: OK)."
+    },
+    "sourceManifestSha256": "ff122394e4a37c1acdf4c073e6e940206ec626ec0792f3dd9be18a1471647812",
+    "stageManifestSha256": "dbd91f50d89b1cfed657d1d64cc5b2fe05d54c81e50843fce2bf7f1b611035de"
+  },
+  "limits": [
+    "No OS grant, Keychain read, GUI interaction, install or native test by reviewer.",
+    "Prior package checksum crash remains preserved; corrected source/FFI consistency does not itself pass the lifecycle/full release gate.",
+    "This current-host package does not establish macOS14 compatibility given recorded Rust object deployment warnings.",
+    "Real user Keychain confirmation, full-service completion, streaming endurance and live merchant/broker transactions remain outside this stage verdict."
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  "recordedAt": "2026-10-01T23:04:39.637308+00:00",
+  "scope": "Private signed candidate only; no installation, GUI, real microphone or credential operation.",
+  "packageExit": 0,
+  "headlessFacts": "PASS",
+  "candidate": {
+    "path": "/private/tmp/genie-transactions-20261002/user-app-gate-stage/Genie.app",
+    "info": {
+      "CFBundleIdentifier": "com.astra.mac",
+      "CFBundleExecutable": "Genie",
+      "CFBundleShortVersionString": "0.1.4",
+      "CFBundleVersion": "0.1.4",
+      "LSUIElement": true
+    },
+    "executableSha256": "8b46350c5bb3a4330320689898171c59a5fd0dc9cf1947dd6548a4d4f2af668d",
+    "signatureMetadata": [
+      "Identifier=com.astra.mac",
+      "Authority=Apple Development: Shuhei Horio (N5DXXRWC3M)",
+      "Authority=Apple Worldwide Developer Relations Certification Authority",
+      "Authority=Apple Root CA",
+      "TeamIdentifier=6RR7572ZLU",
+      "designated => identifier \"com.astra.mac\" and anchor apple generic and certificate leaf[subject.CN] = \"Apple Development: Shuhei Horio (N5DXXRWC3M)\" and certificate 1[field.1.2.840.113635.100.6.2.1] /* exists */"
+    ]
+  },
+  "canonical": {
+    "path": "/Users/shuhei/Projects/genie/apps/genie-macos/.build/Genie.app",
+    "info": {
+      "CFBundleIdentifier": "com.astra.desktop",
+      "CFBundleExecutable": "GenieMac",
+      "CFBundleShortVersionString": "0.1.4",
+      "CFBundleVersion": "0.1.4",
+      "LSUIElement": null
+    },
+    "executableSha256": "96081ca2b8f67b4e2891a160ca2293ab7e05618b97d05998b4d1bb5852f668df",
+    "signatureMetadata": [
+      "Identifier=com.astra.desktop",
+      "Authority=Apple Development: Shuhei Horio (N5DXXRWC3M)",
+      "Authority=Apple Worldwide Developer Relations Certification Authority",
+      "Authority=Apple Root CA",
+      "TeamIdentifier=6RR7572ZLU",
+      "designated => identifier \"com.astra.desktop\" and anchor apple generic and certificate leaf[subject.CN] = \"Apple Development: Shuhei Horio (N5DXXRWC3M)\" and certificate 1[field.1.2.840.113635.100.6.2.1] /* exists */"
+    ]
+  },
+  "installedAppUnmodified": true,
+  "strictSignatureVerified": true,
+  "designatedRequirementMatchesInstalled": true,
+  "currentSourceHashesVerified": 9,
+  "normalizedExecutableEqual": {
+    "canonical": "f05d32ed52a78d3676bacad3f12c90a5980f420eeb68b346e349fbb80a8cf35b",
+    "candidate": "f05d32ed52a78d3676bacad3f12c90a5980f420eeb68b346e349fbb80a8cf35b"
+  },
+  "files": {
+    "bindings-tests.log": "0dcde055719a03a2ccba2db113bd90c07ef405375ed7b62816efd17b358fc297",
+    "facts-round1-fail.log": "7405a294e1686535a8e8c87409485204bcc641579d8425fd22cbec525bd41195",
+    "manifest.json": "ff122394e4a37c1acdf4c073e6e940206ec626ec0792f3dd9be18a1471647812",
+    "release-package-round1-fail.log": "40e7362e8964f1788aae07fc887e8cb03bd24223edc470d717a5b7ec471fd1cb",
+    "release-package-round2.log": "5267c06e0ad88ffff36ad688ef4767154f6e90fd9bc7a75512dc76eecd434a64",
+    "release-round1-failure.json": "8640dcc5d4b29855c533a09fce08206884256ae48b37de68c6c37943a01ba6a4",
+    "relink-tests.log": "63d9e9ec5275083d10980e15ad68e7065c6af31482b97a430976aa711511b48a",
+    "relink.json": "26bb8b37b18e56a24b34eff1084670e07f67813459ee82e17a173362cd74988b",
+    "stage-candidate.py": "7f0831bb883d8e9ddff1450f96a4ea524fb91e2bbfdc2bd1d6cc0da02470d058",
+    "stage-frameworks-inventory.json": "75571941ef9e7e9338d34dd6c03d0b168a19797b98de1cc6fbdb0b6cae214dfc",
+    "stage-manifest.json": "dbd91f50d89b1cfed657d1d64cc5b2fe05d54c81e50843fce2bf7f1b611035de",
+    "stage-resources-inventory.json": "f0c0cdd8c1202dd38c5f679c9c29727da58e06e8110638dc7b39beef434b24c7",
+    "stage-sign.log": "d82e7c97947ce07dfe0c90ed34225d5b816fab0b31f3420c9baa06a779ab9428"
+  },
+  "limits": [
+    "Original round1 checksum failure preserved",
+    "Focused native-interface tests and package facts pass; revised real micrelease and full gate remain root-owned follow-up",
+    "No actual Keychain permission recovery claim",
+    "Motion performance unchanged"
+  ]
+}

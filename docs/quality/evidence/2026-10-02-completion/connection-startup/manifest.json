@@ -1,0 +1,64 @@
+{
+  "captured_at": "2026-10-01T21:40:42.639407+00:00",
+  "scope": "Source and synthetic regressions only; real Keychain recovery, installed direct launch and final release are not verified by this manifest.",
+  "source_sha256": {
+    "apps/genie-macos/Sources/GenieMac/Settings/KeychainStore.swift": "beaac42fc2d4c362cb81912db572da5ae829ca7a48ea2c1500a7d060e79cc414",
+    "apps/genie-macos/Sources/GenieMac/Settings/GatewaySession.swift": "575da5de32cd62d11e9758fc31d80f9b2862a69fda87b67e97fe52e0cf99e2d9",
+    "apps/genie-macos/Sources/GenieMac/Settings/GatewayConnectionIssue.swift": "8b8b9ff83fc7a1eeeee4d35c6070f14d07a9bc580616848d70674fe6fc72a9d8",
+    "apps/genie-macos/Sources/GenieMac/Settings/SettingsView.swift": "7b0394b27a7d7ff32aa487f139571d0b5c6d282003c1558b901e047c2aa8d799",
+    "apps/genie-macos/Sources/GenieMac/Audio/GeminiLiveProvider.swift": "d6ad684a79fe8f9f86d02df45ffacbe17ac1cae963f159ba36d3c3127e9e91ff",
+    "apps/genie-macos/Sources/GenieMac/Places/PlacesSettings.swift": "dea8f65a4d1effdeba1da7adf12165b15c6b2199772939d2a0eaa9e7530ee308",
+    "apps/genie-macos/Sources/GenieMac/Places/NearbyPlaces.swift": "e5062cd541e51e9db9bb4581ddac490395e174c029d2be361c7d11b966542394",
+    "apps/genie-macos/Sources/GenieMac/Home/HomeIntentSubmission.swift": "f124087e97896a33608cbcb733b1e50a8997c9a6bde36656f4526652f4decc62",
+    "apps/genie-macos/Sources/GenieMac/Home/HomeView.swift": "a96f227838d9c9abc571edc7cdde7c2379a8594175ccc9c7702853e92348ef33",
+    "apps/genie-macos/Sources/GenieMac/Main/MainWindowView.swift": "13ab7c1b7238b4858e9d875c80e9d25909514cc083dfaefe8227504734d06b95",
+    "apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift": "b518ea7861acdef3af7f0acf75b42bc711c91f6ce340e74a252a1e71169ce910",
+    "apps/genie-macos/Sources/GenieMac/App/DesktopConnectionBootstrap.swift": "d8ef810f6b43deb7586211ff4e4e3b9dfb846d5876e7533cccfa91c3ecc657b1",
+    "apps/genie-macos/Sources/GenieMac/App/main.swift": "897d1134748c348eeb00f51cb405f661f1bbccec01261f5db32df2a894cf7f3f",
+    "apps/genie-macos/Sources/GenieMac/RecordingWorkspace/MeetingTranslation.swift": "5d597b4f9acec88cd774f3077c5a679d727cbd92d54c7f42b104811ef69ac14e",
+    "apps/genie-macos/Sources/GenieMac/RecordingWorkspace/CodexTranslation.swift": "e84c13a57cd819389ffaefd3b3a293a0030eb103931aed86cd6bee1721adbf27",
+    "apps/genie-macos/Sources/GenieMac/Context/ScreenshotContext.swift": "842de396c1125458df083a4ac9ce847cf211b2f56a78e5e36edd98541261c416",
+    "apps/genie-macos/Sources/GenieMac/App/SelfTestGeminiSmoke.swift": "03e025e02cb546ec3f98ed710b23dea978d3449d1936b6755cd50c85798ea658",
+    "apps/genie-macos/Tests/GenieMacTests/KeychainInteractionTests.swift": "7844180719ede2cbbf6d6c6fbffbfeaf4ee5d4dc47e920f0b22226e6e7804f46",
+    "apps/genie-macos/Tests/GenieMacTests/SettingsKeyPresenceTests.swift": "72250d079b94779a10b32b61646fb67d1d1e987bf5c48e1c68a1286da03f4f18",
+    "apps/genie-macos/Tests/GenieMacTests/HomeIntentSubmissionTests.swift": "f507c31091665e242d9810026a4221a63f570f0a82f85497231c868411a466d6",
+    "apps/genie-macos/Tests/GenieMacTests/GatewaySessionTests.swift": "1d92128b11d1d92181001ab0074ef23f9d350fde59c2168b69814b5f6d05c949",
+    "apps/genie-macos/Tests/GenieMacTests/DesktopConnectionBootstrapTests.swift": "b1ce43278831bce4cdc72b0f7ec27c55d396fe458b2d5f9093a2e753020e7504",
+    "scripts/local-preview/config.mjs": "eb3e376f45edf706b7e5d2ac47a0d7ad1a981ee8040d5cb061830400d9102406",
+    "scripts/start-local-preview.mjs": "d389c7923345f659bf960754175b4bac2883291ce9b5e866bfb5ae42d8ffc19c",
+    "scripts/tests/managed-local-preview.test.mjs": "b2cbfb7b86df920f6188443a946775dcf6e5959bf3b582a22c862381268de859",
+    "docs/MANAGED_PREVIEW.md": "25b5209005be14b9d10374e9bae2ee185c36be879f806968a33d19f9a1f32945",
+    "docs/MANAGED_PREVIEW.ja.md": "54dd4c768a476bd383435e07e80848c7ffc6eca0536a4c9058a4fddff8574354"
+  },
+  "log_sha256": {
+    "desktop-connection-node-tests-round2.log": "e8edfaf6ce19c62bdd9bf8c1dfb3e32ba2067706305e7e03942d35454509350d",
+    "desktop-connection-node-tests-final2.log": "6b58f048446cc0bf927f2a2c1b5db3aca6f9721da2a63b2efb2c764b8c41b3db",
+    "desktop-connection-swift-tests-final.log": "ccb8edc8edb41685aece7568953ac6a10fbe7c62c39ec7572d5453d1a9aef73e",
+    "desktop-connection-swift-tests.log": "4d55b15fb17f2144704291a44240a0d2bb3e09dd01314e109e55907fa0ab0917",
+    "keychain-focused-tests.log": "03fc77934bcd291464695bbd169da72b69934b2c33ec178242417c1989e4eab2",
+    "desktop-connection-node-tests.log": "1d18c1e6aead02eca35fc10e8a3db218a87df01f11c0f6b4967643d836bd7962",
+    "keychain-focused-tests-round4.log": "444820b96a6c95f32adf109e23681333a4b1f4ec191fd73cce17ce44b6053d6c",
+    "keychain-focused-tests-round2.log": "3400932568950415f49fa8c8205fa8bb613e9956a4570f44fd088417e80a383d",
+    "keychain-focused-tests-round3.log": "fe88a38fd270f6f12a1058b71beeee718aa64c5574872cc3fc3848621647e462"
+  },
+  "final_synthetic_results": {
+    "node": {
+      "tests": 42,
+      "failures": 0,
+      "skipped": 0,
+      "exit": 0,
+      "log": "desktop-connection-node-tests-final2.log"
+    },
+    "swift": {
+      "tests": 54,
+      "failures": 0,
+      "skipped": 0,
+      "exit": 0,
+      "log": "desktop-connection-swift-tests-final.log"
+    }
+  },
+  "commands": {
+    "node": "node --test scripts/tests/managed-local-preview.test.mjs",
+    "swift": "GENIE_SWIFT_BUILD_JOBS=1 CARGO_BUILD_JOBS=1 swift test --jobs 1 --filter 'DesktopConnectionBootstrapTests|KeychainInteractionTests|SettingsKeyPresenceTests|HomeIntentSubmissionTests|GatewaySessionTests|GeminiLiveTests|PlacesTests|ConversationWiringTests'"
+  }
+}

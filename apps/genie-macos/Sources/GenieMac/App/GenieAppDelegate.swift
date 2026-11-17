@@ -2,6 +2,9 @@ import AppKit
 
 final class GenieAppDelegate: NSObject, NSApplicationDelegate {
     private var permissionRefreshObserver: NSObjectProtocol?
+    private var terminationSignal: DispatchSourceSignal?
+    private var terminationRequested = false
+    private var externallyTerminating = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         ApplicationMenu.shared.install()
@@ -14,6 +17,19 @@ final class GenieAppDelegate: NSObject, NSApplicationDelegate {
             NSApp.terminate(nil)
             return
         }
+        // Managed preview shutdown sends SIGTERM. Route it through the same owned-child
+        // cleanup as Quit; an external termination request cannot wait for a UI answer.
+        // A caught no-op resets to SIG_DFL on exec; SIG_IGN would leak into the CLI.
+        signal(SIGTERM, { _ in })
+        let termination = DispatchSource.makeSignalSource(signal: SIGTERM, queue: .main)
+        termination.setEventHandler { [weak self] in
+            TerminationDispatch.perform {
+                self?.externallyTerminating = true
+                NSApp.terminate(nil)
+            }
+        }
+        termination.resume()
+        terminationSignal = termination
         // §24 ローカル保存を開く。§23 走っていた task を読み戻す。
         LocalStore.shared.open()
         GenieStateStore.shared.restoreRunningTask()
@@ -48,6 +64,8 @@ final class GenieAppDelegate: NSObject, NSApplicationDelegate {
         // 自動更新。配布先と公開鍵が Info.plist に入っていなければ何もしない
         // （確かめているつもりで何も見ていない状態を作らない）。
         SoftwareUpdate.shared.startIfConfigured()
+        // 音声入力の入れる先: Genie の窓が前面でも、直前に見ていたアプリの欄へ入れるため。
+        Dictation.trackFrontApps()
         // 前面アプリが変わったら、まだ繋がっていないものを 1 度だけ勧める（§14）。
         // 勧誘は Dock の下の別 Panel に出す（Dock 本体は伸ばさない）。
         NSWorkspace.shared.notificationCenter.addObserver(
@@ -75,6 +93,12 @@ final class GenieAppDelegate: NSObject, NSApplicationDelegate {
         PresentationGuard.shared.start()
         // グローバル音声ショートカット（⌥Space）で録音を出し入れする。
         // CGEventTap（正本指定）で受信する。Accessibility 権限を使う（§3 と共用）。
+        // ⌥⇧Space で会話を始める（もう一度押すと終える）。Dock を開いて「会話」を押す 2 手を 1 手にする。
+        GlobalShortcut.shared.setConversation {
+            let voice = VoiceHUDState.shared
+            if voice.conversation.isActive { voice.endConversation(.user, caller: "shortcut ⌥⇧Space") }
+            else { WakeController.shared.clearBillingFailure(); voice.beginConversation() }
+        }
         if !GlobalShortcut.shared.register(handler: { WindowCoordinator.shared.toggleRecording() }) {
             // **ここでは求めない。** 起動した瞬間にダイアログを出すと、まだ何も
             // 使っていない人に判断を迫ることになる。⌥Space を案内している場所
@@ -85,6 +109,14 @@ final class GenieAppDelegate: NSObject, NSApplicationDelegate {
         // マイクが許可済みなら engine だけ先に用意する（IO は始めない・求めない）。
         // ⌥Space から音が届くまでを短くする（INVOCATION gate の実測）。
         RecordingRuntime.shared.prewarmMic()
+        // 「ジーニー」の待ち受け。マイクと音声認識が許可済みのときだけ（ここでは求めない）。
+        WakeController.shared.start()
+        // 今日のまとめ（設定時刻・既定8時を過ぎて、まだ無ければ作る。黙って持っておく）。
+        if !CommandLine.arguments.contains("--selftest") {
+            BriefStore.shared.start()
+            // 予約のお知らせ（サーバに溜まったもの）を macOS の通知に出す
+            NoticeInbox.shared.start()
+        }
         // 前回落ちたまま残っている録音があれば知らせる（§3 meeting recovery）。
         let recoverable = RecordingRuntime.shared.recoverableMeetings()
         if !recoverable.isEmpty {
@@ -101,16 +133,25 @@ final class GenieAppDelegate: NSObject, NSApplicationDelegate {
 
     /// 録音中の終了は会議を失う操作。黙って落とさず一度だけ聞く。
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        guard RecordingWorkspaceState.shared.isRecording else { return .terminateNow }
-        // §16 R3: 進行中の会議を失いうる、元に戻せない操作。
-        let go = Confirm.ask(ActionConfirmation(
-            title: "録音を止めて Genie を終了します",
-            details: ["ここまでの音声はディスクに残ります",
-                      "次の起動で続きから復元できます"],
-            risk: .r3,
-            confirmLabel: "録音を止めて終了"))
-        guard go else { return .terminateCancel }
-        RecordingWorkspaceState.shared.stop()
-        return .terminateNow
+        guard !terminationRequested else { return .terminateLater }
+        if RecordingWorkspaceState.shared.isRecording {
+            // §16 R3: 進行中の会議を失いうる、元に戻せない操作。
+            let go = externallyTerminating || Confirm.ask(ActionConfirmation(
+                title: "録音を止めて Genie を終了します",
+                details: ["ここまでの音声はディスクに残ります",
+                          "次の起動で続きから復元できます"],
+                risk: .r3,
+                confirmLabel: "録音を止めて終了"))
+            guard go else { return .terminateCancel }
+            RecordingWorkspaceState.shared.stop()
+        }
+        terminationRequested = true
+        RecordingWorkspaceState.shared.translation.reset()
+        TerminationDispatch.afterCleanup({
+            await CodexTranslation.shutdown()
+        }, reply: {
+            sender.reply(toApplicationShouldTerminate: true)
+        })
+        return .terminateLater
     }
 }

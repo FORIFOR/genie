@@ -1,0 +1,18 @@
+{
+  "01-voice-hud-idle" : 88.400000000000006,
+  "02-voice-hud-listening" : 92.299999999999997,
+  "02b-voice-hud-preparing" : 92.900000000000006,
+  "03-recording-workspace" : 62.100000000000001,
+  "03b-recording-paused" : 62.600000000000001,
+  "04-recording-transcript" : 61.200000000000003,
+  "05-recording-rag" : 63.799999999999997,
+  "06-main-home" : 62.799999999999997,
+  "07-apps" : 44.200000000000003,
+  "08-meeting-detail" : 48.899999999999999,
+  "09-permission-denied" : 57.600000000000001,
+  "09b-stt-unavailable" : 62.100000000000001,
+  "09c-speech-denied" : 57.100000000000001,
+  "10-agent-timeline" : 60.700000000000003,
+  "11-meeting-canvas" : 63.299999999999997,
+  "12-recording-now" : 49.299999999999997
+}

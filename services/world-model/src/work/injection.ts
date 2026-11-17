@@ -35,6 +35,12 @@ const OWED_INTENT =
 /** 返事を書こうとしている問い。 */
 const EMAIL_REPLY_INTENT =
   /((返信|返事|お返事|reply|respond).*(して|書い|下書き|作っ|draft|write)|(メール|mail).*(返し|書い|返信|reply)|(これ|それ|この|その).*(返して|返事して|返信して))/i;
+/**
+ * 返信が要るものを**聞いている**問い（「未読メールで返信が必要なものはある？」）。返事を書く依頼ではない。
+ * 「メール…返信」で返信の手順に回り、「どのメールか特定できませんでした」と返していた（askprobe 2026-10-19）。
+ */
+const NEEDS_REPLY_QUESTION =
+  /((返信|返事)(が|を|の)?(必要|要る|いる|すべき|しないと|しなきゃ|しなければ)|返すべき|返さないといけない|needs? (a )?repl)/i;
 /** 会議の準備。 */
 const MEETING_PREP_INTENT =
   /((会議|定例|ミーティング|打ち合わせ|打合せ|mtg|meeting|商談).*(準備|備え|聞く|質問|議題|確認しておく|prep|agenda|before))/i;
@@ -57,6 +63,11 @@ export interface ContextPack {
 }
 
 export function classifyContextIntent(question: string): Exclude<ContextIntent, 'project'> {
+  if (
+    NEEDS_REPLY_QUESTION.test(question) &&
+    !/(下書き|書いて|作って|返信して|返事して|返して|draft|write)/i.test(question)
+  )
+    return 'owed';
   if (EMAIL_REPLY_INTENT.test(question)) return 'email_reply';
   if (MEETING_PREP_INTENT.test(question)) return 'meeting_prep';
   if (OWED_INTENT.test(question)) return 'owed';

@@ -1,0 +1,32 @@
+STAGE route native_key by element point 293,232 local 205,767
+{
+ "ok": true,
+ "result": {
+  "completed": true,
+  "verification": "visual",
+  "actions": 1,
+  "modelCalls": 3,
+  "audit": [
+   {
+    "sequence": 1,
+    "event": "type_keys",
+    "before": "1e4d90834ac0ea65cac539d0ea7beb90b5db5696f35b226d1681b625eb35878d",
+    "after": "47a66f75b4ec7876f0c313381549172b17b80c5b0d4c7a5f117265222a6af406",
+    "verified": true,
+    "evidence": "target",
+    "route": "native_key",
+    "elementId": "e0-0-0-0-1-0-1-0-1"
+   },
+   {
+    "sequence": 1,
+    "event": "goal_verification",
+    "before": "47a66f75b4ec7876f0c313381549172b17b80c5b0d4c7a5f117265222a6af406",
+    "verified": true
+   }
+  ]
+ }
+}
+--- モデルの呼び出し ---
+llm.plan_computer_action plan 8877ms {"action":"type_keys","text":"genie","element_id":"e0-0-0-0-1-0-1-0-1","confidence":0.99,"risk":"draft","expectation":"ふつうの欄の入力欄に「genie」と表示される"}
+llm.plan_computer_action plan 9146ms {"action":"done","frameId":"cv-7edf9d0b-7368-47c0-a5cb-279e07443545","reason":"ふつうの欄の入力欄に「genie」が表示されており、USER_SUCCESS_CRITERIAを満たしています。"}
+llm.verify_computer_action goal 7417ms {"frameId":"cv-7d118468-39a9-4c11-9fe4-a89a9ea6bc97","outcome":"satisfied","confidence":0.95,"evidence":"ふつうの欄の入力欄に「genie」と表示されている"}

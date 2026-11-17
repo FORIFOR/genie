@@ -1,0 +1,33 @@
+{
+  "at": "2026-10-01T21:33:56.382697+00:00",
+  "results": [
+    {
+      "name": "tokens",
+      "exitCode": 0
+    },
+    {
+      "name": "type-scale",
+      "exitCode": 0
+    },
+    {
+      "name": "hit-area",
+      "exitCode": 0
+    },
+    {
+      "name": "conventions",
+      "exitCode": 0
+    },
+    {
+      "name": "terms",
+      "exitCode": 0
+    },
+    {
+      "name": "ui-taste",
+      "exitCode": 0
+    },
+    {
+      "name": "release-consistency",
+      "exitCode": 0
+    }
+  ]
+}

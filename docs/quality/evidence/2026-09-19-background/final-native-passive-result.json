@@ -1,0 +1,25 @@
+{
+  "clipboardUnchanged" : true,
+  "coveredTargetIndicatorHidden" : true,
+  "cursorUnchanged" : true,
+  "existingTextRefused" : true,
+  "foregroundUnchangedDuringActions" : true,
+  "humanTakeoverRefused" : true,
+  "inputSource" : "none; passive preservation check only, no foreground typing test",
+  "keysRefused" : true,
+  "nonactivatingIndicator" : false,
+  "replayRefused" : true,
+  "secureInputRefused" : true,
+  "sentinel" : {
+    "activations" : 0,
+    "clicks" : 0,
+    "text" : ""
+  },
+  "status" : "PASS",
+  "takeoverSource" : "injected sticky marker",
+  "target" : {
+    "activations" : 0,
+    "clicks" : 1,
+    "text" : "背景入力 日本語 👩‍💻"
+  }
+}

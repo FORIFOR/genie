@@ -1,0 +1,62 @@
+{
+  "recordedAt": "2026-10-01T20:13:42.037495+00:00",
+  "classification": "Authorized read-only metadata diagnostic, performed by implementation agent. Separate caller from signed Final production helper.",
+  "commands": [
+    {
+      "command": "swiftc -j 1 -parse-as-library /private/tmp/genie-safari-metadata-diagnostic/WindowMetadata.swift -o /private/tmp/genie-safari-metadata-diagnostic/WindowMetadata",
+      "exitCode": 0,
+      "elapsedSeconds": 0.462
+    },
+    {
+      "command": "Run the owned diagnostic once with subprocess timeout=10, stderr discarded, stdout parsed and allowed JSON fields checked before saving",
+      "exitCode": 0,
+      "elapsedSeconds": 0.311
+    }
+  ],
+  "artifacts": {
+    "WindowMetadata.swift": "ee1c7df8969edfbd5331b3ec76de7c2ea22a81ce6714c13120d76ac1c5d90e49",
+    "result.json": "ba2e4bbaa600956dd11f76fdf49b1a0c52bedf8cba55fa503debf143e3e1c8e1",
+    "build.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "binarySha256": "53700991a05ee293d7a54e0bb4bf0069190dd93af65ce27697507c9edd35e6b1",
+  "observations": {
+    "safariPID": 662,
+    "regular": true,
+    "hidden": false,
+    "active": false,
+    "screenCapturePreflight": true,
+    "cgOnScreenWindowCount": 0,
+    "scOnScreenWindowCount": 0,
+    "cgAllWindowCount": 8,
+    "scAllWindowCount": 8,
+    "allReportedWindowsOnScreen": false,
+    "matchingWindowIDs": [
+      87,
+      88,
+      89,
+      90,
+      92,
+      119,
+      128,
+      614
+    ]
+  },
+  "interpretation": "At the sampled time, both WindowServer and ScreenCaptureKit omit Safari from onscreen windows while agreeing on the offscreen set. The current picker onScreenWindowsOnly:true excludes that set. Safari non-regular/hidden state is not the observed cause.",
+  "privacy": "Only Safari PID/state, windowID/layer/onScreen/rect and diagnostic status/time were serialized. No title/URL/AX tree/image, other-app window metadata, raw system error text or runtime stderr was saved. Enumeration APIs supply system objects internally; sensitive fields were never read into the output.",
+  "noMutations": [
+    "No NSApplication/window creation",
+    "No activate/unhide/raise or Space change",
+    "No AX action, mouse or key input",
+    "No CGRequest permission call",
+    "No capture stream or image",
+    "No live order/payment/trade",
+    "No production helper/source replacement"
+  ],
+  "limits": [
+    "Different executable/caller and a later sample than the failed picker, so not an exact in-process reproduction.",
+    "No proof that these windowIDs are the previously attempted private window; root can correlate separately.",
+    "Offscreen metadata does not distinguish another Space, minimized/fullscreen window or other WindowServer reason.",
+    "Screen permission was already true. False-preflight exit path was source-reviewed, not executed against an unpermitted caller.",
+    "This does not establish real Safari background navigation support."
+  ]
+}

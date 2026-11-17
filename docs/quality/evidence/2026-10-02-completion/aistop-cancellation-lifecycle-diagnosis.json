@@ -1,0 +1,68 @@
+{
+  "recordedAt": "2026-10-01T23:32:01.826304+00:00",
+  "method": "Read-only source and saved evidence diagnosis; no product changes, new tasks, GUI, model invocation or mutation. Exact DB projection was independently performed by computer_correctness.",
+  "taskId": "01a0f9bb-fdb8-7000-a0de-b2a47eeadbf4",
+  "observed": {
+    "nativeStopCheck": "Initially CANCELLING, local failed/stop surface retained and no late success during approximately 11 seconds.",
+    "laterTask": "FAILED at 2026-10-01T23:15:42.198Z; error activity StartToClose timeout",
+    "hostRequest": "llm.answer PENDING since 23:10:42.158Z; claimed_at/completed_at/error null, no result; expiry 23:25:42.158Z"
+  },
+  "finding": {
+    "priority": "P1",
+    "summary": "Accepted cancellation does not settle a pending host wait; subsequent ordinary-step failure overwrites cancellation with FAILED.",
+    "chain": [
+      {
+        "source": "services/task/src/service.ts:418 and runtime/temporal.ts:95",
+        "fact": "Cancel commits tasks.status=CANCELLING and sends a workflow signal."
+      },
+      {
+        "source": "services/task/src/workflows.ts:194",
+        "fact": "Signal only sets cancelRequested; it does not cancel the in-flight activity await."
+      },
+      {
+        "source": "services/agent-host/src/bridge.ts:217",
+        "fact": "claimNext excludes CANCELLING/terminal tasks; the observed PENDING request therefore cannot start after Stop."
+      },
+      {
+        "source": "services/agent-host/src/step-executor.ts:137",
+        "fact": "Wait loop sees only request DONE/FAILED, not task cancellation; default wait is 10 minutes. No observed claimant will terminalize this request."
+      },
+      {
+        "source": "services/task/src/workflows.ts:80,314-335,388-404",
+        "fact": "General metered step has a five-minute single-attempt StartToClose timeout. Ordinary catch calls failWith without preserving cancellation."
+      },
+      {
+        "source": "services/task/src/activities.ts:1055",
+        "fact": "Without explicit preserveCancellation, failTask changes CANCELLING to FAILED even under the row lock."
+      }
+    ]
+  },
+  "scopeAndLimits": [
+    "The durable unclaimed host row supports no model execution for this exact host request; it is not proof about every other task or process.",
+    "No indication of an infinite model/resource leak for this task. The source can retain a database polling wait beyond workflow finalization until its own bounded wait ends; actual residual timer lifetime was not measured.",
+    "The existing transaction cancellation/unknown-result preservation is a separate patched path and must be retained.",
+    "Prior native aistop PASS establishes prompt stop receipt and stable local presentation only; it did not establish terminal CANCELLED.",
+    "No successful external operation cancellation is asserted."
+  ],
+  "minimalFixRecommendation": [
+    "Settle or terminate the pending host wait promptly when the owning task no longer permits execution, using a typed cancellation outcome and preserving claimed-request result/unknown semantics. Any PENDING settlement must be conditional and safe against a simultaneous claim.",
+    "Use replay-compatible workflow handling and atomic persistence to preserve an accepted Stop when ordinary step errors/timeouts race its signal; never replace an already committed terminal success or erase transaction unknown evidence.",
+    "Add pending-before-claim, claimed-race, cancellation-plus-late-error, and replay regressions. Strengthen the real aistop test to require a bounded terminal cancellation, while retaining its late-success UI check. Do not label CANCELLING as terminal success."
+  ],
+  "evidence": {
+    "hostRequestRecord": "docs/quality/evidence/2026-10-02-completion/aistop-host-request-readonly.json",
+    "hostRequestRecordSha256": "a08cc68cd43e2680e4644e741bd07249a18ae0df8cc68e401a136d220be16f47",
+    "gateLog": "docs/quality/evidence/2026-10-02-completion/installed-gate-attempt-2/verify-all-installed-current.log"
+  },
+  "sourceHashes": {
+    "services/task/src/service.ts": "4c519449b32a6e8a4dd8160e59f5f19ba512a4f3c4e2a7267cca524176928039",
+    "services/task/src/runtime/temporal.ts": "b7d2164a64ba86f5e09ab8b7c466c44b2bfa7fa2fec0a32e4cf9c8f75aa112c5",
+    "services/task/src/workflows.ts": "4576e214131ccadc0f553eae952f3d3be20dbe8eeec2b7b1d776395f3796e4aa",
+    "services/task/src/activities.ts": "583f4ce6c668391e5fa9f7cd0fff9592f8e5139067e86832871a60ac2701da0b",
+    "services/task/src/activity-heartbeat.ts": "90710e62ad8bb822ae5f96c5c47467a43059f7a1bf16a852516342e2f9349afa",
+    "services/agent-host/src/bridge.ts": "e85381305e84a36fbeac04e318e5f8218b678b75a7604a2bb3c4c9ec575a7e27",
+    "services/agent-host/src/step-executor.ts": "64bff5166d65eb7919142595c86fb0ac8748284905eed25409dd990815a9f41b",
+    "workers/agent-host/src/step-loop.ts": "3155661ff8b8af55a18ffdd3faf3546ffdc254af3420e49a4f38b96c49e08d2f",
+    "apps/genie-macos/Sources/GenieMac/App/SelfTestAIStop.swift": "bfabe9289490557bdb8f95ece370f357f87a3cafce1c35fadc05a6e25d16ff52"
+  }
+}

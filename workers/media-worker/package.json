@@ -2,6 +2,7 @@
   "name": "@genie/worker-media",
   "version": "0.0.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "description": "Temporal worker hosting image/video/audio generation and rendering activities.",
   "main": "./dist/index.js",

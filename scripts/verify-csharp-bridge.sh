@@ -4,6 +4,7 @@
 # WinUI の UI レイヤ（Windows App SDK）は Windows CI でのみビルドできる（ここでは対象外）。
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+source "$ROOT/scripts/build-resource-env.sh"
 if ! command -v dotnet >/dev/null 2>&1; then
   echo "SKIP: dotnet not available"; exit 0
 fi

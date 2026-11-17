@@ -1,0 +1,14 @@
+
+> genie@0.1.4 build:macos-app /Users/shuhei/Projects/genie
+> ./scripts/build-macos-app.sh
+
+   Compiling ring v0.17.14
+   Compiling rustls v0.23.43
+   Compiling rustls-webpki v0.103.15
+   Compiling ureq v2.12.1
+   Compiling genie-core v0.1.4 (/Users/shuhei/Projects/genie/core/genie-core)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 8.76s
+/Users/shuhei/Projects/genie/apps/genie-macos/build/Genie.app: replacing existing signature
+built /Users/shuhei/Projects/genie/apps/genie-macos/build/Genie.app
+Identifier=com.astra.mac
+Signature=adhoc

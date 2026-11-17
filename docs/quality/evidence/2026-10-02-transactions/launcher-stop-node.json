@@ -1,0 +1,37 @@
+{
+  "recordedAt": "2026-10-01T18:17:15.631374+00:00",
+  "classification": "Launcher implementation verification; lightweight Node children and mocks only",
+  "candidate": "uncommitted source; no rebuilt or relaunched native product",
+  "run": {
+    "command": "node --test scripts/tests/managed-local-preview.test.mjs scripts/tests/local-preview.test.mjs",
+    "exitCode": 0,
+    "passed": 32,
+    "failed": 0,
+    "skipped": 0,
+    "durationMs": 825.498292,
+    "log": "launcher-stop-node.log",
+    "sha256": "14c9234406a44b481b0b6e8b471e26162afee2f5b491dd163e9d7495272253fa"
+  },
+  "checks": [
+    "Normal child exit is awaited",
+    "TERM-resistant tiny owned Node child escalates to KILL after grace and exit is confirmed",
+    "PID/start-time/argv changes reject before TERM and before KILL",
+    "Inspection failure, denied signal, false ESRCH and post-KILL timeout cannot report success",
+    "Normal production grace is 10000ms; post-KILL exit wait is 2000ms; each signal checks the exact identity",
+    "Launcher retains shutdown failure while continuing other cleanup"
+  ],
+  "sourceSha256": {
+    "scripts/start-local-preview.mjs": "97d3ebf094ea035a45fb3af9f6d560b53f03e136c611fdbe5e44049eaeae63fd",
+    "scripts/tests/managed-local-preview.test.mjs": "618950eb00aee8aa4633b530ca7b4178fa1a19f16aba885c5dc1500c3cb4f2d0"
+  },
+  "formatting": "Prettier-only formatting and git diff --check passed after the Node run",
+  "rootReview": {
+    "result": "Read-only source review: no additional finding; root directly inspected 32/32 log",
+    "probe": "Root reports readNativeProcessIdentity(process.pid) PASS on macOS at 03:15:40 JST; no app launched"
+  },
+  "limits": [
+    "Existing packaged native app remains stopped; source correction was not packaged or launched.",
+    "This is not a full-product gate or VM/model test.",
+    "Process identity is read immediately before each signal; ps and kill are separate OS calls. PID-reuse rejection tests cover observed identity changes, not an atomic kernel process handle."
+  ]
+}

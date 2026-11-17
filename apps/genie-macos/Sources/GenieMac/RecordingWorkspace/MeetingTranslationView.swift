@@ -27,14 +27,15 @@ struct MeetingTranslationView: View {
             }
             .font(.system(size: textSize))
             HStack {
-                if MeetingTranslationClient.hasAPI || model.engine == .api {
-                    ForEach(TranslationEngine.allCases) { engine in
+                if model.availableEngines.count > 1 {
+                    ForEach(model.availableEngines) { engine in
                         Button { model.setEngine(engine) } label: {
                             Text(engine.title).padding(.horizontal, 8).frame(height: 32)
                         }
                             .buttonStyle(GenieControlStyle(radius: 7, base: model.engine == engine ? 0.10 : 0))
                             .accessibilityAddTraits(model.engine == engine ? .isSelected : [])
                             .accessibilityIdentifier("translationEngine-\(engine.rawValue)")
+                            .help(engine == .codex ? "Codex 接続で発言を OpenAI に送って翻訳します。ローカルモデルへの自動切替はありません。" : engine.title)
                     }
                 } else { Text("このMacで翻訳 · \(MeetingTranslationClient.localModel)") }
                 Spacer(minLength: 0)

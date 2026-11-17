@@ -42,7 +42,7 @@ extension SelfTest {
             Permissions.simulatedSpeechRecognition = .denied
             Permissions.simulatedInputMonitoring = .notDetermined
             Permissions.simulatedCalendar = .notDetermined
-            let settings = NSHostingView(rootView: SettingsView().environment(\.colorScheme, dark ? .dark : .light))
+            let settings = NSHostingView(rootView: settingsFixture().environment(\.colorScheme, dark ? .dark : .light))
             let window = NSWindow(contentRect: CGRect(x: 120, y: 140, width: 460, height: 620),
                                   styleMask: [.titled, .closable], backing: .buffered, defer: false)
             window.isReleasedWhenClosed = false; window.title = "Genie 設定"
@@ -54,7 +54,7 @@ extension SelfTest {
             Permissions.simulatedAccessibility = .granted
             NotificationCenter.default.post(name: NSApplication.didBecomeActiveNotification, object: NSApp)
             await capture("settings-refreshed-" + suffix, host: settings, window: window)
-            let extra = NSHostingView(rootView: SettingsView(showAdditionalPermissions: true).environment(\.colorScheme, dark ? .dark : .light))
+            let extra = NSHostingView(rootView: settingsFixture(showAdditionalPermissions: true).environment(\.colorScheme, dark ? .dark : .light))
             window.contentView = extra; window.setContentSize(extra.fittingSize)
             await capture("settings-additional-" + suffix, host: extra, window: window)
             window.orderOut(nil); window.close()

@@ -1,0 +1,47 @@
+[
+  {
+    "at": "2026-10-01T17:58:39.355Z",
+    "freePercent": 38,
+    "pressureLevel": 2
+  },
+  {
+    "at": "2026-10-01T17:58:44.364Z",
+    "freePercent": 39,
+    "pressureLevel": 2
+  },
+  {
+    "at": "2026-10-01T17:58:49.370Z",
+    "freePercent": 40,
+    "pressureLevel": 2
+  },
+  {
+    "at": "2026-10-01T17:58:54.382Z",
+    "freePercent": 41,
+    "pressureLevel": 2
+  },
+  {
+    "at": "2026-10-01T17:58:59.389Z",
+    "freePercent": 41,
+    "pressureLevel": 2
+  },
+  {
+    "at": "2026-10-01T17:59:04.394Z",
+    "freePercent": 40,
+    "pressureLevel": 2
+  },
+  {
+    "at": "2026-10-01T17:59:09.400Z",
+    "freePercent": 41,
+    "pressureLevel": 2
+  },
+  {
+    "at": "2026-10-01T17:59:14.404Z",
+    "freePercent": 42,
+    "pressureLevel": 2
+  },
+  {
+    "at": "2026-10-01T17:59:19.409Z",
+    "freePercent": 42,
+    "pressureLevel": 2
+  }
+]

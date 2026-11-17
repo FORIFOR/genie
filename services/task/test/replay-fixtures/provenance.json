@@ -1,0 +1,16 @@
+{
+  "revision": "28f89f2636a3b780e813ea902e07d2e4900a6e3f",
+  "capturedAt": "2026-09-19T10:00:22.529Z",
+  "sourceSha256": {
+    "workflows.ts": "89dfdbd58fb308c24f66c93cdbde6d3bf65975ffb8a7cc1def122e90c993b352",
+    "plan.ts": "67d9d8e7bc6a5646ec5fcfbaeb641bfb94e35c9b9b9c7a231564d71b3db9264c"
+  },
+  "historySha256": {
+    "completed": "90852ac562c2c27faea233a39423bd27102d85f553a451d4268eb85cdde7a42d",
+    "cancelled": "c3f884e4c0b65abd0eea07f698a1ec92cf3e07c4f49b473f12ac30eab5d7b4b1"
+  },
+  "activities": "Local synthetic activities; completeTask and cancelTask returned undefined. No provider, database, production history, or external network.",
+  "platform": "darwin",
+  "architecture": "arm64",
+  "node": "v26.5.0"
+}

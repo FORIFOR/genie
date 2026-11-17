@@ -1,0 +1,9 @@
+
+> genie@0.1.4 check:generated /Users/shuhei/Projects/genie
+> ./scripts/check-generated.sh
+
+schema.sql is current
+generated database types are current
+dock geometry constants are current
+sales-crm entity definitions are current
+shortcut table is current

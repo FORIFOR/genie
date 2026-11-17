@@ -41,8 +41,9 @@ check "角丸 >28pt" 0 "巨大な角丸。tokens の範囲（<=28）で足りる
   "cornerRadius: *(29|[3-9][0-9]|[1-9][0-9][0-9])"
 
 # 過剰な Glass。Material と VisualEffect は Dock の地 1 つで足りている。
+# Liquid Glass（glassEffect）も同じ数に入れる（Dock の外殻の 1 つは ui-taste-review.json で確認済み）。
 check "material/blur" 8 "すりガラスの多用。地は 1 つで足りる" \
-  "\.ultraThinMaterial|\.thinMaterial|\.regularMaterial|NSVisualEffectView"
+  "\.ultraThinMaterial|\.thinMaterial|\.regularMaterial|NSVisualEffectView|\.glassEffect\("
 
 # Sparkle icon。AI っぽさの記号。意味のある箇所（Agents/AI 操作）までに留める。
 check "sparkles アイコン" 6 "意味の無い sparkles。AI らしさの飾りにしない" \

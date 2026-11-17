@@ -1,0 +1,13 @@
+{
+  "status": "PASS",
+  "native_data_root": "/tmp/genie-receipt-native-gui-20260919",
+  "one_local_record": true,
+  "turn_posts_for_gui_conversation": 1,
+  "response_dropped": true,
+  "same_backend_task": true,
+  "receipt_id_persisted": true,
+  "original_unchanged": true,
+  "edited_characters": 11063,
+  "export_bytes": 30752,
+  "export_sha256": "19caa11f9e2eb4b4daf9946eeec1200b0a0b38aff70b84c3eeb17a51182dd72f"
+}

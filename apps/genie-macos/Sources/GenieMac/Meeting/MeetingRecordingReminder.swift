@@ -228,7 +228,11 @@ final class MeetingRecordingReminder: NSObject, UNUserNotificationCenterDelegate
         }
         do {
             // Ask only when there is a concrete reminder to show, never at launch.
-            guard try await center.requestAuthorization(options: [.alert]) else {
+            // 通知が許されていない Mac では、拒否が false ではなくエラー（notificationsNotAllowed）で返る。
+            // 待っても変わらないので、拒否と同じくこの会議では出し直さない
+            // （以前はエラーを「送れなかった」とみなし、4 秒ごとにやり直していた。2026-10-27 に 22 分で 328 回）。
+            let granted = (try? await center.requestAuthorization(options: [.alert])) ?? false
+            guard granted else {
                 consumed = true // Explicit refusal must not repeatedly prompt for this call.
                 return
             }
@@ -260,6 +264,15 @@ final class MeetingRecordingReminder: NSObject, UNUserNotificationCenterDelegate
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void) {
         let id = response.notification.request.identifier
+        // 予約のお知らせ（NoticeInbox）。通知の受け手は 1 つなので、ここで振り分ける
+        if id.hasPrefix(NoticeInbox.prefix) {
+            let notification = response.notification
+            Task { @MainActor in
+                if response.actionIdentifier == UNNotificationDefaultActionIdentifier { NoticeInbox.opened(notification) }
+                completionHandler()
+            }
+            return
+        }
         let start = response.actionIdentifier == "astra.meeting-recording.begin"
         let open = response.actionIdentifier == UNNotificationDefaultActionIdentifier
         Task { @MainActor in

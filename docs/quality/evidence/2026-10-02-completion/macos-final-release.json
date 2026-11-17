@@ -1,0 +1,15 @@
+{
+  "recordedAt": "2026-10-02T04:13:37.144922+09:00",
+  "command": "GENIE_SWIFT_BUILD_JOBS=1 CARGO_BUILD_JOBS=1 bash scripts/package-macos-app.sh",
+  "exitCode": 0,
+  "captureApp": "/private/tmp/genie-transactions-20261002/GenieCompletionFinal.app",
+  "captureBundleID": "com.genie.transaction-preview",
+  "sha256": {
+    "/Users/shuhei/Projects/genie/apps/genie-macos/.build/Genie.app/Contents/MacOS/GenieMac": "b430164736313ba8a7abdc65e5f599a72c64820750797cde4f97ebacb12dcb33",
+    "/private/tmp/genie-transactions-20261002/GenieCompletionFinal.app/Contents/MacOS/GenieMac": "403baacbd6c5ab2053e3fd6376670764404a29a3d0dfce67781c78198672a74e",
+    "apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDView.swift": "c0f4bb75e1e943f99bbbd87bc4a9d6c4264e574aabcd9a61d0efd897d77c156e",
+    "apps/genie-macos/Sources/GenieMac/App/GenieAppDelegate.swift": "bf1c0eacaa29c57a2c1fdfb073f05c14bc4848c8957ed306fda3fc195765ac03",
+    "apps/genie-macos/Sources/GenieMac/App/TerminationDispatch.swift": "04dd23a83bfe172f726f34380c6d58d813bbda71455fc95c2b55485357050497",
+    "apps/genie-macos/Sources/GenieMac/Main/ConnectionsPane.swift": "0bada7063d65df81d74e5196c7da2cda6d444aaef99572150ff5336946f35b76"
+  }
+}

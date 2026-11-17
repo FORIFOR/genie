@@ -1,0 +1,10 @@
+{
+  "startedAt": "2026-10-01T19:55:44.604890+00:00",
+  "finishedAt": "2026-10-01T20:00:22.909821+00:00",
+  "exitCode": 1,
+  "app": "/Users/shuhei/Projects/genie/apps/genie-macos/.build/Genie.app",
+  "scope": "current full gate, isolated synthetic gateway identity/data and disposable PostgreSQL",
+  "localModelOptIn": false,
+  "externalTranslationOptIn": true,
+  "notes": "Local-model execution intentionally remains not run to avoid loading multiple GiB. This cannot be reported as a complete whole-product pass."
+}

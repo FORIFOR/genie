@@ -1,0 +1,223 @@
+{
+  "observedAt": "2026-10-01T20:13:25.071893+00:00",
+  "reviewer": "/root/verification_audit",
+  "method": "Read-only localhost healthz and Ollama residency metadata, OS pressure query, known load-script process presence, and filtered saved performance/audit summaries. No credentials/config contents, speech/chat text, stream key, screenshots or raw process argv retained. No app/model/VM/stream start or stop, code/config change, or other-chat message.",
+  "health": {
+    "ok": true,
+    "pid": 72817,
+    "mode": "live",
+    "running": false,
+    "phase": "stopped",
+    "ownedOBS": false
+  },
+  "healthEndpoint": "http://127.0.0.1:8787/healthz",
+  "knownLoadTrialProcesses": [],
+  "currentMemory": {
+    "pressureLevel": 1,
+    "headroomPercent": 65,
+    "definition": "OS pressure1=normal,2=warning,4=critical; headroom is memory_pressure -Q, not arithmetic free physical RAM"
+  },
+  "ollamaResidency": {
+    "loadedModelCount": 0
+  },
+  "knownLoadTrialSummaries": [
+    {
+      "filename": "load-2026-10-01T17-43-18-128Z-e5bdb550-summary.json",
+      "sha256": "0f300ac2b6e65f66644f70763aaf98a0eafdd2be972d46c29d759f97a8104f9e",
+      "modifiedAt": "2026-10-01T17:43:24.421765+00:00",
+      "summary": {
+        "startedAt": "2026-10-01T17:43:18.129Z",
+        "endedAt": "2026-10-01T17:43:24.421Z",
+        "requestedMinutes": 15,
+        "elapsedMs": 6292,
+        "result": "stopped",
+        "reason": "memory_warning",
+        "completedTurns": 0,
+        "sampleCount": 2,
+        "minFreePercent": 27,
+        "maxPressureLevel": 2
+      }
+    },
+    {
+      "filename": "load-2026-10-01T17-44-45-874Z-ebb7870e-summary.json",
+      "sha256": "8bbbcf2714a246242bcec9173b5a176011fda550ae5d3b4579836beed2a97973",
+      "modifiedAt": "2026-10-01T17:46:12.093359+00:00",
+      "summary": {
+        "startedAt": "2026-10-01T17:44:45.875Z",
+        "endedAt": "2026-10-01T17:46:12.092Z",
+        "requestedMinutes": 15,
+        "elapsedMs": 86217,
+        "result": "stopped",
+        "reason": "memory_warning",
+        "completedTurns": 5,
+        "sampleCount": 18,
+        "minFreePercent": 38,
+        "maxPressureLevel": 2
+      }
+    },
+    {
+      "filename": "load-2026-10-01T18-20-33-805Z-b5b08f56-summary.json",
+      "sha256": "68260f1fe349661b267ea0f2b3d6d5136ee3a3fa9d5df628b8fa5199b963f1c5",
+      "modifiedAt": "2026-10-01T18:20:39.881879+00:00",
+      "summary": {
+        "startedAt": "2026-10-01T18:20:33.806Z",
+        "endedAt": "2026-10-01T18:20:39.881Z",
+        "requestedMinutes": 15,
+        "elapsedMs": 6075,
+        "result": "stopped",
+        "reason": "memory_warning",
+        "completedTurns": 0,
+        "sampleCount": 2,
+        "minFreePercent": 33,
+        "maxPressureLevel": 2
+      }
+    }
+  ],
+  "memoryEventsAfter0320JST": [
+    {
+      "at": "2026-10-01T18:20:39.635Z",
+      "type": "memory_state",
+      "reason": "warning",
+      "state": {
+        "level": "warning",
+        "pressureLevel": 2,
+        "freePercent": 36,
+        "warningMs": 0
+      }
+    },
+    {
+      "at": "2026-10-01T18:21:09.642Z",
+      "type": "memory_state",
+      "reason": "sustained_warning",
+      "state": {
+        "level": "critical",
+        "pressureLevel": 2,
+        "freePercent": 40,
+        "warningMs": 30006
+      }
+    },
+    {
+      "at": "2026-10-01T18:21:24.645Z",
+      "type": "memory_state",
+      "reason": "normal",
+      "state": {
+        "level": "normal",
+        "pressureLevel": 1,
+        "freePercent": 58,
+        "warningMs": 0
+      }
+    },
+    {
+      "at": "2026-10-01T19:05:50.167Z",
+      "type": "memory_state",
+      "reason": "warning",
+      "state": {
+        "level": "warning",
+        "pressureLevel": 2,
+        "freePercent": 28,
+        "warningMs": 0
+      }
+    },
+    {
+      "at": "2026-10-01T19:06:20.172Z",
+      "type": "memory_state",
+      "reason": "sustained_warning",
+      "state": {
+        "level": "critical",
+        "pressureLevel": 2,
+        "freePercent": 31,
+        "warningMs": 30005
+      }
+    },
+    {
+      "at": "2026-10-01T19:06:20.172Z",
+      "type": "memory_pressure_stop",
+      "reason": "sustained_warning",
+      "state": {
+        "level": "critical",
+        "pressureLevel": 2,
+        "freePercent": 31,
+        "warningMs": 30005
+      }
+    },
+    {
+      "at": "2026-10-01T19:08:45.198Z",
+      "type": "memory_state",
+      "reason": "normal",
+      "state": {
+        "level": "normal",
+        "pressureLevel": 1,
+        "freePercent": 58,
+        "warningMs": 0
+      }
+    },
+    {
+      "at": "2026-10-01T19:52:33.654Z",
+      "type": "memory_state",
+      "reason": "normal",
+      "state": {
+        "level": "normal",
+        "pressureLevel": 1,
+        "freePercent": 64,
+        "warningMs": 0
+      }
+    }
+  ],
+  "performanceHistory": {
+    "path": "/Users/shuhei/Projects/Jev_VTuber_Studio/data/performance/history.json",
+    "sha256": "b525fc99e0de573175a0ef14b8765d3dfb7aeb1022fc0d6acb6762147dfb6021",
+    "count": 1800,
+    "firstAt": "2026-10-01T18:52:07.170000+00:00",
+    "lastAt": "2026-10-01T19:52:06.975000+00:00",
+    "streamingTrueSamples": 0,
+    "last": {
+      "phase": "stopped",
+      "streaming": false,
+      "status": "attention",
+      "fps": null
+    },
+    "limitation": "Saved history stops at 04:52 JST; stale for live OBS confirmation at review time. Its displayed stopped/streaming=false values do not establish exact cause of a separately recorded memory stop request."
+  },
+  "obsSavedLog": {
+    "path": "/Users/shuhei/Library/Application Support/obs-studio/logs/2026-09-30 23-17-39.txt",
+    "modifiedAt": "2026-10-01T19:52:54.631536+00:00",
+    "sha256": "eb298e6c98f1b2cd7eb3ffaf8ae6fde0d668269b5786ed6c073c75f84457d0e3",
+    "lastStreamingEvents": [
+      {
+        "localClock": "01:25:58.591",
+        "event": "start"
+      },
+      {
+        "localClock": "01:40:16.953",
+        "event": "stop"
+      },
+      {
+        "localClock": "03:06:32.175",
+        "event": "start"
+      },
+      {
+        "localClock": "03:16:11.124",
+        "event": "stop"
+      }
+    ],
+    "limitation": "Latest log event STOP at 03:16:11 JST with no later START in this file. No independent current OBS websocket or platform state queried."
+  },
+  "sourceHashes": {
+    "src/server.mjs": "d9a1ec3477d32402ea52f0807ff3f39a5fbd12e42af9a257ddbaf7425850ea13",
+    "src/memory-guard.mjs": "425419db7f7473d384f1ed0bcfe448b6d3ca065eb4de9d4a866ee1f0d4cc23f4",
+    "scripts/stream-performance.mjs": "ccd1b3ff1bbc32b26e483b70e25765478340664bd95ccd61fcf8d7782fd519b3"
+  },
+  "auditSource": {
+    "path": "/Users/shuhei/Projects/Jev_VTuber_Studio/data/events.jsonl",
+    "sha256": "362b48987d747bbce19e60b96d0bf982517ae2821f6092442674b735bf096e5c",
+    "modifiedAt": "2026-10-01T19:52:33.654607+00:00"
+  },
+  "conclusion": "Current Noa server is reachable in live mode but reports engine stopped and no owned OBS stream; known local load-trial process absent and no newer load summary after 03:20. Additional 04:05:50 warning and 04:06:20 memory_pressure_stop request occurred, returning to normal at 04:08:45. Noa guard critical here means sustained OS warning2 for 30 seconds, not OS critical4. Exact cause and long-duration stability remain unestablished.",
+  "notEstablished": [
+    "A currently active stream through another controller/platform",
+    "Exact owner of 04:05 memory pressure or cause of crash",
+    "The memory stop request being an actual broadcast interruption",
+    "Successful 15-minute or three-hour Noa/Genie coexistence workload",
+    "Absence of unknown load-test implementations"
+  ]
+}

@@ -3,6 +3,7 @@
 # Windows(C#/P-Invoke) が使うのと同じ境界を、このホスト(clang)で実証する（build 未検証の Windows とは別）。
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+source "$ROOT/scripts/build-resource-env.sh"
 CORE="$ROOT/core/genie-core"
 # 版は package.json 1 か所から取る（Cargo.toml と一致することは verify-release-consistency が見る）。
 VERSION="$(node -p "require('$ROOT/package.json').version")"
@@ -35,7 +36,8 @@ int main(int argc, char** argv) {
     genie_core_string_free(url);
 
     /* gateway API 縦断（実バックエンド）。届かなければ skip（CI 等）。 */
-    const char* base = "http://127.0.0.1:3000";
+    const char* base = getenv("ASTRA_GATEWAY_URL");
+    if (!base || !*base) base = "http://127.0.0.1:3000";
     if (genie_core_api_reachable(base) == 1) {
         char* toks = genie_core_api_dev_sign_in(base, "cabi-selftest@astra.local", "CABI");
         if (!toks || strstr(toks, "access_token") == NULL) { printf("CABI_FAIL api sign_in\n"); return 30; }
@@ -90,7 +92,23 @@ int main(int argc, char** argv) {
 }
 C
 OUTDIR="$TMP/rec"; mkdir -p "$OUTDIR"
-clang -DEXPECT_VERSION="\"$VERSION\"" "$TMP/t.c" -I "$CORE/include" -L "$LIBDIR" -lgenie_core -o "$TMP/t"
+# SDK を選ぶ。既定（xcrun が返す Command Line Tools の SDK）でリンクできないことがある
+# （macOS 27 の SDK の .tbd に、いまのリンカが読めない arm64e.x1 が入っている）。そのときだけ
+# Xcode に同梱の SDK を使う。検査の中身（C の境界を往復する）は変えない。GENIE_MACOS_SDK で指定もできる。
+SYSROOT=()
+if [[ -n "${GENIE_MACOS_SDK:-}" ]]; then
+  SYSROOT=(-isysroot "$GENIE_MACOS_SDK")
+else
+  printf 'int main(void){return 0;}' > "$TMP/probe.c"
+  if ! clang "$TMP/probe.c" -o "$TMP/probe" 2>/dev/null; then
+    XSDK="$(xcode-select -p 2>/dev/null)/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
+    if [[ -d "$XSDK" ]] && clang -isysroot "$XSDK" "$TMP/probe.c" -o "$TMP/probe" 2>/dev/null; then
+      SYSROOT=(-isysroot "$XSDK")
+      echo "note: default SDK cannot link here; using $XSDK" >&2
+    fi
+  fi
+fi
+clang "${SYSROOT[@]}" -DEXPECT_VERSION="\"$VERSION\"" "$TMP/t.c" -I "$CORE/include" -L "$LIBDIR" -lgenie_core -o "$TMP/t"
 OUT="$("$TMP/t" "$OUTDIR")"
 echo "$OUT"
 [[ "$OUT" == CABI_OK* ]] || { echo "FAIL: C ABI round trip" >&2; exit 1; }

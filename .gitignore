@@ -27,6 +27,8 @@ apps/genie-macos/.build/
 core/genie-core/target/
 core/genie-core/generated/
 apps/genie-macos/build/
+apps/genie-macos/build
+apps/genie-macos/build.noindex/
 
 # 配布物（scripts/build-dmg.sh が作る）
 apps/genie-macos/dist/

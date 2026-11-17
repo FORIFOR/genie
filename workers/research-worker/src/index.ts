@@ -17,6 +17,7 @@ export const RESEARCH_QUEUE = TASK_QUEUES.research;
 export const RESEARCH_TOOLS = [
   'research.plan',
   'research.search',
+  'research.deepen',
   'research.verify',
   'research.report',
 ] as const;

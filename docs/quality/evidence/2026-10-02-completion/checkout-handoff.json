@@ -1,0 +1,131 @@
+{
+  "recordedAt": "2026-10-01T21:13:52.323877+00:00",
+  "revision": "ee857a5b13482cbd2d986a1f9b466c8e49a149c3",
+  "workingTree": "uncommitted shared changes; hashes identify reviewed source, no commit or push",
+  "verification": "implementer tests; independent review separate",
+  "scope": "fixed official URL handoff only; not submitted and not prepared",
+  "results": {
+    "build": "PASS exit 0",
+    "unit": "39 PASS",
+    "host_mock": "7 PASS",
+    "http_real_disposable_db": "20 PASS",
+    "test_types": "PASS exit 0",
+    "ui_browser_e2e": "NOT_RUN",
+    "live_checkout": "UNSUPPORTED/NOT_RUN",
+    "fullgate": "separate root evidence"
+  },
+  "priorResults": {
+    "missing_psql": "exit 127, tests not run",
+    "http_round1": "15 PASS / 5 FAIL; one production notice recovery defect plus four test expectation defects"
+  },
+  "files": [
+    {
+      "path": "packages/contracts/src/checkout-assistance.ts",
+      "sha256": "b9d609e92f64b5b365f348e58484f88896246f2ab57286ccf33f7edcf6fe1da8"
+    },
+    {
+      "path": "packages/contracts/src/index.ts",
+      "sha256": "af3e4d3c9583dc5e59d0b39b6996d6db9b8695bc47293fcee7a23161e53ca9b6"
+    },
+    {
+      "path": "services/conversation/src/checkout-request.ts",
+      "sha256": "2937635f453cfdd1e0313a6b9f046eea165a2fe08dcdfd1a7d730b5f690509c3"
+    },
+    {
+      "path": "services/conversation/src/lane.ts",
+      "sha256": "2fba689291d799e036e8d394d1a182d5ae388943f264a5e010f093f7579b9201"
+    },
+    {
+      "path": "services/conversation/src/service.ts",
+      "sha256": "8622e609d6682257e128dc1990c9f5419eab5416374a1a9cd3a9be1317c51680"
+    },
+    {
+      "path": "services/conversation/src/index.ts",
+      "sha256": "7194b27e942938e00aec50001dcb4e10a2b25b4e2a37e7046e33d5aa064c9faa"
+    },
+    {
+      "path": "services/conversation/test/checkout-request.test.ts",
+      "sha256": "4def2f919b8c7c137d695c0976979313e7e0f7a24df17f67de4a143623bb577b"
+    },
+    {
+      "path": "services/api-gateway/src/routes/conversations.ts",
+      "sha256": "28d5f906b8126bbd09fa07866cd1cfc6b0fe2fa787a2eb2fbe6577751505d948"
+    },
+    {
+      "path": "services/api-gateway/test/conversations-transaction.integration.test.ts",
+      "sha256": "d5f645a7b9533a7e73d91f50ad53f341a2bc3e987d9420c00817ce5456fa20be"
+    },
+    {
+      "path": "services/task/src/plan.ts",
+      "sha256": "aae1ce2d913a2e929851dbe827ebadc06b4b436290bb3b337158ef096cda420b"
+    },
+    {
+      "path": "services/task/src/activities.ts",
+      "sha256": "583f4ce6c668391e5fa9f7cd0fff9592f8e5139067e86832871a60ac2701da0b"
+    },
+    {
+      "path": "services/task/src/checkout-artifact.ts",
+      "sha256": "688290165b85275cfdcaf2140928801aa1c7ad6fbc40d4f71f6e99474916dfdc"
+    },
+    {
+      "path": "services/task/test/checkout-assistance.test.ts",
+      "sha256": "ff78fc1b8475aa7d7ec637486caf6646559684e85213ddc61298da17c19620dd"
+    },
+    {
+      "path": "workers/agent-host/src/checkout-assistance.ts",
+      "sha256": "945bab8a6ef98f943b8ef98d097011a967c3477820860a97c0478fa29fc10b2a"
+    },
+    {
+      "path": "workers/agent-host/src/main.ts",
+      "sha256": "096b6ee39961dbd0063a37eb649c5f5800309999a729b5204c2094a0bd0ffe25"
+    },
+    {
+      "path": "workers/agent-host/test/checkout-assistance.node.mjs",
+      "sha256": "4ed0d42696df0957b7bce29c26ac20b0bb1ea62e6e2286cfbcecc7493eb4ebdc"
+    },
+    {
+      "path": "apps/genie-macos/Sources/GenieMac/Home/ConsumerJourney.swift",
+      "sha256": "ccceeca93d395dcbd7cf9433c7726151c2ab1680018ca6b2afa2feee0e5f6283"
+    },
+    {
+      "path": "apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift",
+      "sha256": "25177a7d598b7cfccd381533545a98f366dffe856f1992e5832646ef5672f7b8"
+    },
+    {
+      "path": "docs/quality/TRANSACTION_COMPLETION.md",
+      "sha256": "fbb069edd84f820df0704c1694680b8de1ebbf9c97fac5028228891f9ca88e85"
+    },
+    {
+      "path": "docs/quality/evidence/2026-10-02-completion/CHECKOUT_HANDOFF.md",
+      "sha256": "f1073183b5a3bf697a7dd8040b27e54d107963fbda95ec70668b8650a1890fc1"
+    },
+    {
+      "path": "docs/quality/evidence/2026-10-02-completion/checkout-handoff-unit-final.log",
+      "sha256": "62d01d3585d429971cfd9f003779c181b563f40c1acf0092864a1207ec69a6fc"
+    },
+    {
+      "path": "docs/quality/evidence/2026-10-02-completion/checkout-handoff-host-final.log",
+      "sha256": "d21f3d34e249d407944c48dae50020db620825f917e7eb50280b7b33b6090165"
+    },
+    {
+      "path": "docs/quality/evidence/2026-10-02-completion/checkout-handoff-http-final.log",
+      "sha256": "54c9bd9c4474c3f1ae08ff299fd6bc191e2719f5f6bdd8f67bae3b43aa7220b2"
+    },
+    {
+      "path": "docs/quality/evidence/2026-10-02-completion/checkout-handoff-http-round1.log",
+      "sha256": "ea3ba8a6774897c2ef76f2c2a5cb0a98dc0b9c91ede3be599bd627e9a617dd2b"
+    },
+    {
+      "path": "docs/quality/evidence/2026-10-02-completion/checkout-handoff-http-missing-psql.log",
+      "sha256": "e7855799aaf10c6d5e777bd5c1f94337851444beb4c6613a8507f2232073737a"
+    },
+    {
+      "path": "docs/quality/evidence/2026-10-02-completion/checkout-handoff-build-final.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/quality/evidence/2026-10-02-completion/checkout-handoff-types-final.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ]
+}

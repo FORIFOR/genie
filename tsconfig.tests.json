@@ -19,6 +19,7 @@
     "packages/*/test/**/*.ts",
     "packages/*/test/**/*.tsx",
     "services/*/test/**/*.ts",
+    "services/task/scripts/*.ts",
     "workers/*/test/**/*.ts"
   ]
 }

@@ -1,0 +1,34 @@
+{
+  "observedAt": "2026-10-01T23:30:49.385044+00:00",
+  "observer": "/root/computer_correctness",
+  "method": "Isolated owned preview PostgreSQL BEGIN READ ONLY, exact task_id filter, projected fields only, ROLLBACK; no mutation/model/GUI invocation",
+  "taskId": "01a0f9bb-fdb8-7000-a0de-b2a47eeadbf4",
+  "hostStepRequests": [
+    {
+      "id": "01a0f9bb-fdf0-7000-8bbe-0aa210c5d1ca",
+      "task_id": "01a0f9bb-fdb8-7000-a0de-b2a47eeadbf4",
+      "status": "PENDING",
+      "tool_id": "llm.answer",
+      "created_at": "2026-10-01T23:10:42.158Z",
+      "claimed_at": null,
+      "completed_at": null,
+      "expires_at": "2026-10-01T23:25:42.158Z",
+      "error_code": null,
+      "result_present": false
+    }
+  ],
+  "relatedTaskObservation": {
+    "status": "FAILED",
+    "error": "activity StartToClose timeout",
+    "updated_at": "2026-10-01T23:15:42.198Z",
+    "source": "e2e001-fixture-identity-diagnosis.json"
+  },
+  "inference": "An unclaimed host request remained pending when the activity timed out after five minutes. This does not establish an in-flight model request or external side effect. Native stop PASS did not establish terminal CANCELLED.",
+  "excludedFields": [
+    "args",
+    "prompt",
+    "approval",
+    "result contents",
+    "credential values"
+  ]
+}

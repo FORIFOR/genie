@@ -2,6 +2,7 @@
   "name": "@genie/service-share",
   "version": "0.0.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "description": "Share tokens, passwords, expiry and public viewer authorization.",
   "main": "./dist/index.js",

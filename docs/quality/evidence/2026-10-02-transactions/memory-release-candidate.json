@@ -1,0 +1,39 @@
+{
+  "recordedAt": "2026-10-01T17:45:57.183099+00:00",
+  "executor": "root",
+  "reviewer": "verification_audit",
+  "classification": "Root-executed release package; reviewer read the completed log and hashed the resulting dedicated candidate without building or launching it.",
+  "commandReportedByRoot": "bash scripts/package-macos-app.sh with --jobs 1 release build",
+  "resultReportedByRoot": "PASS",
+  "log": {
+    "file": "package-memory-final.log",
+    "sha256": "86a88947945c1c2ca1bba4395527d3c861d4074c85991bb5f37b2d7b36f36775",
+    "observedMarkers": [
+      "Build complete! (92.55s)",
+      "valid on disk",
+      "satisfies its Designated Requirement",
+      "launch: OK（実行体は起動する）",
+      "packaged: /Users/shuhei/Projects/genie/apps/genie-macos/.build/Genie.app"
+    ]
+  },
+  "candidate": {
+    "path": "/private/tmp/genie-transactions-20261002/GenieTransactionMemory.app",
+    "bundleId": "com.genie.transaction-preview",
+    "version": "0.1.4",
+    "executable": "/private/tmp/genie-transactions-20261002/GenieTransactionMemory.app/Contents/MacOS/GenieMac",
+    "sha256": "8a8cbea5b87d5dddcb94245126cefc24ecb522d8920d3e0b03759ccfae2ada4b",
+    "strictSignatureVerification": "PASS reported by root for this dedicated re-signed copy; package log verifies the original package."
+  },
+  "finalSourceHashes": {
+    "apps/genie-macos/Sources/GenieMac/App/GenieAppDelegate.swift": "e347c0b398bc58c1d74a35658574407f781a84f7724bc488b8b0dce58635d700",
+    "apps/genie-macos/Sources/GenieMac/RecordingWorkspace/CodexTranslation.swift": "4d801f83cc7f8ee3638093bc74207cc41f3d299a94a9b4d62afc4e38f0f92188",
+    "scripts/start-local-preview.mjs": "8e452ee8fe1ebe199c8fb9ce72de36011dbea35556a2b0fb19cca2ae22437c64"
+  },
+  "sourceScope": "Includes the final AppDelegate signal-hook relocation, per root; unit tests were compiled before that relocation.",
+  "limitations": [
+    "Build/sign/launch checks are not main-app SIGTERM cleanup E2E",
+    "Full-product gate remains interrupted",
+    "Log preserves newer-macOS object deployment-target warnings; older supported macOS compatibility is not established here",
+    "Not notarized production distribution approval"
+  ]
+}

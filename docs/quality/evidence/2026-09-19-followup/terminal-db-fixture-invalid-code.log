@@ -1,0 +1,150 @@
+
+ RUN  v3.2.7 /Users/shuhei/Projects/genie/services/task
+
+ ❯ test/terminal-state.test.ts (6 tests | 1 failed) 693ms
+   ✓ terminal transitions with real PostgreSQL > completion after accepted cancellation emits no false completion 122ms
+   ✓ terminal transitions with real PostgreSQL > late cancellation and failure preserve completed artifact and only one terminal event 86ms
+   ✓ terminal transitions with real PostgreSQL > duplicate cancellation does not mutate timestamps or duplicate audit entries 63ms
+   × terminal transitions with real PostgreSQL > failure remains immutable when terminal activities are redelivered 22ms
+     → [
+  {
+    "code": "invalid_value",
+    "values": [
+      "auth.missing_token",
+      "auth.invalid_token",
+      "auth.expired_token",
+      "auth.refresh_reuse_detected",
+      "auth.forbidden",
+      "auth.device_revoked",
+      "auth.idp_rejected",
+      "auth.provider_not_configured",
+      "common.validation_failed",
+      "common.not_found",
+      "common.conflict",
+      "common.rate_limited",
+      "common.internal",
+      "common.unavailable",
+      "task.not_found",
+      "task.step_failed",
+      "task.unknown_kind",
+      "task.invalid_state",
+      "task.idempotency_conflict",
+      "task.approval_timeout",
+      "approval.not_found",
+      "approval.expired",
+      "approval.already_decided",
+      "approval.rejected",
+      "artifact.not_found",
+      "artifact.too_large",
+      "artifact.checksum_mismatch",
+      "artifact.unsupported_type",
+      "meeting.not_found",
+      "meeting.not_recording",
+      "meeting.already_finalizing",
+      "plugin.not_found",
+      "plugin.manifest_invalid",
+      "plugin.incompatible",
+      "plugin.unsigned",
+      "plugin.not_removable",
+      "plugin.permission_denied",
+      "host.not_connected",
+      "host.capability_denied",
+      "host.timeout",
+      "stream.invalid_cursor",
+      "stream.too_many_connections"
+    ],
+    "path": [
+      "payload",
+      "error",
+      "code"
+    ],
+    "message": "Invalid option: expected one of \"auth.missing_token\"|\"auth.invalid_token\"|\"auth.expired_token\"|\"auth.refresh_reuse_detected\"|\"auth.forbidden\"|\"auth.device_revoked\"|\"auth.idp_rejected\"|\"auth.provider_not_configured\"|\"common.validation_failed\"|\"common.not_found\"|\"common.conflict\"|\"common.rate_limited\"|\"common.internal\"|\"common.unavailable\"|\"task.not_found\"|\"task.step_failed\"|\"task.unknown_kind\"|\"task.invalid_state\"|\"task.idempotency_conflict\"|\"task.approval_timeout\"|\"approval.not_found\"|\"approval.expired\"|\"approval.already_decided\"|\"approval.rejected\"|\"artifact.not_found\"|\"artifact.too_large\"|\"artifact.checksum_mismatch\"|\"artifact.unsupported_type\"|\"meeting.not_found\"|\"meeting.not_recording\"|\"meeting.already_finalizing\"|\"plugin.not_found\"|\"plugin.manifest_invalid\"|\"plugin.incompatible\"|\"plugin.unsigned\"|\"plugin.not_removable\"|\"plugin.permission_denied\"|\"host.not_connected\"|\"host.capability_denied\"|\"host.timeout\"|\"stream.invalid_cursor\"|\"stream.too_many_connections\""
+  }
+]
+   ✓ terminal transitions with real PostgreSQL > a different tenant cannot cancel or finalize this task 25ms
+   ✓ terminal transitions with real PostgreSQL > concurrent cancellation and completion converge without opposite terminal events  337ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/terminal-state.test.ts > terminal transitions with real PostgreSQL > failure remains immutable when terminal activities are redelivered
+ZodError: [
+  {
+    "code": "invalid_value",
+    "values": [
+      "auth.missing_token",
+      "auth.invalid_token",
+      "auth.expired_token",
+      "auth.refresh_reuse_detected",
+      "auth.forbidden",
+      "auth.device_revoked",
+      "auth.idp_rejected",
+      "auth.provider_not_configured",
+      "common.validation_failed",
+      "common.not_found",
+      "common.conflict",
+      "common.rate_limited",
+      "common.internal",
+      "common.unavailable",
+      "task.not_found",
+      "task.step_failed",
+      "task.unknown_kind",
+      "task.invalid_state",
+      "task.idempotency_conflict",
+      "task.approval_timeout",
+      "approval.not_found",
+      "approval.expired",
+      "approval.already_decided",
+      "approval.rejected",
+      "artifact.not_found",
+      "artifact.too_large",
+      "artifact.checksum_mismatch",
+      "artifact.unsupported_type",
+      "meeting.not_found",
+      "meeting.not_recording",
+      "meeting.already_finalizing",
+      "plugin.not_found",
+      "plugin.manifest_invalid",
+      "plugin.incompatible",
+      "plugin.unsigned",
+      "plugin.not_removable",
+      "plugin.permission_denied",
+      "host.not_connected",
+      "host.capability_denied",
+      "host.timeout",
+      "stream.invalid_cursor",
+      "stream.too_many_connections"
+    ],
+    "path": [
+      "payload",
+      "error",
+      "code"
+    ],
+    "message": "Invalid option: expected one of \"auth.missing_token\"|\"auth.invalid_token\"|\"auth.expired_token\"|\"auth.refresh_reuse_detected\"|\"auth.forbidden\"|\"auth.device_revoked\"|\"auth.idp_rejected\"|\"auth.provider_not_configured\"|\"common.validation_failed\"|\"common.not_found\"|\"common.conflict\"|\"common.rate_limited\"|\"common.internal\"|\"common.unavailable\"|\"task.not_found\"|\"task.step_failed\"|\"task.unknown_kind\"|\"task.invalid_state\"|\"task.idempotency_conflict\"|\"task.approval_timeout\"|\"approval.not_found\"|\"approval.expired\"|\"approval.already_decided\"|\"approval.rejected\"|\"artifact.not_found\"|\"artifact.too_large\"|\"artifact.checksum_mismatch\"|\"artifact.unsupported_type\"|\"meeting.not_found\"|\"meeting.not_recording\"|\"meeting.already_finalizing\"|\"plugin.not_found\"|\"plugin.manifest_invalid\"|\"plugin.incompatible\"|\"plugin.unsigned\"|\"plugin.not_removable\"|\"plugin.permission_denied\"|\"host.not_connected\"|\"host.capability_denied\"|\"host.timeout\"|\"stream.invalid_cursor\"|\"stream.too_many_connections\""
+  }
+]
+ ❯ buildEnvelope src/events.ts:121:24
+    119|   createdAt: Date,
+    120| ): EventEnvelope {
+    121|   return EventEnvelope.parse({
+       |                        ^
+    122|     event_id: eventId,
+    123|     type: input.type,
+ ❯ appendEvent src/events.ts:110:20
+ ❯ src/activities.ts:885:9
+ ❯ ../../node_modules/.pnpm/kysely@0.29.5/node_modules/kysely/dist/kysely.js:680:32
+ ❯ DefaultConnectionProvider.provideConnection ../../node_modules/.pnpm/kysely@0.29.5/node_modules/kysely/dist/driver/default-connection-provider.js:10:20
+ ❯ inTenant src/activities.ts:266:14
+ ❯ Object.failTask src/activities.ts:870:7
+ ❯ test/terminal-state.test.ts:160:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 5 passed (6)
+   Start at  18:48:12
+   Duration  1.32s (transform 169ms, setup 0ms, collect 433ms, tests 693ms, environment 0ms, prepare 44ms)
+
+undefined
+/Users/shuhei/Projects/genie/services/task:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run test/terminal-state.test.ts

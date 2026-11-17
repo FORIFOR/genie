@@ -1,0 +1,1 @@
+./infra/db/with-test-db.sh: line 53: psql: command not found

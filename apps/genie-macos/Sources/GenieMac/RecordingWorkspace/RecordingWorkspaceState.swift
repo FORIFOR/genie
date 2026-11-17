@@ -80,6 +80,11 @@ final class RecordingWorkspaceState: ObservableObject {
     /// AI 操作（要約/質問/決定事項/アクション）の結果。
     @Published var aiResult = ""
     @Published var aiRunning = false
+    /// 動いている AI 操作（止めるときに待ちを取り消す）と、その backend の仕事の id。
+    private var aiTask: Task<Void, Never>?
+    private var aiJobId: String?
+    /// 検査用（`--selftest aistop`）。いま動いている AI 操作の backend の仕事。
+    var aiJobIdForTest: String? { aiJobId }
     @Published private(set) var aiActionSucceeded = false
     let translation = MeetingTranslation()
     var translatedText: String { translation.text }
@@ -259,6 +264,10 @@ final class RecordingWorkspaceState: ObservableObject {
             }
             return
         }
+        // 会話・音声入力と録音は同じマイクを使う。声の側を先に閉じる（重ねると、会話を終えたときに
+        // 録音のマイクまで止まっていた）。
+        let voice = VoiceHUDState.shared
+        if voice.conversation.isActive || RecordingRuntime.shared.voiceListening { voice.cancelListening() }
         isRecording = true
         // 前の会議を消す。消さないと 2 本目の録音に 1 本目の行が混ざる（`at` も衝突する）。
         // 前の会議は確定のたびに保存してあるので、ここで失うものは無い。
@@ -494,17 +503,18 @@ final class RecordingWorkspaceState: ObservableObject {
         let store = GenieStateStore.shared
         let task = AgentTask(id: UUID(), title: title, status: .running, steps: steps,
                              startedAt: Date(), context: store.state.context)
-        store.startTask(task)
+        store.startTask(task, onStop: { [weak self] in self?.stopAIAction(base: base, token: token) })
         let stepIds = steps.map(\.id)
 
-        Task { [weak self] in
+        aiJobId = nil
+        aiTask = Task { [weak self] in
             guard let self else { return }
             do {
                 store.updateStep(stepIds[0], to: .running)
                 store.updateStep(stepIds[1], to: .success)
                 store.updateStep(stepIds[2], to: .running)
                 let answer = try await self.aiRequests.run(key, submit: {
-                    try await Task.detached {
+                    let submission = try await Task.detached {
                         // Each action contains its full source snapshot. Reusing a
                         // conversation would append old full transcripts every time.
                         let conv = try GenieCoreBridge.startConversation(base, accessToken: token)
@@ -514,6 +524,9 @@ final class RecordingWorkspaceState: ObservableObject {
                         }
                         return MeetingAIRequests.Submission(answer: outcome.answer, taskId: outcome.taskId)
                     }.value
+                    // 止めるときに backend の仕事も取り消せるよう、id を覚えておく。
+                    self.aiJobId = submission.taskId
+                    return submission
                 }, poll: { job in
                     try await Task.detached {
                         let done = try GenieCoreBridge.waitTask(base, accessToken: token, taskId: job, timeoutMs: 30_000)
@@ -524,6 +537,8 @@ final class RecordingWorkspaceState: ObservableObject {
                         return try GenieCoreBridge.artifactContent(base, accessToken: token, artifactId: done.resultArtifactId)
                     }.value
                 })
+                // 止めた後に届いた答えは使わない（止めた仕事を成功に見せない）。
+                guard !Task.isCancelled else { return }
                 store.updateStep(stepIds[0], to: .success)
                 store.updateStep(stepIds[2], to: .success)
                 store.finishTask(.success)
@@ -531,11 +546,27 @@ final class RecordingWorkspaceState: ObservableObject {
                     self.aiActionSucceeded = true; self.aiResult = answer
                 }
             } catch {
+                guard !Task.isCancelled else { return }
                 store.updateStep(stepIds[2], to: .failed)
                 store.finishTask(.failed)
                 if self.currentMeetingId == key.meeting { self.aiResult = "AI 操作に失敗しました: \(error.localizedDescription)" }
             }
             self.aiRunning = false
+        }
+    }
+
+    /// Dock の「止める」から。待ちを取り消し、backend の仕事も取り消す（終わっていれば 409 で、何もしない）。
+    /// 音声の停止ではない。結果の面は GenieStateStore が「取り消しました」で出す。
+    private func stopAIAction(base: String, token: String) {
+        aiTask?.cancel(); aiTask = nil
+        aiRunning = false
+        aiActionSucceeded = false
+        aiResult = Facts.taskCancelled
+        guard let job = aiJobId, !job.isEmpty else { return }
+        aiJobId = nil
+        Task.detached {
+            do { _ = try GenieCoreBridge.cancelTask(base, accessToken: token, taskId: job) }
+            catch { NSLog("AI action: cancel not delivered: \(error)") }
         }
     }
 

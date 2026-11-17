@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "recordedAt": "2026-10-01T22:34:23.570313+00:00",
+  "status": "PASS",
+  "method": "Independent read-only check of the one subsequently published script and the updated manifest. No script execution.",
+  "priorReviewPreserved": "installed-profile-recovery-independent-review.json",
+  "priorReviewedFileCount": 74,
+  "priorManifestSha256": "6f65b57eb0f4419a4115c9b8c6652865a775367922cf9d69ac245340ccef4b3b",
+  "updatedFileCount": 75,
+  "updatedManifestSha256": "685ddb88675f7df60de1e9262b53b9a611241f09748e6f5e2d3e69101f58272a",
+  "additionalArtifact": "installed-profile-recovery/adopt-verified-profile.py",
+  "additionalArtifactSha256": "4d2a77bfcbaa6616e83f4bbe80b8c75d9818ec24e4087e939a40ab83a805acb3",
+  "identicalToPreviouslyReviewedScript": true,
+  "allCurrentManifestArtifactHashesMatch": true,
+  "scope": "Manifest legitimately changed to include the 75th file; this does not invalidate the earlier 74-file review or imply full-gate completion."
+}

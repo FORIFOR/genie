@@ -1,0 +1,166 @@
+{
+  "reviewedAt": "2026-10-01T18:56:49.769336+00:00",
+  "reviewer": "verification_audit",
+  "method": "Actual view_image of all 10 saved PNGs plus geometry/source read; no UI, model, tests, build or OAuth",
+  "imagesAndGeometry": [
+    {
+      "path": "docs/golden-screenshots/disclosure-copy/connection-google-dark.geometry.json",
+      "sha256": "ecb5ec650550b1bb5355aee83b807b27e5325a30dddc57a69818abec7e7d350a",
+      "geometry": {
+        "height": 365,
+        "width": 500
+      }
+    },
+    {
+      "path": "docs/golden-screenshots/disclosure-copy/connection-google-dark.png",
+      "sha256": "8d55b9f6642eba7b1421507c964b6c6bce48a3a8d75e61bedb962f68837e178b",
+      "viewed": "view_image"
+    },
+    {
+      "path": "docs/golden-screenshots/disclosure-copy/connection-google-light.geometry.json",
+      "sha256": "ecb5ec650550b1bb5355aee83b807b27e5325a30dddc57a69818abec7e7d350a",
+      "geometry": {
+        "height": 365,
+        "width": 500
+      }
+    },
+    {
+      "path": "docs/golden-screenshots/disclosure-copy/connection-google-light.png",
+      "sha256": "142c2c7817df3f6851d99666794c1f9813dc9e7dda209ea8bdb7384ec9e41af6",
+      "viewed": "view_image"
+    },
+    {
+      "path": "docs/golden-screenshots/disclosure-copy/connection-microsoft-dark.geometry.json",
+      "sha256": "ecb5ec650550b1bb5355aee83b807b27e5325a30dddc57a69818abec7e7d350a",
+      "geometry": {
+        "height": 365,
+        "width": 500
+      }
+    },
+    {
+      "path": "docs/golden-screenshots/disclosure-copy/connection-microsoft-dark.png",
+      "sha256": "ce132dcae93ed37af73b3687e17da6dc0fd2a4ef81106c846dbd9f386d7c3cfb",
+      "viewed": "view_image"
+    },
+    {
+      "path": "docs/golden-screenshots/disclosure-copy/connection-microsoft-light.geometry.json",
+      "sha256": "ecb5ec650550b1bb5355aee83b807b27e5325a30dddc57a69818abec7e7d350a",
+      "geometry": {
+        "height": 365,
+        "width": 500
+      }
+    },
+    {
+      "path": "docs/golden-screenshots/disclosure-copy/connection-microsoft-light.png",
+      "sha256": "1f456481854ba86bfb7ab695421877077cbc1f534da692860ce524057d8552e6",
+      "viewed": "view_image"
+    },
+    {
+      "path": "docs/golden-screenshots/disclosure-copy/transaction-invalid-bottom-dark.geometry.json",
+      "sha256": "00357ee1d27ad29ff2687a0bd98b7fd42846c987365fa1b400ae4a68ac0040a2",
+      "geometry": {
+        "bottomY": 200,
+        "documentHeight": 360,
+        "height": 340,
+        "scrollY": 200,
+        "viewportHeight": 160,
+        "width": 560
+      }
+    },
+    {
+      "path": "docs/golden-screenshots/disclosure-copy/transaction-invalid-bottom-dark.png",
+      "sha256": "81621bd4e825dfc6bdb815629e2095809e9fa9dd4640e598a1c3868e0859ebf5",
+      "viewed": "view_image"
+    },
+    {
+      "path": "docs/golden-screenshots/disclosure-copy/transaction-invalid-bottom-light.geometry.json",
+      "sha256": "00357ee1d27ad29ff2687a0bd98b7fd42846c987365fa1b400ae4a68ac0040a2",
+      "geometry": {
+        "bottomY": 200,
+        "documentHeight": 360,
+        "height": 340,
+        "scrollY": 200,
+        "viewportHeight": 160,
+        "width": 560
+      }
+    },
+    {
+      "path": "docs/golden-screenshots/disclosure-copy/transaction-invalid-bottom-light.png",
+      "sha256": "50fa8ca66e625f19e1e961d860d08673c7099cc03160439888b7750dc9b80586",
+      "viewed": "view_image"
+    },
+    {
+      "path": "docs/golden-screenshots/disclosure-copy/transaction-list-dark.geometry.json",
+      "sha256": "ad5cca64e9786ecc6ccd711ce542006df59cba0e21da59b67c6c67ea9eacdbc3",
+      "geometry": {
+        "height": 460,
+        "width": 560
+      }
+    },
+    {
+      "path": "docs/golden-screenshots/disclosure-copy/transaction-list-dark.png",
+      "sha256": "8b88eb9ff6d48277e5c5cd9b5f3e7242f5e748f685601ca919ead93d6180244b",
+      "viewed": "view_image"
+    },
+    {
+      "path": "docs/golden-screenshots/disclosure-copy/transaction-list-light.geometry.json",
+      "sha256": "ad5cca64e9786ecc6ccd711ce542006df59cba0e21da59b67c6c67ea9eacdbc3",
+      "geometry": {
+        "height": 460,
+        "width": 560
+      }
+    },
+    {
+      "path": "docs/golden-screenshots/disclosure-copy/transaction-list-light.png",
+      "sha256": "1b22029e87134d184a80daeaa691dc8637f030a6160739be65b7b96746665efc",
+      "viewed": "view_image"
+    },
+    {
+      "path": "docs/golden-screenshots/disclosure-copy/transaction-scope-bottom-dark.geometry.json",
+      "sha256": "32479f3dcb5579e9a01d630c9638b1f82d91191121895f6898721b5109021d36",
+      "geometry": {
+        "bottomY": 160,
+        "documentHeight": 320,
+        "height": 340,
+        "scrollY": 160,
+        "viewportHeight": 160,
+        "width": 560
+      }
+    },
+    {
+      "path": "docs/golden-screenshots/disclosure-copy/transaction-scope-bottom-dark.png",
+      "sha256": "7d19f0754da0ff2fa95c54ad3596db2108b460f53eb73a7301679309cb11d2be",
+      "viewed": "view_image"
+    },
+    {
+      "path": "docs/golden-screenshots/disclosure-copy/transaction-scope-bottom-light.geometry.json",
+      "sha256": "32479f3dcb5579e9a01d630c9638b1f82d91191121895f6898721b5109021d36",
+      "geometry": {
+        "bottomY": 160,
+        "documentHeight": 320,
+        "height": 340,
+        "scrollY": 160,
+        "viewportHeight": 160,
+        "width": 560
+      }
+    },
+    {
+      "path": "docs/golden-screenshots/disclosure-copy/transaction-scope-bottom-light.png",
+      "sha256": "0dfd5d0622aa99e275c17312fa0cbeb9d883bc823ce3f28d49717fb810ee1730",
+      "viewed": "view_image"
+    }
+  ],
+  "sourceBindingMatches": {
+    "VoiceHUD/VoiceHUDView.swift": true,
+    "Transactions/TransactionAuthorizationViews.swift": true,
+    "Main/ConnectionsPane.swift": true
+  },
+  "sources": {
+    "scripts/ui-taste-count.py": "74ee57a1b5340f845bb6dd7c90cfce40830209b7bd30378b00864473965b645d",
+    "scripts/tests/test_ui_taste_count.py": "455146e1e5d38a6b42f78995b1abd33da515b0338841d03ce93a23e3f0a2e741",
+    "docs/release-evidence/2026-09-13-genie/ui-taste-review.json": "17877600d1c183fbeca1eb645fc66c881a2adbf2593ddcc01fa9684b913f70de",
+    "apps/genie-macos/Sources/GenieMac/Main/ConnectionsPane.swift": "0bada7063d65df81d74e5196c7da2cda6d444aaef99572150ff5336946f35b76"
+  },
+  "visualResult": "PASS for four full explanations in stated rendered scopes, not all scrolled content or interactions",
+  "scannerFinding": "P2 duplicate review entries can count one literal twice; current manifest has no duplicate; owner notified"
+}

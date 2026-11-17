@@ -1,0 +1,74 @@
+{
+  "recordedAt": "2026-10-01T17:32:09.990863+00:00",
+  "classification": "implementation verification; shell orchestration with fake commands only",
+  "uncommitted": true,
+  "sourceSha256": {
+    "scripts/build-resource-env.sh": "7a9f23dcbfd8a5a1b8defbcc9670428ea4792a966c92fcd3a6739f1235913a89",
+    "scripts/verify-local-translation.sh": "80e3409c624df815ac82d84be73e2bb7567db0ec978aec6993c7e4f07b6bb31d",
+    "scripts/verify-all.sh": "190d304868fc71263035ac4168c0cada58aedbf13f396c28ef6b87a5dab6d429",
+    "scripts/verify-macos-recording.sh": "e330813a8d0eb9ba5baa6c117db863bc1c3e652d995418853c6c315bce13b40b",
+    "scripts/verify-recording-experience.sh": "21b24f37b9aeef506f01e4dc95d3b3c6c08d2164299a831327255c6c1b34f2c2",
+    "scripts/package-macos-app.sh": "c3ff6b2864df5e08f0df0d38187380b181b651a0a38c980bcc35caa2a5387c67",
+    "scripts/tests/test_verification_resources.py": "2f671e70718e493605cf29e6430bd5c0f42fb444a717148193864bb32ab5bfb2",
+    "scripts/tests/test_macos_recording_env.py": "5ebc0ca4c09f25613f1db24a8978877f2adde8c7251cafe7896da521ecf35767",
+    "docs/quality/LOW_RESOURCE_VERIFICATION.md": "b13e63d6454f2c503b7d6ec185cdf6fb8305633b32b92a9cd7eef00f93284d33"
+  },
+  "runs": [
+    {
+      "command": "python3 -m unittest discover -s scripts/tests -p 'test_verification_resources.py' -v",
+      "exitCode": 0,
+      "passed": 9,
+      "log": "verification-resources-shellmock-final.log"
+    },
+    {
+      "command": "python3 -m unittest discover -s scripts/tests -p 'test_macos_recording_env.py' -v",
+      "exitCode": 0,
+      "passed": 3,
+      "log": "verification-recording-env-shellmock-final.log"
+    },
+    {
+      "command": "/bin/bash -n individually for all six changed shell scripts",
+      "exitCode": 0,
+      "scope": "syntax only"
+    },
+    {
+      "command": "git diff --check for owned harness paths",
+      "exitCode": 0,
+      "scope": "whitespace only"
+    }
+  ],
+  "logSha256": {
+    "verification-resources-shellmock-final.log": "596fcb02f53a871b68d570ba6e9135e3adfbd63f313eb3774e398eb71bbcd3ce",
+    "verification-recording-env-shellmock-final.log": "5f54e7de0cb73bdb1d9ffd192a43ab1b6299eb86bca0a87ba602530228ab3ec8"
+  },
+  "notRun": [
+    "Real local model load and semantic fixture",
+    "Actual Swift/Cargo/application build",
+    "Actual recording/native UI",
+    "Full verify-all/product acceptance",
+    "Database tests"
+  ],
+  "assertions": [
+    "Default recording harness never invokes --selftest translate; prints NOT_RUN and exits2 after other mocked checks",
+    "Explicit opt-in dispatches the unchanged translate semantic selftest; crash/failure/skip/missing result cannot pass",
+    "Full harness reports partial omissions with scope count and does not print VERIFY_ALL_OK; failures take precedence",
+    "Swift/Cargo jobs default2 and explicit positive integer overrides; release optimization flag retained",
+    "Normal Swift unit suite retained; stub results are not real-model semantic evidence"
+  ],
+  "limits": [
+    "Mocked native/model/build commands do not establish resource-use measurements or product quality.",
+    "Reported omission counts are output-reported unique scopes, not an inferred count of all internal test cases.",
+    "Interrupted prior full gate remains incomplete."
+  ],
+  "independentStaticReview": {
+    "reviewer": "/root/pointer_ui",
+    "files": [
+      "scripts/verify-local-translation.sh",
+      "scripts/verify-all.sh",
+      "scripts/build-resource-env.sh"
+    ],
+    "result": "No concrete defect identified; opt-in before app launch, failure precedence, partial omissions, signal interruption reporting, job-only configuration confirmed by reading.",
+    "execution": "No tests/model/build run by reviewer",
+    "limitation": "Existing unit summary wrappers do not forward all stdout. Future inner SKIP markers would need explicit forwarding; no current Swift XCTest skip marker observed by reviewer."
+  }
+}

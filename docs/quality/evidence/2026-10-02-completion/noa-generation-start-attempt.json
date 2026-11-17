@@ -1,0 +1,77 @@
+{
+  "scope": "isolated generation load, discarded drafts/audio; Jev gate NOT_RUN; no broadcast/playback",
+  "status": "FAIL",
+  "startedAt": "2026-10-01T21:36:20.606Z",
+  "configHash": "b35dcc4a5f88d87a753c1ab76e13c469e5187147486f8d6d1bee5abd920514e0",
+  "quality": {
+    "mode": "live",
+    "profile": "talk",
+    "llmProvider": "ollama",
+    "model": "qwen3.5:9b",
+    "llmURL": "http://127.0.0.1:11434/v1",
+    "generation": {
+      "temperature": 0.7,
+      "num_predict": 220,
+      "num_ctx": 4096,
+      "think": false,
+      "keep_alive": "30m"
+    },
+    "hostVoice": {
+      "provider": "aivisspeech",
+      "url": "http://127.0.0.1:10101",
+      "style": 1878365376,
+      "speed": 1,
+      "intonation": 1,
+      "tempo": 1,
+      "hostStyleMap": {}
+    },
+    "commentVoice": {
+      "enabled": true,
+      "url": "http://127.0.0.1:50021",
+      "speaker": 2,
+      "speed": 1.15
+    },
+    "speechDirection": "off",
+    "reactionAudio": false,
+    "phraseCache": false,
+    "maxTurnAudioMs": 18000,
+    "maxReadAudioMs": 10000,
+    "characterSha256": "85b5c2c6d1711d00fd7e884099389a313c2665ed178f9d415ba137194463864f"
+  },
+  "memory": [
+    {
+      "at": 1790890580612,
+      "level": "normal",
+      "pressureLevel": 1,
+      "freePercent": 70
+    },
+    {
+      "at": 1790890580624,
+      "level": "normal",
+      "pressureLevel": 1,
+      "freePercent": 70
+    },
+    {
+      "at": 1790890580629,
+      "level": "normal",
+      "pressureLevel": 1,
+      "freePercent": 70
+    },
+    {
+      "at": 1790890580690,
+      "level": "normal",
+      "pressureLevel": 1,
+      "freePercent": 70
+    }
+  ],
+  "requests": [],
+  "stages": [],
+  "stopReason": "SERVE_START_CLEANUP_UNCONFIRMED",
+  "finishedAt": "2026-10-01T21:36:20.927Z",
+  "cleanup": "Owned requests/caches cleared; only dedicated 11435 model/server/captured runners cleaned by exact identity. Shared 11434/Aivis/VOICEVOX never stopped. Generation keep_alive=30m preserved.",
+  "originalSHA256": "098442ce829e3fd60224c86ce33e0df8906b97f1988beec04a7789e9868ea4ff",
+  "originalStoredPrivately": true,
+  "generationRequestsSent": 0,
+  "sharedServicesStopped": false,
+  "dedicatedServerResidueCheck": "Agent read-only lsof/ps found no listener on 11435 and no dedicated serve/runner; shared serve unchanged."
+}

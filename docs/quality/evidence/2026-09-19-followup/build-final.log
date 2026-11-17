@@ -1,0 +1,4 @@
+
+> genie@0.1.4 build /Users/shuhei/Projects/genie
+> tsc -b tsconfig.build.json
+

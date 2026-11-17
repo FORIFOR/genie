@@ -4,8 +4,12 @@ import GenieCore
 extension ConnectorState {
     static func liveDependencies() -> Dependencies {
         Dependencies(configuration: { ConnectionConfiguration.current },
-            read: { try KeychainStore.getGeneric(service: KeychainStore.connectorService($0.pluginId, $0.connectorId), account: NSUserName()) },
-            write: { try KeychainStore.setGeneric(service: KeychainStore.connectorService($0.pluginId, $0.connectorId), account: NSUserName(), value: $1) },
+            read: { source in
+                let service = KeychainStore.connectorService(source.pluginId, source.connectorId)
+                // A passive status check must not rewrite credentials or their access controls.
+                return try KeychainStore.getGeneric(service: service, account: NSUserName())
+            },
+            write: { try KeychainStore.setConnectorSecret(service: KeychainStore.connectorService($0.pluginId, $0.connectorId), account: NSUserName(), value: $1) },
             delete: { try KeychainStore.deleteGeneric(service: KeychainStore.connectorService($0.pluginId, $0.connectorId), account: NSUserName()) },
             list: { base, token, source in
                 try await Task.detached {
@@ -49,6 +53,32 @@ extension ConnectorState {
                       (response as? HTTPURLResponse)?.statusCode == 200,
                       let value = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
                 return (value["email"] ?? value["mail"] ?? value["userPrincipalName"] ?? value["displayName"]) as? String
-            })
+            },
+            rejected: { source in
+                // host（agent-host の connector-status.ts）が書く。値は無く、指紋と時刻だけ。
+                let url = FileManager.default.homeDirectoryForCurrentUser
+                    .appendingPathComponent("Library/Application Support/Genie/connector-status.json")
+                guard let data = try? Data(contentsOf: url),
+                      let all = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                      let entry = all["\(source.pluginId)/\(source.connectorId)"] as? [String: Any] else { return nil }
+                return entry["fingerprint"] as? String
+            },
+            replaceLocked: {
+                try KeychainStore.replaceLockedConnectorSecret(service: KeychainStore.connectorService($0.pluginId, $0.connectorId), account: NSUserName(), value: $1)
+            },
+            remote: { base, token, method, path, body in
+                guard let url = URL(string: base + path) else { return nil }
+                var request = URLRequest(url: url, timeoutInterval: 15)
+                request.httpMethod = method
+                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+                if let body {
+                    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                    request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+                }
+                guard let (data, response) = try? await URLSession.shared.data(for: request),
+                      (response as? HTTPURLResponse).map({ (200..<300).contains($0.statusCode) }) == true else { return nil }
+                return data
+            },
+            startsRemoteLoop: true)
     }
 }

@@ -1,0 +1,115 @@
+
+ RUN  v3.2.7 /Users/shuhei/Projects/genie/services/task
+
+ ❯ test/terminal-workflow.test.ts (5 tests | 4 failed) 7ms
+   × terminal outcome is the committed outcome > honours cancellation arriving while the artifact is composed 5ms
+     → expected { artifactId: 'artifact', …(1) } to deeply equal { status: 'CANCELLED', …(1) }
+   × terminal outcome is the committed outcome > honours a committed cancellation request before its signal arrives 0ms
+     → expected { artifactId: 'artifact', …(1) } to deeply equal { status: 'CANCELLED', …(1) }
+   × terminal outcome is the committed outcome > returns the original persisted artifact on completion retry 0ms
+     → expected { artifactId: 'artifact', …(1) } to deeply equal { status: 'COMPLETED', …(1) }
+   × terminal outcome is the committed outcome > does not report cancelled when completion already committed 0ms
+     → expected { artifactId: 'artifact', …(1) } to deeply equal { status: 'COMPLETED', …(1) }
+   ✓ terminal outcome is the committed outcome > preserves the unpatched historical command path 0ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/terminal-workflow.test.ts > terminal outcome is the committed outcome > honours cancellation arriving while the artifact is composed
+AssertionError: expected { artifactId: 'artifact', …(1) } to deeply equal { status: 'CANCELLED', …(1) }
+
+- Expected
++ Received
+
+  {
+-   "artifactId": null,
+-   "status": "CANCELLED",
++   "artifactId": "artifact",
++   "status": "COMPLETED",
+  }
+
+ ❯ test/terminal-workflow.test.ts:42:39
+     40|   it('honours cancellation arriving while the artifact is composed', a…
+     41|     state.cancelDuringCompose = true;
+     42|     expect(await TaskWorkflow(input)).toEqual({ status: 'CANCELLED', a…
+       |                                       ^
+     43|     expect(state.calls).not.toContain('completeTask');
+     44|     expect(state.calls.filter(x => x === 'cancelTask')).toHaveLength(1…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  test/terminal-workflow.test.ts > terminal outcome is the committed outcome > honours a committed cancellation request before its signal arrives
+AssertionError: expected { artifactId: 'artifact', …(1) } to deeply equal { status: 'CANCELLED', …(1) }
+
+- Expected
++ Received
+
+  {
+-   "artifactId": null,
+-   "status": "CANCELLED",
++   "artifactId": "artifact",
++   "status": "COMPLETED",
+  }
+
+ ❯ test/terminal-workflow.test.ts:48:39
+     46|   it('honours a committed cancellation request before its signal arriv…
+     47|     state.completion = { status: 'CANCELLING', artifactId: null };
+     48|     expect(await TaskWorkflow(input)).toEqual({ status: 'CANCELLED', a…
+       |                                       ^
+     49|     expect(state.calls).toContain('cancelTask');
+     50|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  test/terminal-workflow.test.ts > terminal outcome is the committed outcome > returns the original persisted artifact on completion retry
+AssertionError: expected { artifactId: 'artifact', …(1) } to deeply equal { status: 'COMPLETED', …(1) }
+
+- Expected
++ Received
+
+  {
+-   "artifactId": "original-artifact",
++   "artifactId": "artifact",
+    "status": "COMPLETED",
+  }
+
+ ❯ test/terminal-workflow.test.ts:53:39
+     51|   it('returns the original persisted artifact on completion retry', as…
+     52|     state.completion = { status: 'COMPLETED', artifactId: 'original-ar…
+     53|     expect(await TaskWorkflow(input)).toEqual(state.completion);
+       |                                       ^
+     54|   });
+     55|   it('does not report cancelled when completion already committed', as…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  test/terminal-workflow.test.ts > terminal outcome is the committed outcome > does not report cancelled when completion already committed
+AssertionError: expected { artifactId: 'artifact', …(1) } to deeply equal { status: 'COMPLETED', …(1) }
+
+- Expected
++ Received
+
+  {
+-   "artifactId": "committed-artifact",
++   "artifactId": "artifact",
+    "status": "COMPLETED",
+  }
+
+ ❯ test/terminal-workflow.test.ts:58:39
+     56|     state.cancelDuringCompose = true;
+     57|     state.cancellation = { status: 'COMPLETED', artifactId: 'committed…
+     58|     expect(await TaskWorkflow(input)).toEqual(state.cancellation);
+       |                                       ^
+     59|   });
+     60|   it('preserves the unpatched historical command path', async () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  4 failed | 1 passed (5)
+   Start at  18:46:12
+   Duration  300ms (transform 67ms, setup 0ms, collect 69ms, tests 7ms, environment 0ms, prepare 55ms)
+
+undefined
+/Users/shuhei/Projects/genie/services/task:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run test/terminal-workflow.test.ts

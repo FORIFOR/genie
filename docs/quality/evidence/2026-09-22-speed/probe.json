@@ -1,0 +1,267 @@
+{
+  "measuredAt": "2026-09-21T16:06:59.772Z",
+  "host": "http://127.0.0.1:11434",
+  "model": {
+    "name": "qwen3.5:9b",
+    "digest": null,
+    "parameterSize": "9.7B",
+    "quantization": "Q4_K_M",
+    "family": "qwen35",
+    "contextLength": 262144
+  },
+  "inference": {
+    "temperature": 0,
+    "format": "json",
+    "stream": false
+  },
+  "images": [
+    {
+      "path": "docs/quality/evidence/2026-09-20-computer/completed-field.png",
+      "width": 1400,
+      "height": 660,
+      "bytes": 116208,
+      "sha256": "67d2ed6c4a2ba325"
+    },
+    {
+      "path": "docs/quality/evidence/2026-09-20-computer/marker-small-target.png",
+      "width": 2200,
+      "height": 1000,
+      "bytes": 619315,
+      "sha256": "2c78105e54f75319"
+    },
+    {
+      "path": "docs/quality/evidence/2026-09-20-computer/marker-during-run.png",
+      "width": 2400,
+      "height": 1400,
+      "bytes": 827409,
+      "sha256": "db76968b0533d1f3"
+    }
+  ],
+  "repeat": 1,
+  "runs": [
+    {
+      "task": "plan-empty-field",
+      "tool": "llm.plan_computer_action",
+      "think": true,
+      "attempt": 0,
+      "imageIndex": 0,
+      "promptChars": 3430,
+      "accepted": false,
+      "action": "done",
+      "wallMs": 15099,
+      "totalMs": 15096,
+      "loadMs": 4066,
+      "promptMs": 4317,
+      "generateMs": 6638,
+      "promptTokens": 1780,
+      "generatedTokens": 250
+    },
+    {
+      "task": "plan-pick-button",
+      "tool": "llm.plan_computer_action",
+      "think": true,
+      "attempt": 0,
+      "imageIndex": 1,
+      "promptChars": 3391,
+      "accepted": true,
+      "action": "stop",
+      "wallMs": 125384,
+      "totalMs": 125380,
+      "loadMs": 9,
+      "promptMs": 8773,
+      "generateMs": 116452,
+      "promptTokens": 2974,
+      "generatedTokens": 4437
+    },
+    {
+      "task": "plan-with-unmet-checklist",
+      "tool": "llm.plan_computer_action",
+      "think": true,
+      "attempt": 0,
+      "imageIndex": 0,
+      "promptChars": 3906,
+      "accepted": false,
+      "action": null,
+      "wallMs": null,
+      "totalMs": null,
+      "loadMs": null,
+      "promptMs": null,
+      "generateMs": null,
+      "promptTokens": null,
+      "generatedTokens": null,
+      "error": "TypeError: fetch failed"
+    },
+    {
+      "task": "verify-goal",
+      "tool": "llm.verify_computer_action",
+      "think": true,
+      "attempt": 0,
+      "imageIndex": 0,
+      "promptChars": 1548,
+      "accepted": true,
+      "action": "satisfied",
+      "wallMs": 22229,
+      "totalMs": 22224,
+      "loadMs": 6,
+      "promptMs": 3473,
+      "generateMs": 18606,
+      "promptTokens": 1303,
+      "generatedTokens": 708
+    },
+    {
+      "task": "plan-empty-field",
+      "tool": "llm.plan_computer_action",
+      "think": false,
+      "attempt": 0,
+      "imageIndex": 0,
+      "promptChars": 3430,
+      "accepted": false,
+      "action": "done",
+      "wallMs": 5118,
+      "totalMs": 5114,
+      "loadMs": 5,
+      "promptMs": 4373,
+      "generateMs": 708,
+      "promptTokens": 1782,
+      "generatedTokens": 31
+    },
+    {
+      "task": "plan-pick-button",
+      "tool": "llm.plan_computer_action",
+      "think": false,
+      "attempt": 0,
+      "imageIndex": 1,
+      "promptChars": 3391,
+      "accepted": false,
+      "action": "done",
+      "wallMs": 1824,
+      "totalMs": 1818,
+      "loadMs": 8,
+      "promptMs": 118,
+      "generateMs": 1630,
+      "promptTokens": 2976,
+      "generatedTokens": 66
+    },
+    {
+      "task": "plan-with-unmet-checklist",
+      "tool": "llm.plan_computer_action",
+      "think": false,
+      "attempt": 0,
+      "imageIndex": 0,
+      "promptChars": 3906,
+      "accepted": true,
+      "action": "type",
+      "wallMs": 5789,
+      "totalMs": 5786,
+      "loadMs": 4,
+      "promptMs": 4616,
+      "generateMs": 1117,
+      "promptTokens": 1913,
+      "generatedTokens": 47
+    },
+    {
+      "task": "verify-goal",
+      "tool": "llm.verify_computer_action",
+      "think": false,
+      "attempt": 0,
+      "imageIndex": 0,
+      "promptChars": 1548,
+      "accepted": true,
+      "action": "satisfied",
+      "wallMs": 4654,
+      "totalMs": 4651,
+      "loadMs": 3,
+      "promptMs": 3516,
+      "generateMs": 1113,
+      "promptTokens": 1305,
+      "generatedTokens": 47
+    }
+  ],
+  "summary": [
+    {
+      "think": true,
+      "task": "plan-empty-field",
+      "runs": 1,
+      "accepted": 0,
+      "medianWallMs": 15099,
+      "medianPromptMs": 4317,
+      "medianGenerateMs": 6638,
+      "medianGeneratedTokens": 250
+    },
+    {
+      "think": true,
+      "task": "plan-pick-button",
+      "runs": 1,
+      "accepted": 1,
+      "medianWallMs": 125384,
+      "medianPromptMs": 8773,
+      "medianGenerateMs": 116452,
+      "medianGeneratedTokens": 4437
+    },
+    {
+      "think": true,
+      "task": "plan-with-unmet-checklist",
+      "runs": 1,
+      "accepted": 0,
+      "medianWallMs": null,
+      "medianPromptMs": null,
+      "medianGenerateMs": null,
+      "medianGeneratedTokens": null
+    },
+    {
+      "think": true,
+      "task": "verify-goal",
+      "runs": 1,
+      "accepted": 1,
+      "medianWallMs": 22229,
+      "medianPromptMs": 3473,
+      "medianGenerateMs": 18606,
+      "medianGeneratedTokens": 708
+    },
+    {
+      "think": false,
+      "task": "plan-empty-field",
+      "runs": 1,
+      "accepted": 0,
+      "medianWallMs": 5118,
+      "medianPromptMs": 4373,
+      "medianGenerateMs": 708,
+      "medianGeneratedTokens": 31
+    },
+    {
+      "think": false,
+      "task": "plan-pick-button",
+      "runs": 1,
+      "accepted": 0,
+      "medianWallMs": 1824,
+      "medianPromptMs": 118,
+      "medianGenerateMs": 1630,
+      "medianGeneratedTokens": 66
+    },
+    {
+      "think": false,
+      "task": "plan-with-unmet-checklist",
+      "runs": 1,
+      "accepted": 1,
+      "medianWallMs": 5789,
+      "medianPromptMs": 4616,
+      "medianGenerateMs": 1117,
+      "medianGeneratedTokens": 47
+    },
+    {
+      "think": false,
+      "task": "verify-goal",
+      "runs": 1,
+      "accepted": 1,
+      "medianWallMs": 4654,
+      "medianPromptMs": 3516,
+      "medianGenerateMs": 1113,
+      "medianGeneratedTokens": 47
+    }
+  ],
+  "freshnessWindowMs": 60000,
+  "withinFreshness": {
+    "think": 2,
+    "nothink": 4
+  }
+}

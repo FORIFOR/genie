@@ -1,0 +1,16 @@
+{
+  "recordedAt": "2026-10-01T17:36:08.211177+00:00",
+  "classification": "First independent read-only source review by verification_audit; implementation authored by pointer_ui. No compile, test run, actual model request, UI capture or process-termination reproduction.",
+  "sourceHashes": {
+    "apps/genie-macos/Sources/GenieMac/RecordingWorkspace/CodexTranslation.swift": "8bea45d8047be59b804a162db9ad98ef51c56c9225c01476701e559576fa9a86",
+    "apps/genie-macos/Sources/GenieMac/RecordingWorkspace/MeetingTranslation.swift": "120d8f61c9b53ecadc43d824af0052874cbc4f2fb1af3dae99df386eeb293a29",
+    "apps/genie-macos/Sources/GenieMac/RecordingWorkspace/MeetingTranslationView.swift": "7606ccc2c7fc0a3c4a4af8893fce1159d2361c988773861236fd3710400fc305",
+    "apps/genie-macos/Sources/GenieMac/App/GenieAppDelegate.swift": "e56eb3279a2ec779f71b2c67c5aa2e12806f5742a9217c76648ab0d3976f922f",
+    "apps/genie-macos/Tests/GenieMacTests/CodexTranslationTests.swift": "c4602ebdff2737e75a5eb12d0a55946347a6ab4c7c4e73015302262aee1b9cd0",
+    "scripts/local-preview/config.mjs": "c449c9b2abfef65f463012d88df4897e1540c2f3e05ffffd2d544504ae66adbd",
+    "scripts/start-local-preview.mjs": "8e452ee8fe1ebe199c8fb9ce72de36011dbea35556a2b0fb19cca2ae22437c64",
+    "scripts/tests/managed-local-preview.test.mjs": "ae84573a4d3abda628c40c257ef3cc0100db04f61a198c5d3c1d1ad812ea81d1",
+    "workers/agent-host/src/codex.ts": "3c6a9f92928f3adf8177475ee23926b505b4ac7e0c96a57a794e522d8d0601f9"
+  },
+  "status": "BLOCKED for runtime correctness: normal application shutdown lacks owned CLI cleanup, actual Process runner tests are pending. See CODEX_TRANSLATION_REVIEW.md."
+}

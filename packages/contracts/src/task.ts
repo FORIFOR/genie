@@ -6,6 +6,7 @@ import { PROGRESS_REQUIRED_AFTER_MS } from './slo.js';
 import { ArtifactId, ConversationId, TaskId, TenantId, UserId } from './ids.js';
 import { JsonObject, Timestamp } from './primitives.js';
 import { ErrorCode } from './errors.js';
+import { UnknownTransactionResult } from './transaction.js';
 
 export const TASK_STATUSES = [
   'PENDING',
@@ -97,6 +98,8 @@ export const TaskError = z.object({
    * こちらは利用者に見せてよい言葉だけで組んである。
    */
   handoff_explanation: z.string().nullable().default(null),
+  /** Stopping Genie leaves an unconfirmed external order available for read-only lookup. */
+  transaction_result: UnknownTransactionResult.optional(),
 });
 export type TaskError = z.infer<typeof TaskError>;
 
@@ -134,6 +137,34 @@ export const TaskListItem = Task.extend({
   current_step: TaskCurrentStep.nullable().default(null),
 });
 export type TaskListItem = z.infer<typeof TaskListItem>;
+
+/**
+ * 動いている仕事への追加指示。受け取ったこと（RECEIVED）と、実際に反映したこと（APPLIED・どの段で）を分ける。
+ * 反映する前に仕事が終わったら NOT_APPLIED。終わった仕事には足せない（続きの仕事を作るかを本人に聞く）。
+ */
+export const TASK_INSTRUCTION_STATUSES = ['RECEIVED', 'APPLIED', 'NOT_APPLIED'] as const;
+export const TaskInstructionStatus = z.enum(TASK_INSTRUCTION_STATUSES);
+export type TaskInstructionStatus = z.infer<typeof TaskInstructionStatus>;
+
+export const TaskInstruction = z.object({
+  task_id: TaskId,
+  request_id: z.string().uuid(),
+  text: z.string().min(1).max(2000),
+  status: TaskInstructionStatus,
+  applied_step_index: z.number().int().nonnegative().nullable(),
+  created_at: z.string().datetime(),
+  resolved_at: z.string().datetime().nullable(),
+});
+export type TaskInstruction = z.infer<typeof TaskInstruction>;
+
+export const AddTaskInstructionRequest = z
+  .object({
+    /** 同じ指示を二度足さない（通信が切れて送り直しても 1 件）。 */
+    request_id: z.string().uuid(),
+    text: z.string().trim().min(1).max(2000),
+  })
+  .strict();
+export type AddTaskInstructionRequest = z.infer<typeof AddTaskInstructionRequest>;
 
 export const CreateTaskRequest = z.object({
   kind: z.string().min(1).max(64),

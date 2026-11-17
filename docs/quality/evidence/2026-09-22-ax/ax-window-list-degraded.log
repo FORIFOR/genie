@@ -1,0 +1,17 @@
+AXIsProcessTrusted=true
+ChatGPT pid=648 windowsErr=0 count=1 role=AXApplication posErr=-25205
+ターミナル pid=660 windowsErr=0 count=3 role=AXApplication posErr=-25205 | role=AXApplication posErr=-25205 | role=AXApplication posErr=-25205
+Google Chrome pid=662 windowsErr=0 count=1 role=AXApplication posErr=-25205
+メモ pid=665 windowsErr=0 count=1 role=AXApplication posErr=-25205
+Safari pid=666 windowsErr=0 count=0 
+Finder pid=671 windowsErr=0 count=1 role=AXScrollArea posErr=0
+timeout=2s err=0 count=1 elapsed=0.03s role=AXApplication posErr=-25205 attrs=19
+timeout=10s err=0 count=1 elapsed=0.00s role=AXApplication posErr=-25205 attrs=19
+timeout=30s err=0 count=1 elapsed=0.00s role=AXApplication posErr=-25205 attrs=19
+
+# 読み方
+# AXWindows は件数だけ正しく返し（Chrome 1 / Terminal 3）、その中身は
+# どれもアプリ要素（role=AXApplication, attrs=19）で、位置が読めない（-25205）。
+# 応答は 0.00〜0.03 秒で、messaging timeout を 2s→10s→30s に伸ばしても同じ。
+# よって負荷によるタイムアウトではない。Finder だけは正しく読める。
+# 同じ二値が同日 01:00 頃には 26 項目すべて PASS していた（下の native-input-suite 参照）。

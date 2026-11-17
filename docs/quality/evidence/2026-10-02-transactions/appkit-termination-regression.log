@@ -1,0 +1,4 @@
+PASS legacy: dispatch-entered -> should-terminate
+PASS scheduled: dispatch-entered -> dispatch-returned -> should-terminate -> cleanup-started -> cleanup-mainactor -> cleanup-finished -> reply -> will-terminate
+PASS direct: dispatch-entered -> should-terminate -> cleanup-started -> cleanup-finished -> reply -> will-terminate
+PASS signal: signal-received -> dispatch-returned -> should-terminate -> cleanup-started -> cleanup-mainactor -> cleanup-finished -> reply -> will-terminate

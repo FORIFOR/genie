@@ -1,0 +1,25 @@
+tools/computer-use/genie-computer.swift:417:38: warning: 'activateIgnoringOtherApps' was deprecated in macOS 14.0: ignoringOtherApps is deprecated in macOS 14 and will have no effect. [#DeprecatedDeclaration]
+415 |         else { throw Failure("user_cancelled") }
+416 |         let selected = apps[choice.indexOfSelectedItem]
+417 |         selected.activate(options: [.activateIgnoringOtherApps])
+    |                                      `- warning: 'activateIgnoringOtherApps' was deprecated in macOS 14.0: ignoringOtherApps is deprecated in macOS 14 and will have no effect. [#DeprecatedDeclaration]
+418 |         for _ in 0..<20 {
+419 |             try await Task.sleep(nanoseconds: 100_000_000)
+
+tools/computer-use/genie-computer.swift:568:33: warning: 'activateIgnoringOtherApps' was deprecated in macOS 14.0: ignoringOtherApps is deprecated in macOS 14 and will have no effect. [#DeprecatedDeclaration]
+566 |         stage("reveal")
+567 |         if app.isHidden { app.unhide() }
+568 |         app.activate(options: [.activateIgnoringOtherApps])
+    |                                 `- warning: 'activateIgnoringOtherApps' was deprecated in macOS 14.0: ignoringOtherApps is deprecated in macOS 14 and will have no effect. [#DeprecatedDeclaration]
+569 |         for _ in 0..<20 {
+570 |             try await Task.sleep(nanoseconds: 100_000_000)
+
+tools/computer-use/genie-computer.swift:691:33: warning: 'activateIgnoringOtherApps' was deprecated in macOS 14.0: ignoringOtherApps is deprecated in macOS 14 and will have no effect. [#DeprecatedDeclaration]
+689 |     static func restore(_ t: Target) async throws {
+690 |         guard let app = NSRunningApplication(processIdentifier: t.pid), !app.isTerminated else { throw Failure("target_changed") }
+691 |         app.activate(options: [.activateIgnoringOtherApps])
+    |                                 `- warning: 'activateIgnoringOtherApps' was deprecated in macOS 14.0: ignoringOtherApps is deprecated in macOS 14 and will have no effect. [#DeprecatedDeclaration]
+692 |         for _ in 0..<20 {
+693 |             try await Task.sleep(nanoseconds: 100_000_000)
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>

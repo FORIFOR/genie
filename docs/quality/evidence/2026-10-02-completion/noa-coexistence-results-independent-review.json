@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "recordedAt": "2026-10-01T22:12:17.065603+00:00",
+  "method": "Independent read-only comparison of root-run private original report, public result and scope narrative. No model/service/app/stream execution by reviewer.",
+  "status": "PASS",
+  "statusScope": "Saved evidence consistency and narrowly stated result, not independent rerun or real livestream stability.",
+  "checks": {
+    "quality": true,
+    "stages": true,
+    "originalHash": true,
+    "cleanup": true,
+    "hold": true,
+    "qualityVsShort": true,
+    "memorySummary": true
+  },
+  "originalPrivateReportSha256": "a3cbb0c4512a742acb82b080bb5e35c4a4168e2ac11508b034fa13ce235598a1",
+  "publicResultSha256": "4133104d6c48b77d16741d2054b7bb8df5e7ea4a2724577c7b189693e6cc123e",
+  "observed": {
+    "generationFinishedElapsedMs": 15965,
+    "observationFinishedElapsedMs": 75135,
+    "residentSamples": 53,
+    "residentObservedSpanMs": 59018,
+    "memorySamples": 155,
+    "pressureLevels": [
+      1
+    ],
+    "minimumFreePercent": 46,
+    "cleanup": {
+      "unloadRequested": true,
+      "serveStopped": true,
+      "runnersStopped": true,
+      "assetsUnchanged": true,
+      "ok": true
+    },
+    "genieOverlapSeconds": 12.19,
+    "genieTaskState": "COMPLETED",
+    "nativeHome": false
+  },
+  "limits": [
+    "Observed residency runs16.117–75.135 seconds,59.018 seconds between endpoints; not75 seconds of continuous inference or full-run resident evidence.",
+    "Genie overlap12.190 seconds is a synthetic private gateway/real-host task, not native Home or actual broadcasting.",
+    "Generated text/audio content is discarded; parameter equivalence is not comprehensive subjective quality evaluation.",
+    "All155 sampled pressure levels normal does not prove absence of unsampled spikes, other-workload recurrence or long-term stream stability.",
+    "Initial failed startup and earlier short run remain separate historical records.",
+    "Shared speech caches can remain; production Noa settings/code were not modified by harness."
+  ]
+}

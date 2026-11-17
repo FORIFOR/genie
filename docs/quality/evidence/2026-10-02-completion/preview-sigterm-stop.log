@@ -1,0 +1,1 @@
+{"project":"genie-preview-f68d0fef8411","phase":"stopping","gateway":"http://127.0.0.1:43180","model":"gpt-6-sol","modelProvider":"codex","externalModel":true,"computerUse":true,"transactionSimulation":true,"computerDelivery":"background","computerHelperUnattendedTest":false,"appPID":30218,"appRequested":true}

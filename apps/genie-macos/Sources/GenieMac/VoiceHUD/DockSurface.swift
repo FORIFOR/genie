@@ -8,8 +8,35 @@ import SwiftUI
 ///
 /// ただし真っ黒な板にはしない。素材を透かした上に黒を重ね、縁を髪の毛ほどの線で締める。
 struct DockSurface: View {
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
     var body: some View {
         let shape = GenieDockShape()
+        // 外殻だけ Liquid Glass（macOS 26 以降、「透明度を下げる」がオフのとき）。
+        // ガラスの色付け（tint）だけでは明るい地・込み入った地で白い文字が読めなかった
+        // （明るい地で面の明るさ 150/255）ので、ガラスの上に黒を重ねて文字の地を作る。
+        // ガラスは縁の屈折とぼかしを受け持つ。形（GenieDockShape）で切るので、角の外に帯を残さない。
+        // それ以外は従来どおり半透明の黒（docs/ux-benchmark/compare/liquid-glass/ROUND.md）。
+        if #available(macOS 26.0, *), !reduceTransparency {
+            shape
+                .fill(Color.black.opacity(Self.glassScrim))
+                .background(Color.clear.glassEffect(.regular, in: shape))
+                .overlay(shape.stroke(Color.white.opacity(0.14), lineWidth: 0.5))
+                .overlay(alignment: .top) {
+                    Rectangle()
+                        .fill(Color.white.opacity(0.10))
+                        .frame(height: 0.5)
+                        .padding(.horizontal, Metrics.hudTopRadius)
+                }
+        } else {
+            flat(shape)
+        }
+    }
+
+    /// ガラスの上に重ねる黒の濃さ。glassshots で明るい・込み入った地の面の明るさを測って決める。
+    static let glassScrim: Double = 0.62
+
+    private func flat(_ shape: GenieDockShape) -> some View {
         shape
             // 背後をぼかす window 効果は使わない。
             // `NSVisualEffectView`（behind-window）も SwiftUI の `Material` も、

@@ -2,6 +2,41 @@ import { describe, expect, it, vi } from 'vitest';
 import { HttpLlmClient } from '../src/http-llm.js';
 
 describe('HTTP/local LLM adapter', () => {
+  it('sends an optional strict schema only for that structured call and preserves the default format', async () => {
+    const bodies: Record<string, unknown>[] = [];
+    const fetch = vi.fn<typeof globalThis.fetch>(async (_input, init) => {
+      bodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+      return Response.json({ choices: [{ message: { content: '{"answer":"ok"}' } }] });
+    });
+    const client = new HttpLlmClient({
+      kind: 'local',
+      endpoint: 'http://127.0.0.1:11434/v1',
+      model: 'test',
+      fetch,
+    });
+    const schema = {
+      type: 'object',
+      properties: { answer: { type: 'string' } },
+      required: ['answer'],
+      additionalProperties: false,
+    };
+    const signal = new AbortController().signal;
+    await expect(client.ask('question', [], signal, 'none', schema)).resolves.toEqual({
+      answer: 'ok',
+    });
+    expect(bodies[0]).toMatchObject({
+      response_format: {
+        type: 'json_schema',
+        json_schema: { name: 'genie_response', strict: true, schema },
+      },
+      reasoning_effort: 'none',
+    });
+    await client.ask('question');
+    expect(bodies[1]?.['response_format']).toEqual({ type: 'json_object' });
+    await client.askText('question');
+    expect(bodies[2]?.['response_format']).toBeUndefined();
+    expect(fetch).toHaveBeenCalledTimes(3);
+  });
   it('sends image bytes as multimodal content in one bounded request', async () => {
     const data = Buffer.from('89504e470d0a1a0a', 'hex');
     const fetch = vi.fn<typeof globalThis.fetch>(async (_url, init) => {
@@ -84,10 +119,15 @@ describe('bounded generation costs', () => {
     });
     await expect(client.ask('question')).rejects.toThrow('output limit');
     expect(fetch).toHaveBeenCalledTimes(1);
-    for (const status of [429, 503]) {
-      fetch.mockResolvedValueOnce(new Response('{}', { status }));
-      await expect(client.ask('question')).rejects.toThrow(String(status));
-    }
+    /*
+     * 429 は「使える分を使い切った」として扱う。待って掛け直せば通ることもあるが、
+     * それは有料へ上がるかどうかを利用者が決める前に使い続けることになる。
+     * 他の失敗はこれまでどおり、状態番号のまま上へ返す。どちらも掛け直さない。
+     */
+    fetch.mockResolvedValueOnce(new Response('{}', { status: 429 }));
+    await expect(client.ask('question')).rejects.toMatchObject({ code: 'quota_exhausted' });
+    fetch.mockResolvedValueOnce(new Response('{}', { status: 503 }));
+    await expect(client.ask('question')).rejects.toThrow('503');
     expect(fetch).toHaveBeenCalledTimes(3);
     await expect(client.ask('   ')).rejects.toThrow('empty');
     expect(fetch).toHaveBeenCalledTimes(3);

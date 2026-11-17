@@ -39,7 +39,8 @@ struct WorkContextCard: View {
                             lineRow(id: o.id, icon: "arrowshape.turn.up.left",
                                     lead: o.to, text: o.what,
                                     meta: WorkFormat.due(o.dueAt), project: o.project,
-                                    sources: o.sources, correction: "done")
+                                    sources: o.sources, correction: "done",
+                                    candidate: o.confirmed == true ? .registered : .candidate)
                         }
                     }
                 }
@@ -70,10 +71,13 @@ struct WorkContextCard: View {
                     .offset(y: 2)
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 8) {
-                        Text(p.project)
-                            .font(.system(size: S.type(TypeScale.microSize), weight: .semibold))
-                            .foregroundStyle(Palette.muted(dark))
-                            .tracking(0.3)
+                        // 件名から作った案件名は題と同じ文になる。同じ文を 2 度読ませない。
+                        if !WorkFormat.repeats(p.project, in: p.title) {
+                            Text(p.project)
+                                .font(.system(size: S.type(TypeScale.microSize), weight: .semibold))
+                                .foregroundStyle(Palette.muted(dark))
+                                .tracking(0.3)
+                        }
                         // 点数は言葉で（高 / 中 / 低）。式は見せない。
                         Text(WorkFormat.level(p.score))
                             .font(.system(size: S.type(TypeScale.captionSize), weight: .semibold))
@@ -103,7 +107,9 @@ struct WorkContextCard: View {
                         Text(WorkFormat.counts(p.counts))
                             .font(.system(size: S.type(TypeScale.captionSize)))
                             .foregroundStyle(Palette.muted(dark))
-                        if let top = p.factors.max(by: { $0.contribution < $1.contribution }), !top.reason.isEmpty {
+                        // 状況の行に同じ言葉（「今日が期限」など）があれば繰り返さない。
+                        if let top = p.factors.max(by: { $0.contribution < $1.contribution }), !top.reason.isEmpty,
+                           !p.lines.prefix(3).contains(where: { $0.contains(top.reason) }) {
                             Text(top.reason)
                                 .font(.system(size: S.type(TypeScale.captionSize)))
                                 .foregroundStyle(Palette.muted(dark))
@@ -130,8 +136,12 @@ struct WorkContextCard: View {
 
     // MARK: 待ち / 返すもの 1 行
 
+    /// メール等から推測した TODO か、本人が確かめた TODO か。推測は確かめるまで TODO にしない。
+    enum TodoState { case candidate, registered }
+
     private func lineRow(id: String, icon: String, lead: String, text: String, meta: String?,
-                         project: String?, sources: [WorkProvenance], correction: String) -> some View {
+                         project: String?, sources: [WorkProvenance], correction: String,
+                         candidate: TodoState? = nil) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Image(systemName: icon)
@@ -151,14 +161,19 @@ struct WorkContextCard: View {
                         .font(.system(size: S.type(TypeScale.captionSize)))
                         .foregroundStyle(Palette.muted(dark))
                 }
+                if let candidate { todoTag(candidate, id: id) }
                 Spacer(minLength: 12)
                 if let meta {
                     Text(meta)
                         .font(.system(size: S.type(TypeScale.microSize)))
                         .foregroundStyle(Palette.muted(dark))
                 }
-                actions(id: id, sources: sources, correction: correction,
-                        label: correction == "done" ? Facts.workDone : Facts.workDismiss)
+                if let candidate {
+                    todoActions(id: id, sources: sources, state: candidate)
+                } else {
+                    actions(id: id, sources: sources, correction: correction,
+                            label: correction == "done" ? Facts.workDone : Facts.workDismiss)
+                }
             }
             if store.evidenceOpen.contains(id) {
                 evidence(sources).padding(.leading, 24)
@@ -217,6 +232,58 @@ struct WorkContextCard: View {
             .buttonStyle(GenieControlStyle(radius: 7, base: 0.0))
             .accessibilityIdentifier("workCorrect-\(id)")
         }
+    }
+
+    /// 「メール由来・候補」か「登録済み」か。色は使わず、枠と語で分ける（accent は 1 列だけ）。
+    private func todoTag(_ state: TodoState, id: String) -> some View {
+        Text(state == .registered ? Facts.workRegistered : Facts.workCandidate)
+            .font(.system(size: S.type(TypeScale.captionSize), weight: .semibold))
+            .foregroundStyle(state == .registered ? Palette.text(dark) : Palette.muted(dark))
+            .padding(.horizontal, 5).padding(.vertical, 1)
+            .background(Capsule().stroke(Color.hairline(dark)))
+            .fixedSize()
+            .accessibilityIdentifier("workTodoState-\(id)")
+    }
+
+    /// 候補: [出所を見る] [TODOに追加] [自分の担当ではない] [対応済み]。登録済み: [出所を見る] [対応済み]。
+    /// どれも 1 回押すだけ。「担当ではない」は dismiss（理由を note に残す）。
+    private func todoActions(id: String, sources: [WorkProvenance], state: TodoState) -> some View {
+        HStack(spacing: 4) {
+            Button {
+                if store.evidenceOpen.contains(id) { store.evidenceOpen.remove(id) } else { store.evidenceOpen.insert(id) }
+            } label: {
+                Text(store.evidenceOpen.contains(id) ? Facts.workClose : Facts.workEvidence)
+                    .font(.system(size: S.type(TypeScale.microSize), weight: .medium))
+                    .foregroundStyle(Palette.accent(dark))
+                    .fixedSize()
+                    .frame(height: 26).padding(.horizontal, 8)
+            }
+            .buttonStyle(GenieControlStyle(radius: 7, base: 0.0))
+            .accessibilityIdentifier("workEvidence-\(id)")
+            if state == .candidate {
+                todoButton(Facts.workConfirm, id: "workConfirm-\(id)") { store.correct(id, action: "confirm") }
+                todoButton(Facts.workNotMine, id: "workNotMine-\(id)", spoken: Facts.workNotMineSpoken) {
+                    store.correct(id, action: "dismiss", note: "not_mine")
+                }
+            }
+            todoButton(Facts.workHandled, id: "workHandled-\(id)") { store.correct(id, action: "done") }
+        }
+        // 出所と操作は削らない。幅が足りなければ件名の方を「…」にする。
+        .fixedSize()
+        .layoutPriority(1)
+    }
+
+    private func todoButton(_ label: String, id: String, spoken: String? = nil, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(label)
+                .font(.system(size: S.type(TypeScale.microSize)))
+                .foregroundStyle(Palette.muted(dark))
+                .fixedSize()
+                .frame(height: 26).padding(.horizontal, 8)
+        }
+        .buttonStyle(GenieControlStyle(radius: 7, base: 0.0))
+        .accessibilityLabel(spoken ?? label)
+        .accessibilityIdentifier(id)
     }
 
     /// 出所の一覧。**抜粋だけ。**本文はここにも無い。
@@ -290,7 +357,13 @@ struct WorkContextCard: View {
             .filter { !["astra_task", "meeting", "screenshot", "file", "browser"].contains($0) }
             .map(WorkFormat.sourceName)
         let uniq = Array(Set(names)).sorted()
-        return uniq.isEmpty ? nil : uniq.joined(separator: " · ") + " から整理しています"
+        guard !uniq.isEmpty else { return nil }
+        // 今日の整理でなければ、いつの整理かを書く（期限の言葉「今日が期限」はその日の値）。
+        if let at = WorkFormat.parse(ctx.generatedAt), !Calendar.current.isDateInToday(at) {
+            let day = DateFormatter(); day.dateFormat = "M/d"
+            return uniq.joined(separator: " · ") + " から \(day.string(from: at)) 時点で整理"
+        }
+        return uniq.joined(separator: " · ") + " から整理しています"
     }
 
     private func header(_ title: String, trailing: String?) -> some View {

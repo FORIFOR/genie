@@ -1,0 +1,30 @@
+{
+  "task": {
+    "id": "01a0b959-0a44-7000-a8a7-c6776c10c812",
+    "tenant_id": "01a0b957-13ed-7001-9633-08bb2cd29cf9",
+    "created_by": "01a0b957-13ed-7000-a9b2-f48f3e604c58",
+    "conversation_id": null,
+    "kind": "computer.run",
+    "title": "In the selected test app, show the details panel using the visible Show details button.",
+    "status": "FAILED",
+    "input": {
+      "goal": "In the selected test app, show the details panel using the visible Show details button.",
+      "successCriteria": "Details open — LOCAL TEST PASSED is visible in the test app."
+    },
+    "result_artifact_id": null,
+    "error": {
+      "code": "task.step_failed",
+      "message": "画面操作を停止しました。完了は確認されていません。権限・対象画面・モデル設定を確認してください。",
+      "step_index": 0,
+      "retryable": false,
+      "recovery": "handoff",
+      "handoff_explanation": "自動でやり直していません。再実行する前に、実行先の履歴を確認してください。"
+    },
+    "created_at": "2026-09-19T11:06:55.547Z",
+    "started_at": "2026-09-19T11:06:55.470Z",
+    "completed_at": "2026-09-19T11:07:16.271Z",
+    "updated_at": "2026-09-19T11:07:16.271Z",
+    "dock_state": "FAILED_RECOVERABLE"
+  },
+  "approvals": []
+}

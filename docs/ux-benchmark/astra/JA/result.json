@@ -18,13 +18,14 @@
   "observations" : [
     "体感の複雑さ（層 C）: 段は 5、面は 1 枚、増えた窓 0"
   ],
-  "product" : "Astra",
-  "startedAt" : "2026-09-11T16:57:35Z",
+  "product" : "Genie",
+  "startedAt" : "2026-11-09T10:50:39Z",
   "steps" : [
     {
+      "front" : "com.astra.desktop",
       "interactions" : 0,
-      "keyWindow" : false,
-      "ms" : 50,
+      "keyWindow" : true,
+      "ms" : 22,
       "name" : "Home（Dock は待機）",
       "surface" : {
         "h" : 76,
@@ -36,84 +37,88 @@
       "windows" : 2
     },
     {
+      "front" : "com.astra.desktop",
       "interactions" : 1,
-      "keyWindow" : false,
+      "keyWindow" : true,
       "keys" : {
         "esc" : "listening→idle"
       },
-      "ms" : 1192,
+      "ms" : 983,
       "name" : "Listening",
       "surface" : {
         "h" : 76,
-        "key" : false,
+        "key" : true,
         "w" : 220,
         "x" : 754,
         "y" : 1041
       },
-      "transitionMs" : 216,
+      "transitionMs" : 0,
       "windows" : 2
     },
     {
+      "front" : "com.astra.desktop",
       "ids" : {
-        "task" : "3D7C3C9B-8CFD-478D-A303-955948185B7E"
+        "task" : "80435CBC-C706-4C6A-8BC4-73F5FF7DAAC4"
       },
       "interactions" : 0,
-      "keyWindow" : false,
-      "ms" : 1102,
+      "keyWindow" : true,
+      "ms" : 1035,
       "name" : "Running",
       "surface" : {
-        "h" : 287,
-        "key" : false,
+        "h" : 258,
+        "key" : true,
         "w" : 720,
         "x" : 504,
-        "y" : 830
+        "y" : 859
       },
-      "transitionMs" : 192,
+      "transitionMs" : 184,
       "windows" : 2
     },
     {
+      "front" : "com.astra.desktop",
       "ids" : {
-        "confirmation" : "4587DDB1-B8AB-4AA9-9B93-CC698A43E0CD",
-        "resolved" : "4587DDB1-B8AB-4AA9-9B93-CC698A43E0CD"
+        "confirmation" : "DD00D503-538B-4E70-A3A7-52DD7ABA39F7",
+        "resolved" : "DD00D503-538B-4E70-A3A7-52DD7ABA39F7"
       },
       "interactions" : 2,
-      "keyWindow" : false,
+      "keyWindow" : true,
       "keys" : {
         "cmdReturn" : "approved",
         "return" : "no-op"
       },
-      "ms" : 1828,
+      "ms" : 1814,
       "name" : "Confirmation",
       "surface" : {
-        "h" : 76,
-        "key" : false,
-        "w" : 220,
-        "x" : 754,
-        "y" : 1041
+        "h" : 258,
+        "key" : true,
+        "w" : 720,
+        "x" : 504,
+        "y" : 859
       },
       "transitionMs" : 206,
       "windows" : 2
     },
     {
+      "front" : "com.astra.desktop",
       "interactions" : 1,
-      "keyWindow" : false,
+      "keyWindow" : true,
       "keys" : {
         "esc" : "result→idle"
       },
-      "ms" : 1268,
+      "ms" : 1283,
       "name" : "Done",
       "surface" : {
         "h" : 76,
-        "key" : false,
+        "key" : true,
         "w" : 220,
         "x" : 754,
         "y" : 1041
       },
-      "transitionMs" : 185,
+      "transitionMs" : 200,
       "windows" : 2
     }
   ],
   "success" : true,
-  "totalMs" : 5442,
+  "totalMs" : 5139,
   "windowsOpened" : 0
 }

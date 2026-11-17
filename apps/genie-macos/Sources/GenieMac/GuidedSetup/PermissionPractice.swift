@@ -19,7 +19,7 @@ final class PermissionPractice: NSObject, ObservableObject, NSWindowDelegate {
     let input = NSTextField(string: "")
 
     static func use(_ permission: GuidePermission) {
-        if permission == .microphone { VoiceHUDState.shared.beginListening(); return }
+        if permission == .microphone { VoiceHUDState.shared.beginConversation(); return }
         if PermissionManager.shared.state(of: permission) == .granted { shared.open(permission) }
         else { PermissionGuideCoordinator.shared.explain(permission) { shared.open(permission) } }
     }

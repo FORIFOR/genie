@@ -1,0 +1,21 @@
+# Reusing one consented simulated checkout window
+
+2026-10-02 JST. **Implementation verification**, performed by the implementer of this fixture lifetime change. It is not independent product acceptance. Root and pointer_ui separately reviewed the code. Revision, source/binary hashes, command exits and exact limits are recorded in [native-session-verification.json](native-session-verification.json).
+
+The host now serializes orders through one owned process and one native window per `nativeSimulationConfirmation` instance. A private stdin pipe carries session and command nonces plus the path to each immutable checkout. The ready record must match the current nonce, quote hash, owned PID and unchanged window ID before normal production helper consent/input is requested. Removed buttons retain their old command identity and cannot confirm a replacement order. No general helper permission or target gate changed.
+
+Each successful order closes its current pointer activity while retaining the normal consent grant. The fixture disables the button and waits visibly for another simulated order; the five-minute idle timer closes it. Active cancellation closes that owned process. Queued cancellation never touches the active order. Parent exit/pipe EOF also terminates the fixture; a later host instance cannot reclaim an arbitrary previous PID.
+
+| ID | Method / expected | Observed | Status / evidence |
+| --- | --- | --- | --- |
+| NS-01 | Typecheck and production fixture build | Both exited 0 | PASS — verification metadata |
+| NS-02 | Fake process/device lifecycle regressions plus existing simulation adapter tests | 10/10 passed, no skips; reuse, queue cancellation, active cancellation, changed window, unattended refusal, idle expiry, cleanup failure, receipt/restart and catalog limits | PASS — [native-session-unit.log](native-session-unit.log) |
+| NS-03 | Production helper, normal initial consent, two different fictional orders | Same PID 44704 and window 1969; distinct command IDs and quote hashes; pizza and burger both accepted, one click and zero activations each. Only the first order logged a consent modal; the second logged input only | PASS — [native-session-reuse-result.json](native-session-reuse-result.json), [native-session-round-3.log](native-session-round-3.log) |
+| NS-04 | Abort a new owned session before target consent | No provider receipt; result remained unknown after the durable attempt; canceled fixture and successful fixture both exited | PASS — result and verification metadata |
+| NS-05 | End the isolated test and remove only its completed reusable grant | Pointer activity was absent; watcher 44898 exited itself after its exact grant was removed | PASS — [native-session-cleanup.json](native-session-cleanup.json) |
+
+The first two native attempts failed before any target consent or click because Foundation's buffered `read(upToCount:)` waited on the open IPC pipe. Their permanent attempt records were retained; fresh isolated runs were used after changing the fixture to bounded POSIX `read`. Their complete output is preserved in [round 1](native-session-round-1.log) and [round 2](native-session-round-2.log). They were not counted as successful orders or retried under the same claimed identity.
+
+The native harness supplied explicit fictional approval proofs directly and used CUA for the first normal target-consent dialog. This does not test the main app, gateway, Temporal, real providers or first-use human UX. The full five-minute native idle timer was not waited out; the timeout path was exercised with a shorter injected unit-test duration, and native host-exit cleanup was observed. Stale native AX button replay is source-reviewed, not a performed native action. Reproducer: [native-session-reuse-harness.mjs](native-session-reuse-harness.mjs); it requires the documented dedicated helper and a fresh private `ASTRA_DATA_ROOT`.
+
+Later, a separate [main-app bounded-consent run](MAIN_APP_BOUNDED_REUSE.md) passed two pizza orders using one normal target consent and the same PID/window/session. That evidence covers the integrated app/Gateway/worker/native/receipt path for those orders and refusal of a third request at the configured limit. It does not expand the direct harness results into live-provider or human-concurrency claims.

@@ -1,0 +1,47 @@
+{
+  "at": "2026-10-01T16:39:07.976533+00:00",
+  "classification": "Implementation verification by the fixture lifetime implementer; independent code review separately performed by root and pointer_ui",
+  "head": "ee857a5b13482cbd2d986a1f9b466c8e49a149c3",
+  "workingTree": "uncommitted candidate; no push",
+  "os": "ProductName:\t\tmacOS\nProductVersion:\t\t27.0.1\nBuildVersion:\t\t26A434",
+  "files": {
+    "workers/agent-host/src/simulation-native-checkout.ts": "6e9893d043933f8a204c3f3d85135c32c43c7ae3f5e7a1e566fa446c1072aa3c",
+    "workers/agent-host/dist/simulation-native-checkout.js": "b58a09d7b9bbd69e48cd90d384f72339de23ae71653005101b9fb48f5295b0ca",
+    "workers/agent-host/test/simulation-native-session.node.mjs": "2251f434317a27bcd6f9137cdbfcaaad04359bcfe50b01e18e665e57c19aef4a",
+    "tools/computer-use/CheckoutSimulation.swift": "55ecaf32df458ed55b87f623eede2f9be2a76a0ca1a903018508827fa341559f",
+    ".build/computer/GenieCheckoutSimulation.app/Contents/MacOS/GenieCheckoutSimulation": "bfde5e4b0d23dd04daf0a49f05675fd2f8ed5c619d329aab478f43f92aa65aff"
+  },
+  "checks": [
+    {
+      "command": "pnpm exec tsc -b workers/agent-host",
+      "exitCode": 0
+    },
+    {
+      "command": "bash scripts/build-checkout-simulation.sh",
+      "exitCode": 0
+    },
+    {
+      "command": "node --test workers/agent-host/test/simulation-native-session.node.mjs workers/agent-host/test/simulation-orders.node.mjs",
+      "exitCode": 0,
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "log": "native-session-unit.log"
+    },
+    {
+      "command": "ASTRA_DATA_ROOT=/private/tmp/genie-transactions-20261002/session-reuse-native-3 ASTRA_COMPUTER_STAGE_LOG=on node /private/tmp/genie-transactions-20261002/session-reuse-native/run.mjs",
+      "exitCode": 0,
+      "log": "native-session-round-3.log"
+    }
+  ],
+  "ownedFixtureProcessExited": {
+    "44704": true,
+    "44918": true
+  },
+  "limitations": [
+    "Native test supplies explicit fictional approval proofs directly; it excludes the main app, gateway, Temporal and real payment/provider.",
+    "The first normal native target-consent dialog was operated through CUA; this is assisted, not human first-use UX.",
+    "Idle termination was exercised with a short injected clock duration in unit tests; the full five-minute native wall-clock timeout was not waited out.",
+    "Old button stale nonce rejection is source-reviewed; the actual native stale AX target was not replayed."
+  ]
+}

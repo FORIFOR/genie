@@ -1,0 +1,15 @@
+✔ both official services request background navigation using fixed executable/HTTPS URLs only (1.437166ms)
+✔ caller URLs, schemes, provider spoofing and submit instructions never reach OS (0.4195ms)
+✔ spawn/timeout failures keep unknown navigation separate from a definitely unsubmitted order (0.127958ms)
+✔ pre-cancel sends nothing and cancellation after OS acceptance never claims visible page (0.121583ms)
+✔ unsupported OS refuses without launching a generic fallback (0.065833ms)
+✔ task re-use remains a site handoff and cannot upgrade to a paid order (0.072792ms)
+✔ recognized request reaches task plan, host and truthful artifact without any checkout driver (0.452083ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 108.889

@@ -1,0 +1,105 @@
+{
+  "schema": 1,
+  "recordedAt": "2026-10-01T21:21:32.387621+00:00",
+  "reviewer": "/root/verification_audit",
+  "method": "Independent read-only source review of pointer_ui implementation. No product edits, builds, tests, UI, real Keychain reads/writes or OS permission/ACL actions by reviewer. Earlier runner implementation is a separate scope.",
+  "checks": [
+    {
+      "id": "K1",
+      "expected": "Owned credential operations serialize and refuse interactive UI without modifying ACL/service identity",
+      "observed": "All native SecItem call sites found in KeychainStore use shared guard. Guard saves prior interaction policy, disables UI, restores after success/failure; failed restore poisons future calls and best-effort disables interaction. LAContext interactionNotAllowed accompanies queries. Service remains com.astra.mac; no ACL migration/change.",
+      "status": "PASS (source only)"
+    },
+    {
+      "id": "K2",
+      "expected": "Denied credential access never becomes absent credentials or automatic new sign-in",
+      "observed": "Only errSecItemNotFound returns nil/false. Read failures propagate typed error. Initial review found server sign-in followed by final-save Keychain failure could repeat on automatic retry. Implementation now wraps final save in IssuedCredentialsNotSaved and pins renewalUncertain; a new three-call regression requires signIn/save once.",
+      "status": "PASS (corrected source; focused result pending)"
+    },
+    {
+      "id": "K3",
+      "expected": "Settings initialization does not read secret bytes synchronously on main actor",
+      "observed": "Shared settings launch detached attribute-only presence reads, coalesce pending task/generation, publish explicit denied state, guard writes while unknown/denied, preserve chosen provider. Settings appearing/becoming active schedules fresh metadata check.",
+      "status": "PASS (source only)"
+    },
+    {
+      "id": "K4",
+      "expected": "An enabled optional provider can be disabled without reading its key",
+      "observed": "Initial review found hasKey=false disabled the entire toggle. Corrected disable condition applies only when currently off; regression preserves explicit OFF after presence recovers.",
+      "status": "PASS (corrected source; focused result pending)"
+    },
+    {
+      "id": "H1",
+      "expected": "No late dispatch after cancel/edit, or duplicate Home send while connecting",
+      "observed": "onDisappear cancels connectionTask; helper checks cancellation before/after await; draft plus image IDs must still match. Task ownership blocks another Home send; only submitted clears draft. Unavailable/rejected keep it.",
+      "status": "PASS (source only; actual GUI not performed)"
+    },
+    {
+      "id": "U1",
+      "expected": "User can understand and recover missing credential access",
+      "observed": "Allowlisted connection issue message preserves input; settings emits Keychain guidance and retries attribute check on presentation/active. No direct Keychain Access/recovery route added; OS-side recovery not demonstrated. Gateway reconnect entry remains under connector provider recovery UI.",
+      "status": "BLOCKED (actual recovery UX not verified)"
+    },
+    {
+      "id": "U2",
+      "expected": "Asynchronously inserted denial messages remain visible in Settings",
+      "observed": "Initial source sizes NSWindow once from fittingSize. Settings fixed vertical size has only disclosure resize hook at this checkpoint; late 1-2 keyAccessIssue rows may exceed initial height. Sent owner request to measure denied state or reuse resize hook. No actual clipping asserted without rendering.",
+      "status": "NOT_RUN (visual risk sent to owner)"
+    }
+  ],
+  "limits": [
+    "Noninteractive Security API behavior on macOS 27 must be confirmed with the actual installed app; mocks do not reproduce OS/keychain-daemon stalls.",
+    "Presence success does not prove secret read access; actual use still guards read failure.",
+    "Initial-sign-in save failure guard is actor state; no claim of durable cross-restart sign-in idempotency.",
+    "No actual Home submission, settings denial recovery, keyboard/IME or repeated GUI click was performed.",
+    "No model quality, whole-release or GitHub publication judgment follows from this review."
+  ],
+  "sourceHashes": {
+    "apps/genie-macos/Sources/GenieMac/Settings/KeychainStore.swift": "beaac42fc2d4c362cb81912db572da5ae829ca7a48ea2c1500a7d060e79cc414",
+    "apps/genie-macos/Sources/GenieMac/Settings/GatewaySession.swift": "575da5de32cd62d11e9758fc31d80f9b2862a69fda87b67e97fe52e0cf99e2d9",
+    "apps/genie-macos/Sources/GenieMac/Settings/GatewayConnectionIssue.swift": "1e9c93fcb97f46b4646adb050e33efd048a2cc32b612426cbc409e2a6d1dc2d6",
+    "apps/genie-macos/Sources/GenieMac/Home/HomeIntentSubmission.swift": "f124087e97896a33608cbcb733b1e50a8997c9a6bde36656f4526652f4decc62",
+    "apps/genie-macos/Sources/GenieMac/Home/HomeView.swift": "a96f227838d9c9abc571edc7cdde7c2379a8594175ccc9c7702853e92348ef33",
+    "apps/genie-macos/Sources/GenieMac/Main/MainWindowView.swift": "80a4c91deffa734f4f44b7be61b32de0592b7d782c4f9c4bfe46234588986e14",
+    "apps/genie-macos/Sources/GenieMac/Main/ConnectionsPane.swift": "0bada7063d65df81d74e5196c7da2cda6d444aaef99572150ff5336946f35b76",
+    "apps/genie-macos/Sources/GenieMac/Settings/SettingsView.swift": "8419edadc51c21136e3f7d066f6c169f0efba7eabea28474d0419e6b4c905a00",
+    "apps/genie-macos/Sources/GenieMac/Settings/SettingsWindowController.swift": "4ccf9382f5c8be14011739f1d902a718fb874e0b5531aa94f597517d66d846c3",
+    "apps/genie-macos/Sources/GenieMac/Audio/GeminiLiveProvider.swift": "d6ad684a79fe8f9f86d02df45ffacbe17ac1cae963f159ba36d3c3127e9e91ff",
+    "apps/genie-macos/Sources/GenieMac/Places/PlacesSettings.swift": "dea8f65a4d1effdeba1da7adf12165b15c6b2199772939d2a0eaa9e7530ee308",
+    "apps/genie-macos/Sources/GenieMac/Places/NearbyPlaces.swift": "e5062cd541e51e9db9bb4581ddac490395e174c029d2be361c7d11b966542394",
+    "apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift": "cca6464d50976b31584201fce4e6b2de3cf909cc906f7ff62ab72a8b0209b1d2",
+    "apps/genie-macos/Tests/GenieMacTests/GatewaySessionTests.swift": "1d92128b11d1d92181001ab0074ef23f9d350fde59c2168b69814b5f6d05c949",
+    "apps/genie-macos/Tests/GenieMacTests/KeychainInteractionTests.swift": "7844180719ede2cbbf6d6c6fbffbfeaf4ee5d4dc47e920f0b22226e6e7804f46",
+    "apps/genie-macos/Tests/GenieMacTests/SettingsKeyPresenceTests.swift": "72250d079b94779a10b32b61646fb67d1d1e987bf5c48e1c68a1286da03f4f18",
+    "apps/genie-macos/Tests/GenieMacTests/HomeIntentSubmissionTests.swift": "f507c31091665e242d9810026a4221a63f570f0a82f85497231c868411a466d6"
+  },
+  "followUp": {
+    "recordedAt": "2026-10-01T21:33:54.339805+00:00",
+    "method": "Read-only inspection of final source and implementer complete round4 log; reviewer did not execute tests or access actual Keychain. Earlier checkpoint retained above.",
+    "focusedResult": {
+      "status": "PASS",
+      "executed": 47,
+      "failures": 0,
+      "testKind": "fake Keychain policy/readers, settings presence and Home/session unit tests; not OS Keychain or actual UI",
+      "log": "keychain-focused-tests-round4.log",
+      "sha256": "444820b96a6c95f32adf109e23681333a4b1f4ec191fd73cce17ce44b6053d6c",
+      "exitCode": 0,
+      "exitCodeSource": "implementer report; complete log independently inspected"
+    },
+    "resolved": {
+      "K2": "Final-save error pins renewalUncertain and regression verifies three automatic calls produce only one signIn/save.",
+      "K4": "Enabled optional provider can be turned off when key presence denied; recovery does not re-enable it.",
+      "U2": "Settings now reuses resizeToContent on both keyAccessIssue changes. Actual late-message layout remains NOT_RUN."
+    },
+    "unchangedLimits": [
+      "Actual installed-app Keychain behavior and recovery UX not established by mocks.",
+      "DesktopConnectionBootstrap is a separate later scope, not included in these 47 tests."
+    ],
+    "sourceHashes": {
+      "apps/genie-macos/Sources/GenieMac/Settings/GatewaySession.swift": "575da5de32cd62d11e9758fc31d80f9b2862a69fda87b67e97fe52e0cf99e2d9",
+      "apps/genie-macos/Sources/GenieMac/Settings/SettingsView.swift": "7b0394b27a7d7ff32aa487f139571d0b5c6d282003c1558b901e047c2aa8d799",
+      "apps/genie-macos/Tests/GenieMacTests/GatewaySessionTests.swift": "1d92128b11d1d92181001ab0074ef23f9d350fde59c2168b69814b5f6d05c949",
+      "apps/genie-macos/Tests/GenieMacTests/SettingsKeyPresenceTests.swift": "72250d079b94779a10b32b61646fb67d1d1e987bf5c48e1c68a1286da03f4f18"
+    }
+  }
+}

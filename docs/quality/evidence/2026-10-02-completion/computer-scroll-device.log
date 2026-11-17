@@ -1,0 +1,12 @@
+✔ native scroll adapter: confirmed native receipt (260.135042ms)
+✔ native scroll adapter: missing native receipt (339.868625ms)
+✔ native scroll adapter: unconfirmed dispatch (251.894792ms)
+✔ native scroll adapter: wrong direction (238.0695ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1148.412083

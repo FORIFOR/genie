@@ -19,6 +19,24 @@ import {
 import { buildMime, extractBody, listAttachments, toBase64Url, type DraftMessage } from './mime.js';
 
 const BASE = 'https://gmail.googleapis.com/gmail/v1/users/me';
+const METADATA_CONCURRENCY = 4;
+const INITIAL_READ_INTERVAL_MS = 250;
+
+function waitForReadDelay(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const aborted = () => {
+      clearTimeout(timer);
+      signal?.removeEventListener('abort', aborted);
+      reject(new ConnectorError('timed_out', 'cancelled while waiting to read'));
+    };
+    const timer = setTimeout(() => {
+      signal?.removeEventListener('abort', aborted);
+      resolve();
+    }, ms);
+    signal?.addEventListener('abort', aborted, { once: true });
+    if (signal?.aborted) aborted();
+  });
+}
 
 export const GMAIL_OPERATIONS = {
   list: { id: 'gmail.list', scope: 'email.read', risk: 'READ', requiresApproval: false },
@@ -55,6 +73,12 @@ export interface MailSummary {
   readonly receivedAt: string | null;
   readonly unread: boolean;
   readonly hasAttachments: boolean;
+  /** Provider metadata for bounded local selection; never interpreted by the connector. */
+  readonly labels?: readonly string[];
+  readonly listUnsubscribe?: boolean;
+  readonly autoSubmitted?: string | null;
+  readonly precedence?: string | null;
+  readonly inReplyTo?: string | null;
 }
 
 export interface MailMessage extends MailSummary {
@@ -107,6 +131,11 @@ function toSummary(raw: RawMessage): MailSummary {
     receivedAt: toIso(raw.internalDate),
     unread: labels.includes('UNREAD'),
     hasAttachments: listAttachments(raw.payload as never).length > 0,
+    labels,
+    listUnsubscribe: Boolean(header(raw, 'List-Unsubscribe') || header(raw, 'List-Id')),
+    autoSubmitted: header(raw, 'Auto-Submitted') || null,
+    precedence: header(raw, 'Precedence') || null,
+    inReplyTo: header(raw, 'In-Reply-To') || null,
   };
 }
 
@@ -123,29 +152,97 @@ export interface GmailDeps extends CallConfig {
 
 export class GmailConnector {
   readonly #deps: GmailDeps;
+  #pacedReadStart = Promise.resolve();
+  #lastPacedReadStartedAt = Number.NEGATIVE_INFINITY;
 
   constructor(deps: GmailDeps) {
     this.#deps = deps;
   }
 
+  /** One initial-read budget across listings, metadata, bodies and retries. */
+  #paceReadStart(signal?: AbortSignal): Promise<void> {
+    const start = this.#pacedReadStart.then(async () => {
+      if (signal?.aborted) throw new ConnectorError('timed_out', 'cancelled before reading');
+      const delay = this.#lastPacedReadStartedAt + INITIAL_READ_INTERVAL_MS - Date.now();
+      if (delay > 0) await waitForReadDelay(delay, signal);
+      if (signal?.aborted) throw new ConnectorError('timed_out', 'cancelled before reading');
+      // Use the actual start time, not a reservation: overdue timers must not burst.
+      this.#lastPacedReadStartedAt = Date.now();
+    });
+    this.#pacedReadStart = start.catch(() => undefined);
+    return start;
+  }
+
+  /** Only idempotent reads retry rate limits. Sending and modifying never use this path. */
+  async #read<T>(url: string, signal?: AbortSignal, retryRateLimits = false): Promise<T> {
+    const config: CallConfig = retryRateLimits
+      ? {
+          ...this.#deps,
+          fetch: async (input, init) => {
+            // Pace immediately before HTTP dispatch, after the token was resolved.
+            await this.#paceReadStart(init?.signal ?? undefined);
+            return (this.#deps.fetch ?? globalThis.fetch)(input, init);
+          },
+        }
+      : this.#deps;
+    for (let attempt = 0; ; attempt += 1) {
+      try {
+        return await callJson<T>(url, { method: 'GET' }, config, signal);
+      } catch (error) {
+        if (
+          !retryRateLimits ||
+          !(error instanceof ConnectorError) ||
+          error.reason !== 'rate_limited' ||
+          attempt >= 2
+        )
+          throw error;
+        await waitForReadDelay(1000 * 2 ** attempt, signal);
+      }
+    }
+  }
+
   async list(
-    input: { query?: string; maxResults?: number; labelIds?: readonly string[] } = {},
+    input: {
+      query?: string;
+      maxResults?: number;
+      /** Initial-only bounded pagination. Normal callers retain one page. */
+      maxPages?: number;
+      labelIds?: readonly string[];
+      /** Initial-only shared pacing and bounded rate-limit retries. */
+      retryRateLimits?: boolean;
+    } = {},
     signal?: AbortSignal,
   ): Promise<MailSummary[]> {
     requireScope(GMAIL_OPERATIONS.list, this.#deps.grantedScopes);
+    const limit = Math.max(1, Math.min(Math.floor(input.maxResults ?? 20), 100));
     const params = new URLSearchParams({
-      maxResults: String(Math.min(input.maxResults ?? 20, 100)),
+      maxResults: String(limit),
     });
     if (input.query) params.set('q', input.query);
     for (const label of input.labelIds ?? []) params.append('labelIds', label);
 
-    const listing = await callJson<{ messages?: { id: string }[] }>(
-      `${BASE}/messages?${params.toString()}`,
-      { method: 'GET' },
-      this.#deps,
-      signal,
-    );
-    const ids = (listing.messages ?? []).map((m) => m.id);
+    const pageLimit = Number.isFinite(input.maxPages)
+      ? Math.max(1, Math.min(Math.floor(input.maxPages!), 4))
+      : 1;
+    const ids: string[] = [];
+    const seenIds = new Set<string>();
+    const seenPageTokens = new Set<string>();
+    for (let page = 0; page < pageLimit; page++) {
+      const listing = await this.#read<{ messages?: { id?: string }[]; nextPageToken?: string }>(
+        `${BASE}/messages?${params.toString()}`,
+        signal,
+        input.retryRateLimits,
+      );
+      for (const { id } of (listing.messages ?? []).slice(0, limit)) {
+        if (typeof id !== 'string' || !id || seenIds.has(id)) continue;
+        seenIds.add(id);
+        ids.push(id);
+      }
+      const next = listing.nextPageToken;
+      if (typeof next !== 'string' || !next || seenPageTokens.has(next)) break;
+      seenPageTokens.add(next);
+      params.set('pageToken', next);
+    }
     if (ids.length === 0) return [];
 
     /*
@@ -153,26 +250,38 @@ export class GmailConnector {
      * `metadata` だけ取って本文は取りに行かない — 一覧のために
      * 全文を落とすと、読む必要のない本文まで手元に集まる。
      */
-    const details = await Promise.all(
-      ids.map((id) =>
-        callJson<RawMessage>(
-          `${BASE}/messages/${encodeURIComponent(id)}?format=metadata&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Subject`,
-          { method: 'GET' },
-          this.#deps,
-          signal,
-        ),
-      ),
-    );
+    // Gmail applies a per-user concurrent-request limit. Do not fan every ID
+    // out at once; large initial reads otherwise fail before publishing a batch.
+    const details: RawMessage[] = [];
+    for (let offset = 0; offset < ids.length; offset += METADATA_CONCURRENCY) {
+      details.push(
+        ...(await Promise.all(
+          ids
+            .slice(offset, offset + METADATA_CONCURRENCY)
+            .map((id) =>
+              this.#read<RawMessage>(
+                `${BASE}/messages/${encodeURIComponent(id)}?format=metadata&${['From', 'To', 'Subject', 'List-Unsubscribe', 'List-Id', 'Auto-Submitted', 'Precedence', 'In-Reply-To'].map((name) => `metadataHeaders=${encodeURIComponent(name)}`).join('&')}`,
+                signal,
+                input.retryRateLimits,
+              ),
+            ),
+        )),
+      );
+    }
     return details.map(toSummary);
   }
 
-  async get(messageId: string, signal?: AbortSignal): Promise<MailMessage> {
+  async get(
+    messageId: string,
+    signal?: AbortSignal,
+    /** Initial-only; the default read keeps its existing timing and retry behavior. */
+    options: { retryRateLimits?: boolean } = {},
+  ): Promise<MailMessage> {
     requireScope(GMAIL_OPERATIONS.get, this.#deps.grantedScopes);
-    const raw = await callJson<RawMessage>(
+    const raw = await this.#read<RawMessage>(
       `${BASE}/messages/${encodeURIComponent(messageId)}?format=full`,
-      { method: 'GET' },
-      this.#deps,
       signal,
+      options.retryRateLimits,
     );
     const body = extractBody(raw.payload as never);
     return {

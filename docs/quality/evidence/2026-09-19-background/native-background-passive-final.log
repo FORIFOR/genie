@@ -1,0 +1,6 @@
+Evidence: /tmp/genie-background-native.vQvEke
+TEST capture
+TEST click
+TEST capture for text
+TEST type
+FAIL Failure(code: "target_changed")

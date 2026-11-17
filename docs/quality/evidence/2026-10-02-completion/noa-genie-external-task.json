@@ -1,0 +1,27 @@
+{
+  "startedAt": "2026-10-01T21:50:33.071Z",
+  "scope": "Synthetic text-only task through private gateway and real host during separate bounded Noa generation fixture",
+  "provider": "codex",
+  "model": "gpt-6-sol",
+  "nativeHome": false,
+  "states": [
+    "PENDING",
+    "RUNNING",
+    "COMPLETED"
+  ],
+  "taskId": "01a0f972-9cbb-7000-889b-ce4f60c99821",
+  "taskStatus": "COMPLETED",
+  "artifactId": "01a0f972-c474-7000-ab7e-8bd9176f0294",
+  "responseLength": 95,
+  "responseSHA256": "a1bb0cf448a983f6a16b2cce0db007ad4d3b6b89b495edf7a71fc04b1accb872",
+  "contentChecks": {
+    "saturday": true,
+    "time": true,
+    "location": true,
+    "free": true,
+    "bringBook": true,
+    "welcome": true
+  },
+  "status": "PASS",
+  "finishedAt": "2026-10-01T21:50:44.293Z"
+}

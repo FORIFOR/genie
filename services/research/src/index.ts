@@ -3,7 +3,13 @@
  *
  * 計画・検索・突き合わせ・統合と Evidence Ledger。正本 §8。
  */
-export { ResearchService, composeReport, type ResearchDeps, type StepOutcome } from './service.js';
+export {
+  ResearchService,
+  asksForJudgment,
+  composeReport,
+  type ResearchDeps,
+  type StepOutcome,
+} from './service.js';
 export { researchExecutors } from './executor.js';
 export {
   AnthropicLanguageModel,

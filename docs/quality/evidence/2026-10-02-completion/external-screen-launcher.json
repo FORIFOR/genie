@@ -1,0 +1,19 @@
+{
+  "recordedAt": "2026-10-02T04:52:50.819512+09:00",
+  "owner": "/root/pointer_ui",
+  "command": "node --test scripts/tests/managed-local-preview.test.mjs",
+  "exitCode": 0,
+  "passed": 38,
+  "failed": 0,
+  "skipped": 0,
+  "externalModelCalls": 0,
+  "screenCaptures": 0,
+  "OSPermissionRequests": 0,
+  "scope": "Managed launcher configuration boundary and read-only status; synthetic owned Node helper executable only",
+  "hashes": {
+    "scripts/local-preview/config.mjs": "15b9d16e914403cce9bead40e78c363af0f3c12c3798921ce878fd9130aa6255",
+    "scripts/start-local-preview.mjs": "5a12e7f903d48cf377a9804e7d21aae9ade3076f9b12e24f1319176871869924",
+    "scripts/tests/managed-local-preview.test.mjs": "d7fed2b15a305710e5bfc422da4ea48304b54d70822a8bbecff51f46aaa9a4c8",
+    "docs/COMPUTER_VISION.md": "0d98f4a2b80d2468d6f78835b53f574b1eb444d50e429aa649a8b87a1c62e8e2"
+  }
+}

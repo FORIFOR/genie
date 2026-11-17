@@ -1,0 +1,3 @@
+FAIL: 「ノート」ではなく「メモ」と言う:
+  /Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Core/TaskRequestRecord.swift:5:    static let firstExample = "次のメモを、次の行動と担当者が分かるチェックリストにしてください。アプリをテストする、デモを録画する、リリースノートを書く。分からない担当者は「未定」とし、文章だけを作ってください。"
+  /Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTestOutcomeLive.swift:41:                        ? ["アプリ", "テスト", "デモ", "録画", "リリースノート", "未定"].allSatisfy { record.result.contains($0) }

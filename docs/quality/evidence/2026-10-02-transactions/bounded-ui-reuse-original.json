@@ -1,0 +1,215 @@
+{
+  "observedAt": "2026-10-01T17:05:19.893Z",
+  "modelProvider": "codex",
+  "model": "gpt-6-sol",
+  "tasks": [
+    {
+      "id": "01a0f86d-28e5-7000-851a-bb927d754bd3",
+      "title": "注文の確認結果",
+      "kind": "transaction.order",
+      "status": "WAITING_APPROVAL",
+      "created_at": "2026-10-01T17:04:58.655Z",
+      "error": null
+    },
+    {
+      "id": "01a0f86b-f53a-7000-bc19-265348f5aa75",
+      "title": "注文の確認結果",
+      "kind": "transaction.order",
+      "status": "COMPLETED",
+      "created_at": "2026-10-01T17:03:39.891Z",
+      "error": null
+    },
+    {
+      "id": "01a0f869-27d6-7000-ac45-728f3ed2baaf",
+      "title": "注文の確認結果",
+      "kind": "transaction.order",
+      "status": "COMPLETED",
+      "created_at": "2026-10-01T17:00:36.239Z",
+      "error": null
+    },
+    {
+      "id": "01a0f867-9972-7000-a5a8-ca59126425b2",
+      "title": "次の架空のメモを3項目のチェックリストにしてください：机を片付ける、本を読む、水を飲む。",
+      "kind": "plugin:com.astra.general:assistant",
+      "status": "COMPLETED",
+      "created_at": "2026-10-01T16:58:54.250Z",
+      "error": null
+    }
+  ],
+  "grants": {
+    "items": [
+      {
+        "id": "01a0f869-e98e-7000-bac2-27df1da03de7",
+        "createdBy": "01a0f811-030f-7000-99cd-6b2963b603e7",
+        "createdAt": "2026-10-01T17:01:25.764Z",
+        "status": "ACTIVE",
+        "revokedAt": null,
+        "spec": {
+          "scope": {
+            "kind": "delivery",
+            "mode": "simulation",
+            "provider": "genie.simulation",
+            "account": "demo-account",
+            "currency": "JPY",
+            "destination": {
+              "id": "demo-destination",
+              "label": "模擬配送先（配達なし）"
+            },
+            "paymentMethodRef": "demo-no-charge",
+            "requestedTime": "asap",
+            "items": [
+              {
+                "id": "demo-pizza",
+                "label": "模擬マルゲリータ",
+                "quantity": 1,
+                "options": [
+                  "M",
+                  "レギュラー生地"
+                ]
+              }
+            ]
+          },
+          "maxPerOrderMinor": 1500,
+          "maxTotalMinor": 3000,
+          "maxOrders": 2,
+          "expiresAt": "2026-10-02T17:00:40Z"
+        },
+        "usedOrders": 2,
+        "usedTotalMinor": 3000
+      },
+      {
+        "id": "01a0f858-c35b-7000-8508-1ec39125fbd7",
+        "createdBy": "01a0f811-030f-7000-99cd-6b2963b603e7",
+        "createdAt": "2026-10-01T16:42:41.875Z",
+        "status": "REVOKED",
+        "revokedAt": "2026-10-01T17:00:06.660Z",
+        "spec": {
+          "scope": {
+            "kind": "delivery",
+            "mode": "simulation",
+            "provider": "genie.simulation",
+            "account": "demo-account",
+            "currency": "JPY",
+            "destination": {
+              "id": "demo-destination",
+              "label": "模擬配送先（配達なし）"
+            },
+            "paymentMethodRef": "demo-no-charge",
+            "requestedTime": "asap",
+            "items": [
+              {
+                "id": "demo-pizza",
+                "label": "模擬マルゲリータ",
+                "quantity": 1,
+                "options": [
+                  "M",
+                  "レギュラー生地"
+                ]
+              }
+            ]
+          },
+          "maxPerOrderMinor": 1500,
+          "maxTotalMinor": 3000,
+          "maxOrders": 2,
+          "expiresAt": "2026-10-02T16:41:01Z"
+        },
+        "usedOrders": 2,
+        "usedTotalMinor": 3000
+      }
+    ]
+  },
+  "fixtures": [
+    {
+      "directory": "6bde3a82628984a829d0c53bf9d6cc71a9115413b368872893f652ecd4f529f5",
+      "window": {
+        "commandId": "89f2a123-1052-4724-bb94-4be6faebf7fe",
+        "onActiveSpace": true,
+        "quoteHash": "9bd5162c58db8ffdbd1d90b8b99c3a590ecf00ab4c087a395c85e6737e4aa26c",
+        "clicks": 1,
+        "windowId": 2386,
+        "status": "模擬受付: SIM-15d4120e-5aec-4fc3-bdd6-47a431e13519\n状態: accepted\n次の模擬注文を待機しています（5分で閉じます）",
+        "ready": false,
+        "visible": true,
+        "pid": 55406,
+        "sessionId": "f6b3623a-451a-4e7e-bebc-c7537b0fb12c",
+        "activations": 0
+      },
+      "receipt": {
+        "providerOrderId": "SIM-15d4120e-5aec-4fc3-bdd6-47a431e13519",
+        "quoteHash": "9bd5162c58db8ffdbd1d90b8b99c3a590ecf00ab4c087a395c85e6737e4aa26c",
+        "mode": "simulation",
+        "orderKey": "turn:01a0f86b-f52e-7000-902c-b86a9b838792",
+        "details": {
+          "totalMinor": 1500,
+          "currency": "JPY",
+          "requestedTime": "asap",
+          "destinationId": "demo-destination",
+          "items": [
+            {
+              "quantity": 1,
+              "id": "demo-pizza",
+              "label": "模擬マルゲリータ",
+              "options": [
+                "M",
+                "レギュラー生地"
+              ],
+              "unitMinor": 1200,
+              "lineMinor": 1200
+            }
+          ],
+          "paymentMethodRef": "demo-no-charge"
+        },
+        "status": "accepted",
+        "account": "demo-account",
+        "observedAt": "2026-10-01T17:03:43.154Z",
+        "provider": "genie.simulation"
+      }
+    },
+    {
+      "directory": "dc50d9244bafb59aedf988eaa3a3a5668d3698045aa6b473a5e83c3526dff60e",
+      "window": {
+        "commandId": "9b584738-ecf7-4dc1-a5a0-e6d737d890f8",
+        "onActiveSpace": true,
+        "quoteHash": "df9421df272aa912e36ccb50a041bbb383e46c2ebd226e0f9f55e418e21be334",
+        "clicks": 1,
+        "windowId": 2386,
+        "status": "模擬受付: SIM-845d4096-75fd-4182-ba05-87361846cf40\n状態: accepted\n次の模擬注文を待機しています（5分で閉じます）",
+        "ready": false,
+        "visible": true,
+        "pid": 55406,
+        "sessionId": "f6b3623a-451a-4e7e-bebc-c7537b0fb12c",
+        "activations": 0
+      },
+      "receipt": {
+        "providerOrderId": "SIM-845d4096-75fd-4182-ba05-87361846cf40",
+        "quoteHash": "df9421df272aa912e36ccb50a041bbb383e46c2ebd226e0f9f55e418e21be334",
+        "mode": "simulation",
+        "orderKey": "turn:01a0f869-277b-7000-acd4-42c752a49544",
+        "details": {
+          "totalMinor": 1500,
+          "currency": "JPY",
+          "requestedTime": "asap",
+          "destinationId": "demo-destination",
+          "items": [
+            {
+              "quantity": 1,
+              "id": "demo-pizza",
+              "label": "模擬マルゲリータ",
+              "options": [
+                "M",
+                "レギュラー生地"
+              ],
+              "unitMinor": 1200,
+              "lineMinor": 1200
+            }
+          ],
+          "paymentMethodRef": "demo-no-charge"
+        },
+        "status": "accepted",
+        "account": "demo-account",
+        "observedAt": "2026-10-01T17:02:48.448Z",
+        "provider": "genie.simulation"
+      }
+    }
+  ]
+}

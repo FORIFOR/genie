@@ -1,0 +1,218 @@
+{
+  "AppIcon.icns": {
+    "sha256": "5a53a8935efea0275e700b7eaa578bec19148744be9f5ba010872ea781dc49f5",
+    "size": 197810
+  },
+  "LiquidOrb-LICENSE.txt": {
+    "sha256": "98ac16026ce4c17a38cfba95431704a4a47b7144fd22049a6465c2c594531241",
+    "size": 1067
+  },
+  "ja.lproj/InfoPlist.strings": {
+    "sha256": "1f69cdbb702bf9857a3677069d022482ca93cc984727f61f1485455c74fb6d23",
+    "size": 24
+  },
+  "plugins/builtin/architecture/dashboards/project.json": {
+    "sha256": "45ac53cbbdc6b44a7b5983755eddc25e8c2a6a56cc1ba63e4fe9cb1b9f38f89a",
+    "size": 448
+  },
+  "plugins/builtin/architecture/plugin.yaml": {
+    "sha256": "52f8b163ab7b01d282ed26553ac05c6ea45e794b645f971d03d1f49ecd89ff46",
+    "size": 1607
+  },
+  "plugins/builtin/architecture/policies/architecture.yaml": {
+    "sha256": "662fc88bdf35d7a9720e2f4a68481a31fff8c6ba6b02b1ea7ea50f20fbfaf4dd",
+    "size": 571
+  },
+  "plugins/builtin/architecture/schemas/entities.json": {
+    "sha256": "08c89a1893e08dd27d2ed94e93425a0b39edd6ff9d02b564358cae59b72fa682",
+    "size": 3376
+  },
+  "plugins/builtin/architecture/skills/coordinator.md": {
+    "sha256": "a32122c529f92a7da919c99d6f44fa3f8afcd87a3608b10097360316218e491d",
+    "size": 947
+  },
+  "plugins/builtin/calendar/plugin.yaml": {
+    "sha256": "0ffd809535fa31a2217a936c7abc0d833b207fd4fbb2aadefc50e457db002dc2",
+    "size": 1839
+  },
+  "plugins/builtin/care/dashboards/shift.json": {
+    "sha256": "98c759f40382fb718f45d0a216e5b15d81ebb4d1c4d15fafd9f5f2fcdf78c979",
+    "size": 385
+  },
+  "plugins/builtin/care/plugin.yaml": {
+    "sha256": "0044bee877dfe90c21f7d68129f852a3dc7c9d0c24cbb4c4f7d977a286e0dce3",
+    "size": 1746
+  },
+  "plugins/builtin/care/policies/care.yaml": {
+    "sha256": "15c9efb220b5ee2bb83248fd3e86d41d92d3163da43784f5a73261724563c04a",
+    "size": 1151
+  },
+  "plugins/builtin/care/schemas/entities.json": {
+    "sha256": "435bd699ad640858fb011047fb8dd72e1123584e41281045ed817ac5945d3752",
+    "size": 3001
+  },
+  "plugins/builtin/care/skills/assistant.md": {
+    "sha256": "84f7cb0552c6ca10ef1aad62e98d4af7ce403eafd70083b571ec2a8523d30684",
+    "size": 1103
+  },
+  "plugins/builtin/ehr/dashboards/encounters.json": {
+    "sha256": "2db523954ba26d9c7cb5e0191ae4ced35002bb93c47049a17a28e1840577bd1c",
+    "size": 281
+  },
+  "plugins/builtin/ehr/plugin.yaml": {
+    "sha256": "64e6563aa4cdc75328a64bfaf15a26aa53b1db66219489cd126650d72d37d775",
+    "size": 1645
+  },
+  "plugins/builtin/ehr/policies/ehr.yaml": {
+    "sha256": "df22347c4d78a9887f834387f94482e0ae2ccdfc77da94de26f6f9de35c8a97e",
+    "size": 1289
+  },
+  "plugins/builtin/ehr/schemas/entities.json": {
+    "sha256": "5f588debd40eb4740ef6f0fe19c1926d3cef10fdd114ee3280fbe517a277acf3",
+    "size": 1665
+  },
+  "plugins/builtin/ehr/skills/assist.md": {
+    "sha256": "c66c1964bac496b0e518234959b38ff4906a3ae64334b726a7638063acd2beb5",
+    "size": 1097
+  },
+  "plugins/builtin/finder/plugin.yaml": {
+    "sha256": "9020ee02f526a645dd9da02a3eca4d4c203e92b7c9a3a2faea37ae749950a48d",
+    "size": 939
+  },
+  "plugins/builtin/general/plugin.yaml": {
+    "sha256": "a958a0ace93dd3e7a014cba9a34841fbcc724c6577c87fae1ace5f575f205c81",
+    "size": 1151
+  },
+  "plugins/builtin/general/policies/general.yaml": {
+    "sha256": "bce10765bd7f77c1e7a2847326302b7fd7a19790adef499bc4ed655df5f23d85",
+    "size": 316
+  },
+  "plugins/builtin/general/skills/assistant.md": {
+    "sha256": "1a20f448987ded6d15f4f1187b7fdc349528e3d6a2871bb09d0d79d56861001e",
+    "size": 999
+  },
+  "plugins/builtin/general/workflows/assistant.json": {
+    "sha256": "5a883333ec70f3d1ecc8be8fe9301acb67c31a2f5d8af6fc699dc62277d10a50",
+    "size": 536
+  },
+  "plugins/builtin/gmail/plugin.yaml": {
+    "sha256": "a94f8ba146f8f0f835f3f0e7aa7c1eddcef1a9dfe3e5737bdeae1677c06303ef",
+    "size": 2574
+  },
+  "plugins/builtin/gmail/skills/mail.md": {
+    "sha256": "8a673d29e4626dade7413da5a4986457f785ffa738011a9fb52bbb2d5f5aab9e",
+    "size": 861
+  },
+  "plugins/builtin/gmail/workflows/triage.yaml": {
+    "sha256": "c14d5a4c6afbe66754dcee0d84cdd6f8ec85f9f0b6c59fa1aac83599d8add770",
+    "size": 431
+  },
+  "plugins/builtin/meeting/dashboards/meetings.json": {
+    "sha256": "e3844fe1d72ada8fedfe2a7ef2679abd5a270a371e7d2df3c6e9fa0936a78e6f",
+    "size": 357
+  },
+  "plugins/builtin/meeting/plugin.yaml": {
+    "sha256": "e61bc7b4565c2be830c73b33ba0902ca8b351e369905c7c1ccf9968d23b3a5c0",
+    "size": 1086
+  },
+  "plugins/builtin/meeting/policies/meeting-recording.yaml": {
+    "sha256": "25a16b730e4d4cc0a564b6cd8bf5d126b4ae5721c7402d92bd003dc97250e5db",
+    "size": 500
+  },
+  "plugins/builtin/meeting/skills/meeting.md": {
+    "sha256": "7170055b53cb78048050d23a7c2d71fd42e584c2622e8f559256c69818e8cde6",
+    "size": 700
+  },
+  "plugins/builtin/microsoft-todo/plugin.yaml": {
+    "sha256": "d8aa415f75923ee10976045b679de288e8c69da72d80ab9a4b4f1225498a7142",
+    "size": 934
+  },
+  "plugins/builtin/outlook/plugin.yaml": {
+    "sha256": "c7f6feaf2e775e9ea15c0b83ef6098192b1288c5ccb6508a668fc9a25d6861f2",
+    "size": 2101
+  },
+  "plugins/builtin/research/dashboards/research-runs.json": {
+    "sha256": "1511651da20400145e3932608b8cb04036703e5ad10a3b083aab5e76278eb0ba",
+    "size": 511
+  },
+  "plugins/builtin/research/plugin.yaml": {
+    "sha256": "f80be7c29490e4068e71613efc2c6131b9145c074cf2628101c8c20b65fc3e9e",
+    "size": 1109
+  },
+  "plugins/builtin/research/policies/research-sources.yaml": {
+    "sha256": "fbe01c3e5de00004fe8cd962c63aff54e3bfe68de2862192267f0c89f870f0fe",
+    "size": 266
+  },
+  "plugins/builtin/research/skills/research.md": {
+    "sha256": "678abc98be038a24152d8bb9b84d308d0e5ce8a47727329a55dd47ecb01c0700",
+    "size": 894
+  },
+  "plugins/builtin/sales-crm/dashboards/pipeline.json": {
+    "sha256": "db422156eca8aed21210448618b47811db2611f31ce2ad141b9b47a507ad3b4e",
+    "size": 370
+  },
+  "plugins/builtin/sales-crm/evaluations/analysis.json": {
+    "sha256": "a1f7144aa3e8ecae3a6dff6e9be6d38dc9d9fa4ef9310c56e0b58f7045ac8a4b",
+    "size": 726
+  },
+  "plugins/builtin/sales-crm/plugin.yaml": {
+    "sha256": "b8462847fbd867d5b5b8c1f3f2d52fec0c0d0c56c14cae217eac2e9ab05b6219",
+    "size": 1226
+  },
+  "plugins/builtin/sales-crm/policies/sales-crm.yaml": {
+    "sha256": "9370063a1acd18f4044ca385786c5d8dded86fa38c3ef1aab744ea1faa568aa0",
+    "size": 566
+  },
+  "plugins/builtin/sales-crm/schemas/entities.json": {
+    "sha256": "93982fb5369d7b892b619cccfe0b48db1fe8d0f944411bb06dfabbed0f7e954e",
+    "size": 2559
+  },
+  "plugins/builtin/sales-crm/skills/analyst.md": {
+    "sha256": "b0b67d9553ab520b252b7caa138f084c379a509bce82b76f27bcfba337fe6902",
+    "size": 728
+  },
+  "plugins/builtin/sales-crm/workflows/analysis.json": {
+    "sha256": "95efc067fc233516e1fa72ab53876b32f1d9f49846e9d12ee03b2c1e9e9419ac",
+    "size": 855
+  },
+  "plugins/builtin/stock/dashboards/watchlist.json": {
+    "sha256": "2e5e187750d02b4f69d3f84eed6115ce928cae38eb00a1ca0ee9e637038b9e5b",
+    "size": 369
+  },
+  "plugins/builtin/stock/plugin.yaml": {
+    "sha256": "9dc8d3b0af74d0f0419af603ab08305646030c650558754807834dbfb5f97ee7",
+    "size": 1810
+  },
+  "plugins/builtin/stock/policies/stock.yaml": {
+    "sha256": "667596bb717396bd0661d401a3769628700c5f6127ea81b9a4e0a65b524629de",
+    "size": 938
+  },
+  "plugins/builtin/stock/schemas/entities.json": {
+    "sha256": "03a5127dee6aaae6f7e91b1eaf4e52caa36e1e1259f57e4b95a6d714ec473474",
+    "size": 1968
+  },
+  "plugins/builtin/stock/skills/analyst.md": {
+    "sha256": "4b7cc7f4d35a57fbe786fbf074bd9cc2652b6c3bc1ee450e471a331255125969",
+    "size": 898
+  },
+  "plugins/builtin/video/dashboards/timeline.json": {
+    "sha256": "2dc82c8dc4ec98e2d8f850cf9c3ede45f4435c7d224857c7390da5ffc99357d7",
+    "size": 367
+  },
+  "plugins/builtin/video/plugin.yaml": {
+    "sha256": "6d2c3fa69758159337f7608670686acce75f946661cf1913d0fabae821b368c7",
+    "size": 1643
+  },
+  "plugins/builtin/video/policies/video.yaml": {
+    "sha256": "0aaa3191fc14f356663f16177e943f9345892f2692d23df5068135602b7696f4",
+    "size": 551
+  },
+  "plugins/builtin/video/schemas/entities.json": {
+    "sha256": "6b8a29c181900f194b65df8550fdd0f5cd0ab5493b4ce223a83b27864d232740",
+    "size": 2229
+  },
+  "plugins/builtin/video/skills/editor.md": {
+    "sha256": "292aed0b5e3a83a7873573acf1d7d93bd70e11e46163fe7dc0ff63461dcf8468",
+    "size": 1133
+  }
+}

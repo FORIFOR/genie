@@ -20,6 +20,8 @@ export interface ApprovalProof {
   readonly decidedBy: string;
   readonly decidedAt: string;
   readonly expiresAt: string;
+  /** Exact approved tool arguments, when the operation requires content binding. */
+  readonly inputsHash?: string;
 }
 
 /** connector の 1 操作。**必要な許可と危険度を、操作ごとに持つ。** */

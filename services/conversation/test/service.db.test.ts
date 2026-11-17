@@ -55,6 +55,65 @@ describe.skipIf(!url)('ConversationService', () => {
     expect(state.referents).toEqual([]);
   });
 
+  it('retains order terms through service recreation and serializes concurrent slot answers', async () => {
+    const { id } = await service.start(tenantId, userId);
+    const initial = await service.advanceCheckoutOrder(
+      tenantId,
+      userId,
+      id,
+      uuidv7(),
+      'マックを注文して',
+    );
+    await service.advanceCheckoutOrder(tenantId, userId, id, uuidv7(), 'ポテトM2個');
+    await service.advanceCheckoutOrder(tenantId, userId, id, uuidv7(), '注文を中断して');
+    const recreated = new ConversationService({ db });
+    expect((await recreated.state(tenantId, id)).checkout_draft).toMatchObject({
+      status: 'paused',
+      itemsText: 'ポテトM2個',
+      orderKey: initial!.draft.orderKey,
+    });
+    await recreated.advanceCheckoutOrder(tenantId, userId, id, uuidv7(), '注文を再開して');
+    await Promise.all([
+      recreated.advanceCheckoutOrder(tenantId, userId, id, uuidv7(), 'できるだけ早く'),
+      recreated.advanceCheckoutOrder(tenantId, userId, id, uuidv7(), '上限2000円'),
+    ]);
+    const draft = (await recreated.state(tenantId, id)).checkout_draft!;
+    expect(draft).toMatchObject({
+      requestedTime: 'asap',
+      maxTotalMinor: 2000,
+      itemsText: 'ポテトM2個',
+      orderKey: initial!.draft.orderKey,
+      status: 'collecting',
+    });
+    expect(draft.dispatchTurnId).not.toBeNull();
+    const taskId = uuidv7();
+    await recreated.markCheckoutDispatched(tenantId, userId, id, draft.orderKey, taskId);
+    const repeat = await new ConversationService({ db }).advanceCheckoutOrder(
+      tenantId,
+      userId,
+      id,
+      uuidv7(),
+      'マックを注文して',
+    );
+    expect(repeat!.prepare).toBeNull();
+    expect(repeat!.taskId).toBe(taskId);
+  });
+
+  it('refuses order changes from another owner or tenant', async () => {
+    const { id } = await service.start(tenantId, userId);
+    await service.advanceCheckoutOrder(tenantId, userId, id, uuidv7(), 'ドミノでピザを注文して');
+    await expect(
+      service.advanceCheckoutOrder(tenantId, uuidv7(), id, uuidv7(), '上限1000円'),
+    ).rejects.toMatchObject({ code: 'common.not_found' });
+    await expect(
+      service.advanceCheckoutOrder(otherTenantId, userId, id, uuidv7(), '上限1000円'),
+    ).rejects.toMatchObject({ code: 'common.not_found' });
+    await expect(
+      service.markCheckoutDispatched(tenantId, uuidv7(), id, 'other', uuidv7()),
+    ).rejects.toMatchObject({ code: 'common.not_found' });
+    expect((await service.state(tenantId, id)).checkout_draft!.maxTotalMinor).toBeNull();
+  });
+
   it('keeps voice and text in the same conversation', async () => {
     // 正本 §2: 入力様式は属性でしかない
     const { id } = await service.start(tenantId, userId);

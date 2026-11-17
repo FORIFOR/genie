@@ -1,0 +1,174 @@
+{
+  "recordedAt": "2026-10-01T20:43:00.986975+00:00",
+  "classification": "Independent read-only artifact/source review; author-run mock tests inspected, not re-executed. Reviewer did not author these staging/resource/naming changes.",
+  "revision": "ee857a5b13482cbd2d986a1f9b466c8e49a149c3 plus uncommitted files identified by SHA-256",
+  "environment": "macOS-27.0.1-arm64-arm-64bit-Mach-O",
+  "checks": [
+    {
+      "id": "STAGE-1",
+      "method": "Read plist; compare codesign -dr - output for installed and staged bundles. Read entitlements and CodeDirectory flags.",
+      "expected": "Retain the installed app identity without privilege changes",
+      "observed": "com.astra.mac / Genie / LSUIElement=true retained. Designated requirements are byte-identical; team unchanged; no entitlements and flags=0x0 in installed, canonical and staged signatures. Version/build 0.1.4/0.1.4.",
+      "status": "PASS"
+    },
+    {
+      "id": "STAGE-2",
+      "method": "codesign --verify --deep --strict on staged app",
+      "expected": "Valid outer and nested signatures",
+      "observed": "exit 0; no stderr",
+      "status": "PASS"
+    },
+    {
+      "id": "STAGE-3",
+      "method": "Independently enumerate SHA-256 and symbolic link targets across both bundle trees; compare Mach-O bytes through LC_CODE_SIGNATURE.dataoff",
+      "expected": "Canonical code/resources preserved except stated identity/signature changes",
+      "observed": {
+        "resourcesEntries": 54,
+        "frameworkEntries": 97,
+        "resourcesAndFrameworksIdentical": true,
+        "wholeBundleDifferences": [
+          "Contents/Info.plist",
+          "Contents/MacOS/Genie",
+          "Contents/MacOS/GenieMac"
+        ],
+        "infoDifferences": [
+          "CFBundleIdentifier",
+          "CFBundleExecutable",
+          "LSUIElement"
+        ],
+        "codeSignatureStart": 31358512,
+        "preSignatureDifferences": [
+          {
+            "offset": 3968,
+            "field": "__LINKEDIT.filesize",
+            "reason": "signature size decreased by 16 bytes"
+          },
+          {
+            "offset": 9068,
+            "field": "LC_CODE_SIGNATURE.datasize",
+            "reason": "signature size decreased by 16 bytes"
+          }
+        ],
+        "machOBodySha256": "b635299700b5bca1e5c1d526cfea0eff976498200dfcd908768730cbca30e0f8",
+        "candidateSignedSha256": "2880bc06f89e4a468d8c9c2981fc2916b87265ee0868cedce86fe1348fa3d74e",
+        "canonicalSignedSha256": "bd494b0e664da5abd15938b1573d15ac64563dd32ec9de5763d6297ed071a6c7",
+        "canonicalMatchesSavedReleaseEvidence": true
+      },
+      "status": "PASS"
+    },
+    {
+      "id": "RESOURCE-1",
+      "method": "Review seven shell diffs, shared policy, real-script inert-tool tests and saved full output; compare all manifest hashes",
+      "expected": "Bound per-command compile concurrency without model/optimization/test threshold changes",
+      "observed": "Seven standalone routes source the unchanged positive-integer jobs policy; three SwiftPM routes pass --jobs to build and --show-bin-path. Cargo inherits CARGO_BUILD_JOBS. Saved 21 tests PASS / 0 skip; 16 of 16 source/log hashes and manifest sidecar match. Tests include defaults, overrides, invalid early failure, release dual architecture, prebuilt-core and binding-generation paths.",
+      "status": "PASS"
+    },
+    {
+      "id": "EXECUTABLE-1",
+      "method": "Read both case arms and Python fixtures; inspect saved root suite output",
+      "expected": "Signed bundles named Genie or GenieMac route to their own LaunchServices app; unrecognized names fail before invocation",
+      "observed": "Both known leaf names strip /Contents/MacOS/* exactly. Strict signature and plist checks remain; recording tests exercise two executable names x two gateway selections, plus unknown-name refusal. Journey tests cover four LS calls with each name, unknown-name refusal, failed/missing exit receipts. Saved root combined Python suite: 62 tests / 0 failure / no skips. No actual app or compiler in these fixtures.",
+      "status": "PASS"
+    }
+  ],
+  "findings": [],
+  "notPerformed": [
+    "Installation or application launch",
+    "TCC database/permission inspection or permission grant",
+    "Runtime settings, keychain or previous permission continuity test",
+    "Model, VM, DB, streaming or native build/test execution",
+    "Full gate rerun"
+  ],
+  "limitations": [
+    "Identity preservation is static metadata evidence, not proof that macOS will reuse existing grants at runtime.",
+    "Standard managed configuration remains local/qwen3.5:9b in the stage author safe projection; this stage does not change it.",
+    "Developer signing is not notarized distribution proof.",
+    "Build concurrency limits are not a global memory budget and mock tests do not measure peak memory or Noa stability.",
+    "Current failed/partial full release gate and unavailable real merchant/broker integrations remain unchanged."
+  ],
+  "stageEvidenceSha256": {
+    "/private/tmp/genie-transactions-20261002/user-app-staging/manifest.json": "6bdfd2de9645750d5ae610206406f7577419c29c4fae006f84094945ed1ccc02",
+    "/private/tmp/genie-transactions-20261002/user-app-staging/sign.log": "5eb2bb33beb145bc42cb91e79e3afebe0e7a59bcdb5be9f63c39a1efe0e6c82c",
+    "/private/tmp/genie-transactions-20261002/user-app-staging/resources-inventory.json": "dc06ba67529046d3978a49bac9d12d48198b265ff4564d6dd8a1bd402b5b6a61",
+    "/private/tmp/genie-transactions-20261002/user-app-staging/frameworks-inventory.json": "8a8abecc543dd2cf6e22e73bcf9578ca376487d249f9fda317eafd306a485972"
+  },
+  "sourceAndEvidenceSha256": {
+    "scripts/build-macos-app.sh": "81d20ee9be2ec11c5eb24ecc8b0e3b8a85df16f76a2c0d75aeeaef89cae70ab2",
+    "scripts/release-macos.sh": "715d145ab7c69bf44e8c50382a81142f383a4b8825d9613f6114967c65d74e5a",
+    "scripts/verify-api-roundtrip.sh": "2fdb8dbb7df8b1a1afabaee91b139b0a2e55c8fd0193cc02ec4f06526e91e61d",
+    "scripts/verify-swift-roundtrip.sh": "3befcb73e45bb943507a2f4a3fd9455970df92bcac4633df1293b7348f6c9efa",
+    "scripts/verify-csharp-bridge.sh": "679f46801ec618795cdf0e80e6b74aa18f4e5983d8ca591822af97ff6ebe94c9",
+    "scripts/gen-swift-bindings.sh": "1500782e0a13388e5522d155259e25d4fb52e6b473d9cb1ce9c11cd07f212138",
+    "scripts/verify-c-abi.sh": "640415566feaae7e1491b69d50b29c2067a7507b462904709aaff0c202b0b2b9",
+    "scripts/build-resource-env.sh": "7a9f23dcbfd8a5a1b8defbcc9670428ea4792a966c92fcd3a6739f1235913a89",
+    "scripts/verify-macos-recording.sh": "8909ea54fcd8dddc3531c4db3b9b57792fa397c15fc1e8d6284ae2ec398f57e2",
+    "scripts/verify-journeys.sh": "9d883a4557d3ae3cc32206254e9c70dd02f62f89205196dbdab35f9d5810c29d",
+    "scripts/tests/test_verification_resources.py": "b8b29161804319f9c39dc30eb9ad6ac38a7d52922d7c3896be23232fb69594d5",
+    "scripts/tests/test_macos_recording_env.py": "1058e3c0dac0785ec2ae49a581d5af62df52896e568483d5afeeb85611bb00a9",
+    "scripts/tests/test_journey_launcher.py": "3678ddef969f3dbe1c1e6c6d26edf7817390aca1bdfb7a638be8f2fd9ea72440",
+    "docs/quality/evidence/2026-10-02-completion/build-resource-entrypoints.json": "c8f9190145806a2187f5096554310a5fa1b0661186319a74cd88ffec1e55d12e",
+    "docs/quality/evidence/2026-10-02-completion/build-resource-entrypoints-tests.log": "37a2305b30351cbd3f8f6766c8f7aea7a2a5bc77e4f07a10b9aca22e8f4de4b2",
+    "docs/quality/evidence/2026-10-02-completion/python-regression-installed-route.log": "4ccee21634b1aea94bb3818407416f351f760e24a07448fce4aae5be9c4e6274",
+    "docs/quality/evidence/2026-10-02-completion/macos-geometry-fix-release.json": "040dea5625d8c9076ea894a21e5943891334f4b7f712fafc98d7f633bcc45855"
+  },
+  "postStageFollowup": {
+    "recordedAt": "2026-10-01T20:44:37.510892+00:00",
+    "classification": "Independent read-only review of root installation/preflight evidence, with fresh filesystem signature/hash and private-config equality checks; no reviewer launch or TCC action",
+    "installation": {
+      "status": "PASS",
+      "observed": "Both /Applications/Genie.app and repo build/Genie.app now have stage SHA 2880bc06...; fresh strict signature checks exit 0; exact previous binaries retained in declared backup paths. com.astra.mac identity retained."
+    },
+    "permissions": {
+      "status": "PASS",
+      "scope": "Root observed existing permissions only in the actual installed app via LaunchServices; saved stdout/stderr/normal-exit receipt independently matched exact original files.",
+      "observed": {
+        "microphone": "granted",
+        "accessibility": "granted",
+        "speech": 3,
+        "screen": "notDetermined",
+        "calendar": "notDetermined",
+        "normalExit": true,
+        "exitCode": 0
+      },
+      "sourceReview": "SelfTest.permissions calls status getters; microphone authorizationStatus, AXIsProcessTrusted, CGPreflightScreenCaptureAccess, calendar status and SFSpeechRecognizer.authorizationStatus do not request grants.",
+      "correction": "Prior com.astra.desktop app preflight and its gate failures remain true for that tested identity. They must not be generalized into a current installed com.astra.mac microphone/AX/Speech blocker."
+    },
+    "modelSelection": {
+      "status": "PASS",
+      "scope": "Saved configuration only; no inference or main UI startup",
+      "observed": {
+        "modelProvider": "codex",
+        "model": "gpt-6-sol",
+        "allowCloud": true,
+        "externalScreenAuthorization": null
+      },
+      "independentPrivateComparison": "Compared current and backup JSON with absent-key distinction without exposing credential values. Changed keys match exactly model/modelProvider/allowCloud/externalScreenAuthorization. All other fields unchanged.",
+      "correction": "The local/qwen limitation in the initial stage snapshot is superseded by this saved external selection."
+    },
+    "sourceCorrespondence": {
+      "releaseManifest": "macos-geometry-fix-release.json",
+      "allListedReleaseSourcesAndCanonicalBinaryStillMatch": true,
+      "checks": {
+        "apps/genie-macos/Sources/GenieMac/App/SelfTest.swift": true,
+        "apps/genie-macos/Sources/GenieMac/App/UIGeometry.swift": true,
+        "apps/genie-macos/Tests/GenieMacTests/UIGeometryRecordingTests.swift": true,
+        "apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDView.swift": true,
+        "apps/genie-macos/Sources/GenieMac/App/TerminationDispatch.swift": true,
+        "apps/genie-macos/Sources/GenieMac/App/GenieAppDelegate.swift": true,
+        "apps/genie-macos/.build/Genie.app/Contents/MacOS/GenieMac": true
+      }
+    },
+    "notProven": [
+      "Normal user service/app startup with saved external model",
+      "Full gate rerun using the updated com.astra.mac application",
+      "Screen/calendar permission",
+      "Long-running Noa stability or cause",
+      "Live merchant/broker flows"
+    ],
+    "evidenceSha256": {
+      "user-app-install.json": "2ede214b68af89972b5b7ae5932b415ed58b8bee817359513757d9bb9f6f62de",
+      "user-app-permissions.json": "22c95379fe067454b5a7d432b28ff594a94cc8349dc0748c96726be97936e760",
+      "user-model-selection.json": "183203cc513d43caaf58e93cb52837dd6816d3d060293aafd6192ee584715c8c"
+    }
+  }
+}

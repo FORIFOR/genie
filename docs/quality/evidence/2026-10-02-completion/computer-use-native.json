@@ -1,0 +1,97 @@
+{
+  "recordedAt": "2026-10-01T18:47:40.799445+00:00",
+  "classification": "Implementation verification; isolated host mocks, owned passive native AX fixture and production helper compilation/status. No independent execution or website/model E2E.",
+  "uncommitted": true,
+  "previousEvidence": "computer-use-contracts.json preserves the earlier NOT RUN state; this later evidence supersedes only the explicitly rerun checks.",
+  "runs": [
+    {
+      "command": "GENIE_FIXTURE_PASSIVE=1 GENIE_NO_PRIVATE_SPI=1 bash scripts/test-background-computer.sh",
+      "exitCode": 0,
+      "status": "PASS",
+      "log": "computer-native-append-passive.log",
+      "scope": "Initial nonempty append native AX integration; test-created grant, no production consent interaction."
+    },
+    {
+      "command": "GENIE_FIXTURE_PASSIVE=1 GENIE_NO_PRIVATE_SPI=1 bash scripts/test-background-computer.sh",
+      "exitCode": 0,
+      "status": "PASS",
+      "log": "computer-native-append-race.log",
+      "result": "computer-native-append-race-result.json",
+      "scope": "Final setter recheck and preview/marker-time value-change refusal plus all initial AX checks; owned target and sentinel only. No private SPI, foreground activation or keyboard injection."
+    },
+    {
+      "command": "isolated strict tsc for computer-vision.ts/computer-vision-policy.ts/computer-vision-prompts.ts, then GENIE_VISION_TEST_DIST=<isolated compiled source> node --test workers/agent-host/test/computer-vision.node.mjs workers/agent-host/test/background-vision.node.mjs",
+      "exitCode": 0,
+      "passed": 82,
+      "failed": 0,
+      "skipped": 0,
+      "durationMs": 5106.643291,
+      "log": "computer-completion-node-final.log",
+      "typesLog": "computer-isolated-types-final.log"
+    },
+    {
+      "command": "swiftc -j 1 -D GENIE_BACKGROUND -D GENIE_PRIVATE_SPI -parse-as-library -O <production sources> -o <new Completion app>/Contents/MacOS/GenieComputerHelper; codesign Apple Development with identifier com.genie.computer-helper-preview; codesign --verify --strict; helper --status",
+      "exitCode": 0,
+      "buildLog": "computer-production-completion-build.log",
+      "signatureLog": "computer-production-completion-sign.log",
+      "status": {
+        "accessibility": true,
+        "capabilities": [
+          "ax_press",
+          "empty_text_field",
+          "append_text_field",
+          "target_preview",
+          "native_click",
+          "native_keys",
+          "space_key"
+        ],
+        "deliveryMode": "background",
+        "ready": true,
+        "screenRecording": true,
+        "supported": true,
+        "unattendedTest": false
+      },
+      "scope": "Production flags only, existing Blue app not overwritten; new candidate built after native run only to add append_text_field status capability."
+    }
+  ],
+  "candidate": {
+    "path": "/private/tmp/genie-transactions-20261002/GenieComputerHelperCompletion.app",
+    "bundleIdentifier": "com.genie.computer-helper-preview",
+    "binarySha256": "a83f176b1f183289bdc1aad00744eb51101b5b426e510f2d696de547c3d5346a"
+  },
+  "sourceSha256": {
+    "workers/agent-host/src/computer-vision-policy.ts": "84d9da6c7b6974c6c2c9b0c3ece8fae7f72e308cb02bf323adbad5af2b885d9f",
+    "workers/agent-host/src/computer-vision.ts": "9839d721474d73bc29e8bc8352e35bfaec2423711fbfb12e3820cc606c97eaad",
+    "workers/agent-host/src/computer-vision-prompts.ts": "00eeeaa6ca220808c23054bd6ab94f5d09f67d4c569659ebb2604879a3fa9e2f",
+    "workers/agent-host/test/computer-vision.node.mjs": "ebdcb89f388c5cce85bc29ae17f1a2b6e9bfee1601b0cb18f15aa4853e113fb8",
+    "workers/agent-host/test/background-vision.node.mjs": "7cb5453abc16d01e013da78bc68f17a561e6af370825bd69417b8abc51f6b63c",
+    "tools/computer-use/BackgroundTextEdit.swift": "be66409a0e1d699bde33da08c3a4ef49c0452033d31880f18d0a4183bc128262",
+    "tools/computer-use/BackgroundTextEditTests.swift": "6e7ad150cf204bd1c2411bc79e902b63ad48d7f9acafe7fb3adf5ac4ca8128e1",
+    "tools/computer-use/BackgroundAX.swift": "8c1942e0c7d3ac6c831be9a3c8d512ae30dc564f7817e8ff29d4faa6a28dc423",
+    "tools/computer-use/BackgroundAXTests.swift": "7c34a5392da75698ecefb702b1573f743ecd4d10c1ce7fd6ddce749fac9f9018",
+    "tools/computer-use/genie-computer.swift": "a073af5032ac775b14f6ff612cfa8cc702a750ce7a6bf92cf0db00c078914912",
+    "scripts/test-background-text-edit.sh": "36602ed1489291c4d6a0d98ab8c3d1543b5a3d233ae3a73d496b1b7c6a44e911",
+    "scripts/build-computer-helper.sh": "49f1e19c197a53a4fdfa1e2ad6575941a44225c91837696cf03af78a49ad712f",
+    "scripts/build-computer-helper-unattended-test.sh": "735e1101e6b29a4aa954036efdfb5dfe85658cb4454c37db5fe3ebdb3b6501ef",
+    "scripts/test-background-computer.sh": "2a4d3ee22896a448d3bc1fbabbfff30b06d12de132c229ed5d18d4bcd933af53",
+    "scripts/test-native-input.sh": "f0b90a5c2018a66f2cbb89c79af9f75aaa35edbf6bc357485df1feada0050de8"
+  },
+  "artifactSha256": {
+    "computer-native-append-passive.log": "a801fc8ed1202b05a37ef3fd5bb83dab75fe86c85f0738a61e78367b9a67e20b",
+    "computer-native-append-race.log": "5c21e8e3b63c47287fbca968b2092994d9cf0752d36c4316cb24a961d404d61d",
+    "computer-isolated-types-final.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "computer-completion-node-final.log": "9d356690cd97585b59c2ac2142c618952220d58ca2b10b3ab0ce3d5df981e5bb",
+    "computer-production-completion-build.log": "3362e4140ce9e77379d6ba2716312cb95e7d7ea2b64e7f01ee22af2cd6f7476c",
+    "computer-production-completion-sign.log": "70cd462f6bca77afd67d60b6387eefa53abbb2690e249567aa7d657f05c8660e",
+    "computer-production-completion-status.json": "2259e50c642915c9666d56cd790031994c07ed385cea5d265242e17a0b92726b",
+    "computer-native-append-race-result.json": "3d2550c48ddb70abb6be79f6043d303fcff8fb66862e082ab6d403ed335f0c48"
+  },
+  "limits": [
+    "Native fixture integration uses a test-created grant and is not the production target-selection/consent flow.",
+    "Sticky human takeover is injected; passive run does not measure real user typing or physical keyboard delivery.",
+    "AX has no atomic compare-and-set; setter-adjacent identity/value recheck narrows but cannot eliminate concurrent edits between check and set.",
+    "No actual browser/site or model semantic append execution; 61st-field success is a host contract mock.",
+    "Scroll and drag remain unsupported; no live orders, payments, securities trades or full workspace gate run by this agent.",
+    "Native race run preceded only the informational append_text_field capability addition; final candidate compile/status includes it."
+  ]
+}

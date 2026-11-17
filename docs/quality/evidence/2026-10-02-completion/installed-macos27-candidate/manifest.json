@@ -1,0 +1,1730 @@
+{
+  "capturedAt": "2026-10-01T20:46:29.692775+00:00",
+  "recordedAt": "2026-10-01T20:50:03.423404+00:00",
+  "app": "/Applications/Genie.app",
+  "bundleID": "com.astra.mac",
+  "binarySHA256": "2880bc06f89e4a468d8c9c2981fc2916b87265ee0868cedce86fe1348fa3d74e",
+  "candidateProfile": "macos-27.0.1-2x-safe-top-32",
+  "adopted": false,
+  "scope": "Actual installed app, synthetic selftest state, fresh ASTRA_DATA_ROOT for each launch, cloud STT disabled. No golden, default, source or OS grant modification.",
+  "imageMetricMethod": "Read-only Pillow RGB diagnostic: sampled luminance uses existing gate sample stride and >=16/255 difference; color-profile conversion is not AppKit, so this is not a native golden gate run. Full RGB ratio is an additional diagnostic. No tolerance changed.",
+  "goldenCandidateNames": [
+    "01-voice-hud-idle",
+    "02-voice-hud-listening",
+    "02b-voice-hud-preparing",
+    "03-recording-workspace",
+    "04-recording-transcript",
+    "05-recording-rag",
+    "08-meeting-detail",
+    "09-permission-denied",
+    "10-agent-timeline",
+    "11-meeting-canvas"
+  ],
+  "images": [
+    {
+      "theme": "light",
+      "name": "01-voice-hud-idle",
+      "path": "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/light/images/01-voice-hud-idle.png",
+      "sha256": "2c778cb1e01b9b9950627e3d8484fc3bfc7e764a0819060ca667fc3352cdea77",
+      "width": 220,
+      "height": 76,
+      "layout": {
+        "height": 76,
+        "topInsetPx": 32,
+        "width": 220
+      },
+      "goldenCandidate": true
+    },
+    {
+      "theme": "light",
+      "name": "02-voice-hud-listening",
+      "path": "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/light/images/02-voice-hud-listening.png",
+      "sha256": "5a313cbaf3a824d6db75a0156989fb0660fda4fd6ec7f7c35a3d97c37599c3d7",
+      "width": 600,
+      "height": 100,
+      "layout": {
+        "height": 100,
+        "topInsetPx": 32,
+        "width": 600
+      },
+      "goldenCandidate": true
+    },
+    {
+      "theme": "light",
+      "name": "02b-voice-hud-preparing",
+      "path": "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/light/images/02b-voice-hud-preparing.png",
+      "sha256": "4a6ecc05188c465a61176886ca557c1acb8224ab541736dca574fcef9ba6acee",
+      "width": 600,
+      "height": 100,
+      "layout": {
+        "height": 100,
+        "topInsetPx": 32,
+        "width": 600
+      },
+      "goldenCandidate": true
+    },
+    {
+      "theme": "light",
+      "name": "03-recording-workspace",
+      "path": "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/light/images/03-recording-workspace.png",
+      "sha256": "0a45cf8143f972dd348bf223e6204ef2ba5f1568a4647647ca05ab55ecf707b7",
+      "width": 1080,
+      "height": 680,
+      "layout": {
+        "height": 680,
+        "topInsetPx": 0,
+        "width": 1080
+      },
+      "goldenCandidate": true
+    },
+    {
+      "theme": "light",
+      "name": "03b-recording-paused",
+      "path": "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/light/images/03b-recording-paused.png",
+      "sha256": "1aee97053f76af56c01f775ca61d22bb69bb7e57e930aae22e19fc31b510b914",
+      "width": 1080,
+      "height": 680,
+      "layout": {
+        "height": 680,
+        "topInsetPx": 0,
+        "width": 1080
+      },
+      "goldenCandidate": false
+    },
+    {
+      "theme": "light",
+      "name": "04-recording-transcript",
+      "path": "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/light/images/04-recording-transcript.png",
+      "sha256": "fd088de487bb72861ab0e33cbcffe49981670a870a51599dfdafe26ec6b70543",
+      "width": 1080,
+      "height": 680,
+      "layout": {
+        "height": 680,
+        "topInsetPx": 0,
+        "width": 1080
+      },
+      "goldenCandidate": true
+    },
+    {
+      "theme": "light",
+      "name": "05-recording-rag",
+      "path": "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/light/images/05-recording-rag.png",
+      "sha256": "03c614da16f5432ec5e7cdd4a92b3b124af81f33f2cdc045d05c14ae34cfafd3",
+      "width": 1080,
+      "height": 680,
+      "layout": {
+        "height": 680,
+        "topInsetPx": 0,
+        "width": 1080
+      },
+      "goldenCandidate": true
+    },
+    {
+      "theme": "light",
+      "name": "06-main-home",
+      "path": "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/light/images/06-main-home.png",
+      "sha256": "1afa6bdbb0c6f43981db5dd9a0b5b24b8a40f14533639dddb46110757fcabcc3",
+      "width": 1240,
+      "height": 820,
+      "layout": {
+        "height": 820,
+        "topInsetPx": 0,
+        "width": 1240
+      },
+      "goldenCandidate": false
+    },
+    {
+      "theme": "light",
+      "name": "07-apps",
+      "path": "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/light/images/07-apps.png",
+      "sha256": "7424845db7b9899bbf8d716b61283f80821ffcb01797f2e7c10828e662df58e8",
+      "width": 1240,
+      "height": 820,
+      "layout": {
+        "height": 820,
+        "topInsetPx": 0,
+        "width": 1240
+      },
+      "goldenCandidate": false
+    },
+    {
+      "theme": "light",
+      "name": "08-meeting-detail",
+      "path": "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/light/images/08-meeting-detail.png",
+      "sha256": "625d9d266ce005be7ec71eb39d336d036c2b0e48ec92f63151bf219f6835ebc3",
+      "width": 1240,
+      "height": 820,
+      "layout": {
+        "height": 820,
+        "topInsetPx": 0,
+        "width": 1240
+      },
+      "goldenCandidate": true
+    },
+    {
+      "theme": "light",
+      "name": "09-permission-denied",
+      "path": "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/light/images/09-permission-denied.png",
+      "sha256": "d573c33bbb8351bbc04275b09ecfd2c12222454bb69772100624a4185988e6ac",
+      "width": 1080,
+      "height": 680,
+      "layout": {
+        "height": 680,
+        "topInsetPx": 0,
+        "width": 1080
+      },
+      "goldenCandidate": true
+    },
+    {
+      "theme": "light",
+      "name": "09b-stt-unavailable",
+      "path": "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/light/images/09b-stt-unavailable.png",
+      "sha256": "81207aa3e943e647e23f86c35757f972db4b946d4b37da024cc07130f04b52f8",
+      "width": 1080,
+      "height": 680,
+      "layout": {
+        "height": 680,
+        "topInsetPx": 0,
+        "width": 1080
+      },
+      "goldenCandidate": false
+    },
+    {
+      "theme": "light",
+      "name": "09c-speech-denied",
+      "path": "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/light/images/09c-speech-denied.png",
+      "sha256": "e4983027c62bce8f10ab4c142c77415dc3896f235209c1316961bb4d388e0ffa",
+      "width": 1080,
+      "height": 680,
+      "layout": {
+        "height": 680,
+        "topInsetPx": 0,
+        "width": 1080
+      },
+      "goldenCandidate": false
+    },
+    {
+      "theme": "light",
+      "name": "10-agent-timeline",
+      "path": "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/light/images/10-agent-timeline.png",
+      "sha256": "2325c6b2b63f1e7c9648df2f6c6030efd121f686a63b5973ac74067961c1a837",
+      "width": 1080,
+      "height": 680,
+      "layout": {
+        "height": 680,
+        "topInsetPx": 0,
+        "width": 1080
+      },
+      "goldenCandidate": true
+    },
+    {
+      "theme": "light",
+      "name": "11-meeting-canvas",
+      "path": "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/light/images/11-meeting-canvas.png",
+      "sha256": "9a5ce23b8bcf62bf275f225c85482b3ff1f7d97e35b509671417fbfd8c992e35",
+      "width": 1080,
+      "height": 680,
+      "layout": {
+        "height": 680,
+        "topInsetPx": 0,
+        "width": 1080
+      },
+      "goldenCandidate": true
+    },
+    {
+      "theme": "light",
+      "name": "12-recording-now",
+      "path": "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/light/images/12-recording-now.png",
+      "sha256": "b82c176df1b56a26847b39af63157ff9e4beb82f0ce5e5b6f7dfb7ff6078b8a2",
+      "width": 1240,
+      "height": 820,
+      "layout": {
+        "height": 820,
+        "topInsetPx": 0,
+        "width": 1240
+      },
+      "goldenCandidate": false
+    },
+    {
+      "theme": "dark",
+      "name": "01-voice-hud-idle",
+      "path": "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/dark/images/01-voice-hud-idle.png",
+      "sha256": "2c778cb1e01b9b9950627e3d8484fc3bfc7e764a0819060ca667fc3352cdea77",
+      "width": 220,
+      "height": 76,
+      "layout": {
+        "height": 76,
+        "topInsetPx": 32,
+        "width": 220
+      },
+      "goldenCandidate": true
+    },
+    {
+      "theme": "dark",
+      "name": "02-voice-hud-listening",
+      "path": "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/dark/images/02-voice-hud-listening.png",
+      "sha256": "5a313cbaf3a824d6db75a0156989fb0660fda4fd6ec7f7c35a3d97c37599c3d7",
+      "width": 600,
+      "height": 100,
+      "layout": {
+        "height": 100,
+        "topInsetPx": 32,
+        "width": 600
+      },
+      "goldenCandidate": true
+    },
+    {
+      "theme": "dark",
+      "name": "02b-voice-hud-preparing",
+      "path": "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/dark/images/02b-voice-hud-preparing.png",
+      "sha256": "4a6ecc05188c465a61176886ca557c1acb8224ab541736dca574fcef9ba6acee",
+      "width": 600,
+      "height": 100,
+      "layout": {
+        "height": 100,
+        "topInsetPx": 32,
+        "width": 600
+      },
+      "goldenCandidate": true
+    },
+    {
+      "theme": "dark",
+      "name": "03-recording-workspace",
+      "path": "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/dark/images/03-recording-workspace.png",
+      "sha256": "a0c7fd8244af3f3f2b1340abc424a5312325fddcccba3e1a3aa6a6fc89ee4954",
+      "width": 1080,
+      "height": 680,
+      "layout": {
+        "height": 680,
+        "topInsetPx": 0,
+        "width": 1080
+      },
+      "goldenCandidate": true
+    },
+    {
+      "theme": "dark",
+      "name": "03b-recording-paused",
+      "path": "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/dark/images/03b-recording-paused.png",
+      "sha256": "0ecdded202a272d907080d753b2bbc6ad7129194e2ec8589f436ebe25490edbf",
+      "width": 1080,
+      "height": 680,
+      "layout": {
+        "height": 680,
+        "topInsetPx": 0,
+        "width": 1080
+      },
+      "goldenCandidate": false
+    },
+    {
+      "theme": "dark",
+      "name": "04-recording-transcript",
+      "path": "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/dark/images/04-recording-transcript.png",
+      "sha256": "fa664749cb25807716bc4d9a076e4c7251d5b792cd2d27f304c07358469967fb",
+      "width": 1080,
+      "height": 680,
+      "layout": {
+        "height": 680,
+        "topInsetPx": 0,
+        "width": 1080
+      },
+      "goldenCandidate": true
+    },
+    {
+      "theme": "dark",
+      "name": "05-recording-rag",
+      "path": "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/dark/images/05-recording-rag.png",
+      "sha256": "57edd79abd09f0708c9ca7423909dea4156ca922f0932f606bb7633585475bf5",
+      "width": 1080,
+      "height": 680,
+      "layout": {
+        "height": 680,
+        "topInsetPx": 0,
+        "width": 1080
+      },
+      "goldenCandidate": true
+    },
+    {
+      "theme": "dark",
+      "name": "06-main-home",
+      "path": "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/dark/images/06-main-home.png",
+      "sha256": "7e64f35f7ee9005a4170a8fdfe07d3c883c0a95f57622b6558b5b015dc572d4f",
+      "width": 1240,
+      "height": 820,
+      "layout": {
+        "height": 820,
+        "topInsetPx": 0,
+        "width": 1240
+      },
+      "goldenCandidate": false
+    },
+    {
+      "theme": "dark",
+      "name": "07-apps",
+      "path": "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/dark/images/07-apps.png",
+      "sha256": "2d5c23c834d409e26ed25f2bdd4c5c08be96491227dabebfadd65f51fcf827c8",
+      "width": 1240,
+      "height": 820,
+      "layout": {
+        "height": 820,
+        "topInsetPx": 0,
+        "width": 1240
+      },
+      "goldenCandidate": false
+    },
+    {
+      "theme": "dark",
+      "name": "08-meeting-detail",
+      "path": "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/dark/images/08-meeting-detail.png",
+      "sha256": "909f09e09d20c7d6c9c79960ca0dbc825e9dd6de40589a717190dbedc849914a",
+      "width": 1240,
+      "height": 820,
+      "layout": {
+        "height": 820,
+        "topInsetPx": 0,
+        "width": 1240
+      },
+      "goldenCandidate": true
+    },
+    {
+      "theme": "dark",
+      "name": "09-permission-denied",
+      "path": "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/dark/images/09-permission-denied.png",
+      "sha256": "8632ce794f6e0d06bb4da26e566989302a109ef4c70a85d7bfb4ac3b2c736653",
+      "width": 1080,
+      "height": 680,
+      "layout": {
+        "height": 680,
+        "topInsetPx": 0,
+        "width": 1080
+      },
+      "goldenCandidate": true
+    },
+    {
+      "theme": "dark",
+      "name": "09b-stt-unavailable",
+      "path": "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/dark/images/09b-stt-unavailable.png",
+      "sha256": "30b8dcfb7dca1c3f522d800607adb83db0e53d5f6510431392d4c692c9b09278",
+      "width": 1080,
+      "height": 680,
+      "layout": {
+        "height": 680,
+        "topInsetPx": 0,
+        "width": 1080
+      },
+      "goldenCandidate": false
+    },
+    {
+      "theme": "dark",
+      "name": "09c-speech-denied",
+      "path": "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/dark/images/09c-speech-denied.png",
+      "sha256": "7123fec47aadea949d41c937707e54837867e08634d4af29b8ebc8587a6ddfd8",
+      "width": 1080,
+      "height": 680,
+      "layout": {
+        "height": 680,
+        "topInsetPx": 0,
+        "width": 1080
+      },
+      "goldenCandidate": false
+    },
+    {
+      "theme": "dark",
+      "name": "10-agent-timeline",
+      "path": "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/dark/images/10-agent-timeline.png",
+      "sha256": "e1c0959c99db8d67aaffe65df9ec2a16c462f28737d41cd26629138aff886d23",
+      "width": 1080,
+      "height": 680,
+      "layout": {
+        "height": 680,
+        "topInsetPx": 0,
+        "width": 1080
+      },
+      "goldenCandidate": true
+    },
+    {
+      "theme": "dark",
+      "name": "11-meeting-canvas",
+      "path": "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/dark/images/11-meeting-canvas.png",
+      "sha256": "09c104a26b631a9fb1f10310d408cca11241b31781860b9ef1570b58982439d0",
+      "width": 1080,
+      "height": 680,
+      "layout": {
+        "height": 680,
+        "topInsetPx": 0,
+        "width": 1080
+      },
+      "goldenCandidate": true
+    },
+    {
+      "theme": "dark",
+      "name": "12-recording-now",
+      "path": "docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/dark/images/12-recording-now.png",
+      "sha256": "6728d98d46acce5afd2354f7061581f21771d711f2342cdb36687c18938e2ad3",
+      "width": 1240,
+      "height": 820,
+      "layout": {
+        "height": 820,
+        "topInsetPx": 0,
+        "width": 1240
+      },
+      "goldenCandidate": false
+    }
+  ],
+  "comparisons": [
+    {
+      "theme": "light",
+      "name": "01-voice-hud-idle",
+      "baseline": "root",
+      "reference": "docs/golden-screenshots/01-voice-hud-idle.png",
+      "referenceSize": [
+        220,
+        44
+      ],
+      "candidateSize": [
+        220,
+        76
+      ],
+      "sameDimensions": false,
+      "sameFileSHA256": false,
+      "referenceSHA256": "94f074bb0e8f414add8dd6fdbad3272d5f7241dc1effba2d94f217645371dae3",
+      "candidateSHA256": "2c778cb1e01b9b9950627e3d8484fc3bfc7e764a0819060ca667fc3352cdea77"
+    },
+    {
+      "theme": "light",
+      "name": "01-voice-hud-idle",
+      "baseline": "macos-26.6.2-2x-safe-top-32",
+      "reference": "docs/golden-screenshots/environments/macos-26.6.2-2x-safe-top-32/light/01-voice-hud-idle.png",
+      "referenceSize": [
+        220,
+        76
+      ],
+      "candidateSize": [
+        220,
+        76
+      ],
+      "sameDimensions": true,
+      "sameFileSHA256": false,
+      "referenceSHA256": "caa4acf3fbd0f415f4aabff66ac4b851547c257d1fe49a4d81b3de94ec2b958e",
+      "candidateSHA256": "2c778cb1e01b9b9950627e3d8484fc3bfc7e764a0819060ca667fc3352cdea77",
+      "fullRGBMaxChannelDeltaGte16Percent": 3.5526315789473686,
+      "diagnosticSampledLuminanceDeltaPercent": 3.54066985645933,
+      "sampleCount": 16720
+    },
+    {
+      "theme": "light",
+      "name": "01-voice-hud-idle",
+      "baseline": "prior-27-candidate",
+      "reference": "docs/quality/evidence/2026-10-02-completion/macos27-visual-review/light/01-voice-hud-idle.png",
+      "referenceSize": [
+        220,
+        76
+      ],
+      "candidateSize": [
+        220,
+        76
+      ],
+      "sameDimensions": true,
+      "sameFileSHA256": true,
+      "referenceSHA256": "2c778cb1e01b9b9950627e3d8484fc3bfc7e764a0819060ca667fc3352cdea77",
+      "candidateSHA256": "2c778cb1e01b9b9950627e3d8484fc3bfc7e764a0819060ca667fc3352cdea77",
+      "fullRGBMaxChannelDeltaGte16Percent": 0.0,
+      "diagnosticSampledLuminanceDeltaPercent": 0.0,
+      "sampleCount": 16720
+    },
+    {
+      "theme": "light",
+      "name": "02-voice-hud-listening",
+      "baseline": "root",
+      "reference": "docs/golden-screenshots/02-voice-hud-listening.png",
+      "referenceSize": [
+        600,
+        53
+      ],
+      "candidateSize": [
+        600,
+        100
+      ],
+      "sameDimensions": false,
+      "sameFileSHA256": false,
+      "referenceSHA256": "0ab0f37540fa9a13f084975fd6d41572e877f13b04a20a14ce573a6cf70f6085",
+      "candidateSHA256": "5a313cbaf3a824d6db75a0156989fb0660fda4fd6ec7f7c35a3d97c37599c3d7"
+    },
+    {
+      "theme": "light",
+      "name": "02-voice-hud-listening",
+      "baseline": "macos-26.6.2-2x-safe-top-32",
+      "reference": "docs/golden-screenshots/environments/macos-26.6.2-2x-safe-top-32/light/02-voice-hud-listening.png",
+      "referenceSize": [
+        600,
+        100
+      ],
+      "candidateSize": [
+        600,
+        100
+      ],
+      "sameDimensions": true,
+      "sameFileSHA256": false,
+      "referenceSHA256": "6935e11952f4b36cb435724cecac52a0c864ca25d098d5d56974e10337785218",
+      "candidateSHA256": "5a313cbaf3a824d6db75a0156989fb0660fda4fd6ec7f7c35a3d97c37599c3d7",
+      "fullRGBMaxChannelDeltaGte16Percent": 4.316666666666666,
+      "diagnosticSampledLuminanceDeltaPercent": 4.21,
+      "sampleCount": 20000
+    },
+    {
+      "theme": "light",
+      "name": "02-voice-hud-listening",
+      "baseline": "prior-27-candidate",
+      "reference": "docs/quality/evidence/2026-10-02-completion/macos27-visual-review/light/02-voice-hud-listening.png",
+      "referenceSize": [
+        600,
+        100
+      ],
+      "candidateSize": [
+        600,
+        100
+      ],
+      "sameDimensions": true,
+      "sameFileSHA256": true,
+      "referenceSHA256": "5a313cbaf3a824d6db75a0156989fb0660fda4fd6ec7f7c35a3d97c37599c3d7",
+      "candidateSHA256": "5a313cbaf3a824d6db75a0156989fb0660fda4fd6ec7f7c35a3d97c37599c3d7",
+      "fullRGBMaxChannelDeltaGte16Percent": 0.0,
+      "diagnosticSampledLuminanceDeltaPercent": 0.0,
+      "sampleCount": 20000
+    },
+    {
+      "theme": "light",
+      "name": "02b-voice-hud-preparing",
+      "baseline": "root",
+      "reference": "docs/golden-screenshots/02b-voice-hud-preparing.png",
+      "referenceSize": [
+        600,
+        53
+      ],
+      "candidateSize": [
+        600,
+        100
+      ],
+      "sameDimensions": false,
+      "sameFileSHA256": false,
+      "referenceSHA256": "d113a42ec3772c8d2855ccde3de869876bfb5a414a917b46ee453a780dfcc3a2",
+      "candidateSHA256": "4a6ecc05188c465a61176886ca557c1acb8224ab541736dca574fcef9ba6acee"
+    },
+    {
+      "theme": "light",
+      "name": "02b-voice-hud-preparing",
+      "baseline": "macos-26.6.2-2x-safe-top-32",
+      "reference": "docs/golden-screenshots/environments/macos-26.6.2-2x-safe-top-32/light/02b-voice-hud-preparing.png",
+      "referenceSize": [
+        600,
+        100
+      ],
+      "candidateSize": [
+        600,
+        100
+      ],
+      "sameDimensions": true,
+      "sameFileSHA256": false,
+      "referenceSHA256": "8d1100189fa365bc1cbad7ceb34346d64ab513c9998ae0a60201d1346e96477a",
+      "candidateSHA256": "4a6ecc05188c465a61176886ca557c1acb8224ab541736dca574fcef9ba6acee",
+      "fullRGBMaxChannelDeltaGte16Percent": 3.52,
+      "diagnosticSampledLuminanceDeltaPercent": 3.455,
+      "sampleCount": 20000
+    },
+    {
+      "theme": "light",
+      "name": "02b-voice-hud-preparing",
+      "baseline": "prior-27-candidate",
+      "reference": "docs/quality/evidence/2026-10-02-completion/macos27-visual-review/light/02b-voice-hud-preparing.png",
+      "referenceSize": [
+        600,
+        100
+      ],
+      "candidateSize": [
+        600,
+        100
+      ],
+      "sameDimensions": true,
+      "sameFileSHA256": true,
+      "referenceSHA256": "4a6ecc05188c465a61176886ca557c1acb8224ab541736dca574fcef9ba6acee",
+      "candidateSHA256": "4a6ecc05188c465a61176886ca557c1acb8224ab541736dca574fcef9ba6acee",
+      "fullRGBMaxChannelDeltaGte16Percent": 0.0,
+      "diagnosticSampledLuminanceDeltaPercent": 0.0,
+      "sampleCount": 20000
+    },
+    {
+      "theme": "light",
+      "name": "03-recording-workspace",
+      "baseline": "root",
+      "reference": "docs/golden-screenshots/03-recording-workspace.png",
+      "referenceSize": [
+        1080,
+        680
+      ],
+      "candidateSize": [
+        1080,
+        680
+      ],
+      "sameDimensions": true,
+      "sameFileSHA256": false,
+      "referenceSHA256": "90f36ebd2045c1408e837654e663d87c518168c1009113648df6402eeb9adecf",
+      "candidateSHA256": "0a45cf8143f972dd348bf223e6204ef2ba5f1568a4647647ca05ab55ecf707b7",
+      "fullRGBMaxChannelDeltaGte16Percent": 1.3485838779956427,
+      "diagnosticSampledLuminanceDeltaPercent": 1.0890846793930495,
+      "sampleCount": 49032
+    },
+    {
+      "theme": "light",
+      "name": "03-recording-workspace",
+      "baseline": "macos-26.6.2-2x-safe-top-32",
+      "reference": "docs/golden-screenshots/environments/macos-26.6.2-2x-safe-top-32/light/03-recording-workspace.png",
+      "referenceSize": [
+        1080,
+        680
+      ],
+      "candidateSize": [
+        1080,
+        680
+      ],
+      "sameDimensions": true,
+      "sameFileSHA256": false,
+      "referenceSHA256": "0884d5783b8413833c7c8721a4ae79147ee62697b26e6aa5692911199d1c5254",
+      "candidateSHA256": "0a45cf8143f972dd348bf223e6204ef2ba5f1568a4647647ca05ab55ecf707b7",
+      "fullRGBMaxChannelDeltaGte16Percent": 0.23733660130718953,
+      "diagnosticSampledLuminanceDeltaPercent": 0.0,
+      "sampleCount": 49032
+    },
+    {
+      "theme": "light",
+      "name": "03-recording-workspace",
+      "baseline": "prior-27-candidate",
+      "reference": "docs/quality/evidence/2026-10-02-completion/macos27-visual-review/light/03-recording-workspace.png",
+      "referenceSize": [
+        1080,
+        680
+      ],
+      "candidateSize": [
+        1080,
+        680
+      ],
+      "sameDimensions": true,
+      "sameFileSHA256": true,
+      "referenceSHA256": "0a45cf8143f972dd348bf223e6204ef2ba5f1568a4647647ca05ab55ecf707b7",
+      "candidateSHA256": "0a45cf8143f972dd348bf223e6204ef2ba5f1568a4647647ca05ab55ecf707b7",
+      "fullRGBMaxChannelDeltaGte16Percent": 0.0,
+      "diagnosticSampledLuminanceDeltaPercent": 0.0,
+      "sampleCount": 49032
+    },
+    {
+      "theme": "light",
+      "name": "04-recording-transcript",
+      "baseline": "root",
+      "reference": "docs/golden-screenshots/04-recording-transcript.png",
+      "referenceSize": [
+        1080,
+        680
+      ],
+      "candidateSize": [
+        1080,
+        680
+      ],
+      "sameDimensions": true,
+      "sameFileSHA256": false,
+      "referenceSHA256": "0d2ff7118f1e2e56bd5a31b157464e0830af736a79d08abf5d8228495dd56c94",
+      "candidateSHA256": "fd088de487bb72861ab0e33cbcffe49981670a870a51599dfdafe26ec6b70543",
+      "fullRGBMaxChannelDeltaGte16Percent": 1.9339596949891067,
+      "diagnosticSampledLuminanceDeltaPercent": 1.5296133137542829,
+      "sampleCount": 49032
+    },
+    {
+      "theme": "light",
+      "name": "04-recording-transcript",
+      "baseline": "macos-26.6.2-2x-safe-top-32",
+      "reference": "docs/golden-screenshots/environments/macos-26.6.2-2x-safe-top-32/light/04-recording-transcript.png",
+      "referenceSize": [
+        1080,
+        680
+      ],
+      "candidateSize": [
+        1080,
+        680
+      ],
+      "sameDimensions": true,
+      "sameFileSHA256": false,
+      "referenceSHA256": "c034f986ac751cba6a49e4db151f90a8267e539168a9b4b4ecf5a78d2d978191",
+      "candidateSHA256": "fd088de487bb72861ab0e33cbcffe49981670a870a51599dfdafe26ec6b70543",
+      "fullRGBMaxChannelDeltaGte16Percent": 0.349400871459695,
+      "diagnosticSampledLuminanceDeltaPercent": 0.0,
+      "sampleCount": 49032
+    },
+    {
+      "theme": "light",
+      "name": "04-recording-transcript",
+      "baseline": "prior-27-candidate",
+      "reference": "docs/quality/evidence/2026-10-02-completion/macos27-visual-review/light/04-recording-transcript.png",
+      "referenceSize": [
+        1080,
+        680
+      ],
+      "candidateSize": [
+        1080,
+        680
+      ],
+      "sameDimensions": true,
+      "sameFileSHA256": true,
+      "referenceSHA256": "fd088de487bb72861ab0e33cbcffe49981670a870a51599dfdafe26ec6b70543",
+      "candidateSHA256": "fd088de487bb72861ab0e33cbcffe49981670a870a51599dfdafe26ec6b70543",
+      "fullRGBMaxChannelDeltaGte16Percent": 0.0,
+      "diagnosticSampledLuminanceDeltaPercent": 0.0,
+      "sampleCount": 49032
+    },
+    {
+      "theme": "light",
+      "name": "05-recording-rag",
+      "baseline": "root",
+      "reference": "docs/golden-screenshots/05-recording-rag.png",
+      "referenceSize": [
+        1080,
+        680
+      ],
+      "candidateSize": [
+        1080,
+        680
+      ],
+      "sameDimensions": true,
+      "sameFileSHA256": false,
+      "referenceSHA256": "ad16e51372fc91e22376372ecd82b4debd8c9ff7cd2394f20133c52ddca465f9",
+      "candidateSHA256": "03c614da16f5432ec5e7cdd4a92b3b124af81f33f2cdc045d05c14ae34cfafd3",
+      "fullRGBMaxChannelDeltaGte16Percent": 2.047657952069717,
+      "diagnosticSampledLuminanceDeltaPercent": 1.7559960841899167,
+      "sampleCount": 49032
+    },
+    {
+      "theme": "light",
+      "name": "05-recording-rag",
+      "baseline": "macos-26.6.2-2x-safe-top-32",
+      "reference": "docs/golden-screenshots/environments/macos-26.6.2-2x-safe-top-32/light/05-recording-rag.png",
+      "referenceSize": [
+        1080,
+        680
+      ],
+      "candidateSize": [
+        1080,
+        680
+      ],
+      "sameDimensions": true,
+      "sameFileSHA256": false,
+      "referenceSHA256": "0f2d76669b0189de64ae0af0d4c55c175e1aef0ba9ff48c9677c450c3eabd68b",
+      "candidateSHA256": "03c614da16f5432ec5e7cdd4a92b3b124af81f33f2cdc045d05c14ae34cfafd3",
+      "fullRGBMaxChannelDeltaGte16Percent": 0.19580610021786493,
+      "diagnosticSampledLuminanceDeltaPercent": 0.0,
+      "sampleCount": 49032
+    },
+    {
+      "theme": "light",
+      "name": "05-recording-rag",
+      "baseline": "prior-27-candidate",
+      "reference": "docs/quality/evidence/2026-10-02-completion/macos27-visual-review/light/05-recording-rag.png",
+      "referenceSize": [
+        1080,
+        680
+      ],
+      "candidateSize": [
+        1080,
+        680
+      ],
+      "sameDimensions": true,
+      "sameFileSHA256": true,
+      "referenceSHA256": "03c614da16f5432ec5e7cdd4a92b3b124af81f33f2cdc045d05c14ae34cfafd3",
+      "candidateSHA256": "03c614da16f5432ec5e7cdd4a92b3b124af81f33f2cdc045d05c14ae34cfafd3",
+      "fullRGBMaxChannelDeltaGte16Percent": 0.0,
+      "diagnosticSampledLuminanceDeltaPercent": 0.0,
+      "sampleCount": 49032
+    },
+    {
+      "theme": "light",
+      "name": "08-meeting-detail",
+      "baseline": "root",
+      "reference": "docs/golden-screenshots/08-meeting-detail.png",
+      "referenceSize": [
+        1240,
+        820
+      ],
+      "candidateSize": [
+        1240,
+        820
+      ],
+      "sameDimensions": true,
+      "sameFileSHA256": false,
+      "referenceSHA256": "975b03f64e7fd9b9c7317ccda6a2705d69466daa39db6ebcb10257b96987a7d6",
+      "candidateSHA256": "625d9d266ce005be7ec71eb39d336d036c2b0e48ec92f63151bf219f6835ebc3",
+      "fullRGBMaxChannelDeltaGte16Percent": 4.833988985051141,
+      "diagnosticSampledLuminanceDeltaPercent": 4.826204783786968,
+      "sampleCount": 42435
+    },
+    {
+      "theme": "light",
+      "name": "08-meeting-detail",
+      "baseline": "macos-26.6.2-2x-safe-top-32",
+      "reference": "docs/golden-screenshots/environments/macos-26.6.2-2x-safe-top-32/light/08-meeting-detail.png",
+      "referenceSize": [
+        1240,
+        820
+      ],
+      "candidateSize": [
+        1240,
+        820
+      ],
+      "sameDimensions": true,
+      "sameFileSHA256": false,
+      "referenceSHA256": "6782058a0d12aa26608f14e51442feb4acc7328d845ce149aa180ddac61860e6",
+      "candidateSHA256": "625d9d266ce005be7ec71eb39d336d036c2b0e48ec92f63151bf219f6835ebc3",
+      "fullRGBMaxChannelDeltaGte16Percent": 4.729051927616051,
+      "diagnosticSampledLuminanceDeltaPercent": 4.684812065511959,
+      "sampleCount": 42435
+    },
+    {
+      "theme": "light",
+      "name": "08-meeting-detail",
+      "baseline": "prior-27-candidate",
+      "reference": "docs/quality/evidence/2026-10-02-completion/macos27-visual-review/light/08-meeting-detail.png",
+      "referenceSize": [
+        1240,
+        820
+      ],
+      "candidateSize": [
+        1240,
+        820
+      ],
+      "sameDimensions": true,
+      "sameFileSHA256": false,
+      "referenceSHA256": "7a0869b44875bf6c5405620cdaa7ff164c241b010017696e4c8c96e84db7ea89",
+      "candidateSHA256": "625d9d266ce005be7ec71eb39d336d036c2b0e48ec92f63151bf219f6835ebc3",
+      "fullRGBMaxChannelDeltaGte16Percent": 0.011309992132179387,
+      "diagnosticSampledLuminanceDeltaPercent": 0.04713090609166961,
+      "sampleCount": 42435
+    },
+    {
+      "theme": "light",
+      "name": "09-permission-denied",
+      "baseline": "root",
+      "reference": "docs/golden-screenshots/09-permission-denied.png",
+      "referenceSize": [
+        1080,
+        680
+      ],
+      "candidateSize": [
+        1080,
+        680
+      ],
+      "sameDimensions": true,
+      "sameFileSHA256": false,
+      "referenceSHA256": "110d3667d92c1866844ebf9b0bdc28a554189a93d5bb85f653b2c366e6ce5be2",
+      "candidateSHA256": "d573c33bbb8351bbc04275b09ecfd2c12222454bb69772100624a4185988e6ac",
+      "fullRGBMaxChannelDeltaGte16Percent": 1.241421568627451,
+      "diagnosticSampledLuminanceDeltaPercent": 1.0544134442812856,
+      "sampleCount": 49032
+    },
+    {
+      "theme": "light",
+      "name": "09-permission-denied",
+      "baseline": "macos-26.6.2-2x-safe-top-32",
+      "reference": "docs/golden-screenshots/environments/macos-26.6.2-2x-safe-top-32/light/09-permission-denied.png",
+      "referenceSize": [
+        1080,
+        680
+      ],
+      "candidateSize": [
+        1080,
+        680
+      ],
+      "sameDimensions": true,
+      "sameFileSHA256": false,
+      "referenceSHA256": "716545d91d9197b0b0c307ba9f85d319d1de7509920fc7260a50960a06bd06e6",
+      "candidateSHA256": "d573c33bbb8351bbc04275b09ecfd2c12222454bb69772100624a4185988e6ac",
+      "fullRGBMaxChannelDeltaGte16Percent": 0.28308823529411764,
+      "diagnosticSampledLuminanceDeltaPercent": 0.06730298580518845,
+      "sampleCount": 49032
+    },
+    {
+      "theme": "light",
+      "name": "09-permission-denied",
+      "baseline": "prior-27-candidate",
+      "reference": "docs/quality/evidence/2026-10-02-completion/macos27-visual-review/light/09-permission-denied.png",
+      "referenceSize": [
+        1080,
+        680
+      ],
+      "candidateSize": [
+        1080,
+        680
+      ],
+      "sameDimensions": true,
+      "sameFileSHA256": true,
+      "referenceSHA256": "d573c33bbb8351bbc04275b09ecfd2c12222454bb69772100624a4185988e6ac",
+      "candidateSHA256": "d573c33bbb8351bbc04275b09ecfd2c12222454bb69772100624a4185988e6ac",
+      "fullRGBMaxChannelDeltaGte16Percent": 0.0,
+      "diagnosticSampledLuminanceDeltaPercent": 0.0,
+      "sampleCount": 49032
+    },
+    {
+      "theme": "light",
+      "name": "10-agent-timeline",
+      "baseline": "root",
+      "reference": "docs/golden-screenshots/10-agent-timeline.png",
+      "referenceSize": [
+        1080,
+        680
+      ],
+      "candidateSize": [
+        1080,
+        680
+      ],
+      "sameDimensions": true,
+      "sameFileSHA256": false,
+      "referenceSHA256": "9267b6270163557c942894e9f95969b2dbd05c6eef8abe0f0d959e35e10f31b3",
+      "candidateSHA256": "2325c6b2b63f1e7c9648df2f6c6030efd121f686a63b5973ac74067961c1a837",
+      "fullRGBMaxChannelDeltaGte16Percent": 1.400735294117647,
+      "diagnosticSampledLuminanceDeltaPercent": 1.1237559145048133,
+      "sampleCount": 49032
+    },
+    {
+      "theme": "light",
+      "name": "10-agent-timeline",
+      "baseline": "macos-26.6.2-2x-safe-top-32",
+      "reference": "docs/golden-screenshots/environments/macos-26.6.2-2x-safe-top-32/light/10-agent-timeline.png",
+      "referenceSize": [
+        1080,
+        680
+      ],
+      "candidateSize": [
+        1080,
+        680
+      ],
+      "sameDimensions": true,
+      "sameFileSHA256": false,
+      "referenceSHA256": "6e2398ecb3d05f96ce255ea61c9e8fcdcd8cf25193550a9e43cc8474ac32aa4c",
+      "candidateSHA256": "2325c6b2b63f1e7c9648df2f6c6030efd121f686a63b5973ac74067961c1a837",
+      "fullRGBMaxChannelDeltaGte16Percent": 0.24673202614379086,
+      "diagnosticSampledLuminanceDeltaPercent": 0.0,
+      "sampleCount": 49032
+    },
+    {
+      "theme": "light",
+      "name": "10-agent-timeline",
+      "baseline": "prior-27-candidate",
+      "reference": "docs/quality/evidence/2026-10-02-completion/macos27-visual-review/light/10-agent-timeline.png",
+      "referenceSize": [
+        1080,
+        680
+      ],
+      "candidateSize": [
+        1080,
+        680
+      ],
+      "sameDimensions": true,
+      "sameFileSHA256": true,
+      "referenceSHA256": "2325c6b2b63f1e7c9648df2f6c6030efd121f686a63b5973ac74067961c1a837",
+      "candidateSHA256": "2325c6b2b63f1e7c9648df2f6c6030efd121f686a63b5973ac74067961c1a837",
+      "fullRGBMaxChannelDeltaGte16Percent": 0.0,
+      "diagnosticSampledLuminanceDeltaPercent": 0.0,
+      "sampleCount": 49032
+    },
+    {
+      "theme": "light",
+      "name": "11-meeting-canvas",
+      "baseline": "root",
+      "reference": "docs/golden-screenshots/11-meeting-canvas.png",
+      "referenceSize": [
+        1080,
+        680
+      ],
+      "candidateSize": [
+        1080,
+        680
+      ],
+      "sameDimensions": true,
+      "sameFileSHA256": false,
+      "referenceSHA256": "45b0876d22b2907bbef07d2525b1ba66a3b52821076e669334f574bab1af6142",
+      "candidateSHA256": "9a5ce23b8bcf62bf275f225c85482b3ff1f7d97e35b509671417fbfd8c992e35",
+      "fullRGBMaxChannelDeltaGte16Percent": 2.8334694989106755,
+      "diagnosticSampledLuminanceDeltaPercent": 2.420868004568445,
+      "sampleCount": 49032
+    },
+    {
+      "theme": "light",
+      "name": "11-meeting-canvas",
+      "baseline": "macos-26.6.2-2x-safe-top-32",
+      "reference": "docs/golden-screenshots/environments/macos-26.6.2-2x-safe-top-32/light/11-meeting-canvas.png",
+      "referenceSize": [
+        1080,
+        680
+      ],
+      "candidateSize": [
+        1080,
+        680
+      ],
+      "sameDimensions": true,
+      "sameFileSHA256": false,
+      "referenceSHA256": "b2dad30415970c6b2ed07f4881bf09b6cfae204a7d8da7ad304fada045b8c770",
+      "candidateSHA256": "9a5ce23b8bcf62bf275f225c85482b3ff1f7d97e35b509671417fbfd8c992e35",
+      "fullRGBMaxChannelDeltaGte16Percent": 0.5752995642701525,
+      "diagnosticSampledLuminanceDeltaPercent": 0.11217164300864742,
+      "sampleCount": 49032
+    },
+    {
+      "theme": "light",
+      "name": "11-meeting-canvas",
+      "baseline": "prior-27-candidate",
+      "reference": "docs/quality/evidence/2026-10-02-completion/macos27-visual-review/light/11-meeting-canvas.png",
+      "referenceSize": [
+        1080,
+        680
+      ],
+      "candidateSize": [
+        1080,
+        680
+      ],
+      "sameDimensions": true,
+      "sameFileSHA256": false,
+      "referenceSHA256": "b1919150ed27990ab59554e88df05984f4778e8718ee8933d63949c5790236ad",
+      "candidateSHA256": "9a5ce23b8bcf62bf275f225c85482b3ff1f7d97e35b509671417fbfd8c992e35",
+      "fullRGBMaxChannelDeltaGte16Percent": 0.1875,
+      "diagnosticSampledLuminanceDeltaPercent": 0.15704030021210638,
+      "sampleCount": 49032
+    },
+    {
+      "theme": "dark",
+      "name": "01-voice-hud-idle",
+      "baseline": "root",
+      "reference": "docs/golden-screenshots/dark/01-voice-hud-idle.png",
+      "referenceSize": [
+        220,
+        44
+      ],
+      "candidateSize": [
+        220,
+        76
+      ],
+      "sameDimensions": false,
+      "sameFileSHA256": false,
+      "referenceSHA256": "94f074bb0e8f414add8dd6fdbad3272d5f7241dc1effba2d94f217645371dae3",
+      "candidateSHA256": "2c778cb1e01b9b9950627e3d8484fc3bfc7e764a0819060ca667fc3352cdea77"
+    },
+    {
+      "theme": "dark",
+      "name": "01-voice-hud-idle",
+      "baseline": "macos-26.6.2-2x-safe-top-32",
+      "reference": "docs/golden-screenshots/environments/macos-26.6.2-2x-safe-top-32/dark/01-voice-hud-idle.png",
+      "referenceSize": [
+        220,
+        76
+      ],
+      "candidateSize": [
+        220,
+        76
+      ],
+      "sameDimensions": true,
+      "sameFileSHA256": false,
+      "referenceSHA256": "caa4acf3fbd0f415f4aabff66ac4b851547c257d1fe49a4d81b3de94ec2b958e",
+      "candidateSHA256": "2c778cb1e01b9b9950627e3d8484fc3bfc7e764a0819060ca667fc3352cdea77",
+      "fullRGBMaxChannelDeltaGte16Percent": 3.5526315789473686,
+      "diagnosticSampledLuminanceDeltaPercent": 3.54066985645933,
+      "sampleCount": 16720
+    },
+    {
+      "theme": "dark",
+      "name": "01-voice-hud-idle",
+      "baseline": "prior-27-candidate",
+      "reference": "docs/quality/evidence/2026-10-02-completion/macos27-visual-review/dark/01-voice-hud-idle.png",
+      "referenceSize": [
+        220,
+        76
+      ],
+      "candidateSize": [
+        220,
+        76
+      ],
+      "sameDimensions": true,
+      "sameFileSHA256": true,
+      "referenceSHA256": "2c778cb1e01b9b9950627e3d8484fc3bfc7e764a0819060ca667fc3352cdea77",
+      "candidateSHA256": "2c778cb1e01b9b9950627e3d8484fc3bfc7e764a0819060ca667fc3352cdea77",
+      "fullRGBMaxChannelDeltaGte16Percent": 0.0,
+      "diagnosticSampledLuminanceDeltaPercent": 0.0,
+      "sampleCount": 16720
+    },
+    {
+      "theme": "dark",
+      "name": "02-voice-hud-listening",
+      "baseline": "root",
+      "reference": "docs/golden-screenshots/dark/02-voice-hud-listening.png",
+      "referenceSize": [
+        600,
+        53
+      ],
+      "candidateSize": [
+        600,
+        100
+      ],
+      "sameDimensions": false,
+      "sameFileSHA256": false,
+      "referenceSHA256": "0ab0f37540fa9a13f084975fd6d41572e877f13b04a20a14ce573a6cf70f6085",
+      "candidateSHA256": "5a313cbaf3a824d6db75a0156989fb0660fda4fd6ec7f7c35a3d97c37599c3d7"
+    },
+    {
+      "theme": "dark",
+      "name": "02-voice-hud-listening",
+      "baseline": "macos-26.6.2-2x-safe-top-32",
+      "reference": "docs/golden-screenshots/environments/macos-26.6.2-2x-safe-top-32/dark/02-voice-hud-listening.png",
+      "referenceSize": [
+        600,
+        100
+      ],
+      "candidateSize": [
+        600,
+        100
+      ],
+      "sameDimensions": true,
+      "sameFileSHA256": false,
+      "referenceSHA256": "6935e11952f4b36cb435724cecac52a0c864ca25d098d5d56974e10337785218",
+      "candidateSHA256": "5a313cbaf3a824d6db75a0156989fb0660fda4fd6ec7f7c35a3d97c37599c3d7",
+      "fullRGBMaxChannelDeltaGte16Percent": 4.316666666666666,
+      "diagnosticSampledLuminanceDeltaPercent": 4.21,
+      "sampleCount": 20000
+    },
+    {
+      "theme": "dark",
+      "name": "02-voice-hud-listening",
+      "baseline": "prior-27-candidate",
+      "reference": "docs/quality/evidence/2026-10-02-completion/macos27-visual-review/dark/02-voice-hud-listening.png",
+      "referenceSize": [
+        600,
+        100
+      ],
+      "candidateSize": [
+        600,
+        100
+      ],
+      "sameDimensions": true,
+      "sameFileSHA256": true,
+      "referenceSHA256": "5a313cbaf3a824d6db75a0156989fb0660fda4fd6ec7f7c35a3d97c37599c3d7",
+      "candidateSHA256": "5a313cbaf3a824d6db75a0156989fb0660fda4fd6ec7f7c35a3d97c37599c3d7",
+      "fullRGBMaxChannelDeltaGte16Percent": 0.0,
+      "diagnosticSampledLuminanceDeltaPercent": 0.0,
+      "sampleCount": 20000
+    },
+    {
+      "theme": "dark",
+      "name": "02b-voice-hud-preparing",
+      "baseline": "root",
+      "reference": "docs/golden-screenshots/dark/02b-voice-hud-preparing.png",
+      "referenceSize": [
+        600,
+        53
+      ],
+      "candidateSize": [
+        600,
+        100
+      ],
+      "sameDimensions": false,
+      "sameFileSHA256": false,
+      "referenceSHA256": "d113a42ec3772c8d2855ccde3de869876bfb5a414a917b46ee453a780dfcc3a2",
+      "candidateSHA256": "4a6ecc05188c465a61176886ca557c1acb8224ab541736dca574fcef9ba6acee"
+    },
+    {
+      "theme": "dark",
+      "name": "02b-voice-hud-preparing",
+      "baseline": "macos-26.6.2-2x-safe-top-32",
+      "reference": "docs/golden-screenshots/environments/macos-26.6.2-2x-safe-top-32/dark/02b-voice-hud-preparing.png",
+      "referenceSize": [
+        600,
+        100
+      ],
+      "candidateSize": [
+        600,
+        100
+      ],
+      "sameDimensions": true,
+      "sameFileSHA256": false,
+      "referenceSHA256": "8d1100189fa365bc1cbad7ceb34346d64ab513c9998ae0a60201d1346e96477a",
+      "candidateSHA256": "4a6ecc05188c465a61176886ca557c1acb8224ab541736dca574fcef9ba6acee",
+      "fullRGBMaxChannelDeltaGte16Percent": 3.52,
+      "diagnosticSampledLuminanceDeltaPercent": 3.455,
+      "sampleCount": 20000
+    },
+    {
+      "theme": "dark",
+      "name": "02b-voice-hud-preparing",
+      "baseline": "prior-27-candidate",
+      "reference": "docs/quality/evidence/2026-10-02-completion/macos27-visual-review/dark/02b-voice-hud-preparing.png",
+      "referenceSize": [
+        600,
+        100
+      ],
+      "candidateSize": [
+        600,
+        100
+      ],
+      "sameDimensions": true,
+      "sameFileSHA256": true,
+      "referenceSHA256": "4a6ecc05188c465a61176886ca557c1acb8224ab541736dca574fcef9ba6acee",
+      "candidateSHA256": "4a6ecc05188c465a61176886ca557c1acb8224ab541736dca574fcef9ba6acee",
+      "fullRGBMaxChannelDeltaGte16Percent": 0.0,
+      "diagnosticSampledLuminanceDeltaPercent": 0.0,
+      "sampleCount": 20000
+    },
+    {
+      "theme": "dark",
+      "name": "03-recording-workspace",
+      "baseline": "root",
+      "reference": "docs/golden-screenshots/dark/03-recording-workspace.png",
+      "referenceSize": [
+        1080,
+        680
+      ],
+      "candidateSize": [
+        1080,
+        680
+      ],
+      "sameDimensions": true,
+      "sameFileSHA256": false,
+      "referenceSHA256": "4afd023cd271db5c8b553b9c291164aeed9a96ad6e7691fd9f670fb298005e30",
+      "candidateSHA256": "a0c7fd8244af3f3f2b1340abc424a5312325fddcccba3e1a3aa6a6fc89ee4954",
+      "fullRGBMaxChannelDeltaGte16Percent": 1.3627450980392157,
+      "diagnosticSampledLuminanceDeltaPercent": 1.0442160221895904,
+      "sampleCount": 49032
+    },
+    {
+      "theme": "dark",
+      "name": "03-recording-workspace",
+      "baseline": "macos-26.6.2-2x-safe-top-32",
+      "reference": "docs/golden-screenshots/environments/macos-26.6.2-2x-safe-top-32/dark/03-recording-workspace.png",
+      "referenceSize": [
+        1080,
+        680
+      ],
+      "candidateSize": [
+        1080,
+        680
+      ],
+      "sameDimensions": true,
+      "sameFileSHA256": false,
+      "referenceSHA256": "fa3878e67cabc4e6cd0b9fccccffef5b8b5db13aee40a322af72a2a3ec8b8243",
+      "candidateSHA256": "a0c7fd8244af3f3f2b1340abc424a5312325fddcccba3e1a3aa6a6fc89ee4954",
+      "fullRGBMaxChannelDeltaGte16Percent": 0.2340686274509804,
+      "diagnosticSampledLuminanceDeltaPercent": 0.0,
+      "sampleCount": 49032
+    },
+    {
+      "theme": "dark",
+      "name": "03-recording-workspace",
+      "baseline": "prior-27-candidate",
+      "reference": "docs/quality/evidence/2026-10-02-completion/macos27-visual-review/dark/03-recording-workspace.png",
+      "referenceSize": [
+        1080,
+        680
+      ],
+      "candidateSize": [
+        1080,
+        680
+      ],
+      "sameDimensions": true,
+      "sameFileSHA256": false,
+      "referenceSHA256": "b6ebbdf12c7be2e52ea0bcbe5302a58b8bc4943b26ab78f53c1f941b535fa7e1",
+      "candidateSHA256": "a0c7fd8244af3f3f2b1340abc424a5312325fddcccba3e1a3aa6a6fc89ee4954",
+      "fullRGBMaxChannelDeltaGte16Percent": 0.0,
+      "diagnosticSampledLuminanceDeltaPercent": 0.0,
+      "sampleCount": 49032
+    },
+    {
+      "theme": "dark",
+      "name": "04-recording-transcript",
+      "baseline": "root",
+      "reference": "docs/golden-screenshots/dark/04-recording-transcript.png",
+      "referenceSize": [
+        1080,
+        680
+      ],
+      "candidateSize": [
+        1080,
+        680
+      ],
+      "sameDimensions": true,
+      "sameFileSHA256": false,
+      "referenceSHA256": "a8f065674f17b7a98fc0309b3ca73f3f2f26b4af4792965caeab6801442b83e8",
+      "candidateSHA256": "fa664749cb25807716bc4d9a076e4c7251d5b792cd2d27f304c07358469967fb",
+      "fullRGBMaxChannelDeltaGte16Percent": 1.8696895424836601,
+      "diagnosticSampledLuminanceDeltaPercent": 1.390928373307228,
+      "sampleCount": 49032
+    },
+    {
+      "theme": "dark",
+      "name": "04-recording-transcript",
+      "baseline": "macos-26.6.2-2x-safe-top-32",
+      "reference": "docs/golden-screenshots/environments/macos-26.6.2-2x-safe-top-32/dark/04-recording-transcript.png",
+      "referenceSize": [
+        1080,
+        680
+      ],
+      "candidateSize": [
+        1080,
+        680
+      ],
+      "sameDimensions": true,
+      "sameFileSHA256": false,
+      "referenceSHA256": "ed57f82a7d3d0d5670b918559d54ee30ad9db43321f0ad920f5d2f9788bf7f68",
+      "candidateSHA256": "fa664749cb25807716bc4d9a076e4c7251d5b792cd2d27f304c07358469967fb",
+      "fullRGBMaxChannelDeltaGte16Percent": 0.3461328976034858,
+      "diagnosticSampledLuminanceDeltaPercent": 0.0,
+      "sampleCount": 49032
+    },
+    {
+      "theme": "dark",
+      "name": "04-recording-transcript",
+      "baseline": "prior-27-candidate",
+      "reference": "docs/quality/evidence/2026-10-02-completion/macos27-visual-review/dark/04-recording-transcript.png",
+      "referenceSize": [
+        1080,
+        680
+      ],
+      "candidateSize": [
+        1080,
+        680
+      ],
+      "sameDimensions": true,
+      "sameFileSHA256": true,
+      "referenceSHA256": "fa664749cb25807716bc4d9a076e4c7251d5b792cd2d27f304c07358469967fb",
+      "candidateSHA256": "fa664749cb25807716bc4d9a076e4c7251d5b792cd2d27f304c07358469967fb",
+      "fullRGBMaxChannelDeltaGte16Percent": 0.0,
+      "diagnosticSampledLuminanceDeltaPercent": 0.0,
+      "sampleCount": 49032
+    },
+    {
+      "theme": "dark",
+      "name": "05-recording-rag",
+      "baseline": "root",
+      "reference": "docs/golden-screenshots/dark/05-recording-rag.png",
+      "referenceSize": [
+        1080,
+        680
+      ],
+      "candidateSize": [
+        1080,
+        680
+      ],
+      "sameDimensions": true,
+      "sameFileSHA256": false,
+      "referenceSHA256": "1ef1523fcc75b35deea89667cbb1dc8ab380589e57217ab93e7eff5b4bc2d34d",
+      "candidateSHA256": "57edd79abd09f0708c9ca7423909dea4156ca922f0932f606bb7633585475bf5",
+      "fullRGBMaxChannelDeltaGte16Percent": 2.2630718954248366,
+      "diagnosticSampledLuminanceDeltaPercent": 1.7784304127916464,
+      "sampleCount": 49032
+    },
+    {
+      "theme": "dark",
+      "name": "05-recording-rag",
+      "baseline": "macos-26.6.2-2x-safe-top-32",
+      "reference": "docs/golden-screenshots/environments/macos-26.6.2-2x-safe-top-32/dark/05-recording-rag.png",
+      "referenceSize": [
+        1080,
+        680
+      ],
+      "candidateSize": [
+        1080,
+        680
+      ],
+      "sameDimensions": true,
+      "sameFileSHA256": false,
+      "referenceSHA256": "7dadb252da65f8feb966d499967c18c7c03956ed297d6d81735dc722e34f8df7",
+      "candidateSHA256": "57edd79abd09f0708c9ca7423909dea4156ca922f0932f606bb7633585475bf5",
+      "fullRGBMaxChannelDeltaGte16Percent": 0.19253812636165576,
+      "diagnosticSampledLuminanceDeltaPercent": 0.0,
+      "sampleCount": 49032
+    },
+    {
+      "theme": "dark",
+      "name": "05-recording-rag",
+      "baseline": "prior-27-candidate",
+      "reference": "docs/quality/evidence/2026-10-02-completion/macos27-visual-review/dark/05-recording-rag.png",
+      "referenceSize": [
+        1080,
+        680
+      ],
+      "candidateSize": [
+        1080,
+        680
+      ],
+      "sameDimensions": true,
+      "sameFileSHA256": true,
+      "referenceSHA256": "57edd79abd09f0708c9ca7423909dea4156ca922f0932f606bb7633585475bf5",
+      "candidateSHA256": "57edd79abd09f0708c9ca7423909dea4156ca922f0932f606bb7633585475bf5",
+      "fullRGBMaxChannelDeltaGte16Percent": 0.0,
+      "diagnosticSampledLuminanceDeltaPercent": 0.0,
+      "sampleCount": 49032
+    },
+    {
+      "theme": "dark",
+      "name": "08-meeting-detail",
+      "baseline": "root",
+      "reference": "docs/golden-screenshots/dark/08-meeting-detail.png",
+      "referenceSize": [
+        1240,
+        820
+      ],
+      "candidateSize": [
+        1240,
+        820
+      ],
+      "sameDimensions": true,
+      "sameFileSHA256": false,
+      "referenceSHA256": "1649969b6f70cb6ea906dc56067222fca5ec1d79963a883b9fa03fa8bd2ba008",
+      "candidateSHA256": "909f09e09d20c7d6c9c79960ca0dbc825e9dd6de40589a717190dbedc849914a",
+      "fullRGBMaxChannelDeltaGte16Percent": 7.391817466561762,
+      "diagnosticSampledLuminanceDeltaPercent": 7.656415694591728,
+      "sampleCount": 42435
+    },
+    {
+      "theme": "dark",
+      "name": "08-meeting-detail",
+      "baseline": "macos-26.6.2-2x-safe-top-32",
+      "reference": "docs/golden-screenshots/environments/macos-26.6.2-2x-safe-top-32/dark/08-meeting-detail.png",
+      "referenceSize": [
+        1240,
+        820
+      ],
+      "candidateSize": [
+        1240,
+        820
+      ],
+      "sameDimensions": true,
+      "sameFileSHA256": false,
+      "referenceSHA256": "01acd6a86770ac498927fc79e734a1dd9747546d932f638401841bd7ad846614",
+      "candidateSHA256": "909f09e09d20c7d6c9c79960ca0dbc825e9dd6de40589a717190dbedc849914a",
+      "fullRGBMaxChannelDeltaGte16Percent": 7.0824154209284025,
+      "diagnosticSampledLuminanceDeltaPercent": 7.397195711087545,
+      "sampleCount": 42435
+    },
+    {
+      "theme": "dark",
+      "name": "08-meeting-detail",
+      "baseline": "prior-27-candidate",
+      "reference": "docs/quality/evidence/2026-10-02-completion/macos27-visual-review/dark/08-meeting-detail.png",
+      "referenceSize": [
+        1240,
+        820
+      ],
+      "candidateSize": [
+        1240,
+        820
+      ],
+      "sameDimensions": true,
+      "sameFileSHA256": true,
+      "referenceSHA256": "909f09e09d20c7d6c9c79960ca0dbc825e9dd6de40589a717190dbedc849914a",
+      "candidateSHA256": "909f09e09d20c7d6c9c79960ca0dbc825e9dd6de40589a717190dbedc849914a",
+      "fullRGBMaxChannelDeltaGte16Percent": 0.0,
+      "diagnosticSampledLuminanceDeltaPercent": 0.0,
+      "sampleCount": 42435
+    },
+    {
+      "theme": "dark",
+      "name": "09-permission-denied",
+      "baseline": "root",
+      "reference": "docs/golden-screenshots/dark/09-permission-denied.png",
+      "referenceSize": [
+        1080,
+        680
+      ],
+      "candidateSize": [
+        1080,
+        680
+      ],
+      "sameDimensions": true,
+      "sameFileSHA256": false,
+      "referenceSHA256": "9f7f1dc1dca057bb13c565fa5eeac157bcc1d4283d7dadaec44c8d63405ad588",
+      "candidateSHA256": "8632ce794f6e0d06bb4da26e566989302a109ef4c70a85d7bfb4ac3b2c736653",
+      "fullRGBMaxChannelDeltaGte16Percent": 1.326525054466231,
+      "diagnosticSampledLuminanceDeltaPercent": 1.1217164300864741,
+      "sampleCount": 49032
+    },
+    {
+      "theme": "dark",
+      "name": "09-permission-denied",
+      "baseline": "macos-26.6.2-2x-safe-top-32",
+      "reference": "docs/golden-screenshots/environments/macos-26.6.2-2x-safe-top-32/dark/09-permission-denied.png",
+      "referenceSize": [
+        1080,
+        680
+      ],
+      "candidateSize": [
+        1080,
+        680
+      ],
+      "sameDimensions": true,
+      "sameFileSHA256": false,
+      "referenceSHA256": "e070c309a0efa7981de3966b36883d2ee8eec964b54bf92755f889ccedc576c1",
+      "candidateSHA256": "8632ce794f6e0d06bb4da26e566989302a109ef4c70a85d7bfb4ac3b2c736653",
+      "fullRGBMaxChannelDeltaGte16Percent": 0.28227124183006536,
+      "diagnosticSampledLuminanceDeltaPercent": 0.07342143906020558,
+      "sampleCount": 49032
+    },
+    {
+      "theme": "dark",
+      "name": "09-permission-denied",
+      "baseline": "prior-27-candidate",
+      "reference": "docs/quality/evidence/2026-10-02-completion/macos27-visual-review/dark/09-permission-denied.png",
+      "referenceSize": [
+        1080,
+        680
+      ],
+      "candidateSize": [
+        1080,
+        680
+      ],
+      "sameDimensions": true,
+      "sameFileSHA256": true,
+      "referenceSHA256": "8632ce794f6e0d06bb4da26e566989302a109ef4c70a85d7bfb4ac3b2c736653",
+      "candidateSHA256": "8632ce794f6e0d06bb4da26e566989302a109ef4c70a85d7bfb4ac3b2c736653",
+      "fullRGBMaxChannelDeltaGte16Percent": 0.0,
+      "diagnosticSampledLuminanceDeltaPercent": 0.0,
+      "sampleCount": 49032
+    },
+    {
+      "theme": "dark",
+      "name": "10-agent-timeline",
+      "baseline": "root",
+      "reference": "docs/golden-screenshots/dark/10-agent-timeline.png",
+      "referenceSize": [
+        1080,
+        680
+      ],
+      "candidateSize": [
+        1080,
+        680
+      ],
+      "sameDimensions": true,
+      "sameFileSHA256": false,
+      "referenceSHA256": "7b642119f81ab796455dc7338ad5d0139714e560c4b2d17539bd8b5584c79df1",
+      "candidateSHA256": "e1c0959c99db8d67aaffe65df9ec2a16c462f28737d41cd26629138aff886d23",
+      "fullRGBMaxChannelDeltaGte16Percent": 1.4325980392156863,
+      "diagnosticSampledLuminanceDeltaPercent": 1.0850057105563713,
+      "sampleCount": 49032
+    },
+    {
+      "theme": "dark",
+      "name": "10-agent-timeline",
+      "baseline": "macos-26.6.2-2x-safe-top-32",
+      "reference": "docs/golden-screenshots/environments/macos-26.6.2-2x-safe-top-32/dark/10-agent-timeline.png",
+      "referenceSize": [
+        1080,
+        680
+      ],
+      "candidateSize": [
+        1080,
+        680
+      ],
+      "sameDimensions": true,
+      "sameFileSHA256": false,
+      "referenceSHA256": "7bd769b7ae4d04b975c27af6d1f8308ceba840515ce24f58b02eff924d0ebc1e",
+      "candidateSHA256": "e1c0959c99db8d67aaffe65df9ec2a16c462f28737d41cd26629138aff886d23",
+      "fullRGBMaxChannelDeltaGte16Percent": 0.24332788671023964,
+      "diagnosticSampledLuminanceDeltaPercent": 0.0,
+      "sampleCount": 49032
+    },
+    {
+      "theme": "dark",
+      "name": "10-agent-timeline",
+      "baseline": "prior-27-candidate",
+      "reference": "docs/quality/evidence/2026-10-02-completion/macos27-visual-review/dark/10-agent-timeline.png",
+      "referenceSize": [
+        1080,
+        680
+      ],
+      "candidateSize": [
+        1080,
+        680
+      ],
+      "sameDimensions": true,
+      "sameFileSHA256": true,
+      "referenceSHA256": "e1c0959c99db8d67aaffe65df9ec2a16c462f28737d41cd26629138aff886d23",
+      "candidateSHA256": "e1c0959c99db8d67aaffe65df9ec2a16c462f28737d41cd26629138aff886d23",
+      "fullRGBMaxChannelDeltaGte16Percent": 0.0,
+      "diagnosticSampledLuminanceDeltaPercent": 0.0,
+      "sampleCount": 49032
+    },
+    {
+      "theme": "dark",
+      "name": "11-meeting-canvas",
+      "baseline": "root",
+      "reference": "docs/golden-screenshots/dark/11-meeting-canvas.png",
+      "referenceSize": [
+        1080,
+        680
+      ],
+      "candidateSize": [
+        1080,
+        680
+      ],
+      "sameDimensions": true,
+      "sameFileSHA256": false,
+      "referenceSHA256": "99ed10ed42b95e3232ea7b056689175a1dcbba93fa4789573bcaa77155d91b46",
+      "candidateSHA256": "09c104a26b631a9fb1f10310d408cca11241b31781860b9ef1570b58982439d0",
+      "fullRGBMaxChannelDeltaGte16Percent": 2.6654411764705883,
+      "diagnosticSampledLuminanceDeltaPercent": 2.2169195627345406,
+      "sampleCount": 49032
+    },
+    {
+      "theme": "dark",
+      "name": "11-meeting-canvas",
+      "baseline": "macos-26.6.2-2x-safe-top-32",
+      "reference": "docs/golden-screenshots/environments/macos-26.6.2-2x-safe-top-32/dark/11-meeting-canvas.png",
+      "referenceSize": [
+        1080,
+        680
+      ],
+      "candidateSize": [
+        1080,
+        680
+      ],
+      "sameDimensions": true,
+      "sameFileSHA256": false,
+      "referenceSHA256": "ed36187855236e1583a1582e9b5369b780887dd4ecdfac5f18ac9debe1619e0f",
+      "candidateSHA256": "09c104a26b631a9fb1f10310d408cca11241b31781860b9ef1570b58982439d0",
+      "fullRGBMaxChannelDeltaGte16Percent": 0.4445806100217865,
+      "diagnosticSampledLuminanceDeltaPercent": 0.01019742209169522,
+      "sampleCount": 49032
+    },
+    {
+      "theme": "dark",
+      "name": "11-meeting-canvas",
+      "baseline": "prior-27-candidate",
+      "reference": "docs/quality/evidence/2026-10-02-completion/macos27-visual-review/dark/11-meeting-canvas.png",
+      "referenceSize": [
+        1080,
+        680
+      ],
+      "candidateSize": [
+        1080,
+        680
+      ],
+      "sameDimensions": true,
+      "sameFileSHA256": false,
+      "referenceSHA256": "d7d6b559334240383904e584618d6c10bf4b5fa71dc8b2f938fd6b5786a0f11c",
+      "candidateSHA256": "09c104a26b631a9fb1f10310d408cca11241b31781860b9ef1570b58982439d0",
+      "fullRGBMaxChannelDeltaGte16Percent": 0.014025054466230936,
+      "diagnosticSampledLuminanceDeltaPercent": 0.01019742209169522,
+      "sampleCount": 49032
+    }
+  ],
+  "geometryCoverage": {
+    "requiredKeys": 43,
+    "states": 6,
+    "status": "PASS",
+    "comparatorTolerancePt": 2,
+    "actualToCandidateRepeatabilityMeasured": false
+  },
+  "sourceHashes": {
+    "apps/genie-macos/Sources/GenieMac/App/SelfTest.swift": "578a56beb54e54cc6fdbd65856683c5ef62f0691dce0ae34248cc4f76e9ecc3a",
+    "apps/genie-macos/Sources/GenieMac/App/UIGeometry.swift": "b3bfc20eadf3aace76f76d1cf95f01132f5b162ead06ac07466416323ffa24e2",
+    "apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDView.swift": "c0f4bb75e1e943f99bbbd87bc4a9d6c4264e574aabcd9a61d0efd897d77c156e",
+    "shared/design/tokens.json": "be327706eb98299146b413ba28b0003ec7e325a3b7c8cbacff0d527a0f3111ae"
+  }
+}

@@ -1,0 +1,1390 @@
+
+> genie@0.1.4 build /Users/shuhei/Projects/genie
+> tsc -b tsconfig.build.json
+
+== current macOS debug candidate ==
+[0/1] Planning build
+Building for debugging...
+[0/3] Write swift-version--58304C5D6DBC2206.txt
+[2/4] Emitting module GenieCore
+Build complete! (1.11s)
+
+== genie-core tests ==
+test result: ok. 46 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.02s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+== Tauri Rust regression ==
+test result: ok. 71 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.22s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.19s
+     Running unittests src/lib.rs (target/debug/deps/genie_desktop_lib-89769e206d2d0aea)
+
+running 3 tests
+test stt::recognizer::real::measures_the_first_partial ... [real] window=1500ms hop=1200ms | audio_to_first_partial=1500ms decode=36ms projected_first_partial=1536ms | final=Final { text: "気象庁は雪や路面の凍結による交通への影響暴風雪や高波に警戒揺れ雪崩や屋根からの落雪にも十分注意いま", started_at_ms: 0, ended_at_ms: 12000 }
+[real] §23 localSttFirstPartial budget=350ms projected=1536ms -> OVER
+ok
+test stt::recognizer::real::shows_what_a_shorter_window_costs ... [real] window=6000ms decode_total=260ms chars=70 -> "気象庁は雪や路面の凍結による交通への影響暴風雪や高波に警戒するとともに雪崩や屋根からの落雪にも道路の落雪にも十分注意するよう呼びかけています"
+[real] window=1500ms decode_total=347ms chars=49 -> "気象庁は雪や路面の凍結による交通への影響暴風雪や高波に警戒揺れ雪崩や屋根からの落雪にも十分注意いま"
+[real] window=700ms decode_total=425ms chars=54 -> "気象庁はい雪や交通への影響その影響暴風台風雪高波に警戒がともに名だマダリア屋根から十分注意うん続いています何"
+ok
+test stt::recognizer::real::transcribes_a_real_recording ... [real] 1.wav (13.4s audio) -> 204ms -> "気象庁は雪や路面の凍結による交通への影響暴風雪や高波に警戒するとともに雪崩や屋根からの落雪にも十分注意するよう呼びかけています"
+ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 71 filtered out; finished in 6.99s
+
+TAURI_TESTS_OK: unit and isolated real STT assertions completed (quality/latency observations are separate)
+
+== Tauri desktop JS regression ==
+
+> @genie/desktop@0.0.0 test /Users/shuhei/Projects/genie/apps/desktop
+> vitest run --passWithNoTests
+
+
+ RUN  v3.2.7 /Users/shuhei/Projects/genie/apps/desktop
+
+(node:94406) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:94397) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:94396) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:94398) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:94402) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:94404) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:94399) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:94405) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:94403) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:94407) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:94400) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:94395) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:94401) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ test/artifact-actions.test.tsx (4 tests) 153ms
+(node:94426) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ test/dock-pill.test.tsx (9 tests) 78ms
+ ✓ test/work-detail.test.tsx (15 tests) 166ms
+ ✓ test/apps.test.tsx (17 tests) 154ms
+ ✓ test/signin-providers.test.tsx (4 tests) 92ms
+ ✓ test/home-library.test.tsx (32 tests) 225ms
+stderr | test/meeting.test.tsx > MeetingProvider (§12) > records only after consent, then shows the minimal indicator
+In HTML, <button> cannot be a descendant of <button>.
+This will cause a hydration error.
+
+  <Harness client={{...}}>
+    <MeetingProvider client={{...}}>
+      <MeetingLayer>
+        <div className="astra-meet..." data-phase="live">
+>         <button
+>           type="button"
+>           className="astra-meeting-layer__collapsed"
+>           onClick={function onClick}
+>           aria-label="A社 新規提案 の画面を開く"
+>         >
+            <RecordingIndicator state="recording" title="A社 新規提案" elapsedMs={0} speakers={0} ...>
+              <div className="astra-rec" data-state="recording" role="status" aria-label="Recording ...">
+                <span>
+                <span>
+                <span>
+                <span>
+                <span>
+                <span>
+>               <button
+>                 type="button"
+>                 className="astra-rec__button"
+>                 aria-label="一時停止"
+>                 title="一時停止"
+>                 onClick={function togglePause}
+>               >
+                ...
+          ...
+      ...
+
+<button> cannot contain a nested <button>.
+See this log for the ancestor stack trace.
+
+ ✓ test/topbar.test.tsx (10 tests) 102ms
+ ✓ test/ux-acceptance.test.tsx (22 tests) 227ms
+ ✓ test/session.test.tsx (5 tests) 265ms
+ ✓ test/meeting.test.tsx (26 tests) 342ms
+ ✓ test/shell.test.tsx (18 tests) 262ms
+ ✓ test/work.test.tsx (23 tests) 98ms
+(node:94431) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:94432) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:94433) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:94434) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ test/onboarding.test.tsx (12 tests) 626ms
+(node:94439) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:94445) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:94446) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:94440) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ test/shortcut-settings.test.tsx (6 tests) 69ms
+(node:94459) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:94463) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:94465) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ test/liquid-orb.test.ts (5 tests) 23ms
+ ✓ test/a11y-live.test.tsx (8 tests) 19ms
+ ✓ test/dock.test.tsx (38 tests) 857ms
+(node:94472) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ test/permission-ask.test.tsx (7 tests) 72ms
+ ✓ test/proactive.test.tsx (6 tests) 120ms
+ ✓ test/share-state.test.tsx (7 tests) 46ms
+ ✓ test/evidence.test.tsx (12 tests) 216ms
+ ✓ test/inspector.test.tsx (4 tests) 61ms
+ ✓ test/receipts.test.tsx (9 tests) 72ms
+ ✓ test/device-capabilities.test.tsx (5 tests) 28ms
+(node:94474) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ test/session-refresh.test.tsx (3 tests) 26ms
+(node:94477) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:94476) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ test/response.test.tsx (3 tests) 2ms
+ ✓ test/launchable.test.ts (5 tests) 30ms
+ ✓ test/boot.test.tsx (3 tests) 79ms
+(node:94481) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:94482) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:94483) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ test/dock-voice-mode.test.ts (8 tests) 2ms
+ ✓ test/library-filters.test.ts (5 tests) 3ms
+ ✓ test/connect.test.ts (4 tests) 7ms
+(node:94486) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ test/voice-runtime.test.ts (6 tests) 2ms
+(node:94488) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:94489) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:94490) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ test/ux-metrics.test.ts (4 tests) 2ms
+ ✓ test/seed-view.test.ts (3 tests) 2ms
+ ✓ test/work-view.test.ts (6 tests) 3ms
+ ✓ test/approval-outcome.test.ts (3 tests) 1ms
+
+ Test Files  36 passed (36)
+      Tests  357 passed (357)
+   Start at  06:36:04
+   Duration  2.59s (transform 1.55s, setup 183ms, collect 12.05s, tests 4.53s, environment 7.66s, prepare 1.69s)
+
+
+== TCC usage descriptions ==
+USAGE_DESCRIPTIONS_OK: 要求しうる権限の用途説明が揃っている (6 件)
+
+== release consistency ==
+  package.json=0.1.4 tauri.conf.json=0.1.4 src-tauri/Cargo.toml=0.1.4 genie-core/Cargo.toml=0.1.4
+RELEASE_CONSISTENCY_OK: 版番号 0.1.4 で一致・配布物は外部 dylib を掴まない・Developer ID + hardened runtime
+
+== release aggregation regression ==
+....................................................................................
+----------------------------------------------------------------------
+Ran 84 tests in 51.163s
+
+OK
+
+== managed preview lifecycle ==
+✔ desktop descriptor contains only the selected non-secret exact model scope (1.338875ms)
+✔ only ready standard workspace saves the direct-launch choice privately (20.80725ms)
+✔ changed saved selection invalidates stale cloud choice until readiness without local fallback (25.561042ms)
+✔ desktop descriptor rejects unsafe or symlinked standard directories without altering the old choice (6.262708ms)
+✔ scoped Mac launch gets the same absolute Codex executable that was verified (0.826792ms)
+✔ CLI rejects unsupported actions, external model URLs, ambiguous ports and unsafe names (0.395292ms)
+✔ transaction simulation is explicit, requires computer use and only exports the local fixture executable (1.775417ms)
+✔ native app launches through LaunchServices with instance-only scope and a waited lifecycle (0.106083ms)
+✔ native app monitor accepts confirmed normal exit and keeps early or abnormal exits as failures (76.376458ms)
+✔ native app monitor reads lifecycle at exit and does not replace an existing stop or failure (0.191875ms)
+✔ native ownership distinguishes simultaneous app instances and rejects PID reuse without matching argv (0.110375ms)
+✔ native process inspection takes one snapshot and never treats inspection errors as exit (0.367084ms)
+✔ native stop waits through macOS exiting argv loss and accepts only proven death (0.339083ms)
+✔ native stop verifies absence, escalates only after grace, and fails if exit stays unconfirmed (0.154667ms)
+✔ native stop rejects PID/start/argv changes before TERM and immediately before KILL (0.203666ms)
+✔ native stop does not report success after inspection or signal failures (0.107875ms)
+✔ native stop waits for a real tiny child exit and escalates a TERM-resistant child only (300.242083ms)
+✔ explicit local Docker selection pins child operations without inheriting or changing the user context (0.389167ms)
+✔ Docker endpoint changes are revalidated on every start and remote/relative/missing contexts fail closed (0.349458ms)
+✔ explicit Docker context persists for restart, migrates legacy state optionally and prevents changing its database host (27.559917ms)
+✔ model choice persists explicit intent, supports Ollama latest aliases and never picks a paid fallback (0.37075ms)
+✔ external CLI selection needs explicit opt-in, persists that choice, and never inherits the old local model (6.504625ms)
+✔ external conversation selection does not authorize screen egress or import credentials (5.931167ms)
+✔ screen opt-in is separate, persists only for the exact provider/model, and can be revoked (7.093125ms)
+✔ screen permission cannot leak from another state directory or enable an inactive computer route (13.574959ms)
+✔ computer status probes the selected helper anew and exposes only bounded status fields (291.1195ms)
+✔ unknown, invalid or failed helper probes remain unavailable without subprocess output disclosure (0.371292ms)
+✔ Codex omitted model uses the same explicit model for host, native translation and disclosure (7.891542ms)
+✔ explicit local selection reaches native translation with its exact model and endpoint (6.525583ms)
+✔ CLI readiness uses its own authentication boundary without a generated prompt or credential copy (0.194708ms)
+✔ Ollama cloud models and renamed remote aliases cannot be disclosed as local inference (0.26575ms)
+✔ service environment does not inherit paid credentials, remote infrastructure or shell hooks (5.45475ms)
+✔ first boot persists private keys, ports and identity; later starts keep them and reject silent port changes (9.98025ms)
+✔ saved configuration is validated before forming compose operations (7.024375ms)
+✔ an unrelated nonempty state directory is never taken over (0.820291ms)
+✔ managed service stops when its supervisor disappears (101.188875ms)
+✔ managed Compose isolates named volumes and all published ports; migration mounts are read-only (6.023084ms)
+✔ port conflicts fail without modifying the listener (0.383333ms)
+✔ owned processes fail on exit and stop children; unrelated processes stay alive (40.580417ms)
+✔ command timeout, startup abort and bounded readiness cannot report success (68.341167ms)
+✔ entrypoint help works from a symlink with spaces and importing it starts nothing (111.78725ms)
+✔ network errors and redirects do not expose returned response bodies (9.074083ms)
+✔ Claude Code and Gemini API are explicit external choices with their own model, recipient and disclosure (7.549917ms)
+✔ Claude Code readiness asks the CLI for its own sign-in state and never falls back (1.013791ms)
+✔ Gemini readiness checks only that the key exists and never reads or prints it (0.126167ms)
+ℹ tests 45
+ℹ suites 0
+ℹ pass 45
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1241.17475
+
+== transaction regression ==
+✔ lost task acceptance reuses the same persisted identity and never approves (2.125292ms)
+✔ an unrelated approval or non-order task cannot be approved through the order command (0.319958ms)
+✔ approval submission does not claim an order was accepted (0.168542ms)
+✔ both official services request background navigation using fixed executable/HTTPS URLs only (1.532083ms)
+✔ caller URLs, schemes, provider spoofing and submit instructions never reach OS (0.425375ms)
+✔ spawn/timeout failures keep unknown navigation separate from a definitely unsubmitted order (0.140292ms)
+✔ pre-cancel sends nothing and cancellation after OS acceptance never claims visible page (0.113625ms)
+✔ unsupported OS refuses without launching a generic fallback (0.077208ms)
+✔ task re-use remains a site handoff and cannot upgrade to a paid order (0.069166ms)
+✔ recognized request reaches task plan, host and truthful artifact without any checkout driver (0.483667ms)
+✔ two orders retain one owned PID/window with distinct load handshakes and normal begin calls (9.000834ms)
+✔ queued cancellation is prompt, skips its load and does not interrupt the active order (4.905167ms)
+✔ active cancellation stops only its owned session and a subsequent order creates a new PID (3.946958ms)
+✔ a changed native window under the same PID is refused before another begin or click (3.214667ms)
+✔ wrong captured window and unattended helper are never clicked (2.288791ms)
+✔ idle expiry closes the old process and never resurrects its PID (51.151416ms)
+✔ device cleanup failure still terminates the owned window (12.40525ms)
+✔ both food demos and paper fill require independent persisted receipt; preparing never confirms (196.986334ms)
+✔ unconfirmed click stays unknown across runtime restart and never clicks again (41.900542ms)
+✔ fictional catalog cannot be used for live identities, custom items, or prices above the supplied budget (15.291917ms)
+✔ revoking a claimed task aborts the native helper consent wait without input, and leaves reconciliation-only history (293.588542ms)
+✔ prepare pins exact quote; submit writes a durable private claim before one provider input and preserves accepted status (26.358959ms)
+✔ approval binds complete exact args including destination, budget, quantity, and requested time (4.51275ms)
+✔ invalid money, currency/content substitutions, expired quotes, and over-budget totals never reach submit (8.977458ms)
+✔ inspection changes, approval expiry, and cancellation stop before the attempt claim (7.589291ms)
+✔ unknown delivery is durable across new runtime and task IDs; submit can only reconcile it (25.593417ms)
+✔ authorization deadline is propagated to the adapter and aborts in-flight submit without resending (256.410416ms)
+✔ provider receipts must match quote identity, paid total, destination, options, and execution mode (136.855541ms)
+✔ live provider and request-supplied URLs are unsupported; read-only reconcile never creates an order (1.778167ms)
+✔ paper stock remains simulation and distinguishes acceptance, partial fills, full fills, and cancelled partials (178.455083ms)
+✔ durable receipt history rejects changed provider order IDs, regressed state, and lost partial executions (108.154875ms)
+✔ multiple processes atomically claim the same order once; a crash after provider acceptance recovers read-only (554.494583ms)
+✔ a corrupt durable claim blocks a fresh attempt rather than silently forgetting it (28.833833ms)
+ℹ tests 33
+ℹ suites 0
+ℹ pass 33
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1754.037458
+
+ RUN  v3.2.7 /Users/shuhei/Projects/genie/packages/contracts
+
+ ✓ test/transaction-authorization.test.ts (3 tests) 13ms
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  06:37:08
+   Duration  237ms (transform 40ms, setup 0ms, collect 66ms, tests 13ms, environment 0ms, prepare 34ms)
+
+
+ RUN  v3.2.7 /Users/shuhei/Projects/genie/services/conversation
+
+ ✓ test/lane.test.ts (15 tests) 5ms
+ ✓ test/checkout-request.test.ts (29 tests) 5ms
+ ✓ test/transaction-request.test.ts (14 tests) 4ms
+
+ Test Files  3 passed (3)
+      Tests  58 passed (58)
+   Start at  06:37:09
+   Duration  359ms (transform 147ms, setup 0ms, collect 268ms, tests 15ms, environment 0ms, prepare 98ms)
+
+
+ RUN  v3.2.7 /Users/shuhei/Projects/genie/services/task
+
+ ✓ test/checkout-assistance.test.ts (10 tests) 4ms
+ ✓ test/transaction-plan.test.ts (9 tests) 8ms
+ ✓ test/transaction-artifact.test.ts (6 tests) 10ms
+ ✓ test/transaction-workflow.test.ts (15 tests) 9ms
+2026-10-02T21:37:11.931Z [INFO] asset workflow-bundle-68bf3149402b854f7972.js 1.66 MiB [emitted] [immutable] (name: main)
+runtime modules 1.34 KiB 4 modules
+modules by path ../../node_modules/.pnpm/ 438 KiB
+  modules by path ../../node_modules/.pnpm/@temporalio+common@1.22.0/node_modules/@temporal...(truncated) 161 KiB 35 modules
+  modules by path ../../node_modules/.pnpm/@temporalio+workflow@1.22.0/node_modules/@tempor...(truncated) 202 KiB 26 modules
+  modules by path ../../node_modules/.pnpm/nexus-rpc@0.0.2/node_modules/nexus-rpc/lib/ 22.3 KiB 13 modules
+  ../../node_modules/.pnpm/long@5.3.2/node_modules/long/umd/index.js 49.8 KiB [built] [code generated]
+  ../../node_modules/.pnpm/ms@3.0.0-canary.1/node_modules/ms/dist/index.cjs 3.41 KiB [built] [code generated]
+modules by path ./src/ 61 KiB
+  ./src/workflows-autogenerated-entrypoint.cjs 502 bytes [built] [code generated]
+  ./src/workflows.ts 23.7 KiB [built] [code generated]
+  ./src/plan.ts 36.8 KiB [built] [code generated]
+optional modules 30 bytes [optional]
+  __temporal_custom_payload_converter (ignored) 15 bytes [optional] [built] [code generated]
+  __temporal_custom_failure_converter (ignored) 15 bytes [optional] [built] [code generated]
+webpack 5.109.2 compiled successfully in 358 ms { sdkComponent: 'worker', taskQueue: 'fake_replay_queue-0' }
+2026-10-02T21:37:11.932Z [INFO] Workflow bundle created {
+  sdkComponent: 'worker',
+  taskQueue: 'fake_replay_queue-0',
+  size: '1.65MB'
+}
+2026-10-02T21:37:11.962Z [INFO] Worker state changed {
+  sdkComponent: 'worker',
+  taskQueue: 'fake_replay_queue-0',
+  state: 'RUNNING'
+}
+2026-10-02T21:37:11.988Z [INFO] Worker state changed {
+  sdkComponent: 'worker',
+  taskQueue: 'fake_replay_queue-0',
+  state: 'STOPPING'
+}
+2026-10-02T21:37:11.988Z [INFO] Worker state changed {
+  sdkComponent: 'worker',
+  taskQueue: 'fake_replay_queue-0',
+  state: 'DRAINING'
+}
+2026-10-02T21:37:11.988Z [INFO] Worker state changed {
+  sdkComponent: 'worker',
+  taskQueue: 'fake_replay_queue-0',
+  state: 'DRAINED'
+}
+2026-10-02T21:37:11.988Z [INFO] Worker state changed {
+  sdkComponent: 'worker',
+  taskQueue: 'fake_replay_queue-0',
+  state: 'STOPPED'
+}
+2026-10-02T21:37:12.125Z [INFO] asset workflow-bundle-68bf3149402b854f7972.js 1.66 MiB [emitted] [immutable] (name: main)
+runtime modules 1.34 KiB 4 modules
+modules by path ../../node_modules/.pnpm/ 438 KiB
+  modules by path ../../node_modules/.pnpm/@temporalio+common@1.22.0/node_modules/@temporal...(truncated) 161 KiB 35 modules
+  modules by path ../../node_modules/.pnpm/@temporalio+workflow@1.22.0/node_modules/@tempor...(truncated) 202 KiB 26 modules
+  modules by path ../../node_modules/.pnpm/nexus-rpc@0.0.2/node_modules/nexus-rpc/lib/ 22.3 KiB 13 modules
+  ../../node_modules/.pnpm/long@5.3.2/node_modules/long/umd/index.js 49.8 KiB [built] [code generated]
+  ../../node_modules/.pnpm/ms@3.0.0-canary.1/node_modules/ms/dist/index.cjs 3.41 KiB [built] [code generated]
+modules by path ./src/ 61 KiB
+  ./src/workflows-autogenerated-entrypoint.cjs 502 bytes [built] [code generated]
+  ./src/workflows.ts 23.7 KiB [built] [code generated]
+  ./src/plan.ts 36.8 KiB [built] [code generated]
+optional modules 30 bytes [optional]
+  __temporal_custom_payload_converter (ignored) 15 bytes [optional] [built] [code generated]
+  __temporal_custom_failure_converter (ignored) 15 bytes [optional] [built] [code generated]
+webpack 5.109.2 compiled successfully in 124 ms { sdkComponent: 'worker', taskQueue: 'fake_replay_queue-1' }
+2026-10-02T21:37:12.126Z [INFO] Workflow bundle created {
+  sdkComponent: 'worker',
+  taskQueue: 'fake_replay_queue-1',
+  size: '1.65MB'
+}
+2026-10-02T21:37:12.137Z [INFO] Worker state changed {
+  sdkComponent: 'worker',
+  taskQueue: 'fake_replay_queue-1',
+  state: 'RUNNING'
+}
+2026-10-02T21:37:12.146Z [INFO] Worker state changed {
+  sdkComponent: 'worker',
+  taskQueue: 'fake_replay_queue-1',
+  state: 'STOPPING'
+}
+2026-10-02T21:37:12.146Z [INFO] Worker state changed {
+  sdkComponent: 'worker',
+  taskQueue: 'fake_replay_queue-1',
+  state: 'DRAINING'
+}
+2026-10-02T21:37:12.146Z [INFO] Worker state changed {
+  sdkComponent: 'worker',
+  taskQueue: 'fake_replay_queue-1',
+  state: 'DRAINED'
+}
+2026-10-02T21:37:12.146Z [INFO] Worker state changed {
+  sdkComponent: 'worker',
+  taskQueue: 'fake_replay_queue-1',
+  state: 'STOPPED'
+}
+ ✓ test/replay-history.test.ts (2 tests) 996ms
+   ✓ previous-revision workflow replay with old void terminal activities > replays completed history without nondeterminism  837ms
+
+ Test Files  5 passed (5)
+      Tests  42 passed (42)
+   Start at  06:37:10
+   Duration  1.45s (transform 288ms, setup 0ms, collect 1.17s, tests 1.03s, environment 0ms, prepare 183ms)
+
+
+ RUN  v3.2.7 /Users/shuhei/Projects/genie/workers/task-worker
+
+ ✓ test/approval-proof.test.ts (4 tests) 5ms
+
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Start at  06:37:12
+   Duration  358ms (transform 100ms, setup 0ms, collect 188ms, tests 5ms, environment 0ms, prepare 33ms)
+
+
+ RUN  v3.2.7 /Users/shuhei/Projects/genie/workers/agent-host
+
+ ✓ test/step-transport.test.ts (3 tests) 4ms
+ ✓ test/step-loop.test.ts (18 tests) 81ms
+
+ Test Files  2 passed (2)
+      Tests  21 passed (21)
+   Start at  06:37:13
+   Duration  286ms (transform 54ms, setup 0ms, collect 66ms, tests 85ms, environment 0ms, prepare 68ms)
+
+
+ RUN  v3.2.7 /Users/shuhei/Projects/genie/services/task
+
+ ✓ test/transaction-authorization-ledger.db.test.ts (8 tests) 666ms
+ ✓ test/transaction-approval.db.test.ts (14 tests) 598ms
+
+ Test Files  2 passed (2)
+      Tests  22 passed (22)
+   Start at  06:37:14
+   Duration  1.28s (transform 228ms, setup 0ms, collect 882ms, tests 1.26s, environment 0ms, prepare 67ms)
+
+
+ RUN  v3.2.7 /Users/shuhei/Projects/genie/services/agent-host
+
+ ✓ test/bridge.db.test.ts (20 tests) 275ms
+
+ Test Files  1 passed (1)
+      Tests  20 passed (20)
+   Start at  06:37:16
+   Duration  715ms (transform 109ms, setup 0ms, collect 264ms, tests 275ms, environment 0ms, prepare 33ms)
+
+
+ RUN  v3.2.7 /Users/shuhei/Projects/genie/services/api-gateway
+
+ ✓ test/host-bridge.test.ts (16 tests) 153ms
+ ✓ test/transaction-authorizations.integration.test.ts (4 tests) 366ms
+ ✓ test/conversations-transaction.integration.test.ts (20 tests) 603ms
+
+ Test Files  3 passed (3)
+      Tests  40 passed (40)
+   Start at  06:37:17
+   Duration  1.69s (transform 452ms, setup 0ms, collect 2.75s, tests 1.12s, environment 0ms, prepare 98ms)
+
+TRANSACTION_REGRESSION_OK: code-level checks only; native/main-app and live-provider evidence are separate.
+
+== computer vision contracts ==
+✔ requires goal, criteria, durable run file and explicit approval ID (0.574041ms)
+✔ lost acceptance response: explicit recover reuses identical key and request, never approves (0.534833ms)
+✔ status and recover with known identity only read; missing identity never posts (0.102375ms)
+✔ approval belongs to current computer task and matching pending approval (0.164833ms)
+✔ cancel only requests cancellation on same task, no success assertion (0.074208ms)
+✔ transport blocks redirects and does not retry errors (0.203084ms)
+✔ check uses the actual running helper and explicit screen recipient (0.110875ms)
+✔ conversation cloud permission alone is not screen readiness (0.08875ms)
+✔ check refuses stale, wrong, test-only or unavailable helper status (0.135625ms)
+✔ background planning uses empty-field AX input, not focus or keyboard fallback (0.744625ms)
+✔ background helper cannot call shared input/clipboard or legacy focus helpers (3.537125ms)
+✔ 自分が出した分だけを除く（人の入力は抑止窓の中でも数える） (1.177542ms)
+✔ 再開は必ず実行世代を進め、明示的な停止は再開しない (0.464291ms)
+✔ 送る前の関門は、承認・対象・停止に加えて実行世代を見る (0.715916ms)
+✔ 無人試験の経路は出荷ビルドに入らない (1.951ms)
+✔ 背景で失敗しても前面操作へ切り替えない（経路の取り違えを静的に禁じる） (0.652541ms)
+✔ append retains native current-value binding and exact post-write readback without enabling replacement (3.893291ms)
+✔ a run is free-tier only unless paid is explicitly turned on (0.739041ms)
+✔ a key from a billed project is not treated as the free tier (1.662916ms)
+✔ once the provider says the allowance is gone, the month stops asking (0.8535ms)
+✔ per-task and per-month call limits stop before the call, not after (6.268375ms)
+✔ cost limits are judged including the call about to be made (1.27ms)
+✔ the ledger keeps no key and no screen content, and is owner-only (1.105458ms)
+✔ a corrupt ledger does not become free rein (0.733834ms)
+✔ a cloud model without a budget never sends a screenshot (0.814916ms)
+✔ an exhausted month refuses before the first model call (1.010542ms)
+✔ a provider quota refusal stops the run and the month (0.944875ms)
+✔ a local model needs no budget and is never counted (0.371083ms)
+✔ native scroll adapter: confirmed native receipt (235.341916ms)
+✔ native scroll adapter: missing native receipt (239.134417ms)
+✔ native scroll adapter: unconfirmed dispatch (261.218084ms)
+✔ native scroll adapter: wrong direction (240.7355ms)
+✔ existing VisualContext -> HTTP vision request carries two PNGs, structured response, and pinned provider (14.914167ms)
+✔ durable local claim prevents replay across device instances / restarts (15.75675ms)
+✔ native begin forwards an optional exact owned target, rejects malformed constraints and mismatched helper frames (398.747917ms)
+✔ native preview adapter binds its request and validates actual PNG bytes before use, then removes them (415.69625ms)
+✔ target verification carries one bound preview PNG through the production LlmRuntime HTTP path (1.807208ms)
+✔ Codex target dispatch uses a private read-only copy of validated bytes and cleans it on success or failure (2.644584ms)
+✔ HTTP model cancellation passes an aborted signal, not a successful model result (0.334458ms)
+✔ moving preview storage does not forget a claim in the legacy cache (11.320708ms)
+✔ actual before/after image references go to the action verifier; goal gets a NEW frame (3.31975ms)
+✔ a model saying done is not sufficient (0.514167ms)
+✔ pointer motion or a changed image hash alone is never completion (0.351ms)
+✔ target changes stop before the next model call (0.170791ms)
+✔ aborted input never reaches the device or model (0.193959ms)
+✔ cancellation during a nonresponsive model prevents later action (3.710584ms)
+✔ an empty approval object is not approval and does not capture (0.1765ms)
+✔ expired and wrong-operation approvals are refused (0.143791ms)
+✔ external screenshot egress needs separate opt-in BEFORE capture (0.126417ms)
+✔ unavailable selected model does not silently fall back (0.217458ms)
+✔ action limit is enforced (0.376416ms)
+✔ ambiguous input failure is not automatically retried (0.217584ms)
+✔ locally cancelled action stops, not replans (0.174292ms)
+✔ duplicate request is refused by durable claim (0.251916ms)
+✔ uncertain visual verification cannot return success (0.225ms)
+✔ an uncertain verdict spends the replan budget instead of stopping at once (0.191375ms)
+✔ an uncertain verdict that later resolves completes the run (0.150292ms)
+✔ a low-confidence satisfied verdict never completes the run (0.15675ms)
+✔ a blocked verdict stops immediately and is not re-asked (0.122625ms)
+✔ a malformed verdict is re-asked with the rejection code, then accepted (0.131166ms)
+✔ a stopped run records its reason and audit beside the claim (0.2205ms)
+✔ a verdict that never takes shape stops the run (0.688042ms)
+✔ the planner is told how many inputs it already sent, and on which targets (0.299ms)
+✔ a fresh run says nothing about progress (0.039875ms)
+✔ the audit records which element an action was sent to (0.370875ms)
+✔ a route refusal is replanned with the reason, not treated as the end (0.450917ms)
+✔ a policy refusal ends the run and is never retried (0.141125ms)
+✔ two different elements are not mistaken for a repeated action (0.293625ms)
+✔ a route refusal tells the planner to change its approach, a malformed reply to fix its JSON (0.08425ms)
+✔ a model slower than the freshness window stops as too slow, not as a stale frame (0.167458ms)
+✔ one slow decision is retried, not called too slow (0.157542ms)
+✔ an echoed old frame id is re-asked instead of ending the run (0.155167ms)
+✔ a decision without a frame id is taken as being about the frame just sent (0.128208ms)
+✔ a decision naming a different frame is still refused as stale (0.132208ms)
+✔ image pixels map correctly with Retina scale and negative monitor origin (0.059292ms)
+✔ old screenshot and NaN geometry are rejected (0.06975ms)
+✔ stale frame-id, out-of-bounds and low-confidence grounding are rejected (0.09725ms)
+✔ a button that commits an order, purchase, payment or trade is never pressed by screen control (0.803375ms)
+✔ shell / Enter / arbitrary modifiers are not action capabilities (0.077583ms)
+✔ control text is rejected; Japanese and non-BMP emoji are preserved (0.124625ms)
+✔ unknown model fields are not forwarded to helper (0.031292ms)
+✔ goal verdict must reference latest frame and concrete evidence (0.049542ms)
+✔ audit does not retain screenshot paths, typed text, or model evidence (0.166375ms)
+✔ prompts separate goal from untrusted screen instructions and require real pixels (0.043875ms)
+✔ 成功条件を確かめられる単位に分ける（分けられないものは 1 つのまま） (0.225ms)
+✔ 確認が断った理由と未達成の条件が、次の計画へ戻る (0.246833ms)
+✔ 未達成の条件が挙がらなければ、全部が未達成のまま（部分的な結果を完了にしない） (0.034292ms)
+✔ 自信の足りない「できた」は、条件を満たしたことにしない (0.030208ms)
+✔ 人が割り込んだら、人を止めずにこちらだけ待ち、手が空いたら続ける (3004.941125ms)
+✔ 再開できない装置では、割り込みはこれまでどおりその場で停止する (0.519458ms)
+✔ 割り込みで失効した世代の操作は、送らずに撮り直す（再送しない） (1001.263709ms)
+✔ 前へ進んだ操作は作り直しの持ち分を戻す（序盤のつまずきで打ち切らない） (0.800541ms)
+✔ 評価のための答えや採点先は、計画するモデルへ渡らない (0.500334ms)
+✔ 入力を送ったあとに止まったら、送ったことを先に伝える（取り消せるとは言わない） (0.299167ms)
+✔ 入力を 1 つも送っていない停止には、その断りを付けない (0.163917ms)
+✔ a wrong-field write is refused before delivery, without trying another field (0.326583ms)
+✔ both text routes need a confident current-frame target verdict before input (2.179625ms)
+✔ target verification uses the selected provider and its existing call budget (0.322334ms)
+✔ text input without a native target preview capability fails before verification or delivery (0.161292ms)
+✔ native preview binding and canonical writable identity are required before a verifier sees it (2.236625ms)
+✔ coordinate writes verify the resolved field crop and deliver that same canonical field (0.396083ms)
+✔ approval expiry or cancellation during read-only preview prevents verification and input (0.432125ms)
+✔ interruption during read-only preview discards the old proposal and obtains a fresh proof (1001.403333ms)
+✔ approval expiry or cancellation during target checking prevents input (0.734333ms)
+✔ a target verdict that aged its frame is discarded and checked again on a fresh frame (0.318417ms)
+✔ a failed capture after delivery still records and discloses the sent input (0.201125ms)
+✔ a failed effect verifier still records and discloses the sent input (0.176375ms)
+✔ a possibly partial input stops without retry and is disclosed as delivery unknown (1.795291ms)
+✔ cancelling an in-flight apply preserves an unknown-delivery audit row (0.315291ms)
+✔ a definite native pre-dispatch refusal records no delivered or unknown input (0.833458ms)
+✔ the target-check prompt checks the exact destination and text against the user request (0.11775ms)
+✔ copying the target verifier response schema preserves the actual current frame identity (0.215375ms)
+✔ explicit append is background-only, never replacement, and reaches both target check and delivery (0.485333ms)
+✔ coordinate grounding reaches the 61st native field without expanding public candidate context (0.305417ms)
+✔ unlisted preview requires native text-role attestation and the exact requested point (0.287167ms)
+✔ scroll contract allows background vertical navigation only and never accepts model distance (0.306667ms)
+✔ scroll verifies the exact preview then keeps native offset readback and still verifies the goal (0.312458ms)
+✔ missing, stationary, reversed or excessive scroll readback is unknown and never resent (0.952583ms)
+✔ scroll edge or unsupported geometry is an unsent refusal with no alternate delivery retry (0.413708ms)
+ℹ tests 119
+ℹ suites 0
+ℹ pass 119
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5108.543458
+
+== background text policy ==
+PASS: background text value policy 11 cases; no AppKit, capture, input or model
+
+== background scroll policy ==
+PASS BackgroundScroll: 14 cases
+
+== background web link policy ==
+PASS BackgroundWebLink: 19 cases
+
+== UI taste ==
+== UI の癖 ==
+  gradient               4 /   4
+  角丸 >28pt           0 /   0
+  material/blur: actual=11, reviewed additions=3 (content-bound)
+  material/blur          8 /   8
+  sparkles アイコン   5 /   6
+  Capsule: actual=24, reviewed additions=5 (content-bound)
+  Capsule               19 /  20
+  shadow                 5 /   9
+  40字超の文言: actual=10, reviewed additions=4 (content-bound)
+  40字超の文言      6 /   6
+
+UI_TASTE_OK: 癖は上限内
+
+== permission JIT ==
+  起動経路（AppDelegate）で権限を求めていない OK
+  求めている場所:
+    apps/genie-macos/Sources/GenieMac/GuidedSetup/PermissionManager.swift:41:        Permissions.requestMicrophone(done)
+    apps/genie-macos/Sources/GenieMac/Settings/PermissionCenter.swift:88:            case .microphone: Permissions.requestMicrophone { _ in done() }
+    apps/genie-macos/Sources/GenieMac/Settings/PermissionCenter.swift:89:            case .screenRecording: Permissions.requestScreenRecording(); done()
+    apps/genie-macos/Sources/GenieMac/Settings/PermissionCenter.swift:91:            case .calendar: Permissions.requestCalendar { _ in done() }
+    apps/genie-macos/Sources/GenieMac/Settings/PermissionCenter.swift:92:            case .speechRecognition: Permissions.requestSpeechRecognition { _ in done() }
+    apps/genie-macos/Sources/GenieMac/Settings/SettingsView.swift:61:                              request: { Permissions.requestSpeechRecognition { _ in speech = Permissions.speechRecognition } })
+    apps/genie-macos/Sources/GenieMac/Settings/SettingsView.swift:63:                              request: { Permissions.requestCalendar { _ in cal = Permissions.calendar } })
+    apps/genie-macos/Sources/GenieMac/Settings/SettingsView.swift:67:                    if !Permissions.requestInputMonitoring() { Permissions.openInputMonitoringSettings() }
+    apps/genie-macos/Sources/GenieMac/Home/HomeView.swift:557:                PermissionCenter.request(.schedule) {
+    apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:225:            Permissions.requestSpeechRecognition { _ in }
+    apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:660:        if Permissions.speechRecognition == .notDetermined { Permissions.requestSpeechRecognition { _ in } }
+    apps/genie-macos/Sources/GenieMac/RecordingWorkspace/RecordingWorkspaceState.swift:319:            PermissionCenter.request(.meeting) {
+    apps/genie-macos/Sources/GenieMac/RecordingWorkspace/RecordingWorkspaceState.swift:348:        if screenAudio && requestPermissions { PermissionCenter.request(.meetingAudio) }
+  求める場所は機能の入口だけ OK
+  取扱説明書も「使うときに要るものだけ」 OK
+
+PERMISSION_JIT_OK: 起動時に求めず、使う直前に求める
+
+== privacy egress ==
+== PRIVACY_EGRESS_GATE ==
+  recording upload requires explicit cloud consent PASS
+  silent Apple STT fallback                0
+  screen audio permission follows selection PASS
+  connector egress requires user action    PASS
+  external action confirmation             PASS (Confirm.ask ×4 + Confirm.approve ×3; 面は CONFIRMATION_GATE)
+  transcription egress guide               consistent
+  current-info egress allowlist            PASS (4 hosts)
+  gemini live requires consent, key, limit PASS
+  nearby places require key, limit, request PASS
+2026-10-03 06:37:28.650 Genie[9377:3735678] No Assistant asset for language ar-SA
+2026-10-03 06:37:28.653 Genie[9377:3735678] No Assistant asset for language ca-ES
+2026-10-03 06:37:28.656 Genie[9377:3735678] No Assistant asset for language cs-CZ
+2026-10-03 06:37:28.659 Genie[9377:3735678] No Assistant asset for language da-DK
+2026-10-03 06:37:28.662 Genie[9377:3735678] No Assistant asset for language de-AT
+2026-10-03 06:37:28.664 Genie[9377:3735678] No Assistant asset for language de-CH
+2026-10-03 06:37:28.667 Genie[9377:3735678] No Assistant asset for language de-DE
+2026-10-03 06:37:28.670 Genie[9377:3735678] No Assistant asset for language el-GR
+2026-10-03 06:37:28.673 Genie[9377:3735678] No Assistant asset for language en-GB
+2026-10-03 06:37:28.676 Genie[9377:3735678] No Assistant asset for language en-AU
+2026-10-03 06:37:28.679 Genie[9377:3735678] No Assistant asset for language en-CA
+2026-10-03 06:37:28.679 Genie[9377:3735678] No Assistant asset for language en-GB
+2026-10-03 06:37:28.684 Genie[9377:3735678] No Assistant asset for language en-IE
+2026-10-03 06:37:28.687 Genie[9377:3735678] No Assistant asset for language en-IN
+2026-10-03 06:37:28.689 Genie[9377:3735678] No Assistant asset for language en-NZ
+2026-10-03 06:37:28.692 Genie[9377:3735678] No Assistant asset for language en-SG
+2026-10-03 06:37:28.695 Genie[9377:3735678] No Assistant asset for language en-ZA
+2026-10-03 06:37:28.697 Genie[9377:3735678] No Assistant asset for language es-US
+2026-10-03 06:37:28.700 Genie[9377:3735678] No Assistant asset for language es-CL
+2026-10-03 06:37:28.700 Genie[9377:3735678] No Assistant asset for language es-US
+2026-10-03 06:37:28.702 Genie[9377:3735678] No Assistant asset for language es-ES
+2026-10-03 06:37:28.705 Genie[9377:3735678] No Assistant asset for language es-MX
+2026-10-03 06:37:28.705 Genie[9377:3735678] No Assistant asset for language es-US
+2026-10-03 06:37:28.707 Genie[9377:3735678] No Assistant asset for language fi-FI
+2026-10-03 06:37:28.710 Genie[9377:3735678] No Assistant asset for language fr-BE
+2026-10-03 06:37:28.713 Genie[9377:3735678] No Assistant asset for language fr-CA
+2026-10-03 06:37:28.715 Genie[9377:3735678] No Assistant asset for language fr-CH
+2026-10-03 06:37:28.718 Genie[9377:3735678] No Assistant asset for language fr-FR
+2026-10-03 06:37:28.720 Genie[9377:3735678] No Assistant asset for language he-IL
+2026-10-03 06:37:28.723 Genie[9377:3735678] No Assistant asset for language hi-IN
+2026-10-03 06:37:28.723 Genie[9377:3735678] No Assistant asset for language hi-IN
+2026-10-03 06:37:28.726 Genie[9377:3735678] No Assistant asset for language hr-HR
+2026-10-03 06:37:28.728 Genie[9377:3735678] No Assistant asset for language hu-HU
+2026-10-03 06:37:28.731 Genie[9377:3735678] No Assistant asset for language id-ID
+2026-10-03 06:37:28.733 Genie[9377:3735678] No Assistant asset for language it-CH
+2026-10-03 06:37:28.736 Genie[9377:3735678] No Assistant asset for language it-IT
+2026-10-03 06:37:28.740 Genie[9377:3735678] No Assistant asset for language ko-KR
+2026-10-03 06:37:28.744 Genie[9377:3735678] No Assistant asset for language ms-MY
+2026-10-03 06:37:28.746 Genie[9377:3735678] No Assistant asset for language nb-NO
+2026-10-03 06:37:28.749 Genie[9377:3735678] No Assistant asset for language nl-BE
+2026-10-03 06:37:28.752 Genie[9377:3735678] No Assistant asset for language nl-NL
+2026-10-03 06:37:28.755 Genie[9377:3735678] No Assistant asset for language pl-PL
+2026-10-03 06:37:28.757 Genie[9377:3735678] No Assistant asset for language pt-BR
+2026-10-03 06:37:28.759 Genie[9377:3735678] No Assistant asset for language pt-PT
+2026-10-03 06:37:28.762 Genie[9377:3735678] No Assistant asset for language ro-RO
+2026-10-03 06:37:28.764 Genie[9377:3735678] No Assistant asset for language ru-RU
+2026-10-03 06:37:28.767 Genie[9377:3735678] No Assistant asset for language sk-SK
+2026-10-03 06:37:28.769 Genie[9377:3735678] No Assistant asset for language sv-SE
+2026-10-03 06:37:28.772 Genie[9377:3735678] No Assistant asset for language th-TH
+2026-10-03 06:37:28.774 Genie[9377:3735678] No Assistant asset for language tr-TR
+2026-10-03 06:37:28.777 Genie[9377:3735678] No Assistant asset for language uk-UA
+2026-10-03 06:37:28.779 Genie[9377:3735678] No Assistant asset for language vi-VN
+2026-10-03 06:37:28.782 Genie[9377:3735678] No Assistant asset for language wuu-CN
+2026-10-03 06:37:28.784 Genie[9377:3735678] No Assistant asset for language yue-CN
+2026-10-03 06:37:28.786 Genie[9377:3735678] No Assistant asset for language zh-CN
+2026-10-03 06:37:28.789 Genie[9377:3735678] No Assistant asset for language zh-HK
+2026-10-03 06:37:28.791 Genie[9377:3735678] No Assistant asset for language zh-TW
+2026-10-03 06:37:28.791 Genie[9377:3735678] No Assistant asset for language ar-SA
+2026-10-03 06:37:29.999 Genie[9377:3735678] No Assistant asset for language ar-SA
+SELFTEST_OK egress: autoUpload=off cloudSTTConsent=off meeting=[microphone,speechRecognition] sttNoFallback=ar-SA start=code3 file=nil
+
+PRIVACY_EGRESS_GATE=PASS
+
+== no contradiction ==
+scripts/verify-no-contradiction.sh: line 28:  9414 Terminated: 15          "$BIN" --selftest hold-meeting 25 silent > /dev/null 2>&1
+NO_CONTRADICTION_OK: 画面の中で言っていることが食い違わない
+
+== confirmation surface ==
+== CONFIRMATION_GATE ==
+
+  · 面の寸法 560x286pt
+  ✓ 幅 <= 620pt
+  ✓ 高さ <= 360pt
+  ✓ ① どのアプリ / どこへ
+  ✓ ② 何が起きるか
+  ✓ ③ 決定的な値
+  ✓ ④ 中身の下見
+  ✓ ⑤ 出所
+  ✓ ⑥ 取消
+  ✓ ⑥ 直す
+  ✓ ⑥ 実行
+  ✓ 決断に不要なもの（履歴・会議ノート・sidebar）が無い
+  ✓ 主たる操作 96x32pt が逃げ道 74pt（やめる）以上
+  ✓ 中身の間の中央値 = 10.0pt（操作の手前 26.0pt は区切りとして除外）
+  ✓ 窓を増やしていない（同じ面が morph）
+
+  ✓ sandbox_extension_issue_file_to_process failed for /Users/shuhei/Projects/astra/apps/genie-macos/.build/Genie.app: 1 (Operation not permitted)
+SELFTEST_OK confirmflow: 窓を増やさない・焦点を奪わない・560x254pt・高さは中身で決まる（254→163）・取り消しで戻る
+
+CONFIRMATION_GATE=PASS
+
+== approval boundary ==
+== APPROVAL_BOUNDARY ==
+  files 282 / 証拠を作る入口 1 / APPROVED を送る所 1 / 違反 0
+  local servers 7 / 違反 0
+APPROVAL_BOUNDARY=PASS
+
+== approval boundary selfcheck ==
+== APPROVAL_BOUNDARY selfcheck ==
+  ✓ 落ちた — 承認待ちを見たら APPROVED を中継（元の欠陥）
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1517 "APPROVED" を GenieApproval の外で書いている
+  ✓ 落ちた — min(waitMs, 2000) で待つ時間を縮める（元の欠陥）
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1517 min(waitMs, …) で待つ時間を縮めている
+  ✓ 落ちた — follow が区切りを通らずに waitTask を直接呼ぶ
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1517 follow が waitForTask の区切りを通らずに waitTask を呼んでいる（TaskReader.live の外）
+  ✓ 落ちた — 声の「ストップ」で仕事を取り消す（元の欠陥）
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1517 声の経路から仕事を取り消している（VoiceInterruptionDetector。キーワードでの取り消しは戻さない）
+  ✓ 落ちた — 声の経路から /cancel を叩く
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1517 声の経路から /cancel を組み立てている
+  ✓ 落ちた — 声の経路から、カードの「やめる」以外で REJECTED を送る
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1517 声の経路で、確認カードの「やめる」以外から REJECTED を送っている
+  ✓ 落ちた — 生の FFI を直接呼ぶ
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1517 生の apiTaskApprove を GenieApproval の外で参照している（関数参照・補間の中も数える）
+  ✓ 落ちた — 関数参照で生の FFI を運ぶ（let relay = apiTaskApprove）
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1517 生の apiTaskApprove を GenieApproval の外で参照している（関数参照・補間の中も数える）
+  ✓ 落ちた — 文字列の補間の中に生の FFI を隠す
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1517 生の apiTaskApprove を GenieApproval の外で参照している（関数参照・補間の中も数える）
+  ✓ 落ちた — GenieCoreBridge に証拠の要らない承認の入口を足す
+      ✗ Sources/GenieMac/RecordingWorkspace/GenieCoreBridge.swift:235 生の apiTaskApprove を GenieApproval の外で参照している（関数参照・補間の中も数える）
+  ✓ 落ちた — GenieApproval に証拠を受け取らない APPROVED の関数を足す
+      ✗ decision "APPROVED" を送る所が 2 か所（ApprovalRelay.approve の 1 か所だけのはず）
+  ✓ 落ちた — GenieApproval で decision を変数で渡す
+      ✗ Sources/GenieApproval/UserApproval.swift:57 decision を文字の定数（APPROVED / REJECTED）以外で渡している
+  ✓ 落ちた — URLSession で /approve を叩く
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1517 /approve を直接組み立てている（GenieApproval の ApprovalRelay を通す）
+  ✓ 落ちた — 証拠を GenieMac で作る
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1517 UserApproval( を GenieApproval の外で使っている
+  ✓ 落ちた — 別のファイルで証拠の init を足す
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1517 extension UserApproval（改行をまたいでも数える）を GenieApproval の外で書いている
+  ✓ 落ちた — 別名（typealias）で extension を隠す
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1517 UserApproval に別名を付けている（数えるべき入口を名前から隠せる）
+  ✓ 落ちた — extension の直後で改行する
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1517 extension UserApproval（改行をまたいでも数える）を GenieApproval の外で書いている
+  ✓ 落ちた — .init(…) の省略形で作る
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1517 UserApproval を .init(…) の省略形で作っている
+  ✓ 落ちた — Unsafe…<UserApproval> で作る
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1517 UserApproval を型引数に渡している（Unsafe…<UserApproval> で作れる形）
+  ✓ 落ちた — 証拠を JSON から decode できるようにする
+      ✗ Sources/GenieMac/Components/Confirm.swift:264 extension UserApproval（改行をまたいでも数える）を GenieApproval の外で書いている
+  ✓ 落ちた — カードを出さずに証拠を作る（Confirm.swift の中の近道）
+      ✗ 証拠を作る入口（ApprovalLedger）は Confirm.approve の 1 か所だけのはず（Sources/GenieMac/Components/Confirm.swift:63, Sources/GenieMac/Components/Confirm.swift:264）
+  ✓ 落ちた — 証拠の入口を関数参照で持ち出す
+      ✗ 証拠を作る入口（ApprovalLedger）は Confirm.approve の 1 か所だけのはず（Sources/GenieMac/Components/Confirm.swift:63, Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1517）
+  ✓ 落ちた — 検査から証拠の internal init を覗く（@testable import GenieApproval）
+      ✗ Tests/GenieMacTests/ApprovalBoundaryTests.swift:579 @testable import GenieApproval（証拠の internal init が見える）
+  ✓ 落ちた — 証拠の init を public にする
+      ✗ Sources/GenieApproval/UserApproval.swift:24 UserApproval の init が public / package（GenieMac から作れる）
+  ✓ 落ちた — 証拠をコピーできる形にする（使い回せる）
+      ✗ Sources/GenieApproval/UserApproval.swift:19 UserApproval が ~Copyable ではない（1 回の「実行する」を使い回せる）
+  ✓ 落ちた — 声で「はい」をカードの承認にする（id 無し）
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1517 resolveConfirmation を id 無しで呼んでいる（描いたカードでなく store の現在値に答える）
+  ✓ 落ちた — 声で「はい」をカードの承認にする（id 付き）
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1517 resolveConfirmation(approved: true) を Dock のボタン以外から呼んでいる
+  ✓ 落ちた — Dock のボタンが描いたカードでなく現在値に答える
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDView.swift:1782 resolveConfirmation を id 無しで呼んでいる（描いたカードでなく store の現在値に答える）
+  ✓ 落ちた — 声で「はい」を、型名付きの .confirmationResolved で流す
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1517 .confirmationResolved を GenieStateStore の外で作っている（型名付き・変数経由の発行も数える）
+  ✓ 落ちた — 声で「はい」を、変数に入れた .confirmationResolved で流す
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1517 .confirmationResolved を GenieStateStore の外で作っている（型名付き・変数経由の発行も数える）
+  ✓ 落ちた — 声で「はい」を、resolveConfirmation の関数参照で答える
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1517 resolveConfirmation を呼び出し以外の形（関数参照）で使っている
+  ✓ 落ちた — 声で「はい」を、UIProbe.tap で「実行する」を押して答える
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1517 UIProbe.tap（検査の自動操作）を SelfTest の外で使っている
+  ✓ 落ちた — appendingPathComponent("approve") で承認の URL を組む
+      ✗ Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1517 /approve を直接組み立てている（GenieApproval の ApprovalRelay を通す）
+  ✓ 落ちた — 証拠の入口を任意の UUID で呼ぶ（型では通る）
+      ✗ 証拠を作る入口（ApprovalLedger）は Confirm.approve の 1 か所だけのはず（Sources/GenieMac/Components/Confirm.swift:63, Sources/GenieMac/VoiceHUD/VoiceHUDState.swift:1517）
+  ✓ 落ちた — ローカル HTTP サーバが APPROVED を中継する
+      ✗ scripts/computer-use-ui.mjs:779 ローカル HTTP サーバが承認を中継している（承認は確認カードだけ）
+
+  ✓ 型が拒む — GenieMac から直接 init
+      'UserApproval' initializer is inaccessible due to 'internal' protection level
+  ✓ 型が拒む — .init(…) の省略形
+      'UserApproval' initializer is inaccessible due to 'internal' protection level
+  ✓ 型が拒む — 別名 + extension で let を埋める
+      'let' property 'confirmationID' may not be initialized directly; use "self.init(...)" or "self = ..." instead
+  ✓ 型が拒む — 改行をまたぐ extension
+      'let' property 'confirmationID' may not be initialized directly; use "self.init(...)" or "self = ..." instead
+  ✓ 型が拒む — JSON から decode
+      type 'UserApproval' does not conform to protocol 'Copyable'
+  ✓ 型が拒む — 1 回の証拠を 2 件の承認に使う
+      'a' consumed more than once
+  ✓ 型が拒む — 証拠をループで使い回す
+      'a' consumed in a loop
+  ✓ 型が拒む — unsafeBitCast で作る
+      global function 'unsafeBitCast(_:to:)' requires that 'UserApproval' conform to 'Copyable'
+  ✓ 型が拒む — 証拠なしで ApprovalRelay.approve
+      missing argument for parameter 'approval' in call
+  · 型では拒まない — ApprovalLedger.issue(forPressedCard: 任意の UUID)（public。字句の ⑦ だけが落とす）
+
+APPROVAL_BOUNDARY_SELFCHECK=PASS
+
+== approval boundary (real key) ==
+== APPROVAL_BOUNDARY runtime（実キー）==
+SELFTEST_OK approval-press: real_cmd_return=approved early_cmd_return=ignored real_escape=declined no_answer=pending
+APPROVAL_BOUNDARY_RUNTIME=PASS
+
+== screen terms (one word each) ==
+TERMS_OK: 画面の語は 1 語ずつ
+
+== guide facts (app words only) ==
+  facts 161 件 / ガイドが引く key 63 件 / 文字で書かれた protected 0 件 / 一字違い 0 件 / 古い綴り 0 件
+SELFTEST_OK shots: 16面を実アプリで撮影・geometry OK・面どうしが別の絵
+  guide build: written 957 KB / facts used 63
+GUIDE_FACTS_OK: ガイドの語はアプリの表示（UserFacingFacts）だけから来ている
+
+== guide facts selfcheck ==
+  selfcheck 1 一字違いの古い写し:
+    FAIL: protected の語「録音」(dock.record) がガイドに文字で書かれている（build.py:131 付近）。fact("dock.record") で引く
+    FAIL: 「録音の開始 / 停止」はアプリの語「録音を開始 / 停止」(settings.shortcutRow) と一字違い（build.py:131 付近）。古い写し。fact("settings.shortcutRow") で引く
+  selfcheck 2 許可名を文字で:
+    FAIL: protected の語「画面収録」(permission.screenRecording) がガイドに文字で書かれている（build.py:141 付近）。fact("permission.screenRecording") で引く
+  selfcheck 3 知らない key:
+    FAIL: ガイドが知らない fact を引いている: settings.noSuchRow
+GUIDE_FACTS_SELFCHECK_OK: 3 つの書き戻しを全部捕まえた
+
+== liquid orb assets fresh ==
+LIQUID_ORB_ASSETS_OK
+
+== design tokens fresh ==
+design tokens are current
+
+== type scale (no literals) ==
+TYPE_LITERALS_OK: 6 つの型の view に字の大きさの直書きは無い（5 scope）
+
+== button hit area ==
+BUTTON_HIT_AREA_OK: 228 ファイル、ボタンの高さ・余白はラベルの中
+
+== swift bindings fresh ==
+swift bindings are current
+
+== workspace fixture fresh ==
+recording-workspace fixture is current
+
+== conventions ==
+convention check passed
+
+== C ABI contract (3-way) ==
+C ABI contract ok: Rust 21 = header 21, C# が呼ぶ 21 個すべて一致
+
+== native path Tauri-free ==
+native product path is Tauri-free: 230 Swift files + genie-core に Tauri 依存なし (Done#8)
+
+== WinUI XAML well-formed ==
+xaml well-formed: 5 WinUI .xaml files OK
+
+== C# bridge -> core + gateway ==
+CS_OK gateway(GenieSession): signedIn apps=14 library=0 echoArtifact=52bytes
+CS_OK bridge->core: version=0.1.4 pkce=S256 authorizeUrl parseCallback elapsed=01:05; geometry matches shared fixture
+
+== Windows C# logic type-check ==
+CSLOGIC_OK: Windows C# 実ロジック全体(Window code-behind 含む)が型検査を通過
+
+== C ABI round-trip (C) ==
+note: default SDK cannot link here; using /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk
+CABI_OK connector: pkce=S256 authorizeUrl ok nonLoopbackRejected parseCallback ok
+CABI_OK api: me=owner meeting=ok agent=COMPLETED apps=[... library=[...
+CABI_OK closed=1 ms=5000 fragmentBytes=160000 markedUploaded=1
+
+== macOS recording + live E2E ==
+SELFTEST_OK record: closed=1 fragmentBytes=160000 elapsed=00:05 recoverable=1
+SELFTEST_OK lifecycle: elapsed=00:05 recovered=true
+SELFTEST_OK shortcut: registered=true combo=⌥Space matcher=ok receivedSyntheticPress=true
+SELFTEST_OK sysaudio: capturesAudio=true sampleRate=48000 channels=2 excludesSelf=true
+SELFTEST_OK calendar: status=未確認 upcoming=0
+SELFTEST_OK screen: width=1280 height=800 pixelFormat=BGRA audio=false
+SELFTEST_OK rag: order=a,c,b topScore=1.00 reason=語が 1 件一致 · 新しい · このプロジェクト
+SELFTEST_OK keychain: roundtrip ok, absent=nil, delete idempotent, service=com.astra.mac
+SELFTEST_OK files: candidates=2(binary除外) top=oauth.txt score=0.72
+SELFTEST_OK ax: trusted=true selection=nil candidates=0
+SELFTEST_OK speech: auth=3 onDeviceCapable=true started=true appendedFrames=true serverFallback=never
+SELFTEST_OK connector: pkce=S256✓ authorizeUrl✓ nonLoopbackRejected✓ configured=0
+SELFTEST_OK permissions: mic=許可済み screen=許可済み ax=許可済み calendar=未確認 speech=3
+SELFTEST_OK shape: path matches shared fixture (14 segments); taskDock content 296.0pt fits dockWidth 296.0pt
+SELFTEST_OK hudlifecycle: HUD→Recording→保存→HUD 復帰 の window 状態遷移 OK
+SELFTEST_OK panel: 全Space=true fullscreen補助=true borderless=true 透過=true notMain=true
+SELFTEST_OK render: VoiceHUD:c496/o1.00 IntentBar:c93/o1.00 RecordingIndicator:c166/o1.00 ConfirmationCard:c91/o0.94 MeetingArtifact:c99/o1.00 ResearchResult:c125/o0.81 MeetingSurface:c58/o1.00 LineagePanel:c130/o0.82 ApprovalCard:c107/o0.77 EvidenceSummary:c131/o0.70 WorkSurface:c122/o0.80 ContextLens:c102/o0.88 HomeView:c103/o1.00 RecordingWorkspace:c51/o0.99 MainWindow:c106/o1.00 Settings:c2/o0.12
+SELFTEST_OK pause: 停止中は録音が進まない before=5000 pause=5000 resume=10000
+SELFTEST_OK timer: 経過が進む running=2 停止で止まる paused=2 再開で進む resumed=3
+SELFTEST_OK aiaction: Agent 応答="リリース日を 9 月 12 日にすることになりました。 鈴木が OAuth の確…"
+SELFTEST_OK translate: local model preserved Friday and 3 pm
+SELFTEST_OK recovery: 検出→復旧 uploadedBytes=192000 復旧後は候補から消える(stillThere=false)
+SELFTEST_OK connectorflow: loopback 受理 code=abc123 state=xyz789 port=55887
+SELFTEST_OK connectorstate: mapping ok, canConnect gated by client_id (google env=false)
+SELFTEST_OK connectorexchange: Swift→core→実HTTP 交換 tokens 取得+Keychain 保管 (verifier 送信=true)
+SELFTEST_OK voiceask: thinking=true→settled Agent 応答="Genieのレビューは金曜日15時です。…"
+SELFTEST_OK aistop: job=01a0fe8f server=CANCELLED local=failed→failed 面=停止の結果:true 成功に変わった:false
+SELFTEST_OK micrelease: provider=local-pipeline 起動直後=false 会話→会話を終了(開いて=true やめて=false 面=idle) 会話→Esc(開いて=true やめて=false 面=idle) 会話→Dockを押す(開いて=true やめて=false 面=quickActions) 音声入力→Esc(開いて=true やめて=false 面=idle) 音声入力→Dockを押す(開いて=true やめて=false 面=quickActions) 会話→面の差し替え(開いて=true やめて=false 面=idle) 会話→消音(開いて=true やめて=false 面=listening(partial: "")) 会議の問い→答えの面(開いて=true やめて=false 面=answer("遅れて届いた答え")) 会議の問い→Esc(開いて=true やめて=false 面=idle) 会話→考え中でEsc(開いて=true やめて=false 面=idle) 閉じてすぐ開き直す(開いて=true) 会話→すぐ終了(やめて=false)
+SELFTEST_OK recoveryoffline: オフライン録音を新規会議に紐付けて復旧 sent=192000 local消滅=true
+2026-10-03 06:40:46.655 Genie[11860:3752657] system audio capture unavailable: Error Domain=com.apple.ScreenCaptureKit.SCStreamErrorDomain Code=-3801 "ユーザがアプリケーション、ウインドウ、ディスプレイ取り込みのTCCを拒否しました" UserInfo={NSLocalizedDescription=ユーザがアプリケーション、ウインドウ、ディスプレイ取り込みのTCCを拒否しました}
+SELFTEST_OK fulllifecycle: HUD→実マイク 5000ms→停止→同じ会議がローカルLibraryにreadyで保存
+DICTATION_FIXTURE trusted=true value=0/true selection=0/true editable=true
+SELFTEST_OK e2e001(online): ①HUD常駐 → ②dictation → ③録音コントローラへ(窓は増えない) → ④実録音5000ms → ⑤transcript+2 → ⑥screenshot → ⑦AI要約 → ⑧停止→結果面へ morph(窓は1枚のまま) → ⑨ローカルLibraryに同じ会議を保存・停止後の再文字起こしなし
+2026-10-03 06:40:57.382 Genie[11897:3753234] system audio capture unavailable: Error Domain=com.apple.ScreenCaptureKit.SCStreamErrorDomain Code=-3801 "ユーザがアプリケーション、ウインドウ、ディスプレイ取り込みのTCCを拒否しました" UserInfo={NSLocalizedDescription=ユーザがアプリケーション、ウインドウ、ディスプレイ取り込みのTCCを拒否しました}
+light: SELFTEST_OK shots: 16面を実アプリで撮影・geometry OK・面どうしが別の絵
+STATE hover diff=2.629%
+STATE focus diff=0.642%
+STATE pressed diff=2.558%
+SELFTEST_OK golden: 10面が committed の golden と一致
+dark: SELFTEST_OK shots: 16面を実アプリで撮影・geometry OK・面どうしが別の絵
+STATE hover diff=2.647%
+STATE focus diff=0.642%
+STATE pressed diff=2.617%
+SELFTEST_OK golden: 10面が committed の golden と一致
+SELFTEST_OK geometry: 6状態の位置・寸法が基準と 2pt 以内
+OCCUPATION 01-idle VoiceTaskDockView: 220x76pt = 1.3% of 1440x900（上限 220x76）
+OCCUPATION 02-listening VoiceTaskDockView: 600x100pt = 4.6% of 1440x900（上限 600x152）
+OCCUPATION 03-task-dock VoiceTaskDockView: 720x294pt = 16.3% of 1440x900（上限 720x330）
+OCCUPATION 04-meeting VoiceTaskDockView: 820x108pt = 6.8% of 1440x900（上限 820x108）
+OCCUPATION 05-meeting-notes VoiceTaskDockView: 820x389pt = 24.6% of 1440x900（上限 820x492）
+OCCUPATION 06-workspace VoiceTaskDockView: 820x389pt = 24.6% of 1440x900（上限 820x492）
+OCCUPATION 06-workspace RecordingWorkspaceView: 1080x680pt = 56.7% of 1440x900（上限 1080x680）
+OCCUPATION card-06e-info-weather VoiceTaskDockView: 520x216pt = 8.7% of 1440x900（上限 520x392）
+OCCUPATION card-06g-info-weather-day VoiceTaskDockView: 520x171pt = 6.9% of 1440x900（上限 520x392）
+OCCUPATION card-06f-info-news VoiceTaskDockView: 520x268pt = 10.8% of 1440x900（上限 520x392）
+OCCUPATION card-06k-card-places VoiceTaskDockView: 520x380pt = 15.2% of 1440x900（上限 520x392）
+SELFTEST_OK occupation: 11面の実寸が token の上限以内
+SELFTEST_OK density: 16面が基準以下（最も詰まっている 07-apps 44.2% / 最も空いている 02b-voice-hud-preparing 92.9%）
+SELFTEST_OK plugins: manifest 14 件・宣言だけでは呼べない・許諾で呼べる・取り消せる・manifest 外は通らない
+light: SELFTEST_OK sessionshots: 16面を実遷移で撮影・同じ id が姿を変える
+dark: SELFTEST_OK sessionshots: 16面を実遷移で撮影・同じ id が姿を変える
+light: SELFTEST_OK dock8: 29状態を実遷移で撮影・top anchor 固定・窓は常に1枚・idle 220pt→agent 720pt
+dark: SELFTEST_OK dock8: 29状態を実遷移で撮影・top anchor 固定・窓は常に1枚・idle 220pt→agent 720pt
+SELFTEST_SKIP screenshot: screen recording not granted
+SELFTEST_OK waveform: 実マイクレベルで更新 callbacks=10
+SELFTEST_OK livemic: frames=9 samples=14168 peak=0.0177 (実デバイス取り込み)
+SELFTEST_OK livemeeting: 実マイク recordedMs=5000 recovered=true sttEvents=0
+SELFTEST_SKIP livescreen: screen recording not granted
+SELFTEST_OK sttrecognize: 実音声→STT 認識="Testing Astro meeting transcription"
+SELFTEST_OK sttstream: 実音声→streaming STT 確定="Testing Astro meeting transcription"
+SELFTEST_OK guishot: 実提示 HUD=220x44/c76 Workspace=1080x680/c32 Main=940x704/c49 IntentBar=560x56/c47 png=/var/folders/xn/mdmvpkwd0yx4tcr7rvn_3xv80000gn/T/astra-guishot-workspace-12986.png
+SELFTEST_OK axtree: Main 4セクション + Workspace 統合サーフェス7件を実アクセシブル要素として検出 (main=193 ws=221)
+A11Y_ENV	fullKeyboardAccess=false	keyboardNavigation=false	macOS=Version 27.0.1 (Build 26A434)
+A11Y_SURFACE	dock-idle	controls=2	nameless=0	latinOnly=0	images=0	imagesNamed=0
+A11Y_CONTROL	dock-idle	AXButton	sub=	name=Genieの操作を開く	id=dockOpenActions	frame=774,32,66x44	press=true
+A11Y_CONTROL	dock-idle	AXButton	sub=	name=録音	id=dockStartRecording	frame=906,38,48x32	press=true
+A11Y_SURFACE	dock-listening	controls=3	nameless=0	latinOnly=0	images=0	imagesNamed=0
+A11Y_CONTROL	dock-listening	AXTextField	sub=	name=前面のアプリに入力します…	id=dockListeningInputField	frame=623,55,426x21	press=false
+A11Y_CONTROL	dock-listening	AXButton	sub=	name=マイク	id=dockToggleMute	frame=1065,59,10x14	press=true
+A11Y_CONTROL	dock-listening	AXButton	sub=	name=入れた先で送信	id=dockSubmitInput	frame=1092,58,16x16	press=true
+A11Y_SURFACE	dock-agent	controls=3	nameless=0	latinOnly=0	images=0	imagesNamed=0
+A11Y_CONTROL	dock-agent	AXTextField	sub=	name=前面のアプリに入力します…	id=dockListeningInputField	frame=623,55,346x21	press=false
+A11Y_CONTROL	dock-agent	AXButton	sub=	name=マイク	id=dockToggleMute	frame=1065,59,10x14	press=true
+A11Y_CONTROL	dock-agent	AXButton	sub=	name=入れた先で送信	id=dockSubmitInput	frame=1092,58,16x16	press=true
+A11Y_SURFACE	dock-confirmation	controls=3	nameless=0	latinOnly=0	images=0	imagesNamed=0
+A11Y_CONTROL	dock-confirmation	AXTextField	sub=	name=前面のアプリに入力します…	id=dockListeningInputField	frame=623,55,426x21	press=false
+A11Y_CONTROL	dock-confirmation	AXButton	sub=	name=マイク	id=dockToggleMute	frame=1065,59,10x14	press=true
+A11Y_CONTROL	dock-confirmation	AXButton	sub=	name=入れた先で送信	id=dockSubmitInput	frame=1092,58,16x16	press=true
+2026-10-03 06:44:44.725 Genie[13075:3768433] system audio capture unavailable: Error Domain=com.apple.ScreenCaptureKit.SCStreamErrorDomain Code=-3801 "ユーザがアプリケーション、ウインドウ、ディスプレイ取り込みのTCCを拒否しました" UserInfo={NSLocalizedDescription=ユーザがアプリケーション、ウインドウ、ディスプレイ取り込みのTCCを拒否しました}
+A11Y_SURFACE	dock-meeting	controls=6	nameless=0	latinOnly=1	images=0	imagesNamed=0
+A11Y_CONTROL	dock-meeting	AXButton	sub=	name=メモ	id=meetingPanel-notes	frame=842,55,67x30	press=true
+A11Y_CONTROL	dock-meeting	AXButton	sub=	name=字幕	id=meetingPanel-captions	frame=921,55,68x30	press=true
+A11Y_CONTROL	dock-meeting	AXButton	sub=	name=Ask Genie	id=meetingPanel-ask	frame=1001,55,110x30	press=true
+A11Y_CONTROL	dock-meeting	AXButton	sub=	name=表示	id=secretToggle	frame=1141,55,32x30	press=true
+A11Y_CONTROL	dock-meeting	AXButton	sub=	name=一時停止	id=pauseRecording	frame=1185,55,32x30	press=true
+A11Y_CONTROL	dock-meeting	AXButton	sub=	name=録音を止める	id=stopRecording	frame=1229,57,25x25	press=true
+A11Y_RECORDING	found=true	names=録音を止める
+A11Y_SURFACE	workspace	controls=16	nameless=0	latinOnly=2	images=4	imagesNamed=4
+A11Y_CONTROL	workspace	AXButton	sub=	name=一時停止	id=recordingWorkspace	frame=813,207,28x28	press=true
+A11Y_CONTROL	workspace	AXButton	sub=	name=キャプション	id=recordingWorkspace	frame=851,207,28x28	press=true
+A11Y_CONTROL	workspace	AXButton	sub=	name=スキャン	id=recordingWorkspace	frame=889,207,28x28	press=true
+A11Y_CONTROL	workspace	AXButton	sub=	name=さらに表示	id=recordingWorkspace	frame=927,207,28x28	press=true
+A11Y_CONTROL	workspace	AXButton	sub=	name=録音を止める	id=recordingWorkspace	frame=976,208,25x25	press=true
+A11Y_CONTROL	workspace	AXButton	sub=	name=原文	id=tool-transcript	frame=667,320,66x32	press=true
+A11Y_CONTROL	workspace	AXButton	sub=	name=翻訳	id=tool-translation	frame=735,320,67x32	press=true
+A11Y_CONTROL	workspace	AXTextField	sub=	name=この会議について聞く	id=recordingWorkspace	frame=383,615,741x17	press=false
+A11Y_CONTROL	workspace	AXButton	sub=	name=要約	id=recordingWorkspace	frame=1134,610,40x28	press=true
+A11Y_CONTROL	workspace	AXButton	sub=	name=決まったこと	id=recordingWorkspace	frame=1179,610,84x28	press=true
+A11Y_CONTROL	workspace	AXButton	sub=	name=やること	id=recordingWorkspace	frame=1267,610,62x28	press=true
+A11Y_CONTROL	workspace	AXButton	sub=	name=マイク	id=recordingWorkspace	frame=1340,610,28x28	press=true
+A11Y_CONTROL	workspace	AXButton	sub=	name=閉じる	id=recordingWorkspace	frame=1356,668,10x10	press=true
+A11Y_CONTROL	workspace	AXButton	sub=	name=ファイル	id=recordingWorkspace	frame=360,705,86x28	press=true
+A11Y_CONTROL	workspace	AXButton	sub=	name=Gmail	id=recordingWorkspace	frame=454,705,78x28	press=true
+A11Y_CONTROL	workspace	AXButton	sub=	name=Drive	id=recordingWorkspace	frame=540,705,76x28	press=true
+A11Y_TAB	workspace	step=1	role=AXGroup	name=	id=	moved=false	visible=no
+A11Y_TAB	workspace	step=2	role=AXGroup	name=	id=	moved=false	visible=no
+A11Y_TAB	workspace	step=3	role=AXGroup	name=	id=	moved=false	visible=no
+A11Y_TAB	workspace	step=4	role=AXGroup	name=	id=	moved=false	visible=no
+A11Y_TAB	workspace	step=5	role=AXGroup	name=	id=	moved=false	visible=no
+A11Y_TAB	workspace	step=6	role=AXGroup	name=	id=	moved=false	visible=no
+A11Y_TAB	workspace	step=7	role=AXTextField	name=この会議について聞く	id=recordingWorkspace	moved=true	visible=yes
+A11Y_TAB	workspace	step=8	role=AXGroup	name=	id=	moved=true	visible=yes
+A11Y_TAB	workspace	step=9	role=AXGroup	name=	id=	moved=false	visible=no
+A11Y_TAB	workspace	step=10	role=AXGroup	name=	id=	moved=false	visible=no
+A11Y_TAB	workspace	step=11	role=AXGroup	name=	id=	moved=false	visible=no
+A11Y_TAB	workspace	step=12	role=AXGroup	name=	id=	moved=false	visible=no
+A11Y_TAB	workspace	step=13	role=AXGroup	name=	id=	moved=false	visible=no
+A11Y_TAB	workspace	step=14	role=AXGroup	name=	id=	moved=false	visible=no
+A11Y_SURFACE	main-home	controls=8	nameless=0	latinOnly=2	images=0	imagesNamed=0
+A11Y_CONTROL	main-home	AXButton	sub=	name=設定	id=mainSettings	frame=254,858,240x32	press=true
+A11Y_CONTROL	main-home	AXButton	sub=	name=Hide Sidebar	id=	frame=456,80,44x52	press=true
+A11Y_CONTROL	main-home	AXButton	sub=	name=録音中の会議	id=mainRecording	frame=1315,80,120x52	press=true
+A11Y_CONTROL	main-home	AXButton	sub=	name=エージェントの動きを表示／非表示	id=toggleActivity	frame=1435,80,45x52	press=true
+A11Y_CONTROL	main-home	AXButton	sub=AXCloseButton	name=	id=	frame=262,98,16x16	press=true
+A11Y_CONTROL	main-home	AXButton	sub=AXFullScreenButton	name=	id=	frame=308,98,16x16	press=true
+A11Y_CONTROL	main-home	AXButton	sub=AXMinimizeButton	name=	id=	frame=285,98,16x16	press=true
+A11Y_CONTROL	main-home	AXStaticText	sub=	name=Home	id=	frame=508,80,807x52	press=true
+A11Y_TAB	main-home	step=1	role=AXTextArea	name=何を終わらせますか？	id=homeIntentField	moved=true	visible=yes
+A11Y_TAB	main-home	step=2	role=AXTextArea	name=何を終わらせますか？	id=homeIntentField	moved=false	visible=yes
+A11Y_TAB	main-home	step=3	role=AXTextArea	name=何を終わらせますか？	id=homeIntentField	moved=false	visible=yes
+A11Y_TAB	main-home	step=4	role=AXTextArea	name=何を終わらせますか？	id=homeIntentField	moved=false	visible=yes
+A11Y_TAB	main-home	step=5	role=AXTextArea	name=何を終わらせますか？	id=homeIntentField	moved=false	visible=yes
+A11Y_TAB	main-home	step=6	role=AXTextArea	name=何を終わらせますか？	id=homeIntentField	moved=false	visible=yes
+A11Y_TAB	main-home	step=7	role=AXTextArea	name=何を終わらせますか？	id=homeIntentField	moved=false	visible=yes
+A11Y_TAB	main-home	step=8	role=AXTextArea	name=何を終わらせますか？	id=homeIntentField	moved=false	visible=yes
+A11Y_TAB	main-home	step=9	role=AXTextArea	name=何を終わらせますか？	id=homeIntentField	moved=false	visible=yes
+A11Y_TAB	main-home	step=10	role=AXTextArea	name=何を終わらせますか？	id=homeIntentField	moved=false	visible=yes
+A11Y_TAB	main-home	step=11	role=AXTextArea	name=何を終わらせますか？	id=homeIntentField	moved=false	visible=yes
+A11Y_TAB	main-home	step=12	role=AXTextArea	name=何を終わらせますか？	id=homeIntentField	moved=false	visible=yes
+A11Y_TAB	main-home	step=13	role=AXTextArea	name=何を終わらせますか？	id=homeIntentField	moved=false	visible=yes
+A11Y_TAB	main-home	step=14	role=AXTextArea	name=何を終わらせますか？	id=homeIntentField	moved=false	visible=yes
+A11Y_SURFACE	main-work	controls=12	nameless=0	latinOnly=4	images=0	imagesNamed=0
+A11Y_CONTROL	main-work	AXButton	sub=	name=設定	id=mainSettings	frame=254,858,240x32	press=true
+A11Y_CONTROL	main-work	AXButton	sub=	name=Tasks	id=subnav-tasks	frame=532,148,58x25	press=true
+A11Y_CONTROL	main-work	AXButton	sub=	name=Agents	id=subnav-agents	frame=598,148,65x25	press=true
+A11Y_CONTROL	main-work	AXButton	sub=	name=新しく依頼する	id=tasksNewRequest	frame=1267,201,108x24	press=true
+A11Y_CONTROL	main-work	AXButton	sub=	name=依頼を書く	id=emptyPrimary	frame=532,344,110x36	press=true
+A11Y_CONTROL	main-work	AXButton	sub=	name=Hide Sidebar	id=	frame=456,80,44x52	press=true
+A11Y_CONTROL	main-work	AXButton	sub=	name=録音中の会議	id=mainRecording	frame=1315,80,120x52	press=true
+A11Y_CONTROL	main-work	AXButton	sub=	name=エージェントの動きを表示／非表示	id=toggleActivity	frame=1435,80,45x52	press=true
+A11Y_CONTROL	main-work	AXButton	sub=AXCloseButton	name=	id=	frame=262,98,16x16	press=true
+A11Y_CONTROL	main-work	AXButton	sub=AXFullScreenButton	name=	id=	frame=308,98,16x16	press=true
+A11Y_CONTROL	main-work	AXButton	sub=AXMinimizeButton	name=	id=	frame=285,98,16x16	press=true
+A11Y_CONTROL	main-work	AXStaticText	sub=	name=Work	id=	frame=508,80,807x52	press=true
+A11Y_SURFACE	main-library	controls=13	nameless=0	latinOnly=4	images=1	imagesNamed=1
+A11Y_CONTROL	main-library	AXButton	sub=	name=設定	id=mainSettings	frame=254,858,240x32	press=true
+A11Y_CONTROL	main-library	AXButton	sub=	name=Meetings	id=subnav-meetings	frame=532,148,82x25	press=true
+A11Y_CONTROL	main-library	AXButton	sub=	name=Files	id=subnav-files	frame=622,148,50x25	press=true
+A11Y_CONTROL	main-library	AXMenuButton	sub=	name=自分だけ	id=session-meeting-357b1fbb-c711-4c5c-9371-82fb708884de	frame=550,347,51x15	press=true
+A11Y_CONTROL	main-library	AXMenuButton	sub=	name=プロジェクト無し	id=session-meeting-357b1fbb-c711-4c5c-9371-82fb708884de	frame=607,347,95x15	press=true
+A11Y_CONTROL	main-library	AXMenuButton	sub=	name=さらに表示	id=session-meeting-357b1fbb-c711-4c5c-9371-82fb708884de	frame=1338,347,20x14	press=true
+A11Y_CONTROL	main-library	AXButton	sub=	name=Hide Sidebar	id=	frame=456,80,44x52	press=true
+A11Y_CONTROL	main-library	AXButton	sub=	name=録音中の会議	id=mainRecording	frame=1315,80,120x52	press=true
+A11Y_CONTROL	main-library	AXButton	sub=	name=エージェントの動きを表示／非表示	id=toggleActivity	frame=1435,80,45x52	press=true
+A11Y_CONTROL	main-library	AXButton	sub=AXCloseButton	name=	id=	frame=262,98,16x16	press=true
+A11Y_CONTROL	main-library	AXButton	sub=AXFullScreenButton	name=	id=	frame=308,98,16x16	press=true
+A11Y_CONTROL	main-library	AXButton	sub=AXMinimizeButton	name=	id=	frame=285,98,16x16	press=true
+A11Y_CONTROL	main-library	AXStaticText	sub=	name=Library	id=	frame=508,80,807x52	press=true
+A11Y_SURFACE	main-apps	controls=13	nameless=0	latinOnly=4	images=2	imagesNamed=2
+A11Y_CONTROL	main-apps	AXButton	sub=	name=設定	id=mainSettings	frame=254,858,240x32	press=true
+A11Y_CONTROL	main-apps	AXButton	sub=	name=Connections	id=subnav-connectors	frame=532,148,105x25	press=true
+A11Y_CONTROL	main-apps	AXButton	sub=	name=Plugins	id=subnav-plugins	frame=645,148,67x25	press=true
+A11Y_CONTROL	main-apps	AXButton	sub=	name=接続設定	id=connectProvider-google	frame=1285,293,72x24	press=true
+A11Y_CONTROL	main-apps	AXButton	sub=	name=接続設定	id=connectProvider-microsoft	frame=1285,515,72x24	press=true
+A11Y_CONTROL	main-apps	AXDisclosureTriangle	sub=	name=詳しい接続情報	id=connectionDiagnostics	frame=509,760,124x17	press=true
+A11Y_CONTROL	main-apps	AXButton	sub=	name=Hide Sidebar	id=	frame=456,80,44x52	press=true
+A11Y_CONTROL	main-apps	AXButton	sub=	name=録音中の会議	id=mainRecording	frame=1315,80,120x52	press=true
+A11Y_CONTROL	main-apps	AXButton	sub=	name=エージェントの動きを表示／非表示	id=toggleActivity	frame=1435,80,45x52	press=true
+A11Y_CONTROL	main-apps	AXButton	sub=AXCloseButton	name=	id=	frame=262,98,16x16	press=true
+A11Y_CONTROL	main-apps	AXButton	sub=AXFullScreenButton	name=	id=	frame=308,98,16x16	press=true
+A11Y_CONTROL	main-apps	AXButton	sub=AXMinimizeButton	name=	id=	frame=285,98,16x16	press=true
+A11Y_CONTROL	main-apps	AXStaticText	sub=	name=Apps	id=	frame=508,80,807x52	press=true
+A11Y_SURFACE	main-meeting-detail	controls=24	nameless=0	latinOnly=4	images=0	imagesNamed=0
+A11Y_CONTROL	main-meeting-detail	AXButton	sub=	name=設定	id=mainSettings	frame=254,858,240x32	press=true
+A11Y_CONTROL	main-meeting-detail	AXButton	sub=	name=戻る	id=meetingArtifact	frame=522,150,30x30	press=true
+A11Y_CONTROL	main-meeting-detail	AXButton	sub=	name=[1]	id=meetingArtifact	frame=851,225,24x24	press=true
+A11Y_CONTROL	main-meeting-detail	AXButton	sub=	name=[2]	id=meetingArtifact	frame=680,294,26x24	press=true
+A11Y_CONTROL	main-meeting-detail	AXButton	sub=	name=[3]	id=meetingArtifact	frame=714,363,26x24	press=true
+A11Y_CONTROL	main-meeting-detail	AXButton	sub=	name=文字起こし	id=meetingArtifact	frame=522,411,75x28	press=true
+A11Y_CONTROL	main-meeting-detail	AXButton	sub=	name=録音	id=meetingArtifact	frame=603,411,42x28	press=true
+A11Y_CONTROL	main-meeting-detail	AXButton	sub=	name=関連ファイル	id=meetingArtifact	frame=652,411,86x28	press=true
+A11Y_CONTROL	main-meeting-detail	AXButton	sub=	name=出所	id=meetingArtifact	frame=744,411,42x28	press=true
+A11Y_CONTROL	main-meeting-detail	AXButton	sub=	name=00:42, あなた, 本日はお時間ありがとうございます。前回の提案書 v3 をもとに進めます。	id=meetingArtifact	frame=522,463,623x27	press=true
+A11Y_CONTROL	main-meeting-detail	AXButton	sub=	name=01:10, 田中, はい。社内では 10 月の導入で調整しています。	id=meetingArtifact	frame=522,494,623x27	press=true
+A11Y_CONTROL	main-meeting-detail	AXButton	sub=	name=13:05, 田中, 初期費用の内訳をもう少し細かく見せてもらえますか。	id=meetingArtifact	frame=522,525,623x27	press=true
+A11Y_CONTROL	main-meeting-detail	AXButton	sub=	name=13:40, 伊藤, ライセンスと導入支援に分けてお出しします。	id=meetingArtifact	frame=522,556,623x27	press=true
+A11Y_CONTROL	main-meeting-detail	AXButton	sub=	name=14:18, 田中, 初期費用が少し気になっています。	id=meetingArtifact	frame=522,587,623x27	press=true
+A11Y_CONTROL	main-meeting-detail	AXButton	sub=	name=14:22, 鈴木, 10 月からでしたら枠を取れます。	id=meetingArtifact	frame=522,618,623x27	press=true
+A11Y_CONTROL	main-meeting-detail	AXButton	sub=	name=14:31, 伊藤, 修正版の見積を明日お送りします。	id=meetingArtifact	frame=522,649,623x27	press=true
+A11Y_CONTROL	main-meeting-detail	AXButton	sub=	name=41:50, 田中, では明日の見積を待って、社内で回します。	id=meetingArtifact	frame=522,680,623x27	press=true
+A11Y_CONTROL	main-meeting-detail	AXButton	sub=	name=Hide Sidebar	id=	frame=456,80,44x52	press=true
+A11Y_CONTROL	main-meeting-detail	AXButton	sub=	name=録音中の会議	id=mainRecording	frame=1315,80,120x52	press=true
+A11Y_CONTROL	main-meeting-detail	AXButton	sub=	name=エージェントの動きを表示／非表示	id=toggleActivity	frame=1435,80,45x52	press=true
+A11Y_CONTROL	main-meeting-detail	AXButton	sub=AXCloseButton	name=	id=	frame=262,98,16x16	press=true
+A11Y_CONTROL	main-meeting-detail	AXButton	sub=AXFullScreenButton	name=	id=	frame=308,98,16x16	press=true
+A11Y_CONTROL	main-meeting-detail	AXButton	sub=AXMinimizeButton	name=	id=	frame=285,98,16x16	press=true
+A11Y_CONTROL	main-meeting-detail	AXStaticText	sub=	name=A社 新規提案	id=	frame=508,80,807x52	press=true
+A11Y_SURFACE	settings	controls=23	nameless=0	latinOnly=3	images=3	imagesNamed=3
+A11Y_CONTROL	settings	AXButton	sub=	name=条件・残りを確認、許可を取り消す…	id=settingsTransactionAuthorizations	frame=658,238,226x24	press=true
+A11Y_CONTROL	settings	AXRadioButton	sub=AXSegment	name=Compact	id=	frame=658,299,99x24	press=true
+A11Y_CONTROL	settings	AXRadioButton	sub=AXSegment	name=Comfortable	id=	frame=757,299,99x24	press=true
+A11Y_CONTROL	settings	AXRadioButton	sub=AXSegment	name=Large	id=	frame=857,299,99x24	press=true
+A11Y_CONTROL	settings	AXButton	sub=	name=Genieと話すを試す	id=permissionGuide-microphone	frame=1029,371,40x20	press=true
+A11Y_CONTROL	settings	AXButton	sub=	name=画面を理解するを有効にする	id=permissionGuide-screenCapture	frame=999,420,71x20	press=true
+A11Y_CONTROL	settings	AXButton	sub=	name=Macを操作するを試す	id=permissionGuide-accessibility	frame=1029,469,40x20	press=true
+A11Y_CONTROL	settings	AXDisclosureTriangle	sub=	name=その他の許可	id=	frame=635,521,106x16	press=true
+A11Y_CONTROL	settings	AXCheckBox	sub=AXSwitch	name=ライブ文字起こし（Google STT）	id=cloudTranscriptionToggle	frame=857,578,54x24	press=true
+A11Y_CONTROL	settings	AXCheckBox	sub=AXSwitch	name=会話で Gemini Live を使う	id=geminiLiveToggle	frame=815,659,54x24	press=true
+A11Y_CONTROL	settings	AXTextField	sub=AXSecureTextField	name=API キー	id=geminiLiveKey	frame=658,773,363x24	press=false
+A11Y_CONTROL	settings	AXButton	sub=	name=保存	id=	frame=1029,775,40x20	press=true
+A11Y_CONTROL	settings	AXIncrementor	sub=	name=月の上限: 未設定（決めるまで使えません）	id=geminiLiveMinutes	frame=883,803,20x24	press=false
+A11Y_CONTROL	settings	AXButton	sub=AXIncrementArrow	name=	id=	frame=883,803,20x12	press=true
+A11Y_CONTROL	settings	AXButton	sub=AXDecrementArrow	name=	id=	frame=883,815,20x12	press=true
+A11Y_CONTROL	settings	AXTextField	sub=AXSecureTextField	name=API キー	id=placesKey	frame=658,932,363x24	press=false
+A11Y_CONTROL	settings	AXButton	sub=	name=保存	id=	frame=1029,934,40x20	press=true
+A11Y_CONTROL	settings	AXIncrementor	sub=	name=月の上限: 未設定（決めるまで使えません）	id=placesMonthlyLimit	frame=883,962,20x24	press=false
+A11Y_CONTROL	settings	AXButton	sub=AXIncrementArrow	name=	id=	frame=883,962,20x12	press=true
+A11Y_CONTROL	settings	AXButton	sub=AXDecrementArrow	name=	id=	frame=883,974,20x12	press=true
+A11Y_CONTROL	settings	AXButton	sub=AXCloseButton	name=	id=	frame=642,77,16x16	press=true
+A11Y_CONTROL	settings	AXButton	sub=AXZoomButton	name=	id=	frame=688,77,16x16	press=true
+A11Y_CONTROL	settings	AXButton	sub=AXMinimizeButton	name=	id=	frame=665,77,16x16	press=true
+A11Y_TAB	settings	step=1	role=AXTextField	name=API キー	id=placesKey	moved=true	visible=yes
+A11Y_TAB	settings	step=2	role=AXTextField	name=API キー	id=geminiLiveKey	moved=true	visible=yes
+A11Y_TAB	settings	step=3	role=AXTextField	name=API キー	id=placesKey	moved=true	visible=yes
+A11Y_TAB	settings	step=4	role=AXTextField	name=API キー	id=geminiLiveKey	moved=true	visible=yes
+A11Y_TAB	settings	step=5	role=AXTextField	name=API キー	id=placesKey	moved=true	visible=yes
+A11Y_TAB	settings	step=6	role=AXTextField	name=API キー	id=geminiLiveKey	moved=true	visible=yes
+A11Y_TAB	settings	step=7	role=AXTextField	name=API キー	id=placesKey	moved=true	visible=yes
+A11Y_TAB	settings	step=8	role=AXTextField	name=API キー	id=geminiLiveKey	moved=true	visible=yes
+A11Y_TAB	settings	step=9	role=AXTextField	name=API キー	id=placesKey	moved=true	visible=yes
+A11Y_TAB	settings	step=10	role=AXTextField	name=API キー	id=geminiLiveKey	moved=true	visible=yes
+A11Y_TAB	settings	step=11	role=AXTextField	name=API キー	id=placesKey	moved=true	visible=yes
+A11Y_TAB	settings	step=12	role=AXTextField	name=API キー	id=geminiLiveKey	moved=true	visible=yes
+A11Y_TAB	settings	step=13	role=AXTextField	name=API キー	id=placesKey	moved=true	visible=yes
+A11Y_TAB	settings	step=14	role=AXTextField	name=API キー	id=geminiLiveKey	moved=true	visible=yes
+SELFTEST_OK a11ynames: controls=126 nameless=0 | tab(fullKeyboardAccess=false): workspace moved=2 visible=2 invisible=0 unmeasured=0; main-home moved=1 visible=1 invisible=0 unmeasured=0; settings moved=14 visible=14 invisible=0 unmeasured=0 | 測っただけ（判定は持たない）
+SELFTEST_SKIP calendarask: mapping OK; own-process SwiftUI content tree unavailable (menu nodes are not a Home measurement)
+2026-10-03 06:45:08.490 Genie[13202:3770259] No Assistant asset for language ar-SA
+2026-10-03 06:45:08.494 Genie[13202:3770259] No Assistant asset for language ca-ES
+2026-10-03 06:45:08.496 Genie[13202:3770259] No Assistant asset for language cs-CZ
+2026-10-03 06:45:08.499 Genie[13202:3770259] No Assistant asset for language da-DK
+2026-10-03 06:45:08.501 Genie[13202:3770259] No Assistant asset for language de-AT
+2026-10-03 06:45:08.504 Genie[13202:3770259] No Assistant asset for language de-CH
+2026-10-03 06:45:08.506 Genie[13202:3770259] No Assistant asset for language de-DE
+2026-10-03 06:45:08.509 Genie[13202:3770259] No Assistant asset for language el-GR
+2026-10-03 06:45:08.511 Genie[13202:3770259] No Assistant asset for language en-GB
+2026-10-03 06:45:08.514 Genie[13202:3770259] No Assistant asset for language en-AU
+2026-10-03 06:45:08.516 Genie[13202:3770259] No Assistant asset for language en-CA
+2026-10-03 06:45:08.517 Genie[13202:3770259] No Assistant asset for language en-GB
+2026-10-03 06:45:08.521 Genie[13202:3770259] No Assistant asset for language en-IE
+2026-10-03 06:45:08.524 Genie[13202:3770259] No Assistant asset for language en-IN
+2026-10-03 06:45:08.526 Genie[13202:3770259] No Assistant asset for language en-NZ
+2026-10-03 06:45:08.529 Genie[13202:3770259] No Assistant asset for language en-SG
+2026-10-03 06:45:08.532 Genie[13202:3770259] No Assistant asset for language en-ZA
+2026-10-03 06:45:08.534 Genie[13202:3770259] No Assistant asset for language es-US
+2026-10-03 06:45:08.537 Genie[13202:3770259] No Assistant asset for language es-CL
+2026-10-03 06:45:08.537 Genie[13202:3770259] No Assistant asset for language es-US
+2026-10-03 06:45:08.540 Genie[13202:3770259] No Assistant asset for language es-ES
+2026-10-03 06:45:08.542 Genie[13202:3770259] No Assistant asset for language es-MX
+2026-10-03 06:45:08.542 Genie[13202:3770259] No Assistant asset for language es-US
+2026-10-03 06:45:08.545 Genie[13202:3770259] No Assistant asset for language fi-FI
+2026-10-03 06:45:08.547 Genie[13202:3770259] No Assistant asset for language fr-BE
+2026-10-03 06:45:08.550 Genie[13202:3770259] No Assistant asset for language fr-CA
+2026-10-03 06:45:08.552 Genie[13202:3770259] No Assistant asset for language fr-CH
+2026-10-03 06:45:08.555 Genie[13202:3770259] No Assistant asset for language fr-FR
+2026-10-03 06:45:08.557 Genie[13202:3770259] No Assistant asset for language he-IL
+2026-10-03 06:45:08.560 Genie[13202:3770259] No Assistant asset for language hi-IN
+2026-10-03 06:45:08.560 Genie[13202:3770259] No Assistant asset for language hi-IN
+2026-10-03 06:45:08.563 Genie[13202:3770259] No Assistant asset for language hr-HR
+2026-10-03 06:45:08.565 Genie[13202:3770259] No Assistant asset for language hu-HU
+2026-10-03 06:45:08.567 Genie[13202:3770259] No Assistant asset for language id-ID
+2026-10-03 06:45:08.570 Genie[13202:3770259] No Assistant asset for language it-CH
+2026-10-03 06:45:08.572 Genie[13202:3770259] No Assistant asset for language it-IT
+2026-10-03 06:45:08.577 Genie[13202:3770259] No Assistant asset for language ko-KR
+2026-10-03 06:45:08.579 Genie[13202:3770259] No Assistant asset for language ms-MY
+2026-10-03 06:45:08.582 Genie[13202:3770259] No Assistant asset for language nb-NO
+2026-10-03 06:45:08.584 Genie[13202:3770259] No Assistant asset for language nl-BE
+2026-10-03 06:45:08.586 Genie[13202:3770259] No Assistant asset for language nl-NL
+2026-10-03 06:45:08.588 Genie[13202:3770259] No Assistant asset for language pl-PL
+2026-10-03 06:45:08.591 Genie[13202:3770259] No Assistant asset for language pt-BR
+2026-10-03 06:45:08.593 Genie[13202:3770259] No Assistant asset for language pt-PT
+2026-10-03 06:45:08.595 Genie[13202:3770259] No Assistant asset for language ro-RO
+2026-10-03 06:45:08.598 Genie[13202:3770259] No Assistant asset for language ru-RU
+2026-10-03 06:45:08.600 Genie[13202:3770259] No Assistant asset for language sk-SK
+2026-10-03 06:45:08.602 Genie[13202:3770259] No Assistant asset for language sv-SE
+2026-10-03 06:45:08.605 Genie[13202:3770259] No Assistant asset for language th-TH
+2026-10-03 06:45:08.607 Genie[13202:3770259] No Assistant asset for language tr-TR
+2026-10-03 06:45:08.610 Genie[13202:3770259] No Assistant asset for language uk-UA
+2026-10-03 06:45:08.612 Genie[13202:3770259] No Assistant asset for language vi-VN
+2026-10-03 06:45:08.614 Genie[13202:3770259] No Assistant asset for language wuu-CN
+2026-10-03 06:45:08.617 Genie[13202:3770259] No Assistant asset for language yue-CN
+2026-10-03 06:45:08.619 Genie[13202:3770259] No Assistant asset for language zh-CN
+2026-10-03 06:45:08.621 Genie[13202:3770259] No Assistant asset for language zh-HK
+2026-10-03 06:45:08.623 Genie[13202:3770259] No Assistant asset for language zh-TW
+2026-10-03 06:45:08.624 Genie[13202:3770259] No Assistant asset for language ar-SA
+2026-10-03 06:45:09.466 Genie[13202:3770259] No Assistant asset for language ar-SA
+SELFTEST_OK egress: autoUpload=off cloudSTTConsent=off meeting=[microphone,speechRecognition] sttNoFallback=ar-SA start=code3 file=nil
+SELFTEST_OK navtitle: 5面の見出しが状態と一致し、面ごとに実際に描き変わる。1 件を開いても sidebar で出られる
+SELFTEST_OK recoveryui: 録りかけを捨てられる・置き場の外は消さない・録音中のものは捨てない
+SELFTEST_OK focus: Dock は出ても姿を変えても、前面のアプリから焦点を奪わない
+SELFTEST_OK upgrade: 古い DB に列を足して開ける・保存できる・昔の行を失わない
+SELFTEST_OK breakpoints: >=1280 3-column / 960-1279 inspector drawer / <960 sidebar collapsed; render c9/c9/c7
+SELFTEST_OK dictation: focused text field へ挿入 value="会議の要点をまとめて" / テキストでない要素には書かない
+SELFTEST_OK state: 状態は GenieStateStore 1 箇所・dock↔mode 連動・R0/R1 は無確認 R2/R3 は確認・文脈は出所優先・EventBus 到達
+SELFTEST_OK presence: 会議検出（Zoom/Meet/Huddle）・検出しても録音は始まらない・共有中は Dock を出さない・許可は機能ごとに最小・マイク不可なら録音状態にしない・AX は推測で埋めない mic denial/restriction/pending: no recording or session
+PERF dock=64ms ax=27ms app=1ms mem=244MB cpu1s=1.7% cpu5s=0.04%
+FAIL: app selftest perf did not complete (logs: /var/folders/xn/mdmvpkwd0yx4tcr7rvn_3xv80000gn/T/tmp.a43OiGDMEf)
+SELFTEST_FAIL perf: idle メモリが 244MB (目標 <180MB)
+FAIL: macOS live perf
+SELFTEST_OK storage: §24 の7テーブル・画像/音声/本文の列を持たない・UI を閉じても task が残る・§11 通常時 0fps/上限3fps・§14 Vision は最後の手段
+SELFTEST_OK meetingiq: 増分だけ投入（全文再投入なし）・Canvas は構造データ・State/EventBus へ反映
+VAD partials=8 final=true firstPartial=67ms
+SELFTEST_OK vad: 無音は流さない・声は流す・短い途切れで切らない・§19 channel を保持・実音声の partial が 67ms で反映（<300ms）
+SELFTEST_OK browser: フレーム形式・全文は受け取らない・Notion のページを特定・DOM は AX より優先
+SELFTEST_OK dockanim: Presence→Listening 225ms・遷移中も上辺 Y は不動・滑らかに拡大
+INVOCATION idle screen occupation: 0.87%  target < 1%  PASS  （220x76pt / 1728x1117; 1440x900 なら 1.29%）
+2026-10-03 06:45:41.157 Genie[13512:3772715] system audio capture unavailable: Error Domain=com.apple.ScreenCaptureKit.SCStreamErrorDomain Code=-3801 "ユーザがアプリケーション、ウインドウ、ディスプレイ取り込みのTCCを拒否しました" UserInfo={NSLocalizedDescription=ユーザがアプリケーション、ウインドウ、ディスプレイ取り込みのTCCを拒否しました}
+2026-10-03 06:45:43.755 Genie[13512:3772715] system audio capture unavailable: Error Domain=com.apple.ScreenCaptureKit.SCStreamErrorDomain Code=-3801 "ユーザがアプリケーション、ウインドウ、ディスプレイ取り込みのTCCを拒否しました" UserInfo={NSLocalizedDescription=ユーザがアプリケーション、ウインドウ、ディスプレイ取り込みのTCCを拒否しました}
+INVOCATION hotkey delivery: 28ms  target —  PASS  （tap → isRecording）
+INVOCATION shortcut → visible feedback: 47ms  target < 100ms  PASS  （Dock の枠が最初に動くまで。state 27ms・settled 214ms・経路 tap）
+INVOCATION shortcut → microphone ready: 140ms  target < 200ms  PASS  （最初の音声フレームまで。level 139ms・journal —）
+INVOCATION speech end → processing state: 42ms  target < 150ms  PASS  （止めてから Dock が結果面へ動き始めるまで。state 23ms・settled 209ms）
+INVOCATION speech → first transcript: 95ms  target < 400ms  PASS  （VAD 通過の最初のフレーム → 最初の partial（暖めた後））
+INVOCATION cancel latency (Esc in listening): 32ms  target < 100ms  PASS  （state 25ms・枠 32ms）
+INVOCATION focus theft: 0  target 0  PASS  （Finder 前面のまま・key window なし）
+INVOCATION extra windows: 0  target 0  PASS  （自分の窓 1 枚のまま）
+INVOCATION independent startup probes: RecordingRuntime.begin 19ms・MicCapture.start 64ms・SpeechTranscriber.start 0ms・end 0ms（各々別の起動、内訳ではない。許可 3）
+INVOCATION_WORLD_CLASS_GATE=PASS measured=9/9 worldClassMiss=0 regressions=0 notMeasured=0
+  観察: 初回（cold）: 枠 139ms・state 126ms。以下は 2 回目以降（steady-state）
+  観察: 独立した起動プローブ: RecordingRuntime.begin 19ms・MicCapture.start 64ms・SpeechTranscriber.start 0ms・end 0ms（各々別の起動、内訳ではない。許可 3）
+SELFTEST_OK invocation: PASS measured 9/9（/tmp/astra-invocation/result.json）
+2026-10-03 06:45:53.358 Genie[13579:3773695] system audio capture unavailable: Error Domain=com.apple.ScreenCaptureKit.SCStreamErrorDomain Code=-3801 "ユーザがアプリケーション、ウインドウ、ディスプレイ取り込みのTCCを拒否しました" UserInfo={NSLocalizedDescription=ユーザがアプリケーション、ウインドウ、ディスプレイ取り込みのTCCを拒否しました}
+2026-10-03 06:45:55.841 Genie[13579:3773695] system audio capture unavailable: Error Domain=com.apple.ScreenCaptureKit.SCStreamErrorDomain Code=-3801 "ユーザがアプリケーション、ウインドウ、ディスプレイ取り込みのTCCを拒否しました" UserInfo={NSLocalizedDescription=ユーザがアプリケーション、ウインドウ、ディスプレイ取り込みのTCCを拒否しました}
+INVOCATION_AUDIO_TRUTH loss window: 面から 106ms・⌥Space から 138ms（IO 最初のバッファまで）
+  +0ms で発話開始 → first phoneme lost=1  first word fully lost=0
+  +50ms で発話開始 → first phoneme lost=1  first word fully lost=0
+  +100ms で発話開始 → first phoneme lost=1  first word fully lost=0
+  +200ms で発話開始 → first phoneme lost=0  first word fully lost=0
+  listening truth: 取り込み開始=151ms・名乗り=聞いています…・取り込み前に聞いていますと名乗った=0・Listening 中にマイクが開いた=1・Esc で閉じた=1
+2026-10-03 06:45:57.683 Genie[13579:3773695] system audio capture unavailable: Error Domain=com.apple.ScreenCaptureKit.SCStreamErrorDomain Code=-3801 "ユーザがアプリケーション、ウインドウ、ディスプレイ取り込みのTCCを拒否しました" UserInfo={NSLocalizedDescription=ユーザがアプリケーション、ウインドウ、ディスプレイ取り込みのTCCを拒否しました}
+  state truth: 取り込み前の見出し=準備中…・生きた後=録音中・取り込み前に録音中を名乗った=0・生きた後も準備中のまま=0
+INVOCATION_AUDIO_TRUTH=PASS（/tmp/astra-invocation-audio/result.json）
+SELFTEST_OK invocationaudio: PASS — 物理の窓 105ms は残るが、その間 UI は「準備中…」で、録音中を名乗ってから話した音は落ちない（+0/+50/+100ms の生の欠けは 在り、記録値）
+SELFTEST_OK entry: メニュー(⌘O)・Dock・結果面のどれからも Main View が実際に開く
+SELFTEST_OK update: 未設定（SUFeedURL が無い（配布先が未設定））・設定が無ければ動かない・版=0.1.4
+could not create image from rect
+could not create image from rect
+could not create image from rect
+SELFTEST_SKIP secret: screencapture が使えない
+2026-10-03 06:46:10.619 Genie[13698:3774846] system audio capture unavailable: Error Domain=com.apple.ScreenCaptureKit.SCStreamErrorDomain Code=-3801 "ユーザがアプリケーション、ウインドウ、ディスプレイ取り込みのTCCを拒否しました" UserInfo={NSLocalizedDescription=ユーザがアプリケーション、ウインドウ、ディスプレイ取り込みのTCCを拒否しました}
+SELFTEST_OK recordbutton: 録音ボタンは窓を増やさず Dock を録音コントローラにする・面は勝手に開かない・停止で結果面へ
+SELFTEST_OK session: 開始で保存・同じ id が recording→processing→ready・保存先/project を後から変更・再起動で復元・落ちたら interrupted・予定から継承
+SELFTEST_OK uiscale: 3段が別々に効く（文字 x1.12 / 寸法 x1.18）・既定は素の値・設定は残る
+SELFTEST_OK acceptance: 20 項目 PASS — 1.予定なし録音 / 3.開始直後に Home へ / 3.Recent には重ねて出さない / 4.Recording Now と同一 Session / 4.Dock も会議へ / 5.processing へ / 5.カードが増えない / 6.ready へ / 6.同じ id のまま / 7.件数が入る / 8.保存先を変えられる / 9.project を変えられる / 2.Calendar から 1-click / 10.録音ごとに別ID / 10.project 自動継承 / 10.題と人数を継承 / 11.再起動で復元 / 12.interrupted で復旧 / 13.New Recording を開ける / 14.UI Scale 3 段
+SELFTEST_OK sessionsync: Dock/Home/DB が同じ id・面切替と Scale で録音を失わない・停止はどちらからでも両方へ届く・DB と UI が一致
+FOCUS_STATE home active=true key=5998 main=5998 visible=5997:,5998:Home
+FOCUS_STATE notes active=true key=5997 main=5998 visible=5997:,5998:Home
+FOCUS_STATE passive active=true key=5998 main=5998 visible=5997:,5998:Home
+FOCUS_STATE ask active=true key=5997 main=5998 visible=5997:,5998:Home
+FOCUS_STATE sharing active=true key=5998 main=5998 visible=5998:Home
+SELFTEST_OK home-meeting-focus: explicit Notes/Ask use existing Dock key window; passive updates preserve Home; sharing stays hidden
+  ^ FAILED (exit 1)
+
+== liquid orb native lifecycle ==
+ORB_DISPLAY visible=true occlusion=true appHidden=false viewHidden=false paused=false size=(264.0, 264.0) frames=24
+SELFTEST_OK liquid-orb: real Metal snapshots; playback=false
+
+== initial profile native UI ==
+SELFTEST_OK initialprofile: 8 native captures; review/edit and defer/reopen actions verified; no external data or send
+
+== recording experience E2E ==
+  録音開始           id=meeting-5987e870-56bb-45f3-a7dc-1bf5a25b5f5e (停止前に DB へ recording を確認済み)
+  強制終了           kill -9（正常終了の経路を通さない）
+  DB(kill 直後)        meeting-5987e870-56bb-45f3-a7dc-1bf5a25b5f5e=recording
+  再起動              meeting-5987e870-56bb-45f3-a7dc-1bf5a25b5f5e=interrupted
+  続きから処理     id=meeting-5987e870-56bb-45f3-a7dc-1bf5a25b5f5e status=ready actions=1
+  再々起動           meeting-5987e870-56bb-45f3-a7dc-1bf5a25b5f5e=ready (同じ id)
+RECORDING_EXPERIENCE_OK: 録音 → kill → interrupted → 続きから ready → 再起動で保持 (id=meeting-5987e870-56bb-45f3-a7dc-1bf5a25b5f5e)
+
+== journeys JA/JB/JC ==
+  JOURNEY JA success=true ms=5202 interactions=4 windows=0 focusTheft=0 errors=0
+  JOURNEY JB success=true ms=10042 interactions=7 windows=0 focusTheft=0 errors=0
+  JOURNEY JC success=true ms=7261 interactions=4 windows=0 focusTheft=0 errors=0
+  MOTION T0-idle-to-listening frames=34 captured=34 fps=47 maxGap=135ms sameId=100% windows+0 focusTheft=0 top=0.0pt center=0.5pt missing=0 heightRev=0 maxStep=0.50 contentΔmax=8.0 other(shift=0.0pt alphaRev=0) settled=283ms
+  MOTION T3-dock-to-running frames=39 captured=39 fps=54 maxGap=67ms sameId=100% windows+0 focusTheft=0 top=0.0pt center=0.5pt missing=0 heightRev=0 maxStep=0.39 contentΔmax=10.6 other(shift=0.0pt alphaRev=0) settled=234ms
+  MOTION T4-running-to-confirmation frames=37 captured=37 fps=51 maxGap=77ms sameId=100% windows+0 focusTheft=0 top=0.0pt center=0.5pt missing=0 heightRev=0 maxStep=0.41 contentΔmax=13.4 other(shift=0.0pt alphaRev=0) settled=235ms
+  MOTION T1-meeting-to-notes frames=38 captured=38 fps=53 maxGap=54ms sameId=100% windows+0 focusTheft=0 top=0.0pt center=0.0pt missing=0 heightRev=0 maxStep=0.28 contentΔmax=6.8 other(shift=0.0pt alphaRev=0) settled=219ms
+  MOTION T2-notes-to-workspace frames=37 captured=37 fps=51 maxGap=85ms sameId=100% windows+0 focusTheft=0 top=0.0pt center=0.0pt missing=0 heightRev=0 maxStep=0.00 contentΔmax=27.8 other(shift=0.0pt alphaRev=0) settled=200ms
+  NOT_MEASURED T0-idle-to-listening: 実効 47fps（60 に届かない。frame pacing は参考値）
+SURFACE_CONTINUITY_MOTION=PASS
+PERCEIVED_SURFACE_CONTINUITY=LAYER_B（この selftest では測らない。判定は journeys/perceived/answers/aggregate.md）
+JOURNEYS_OK: 3 本の手順と観測した窓・面の連続性を確認（実効fps・未計測項目は上記）
+
+== macOS swift unit tests ==
+macOS_swift_unit: 	 Executed 323 tests, with 0 failures (0 unexpected) in 16.992 (17.024) seconds
+macOS_swift_shutdown: 	 Executed 1 test, with 0 failures (0 unexpected) in 2.222 (2.223) seconds
+macOS_swift_external_translation: 	 Executed 1 test, with 0 failures (0 unexpected) in 5.547 (5.548) seconds
+SWIFT_TESTS_OK: unit, isolated shutdown and external semantic fixture completed
+
+== AppKit termination dispatch ==
+PASS legacy: dispatch-entered -> should-terminate
+PASS scheduled: dispatch-entered -> dispatch-returned -> should-terminate -> cleanup-started -> cleanup-mainactor -> cleanup-finished -> reply -> will-terminate
+PASS direct: dispatch-entered -> should-terminate -> cleanup-started -> cleanup-finished -> reply -> will-terminate
+PASS signal: signal-received -> dispatch-returned -> should-terminate -> cleanup-started -> cleanup-mainactor -> cleanup-finished -> reply -> will-terminate
+
+== Keychain confirmation quit ==
+/Users/shuhei/Projects/astra/apps/genie-macos/Sources/GenieMac/Settings/KeychainStore.swift:18:22: warning: 'SecKeychainGetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 16 |     init(readAllowed: @escaping () throws -> Bool = {
+ 17 |         var allowed: DarwinBoolean = false
+ 18 |         let status = SecKeychainGetUserInteractionAllowed(&allowed)
+    |                      `- warning: 'SecKeychainGetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 19 |         guard status == errSecSuccess else { throw KeychainStore.KeychainError.interactionPolicy(status) }
+ 20 |         return allowed.boolValue
+
+/Users/shuhei/Projects/astra/apps/genie-macos/Sources/GenieMac/Settings/KeychainStore.swift:22:22: warning: 'SecKeychainSetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 20 |         return allowed.boolValue
+ 21 |     }, setAllowed: @escaping (Bool) throws -> Void = { allowed in
+ 22 |         let status = SecKeychainSetUserInteractionAllowed(allowed)
+    |                      `- warning: 'SecKeychainSetUserInteractionAllowed' was deprecated in macOS 10.10: SecKeychain is deprecated [#DeprecatedDeclaration]
+ 23 |         guard status == errSecSuccess else { throw KeychainStore.KeychainError.interactionPolicy(status) }
+ 24 |     }) {
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+PASS quit while a synthetic existing-item confirmation waits: owned process exited without waiting for the read
+
+VERIFY_ALL_NOT_RUN: 5 reported checks/scopes (not passes)
+journeys JA/JB/JC:   NOT_MEASURED T0-idle-to-listening: 実効 47fps（60 に届かない。frame pacing は参考値）
+macOS recording + live E2E: SELFTEST_SKIP calendarask: mapping OK; own-process SwiftUI content tree unavailable (menu nodes are not a Home measurement)
+macOS recording + live E2E: SELFTEST_SKIP livescreen: screen recording not granted
+macOS recording + live E2E: SELFTEST_SKIP screenshot: screen recording not granted
+macOS recording + live E2E: SELFTEST_SKIP secret: screencapture が使えない
+VERIFY_ALL_FAIL

@@ -1,0 +1,362 @@
+Evidence: /private/tmp/genie-background-native.Xy5iRm
+STAGE route ax_press by element point 310,633 local 130,168
+STAGE route ax_value by element point 335,772 local 155,307
+STAGE route ax_value by element point 335,772 local 155,307
+STAGE route ax_scroll by element point 610,772 local 430,307
+STAGE route ax_scroll by element point 610,772 local 430,307
+STAGE route ax_scroll by element point 610,772 local 430,307
+STAGE route ax_scroll by element point 610,772 local 430,307
+STAGE takeover-marker human_takeover
+STAGE takeover-marker session_stopped
+TEST capture
+DIAGNOSTIC scroll area Optional((490.0, 677.0, 240.0, 190.0))
+DIAGNOSTIC AXContents Optional(<__NSArrayM 0x7a8c0bc810>(
+<AXUIElement 0x7a8cfbe010> {pid=46007}
+)
+)
+DIAGNOSTIC AXVerticalScrollBar Optional(<AXUIElement 0x7a8cfbe010> {pid=46007})
+DIAGNOSTIC AXWindow Optional(<AXUIElement 0x7a8cfbe010> {pid=46007})
+DIAGNOSTIC child AXTextArea Optional((490.0, 677.0, 240.0, 2400.0))
+DIAGNOSTIC child AXScrollBar Optional((712.0, 676.0, 19.0, 192.0))
+DIAGNOSTIC AXValue Optional(0)
+DIAGNOSTIC AXMinValue nil
+DIAGNOSTIC AXMaxValue nil
+DIAGNOSTIC AXOrientation Optional(AXVerticalOrientation)
+DIAGNOSTIC AXEnabled Optional(1)
+TEST click
+TEST capture for text
+TEST type
+TEST append preserves existing native text
+TEST append refuses a value changed after preview during marker travel
+TEST background vertical scroll
+{
+  "appendConcurrentChangeRefused" : true,
+  "appended" : {
+    "activationPolicy" : "accessory",
+    "activations" : 0,
+    "clicks" : 1,
+    "geometry" : {
+      "coordinateSystem" : "AppKit points, bottom-left origin",
+      "screens" : [
+        {
+          "height" : 1009,
+          "width" : 1728,
+          "x" : 0,
+          "y" : 75
+        }
+      ],
+      "window" : {
+        "height" : 442,
+        "width" : 580,
+        "x" : 180,
+        "y" : 210
+      }
+    },
+    "isActive" : false,
+    "isOnActiveSpace" : true,
+    "isVisible" : true,
+    "occlusionVisible" : true,
+    "scrollBarReplacements" : 0,
+    "scrollValue" : 0,
+    "scrollViewport" : 190,
+    "scrollY" : 0,
+    "startupReady" : true,
+    "text" : "背景入力 日本語 👩‍💻 + 追記"
+  },
+  "appendPreserved" : true,
+  "appendReplayRefused" : true,
+  "clipboardUnchanged" : true,
+  "cursorUnchanged" : true,
+  "existingTextRefused" : true,
+  "foregroundUnchangedDuringActions" : true,
+  "humanTakeoverRefused" : true,
+  "indicatorInputTransparent" : true,
+  "indicatorShown" : true,
+  "inputSource" : "none; passive preservation check only, no foreground typing test",
+  "keysRefused" : true,
+  "pointerAndStopOnScreen" : true,
+  "raced" : {
+    "activationPolicy" : "accessory",
+    "activations" : 0,
+    "clicks" : 1,
+    "geometry" : {
+      "coordinateSystem" : "AppKit points, bottom-left origin",
+      "screens" : [
+        {
+          "height" : 1009,
+          "width" : 1728,
+          "x" : 0,
+          "y" : 75
+        }
+      ],
+      "window" : {
+        "height" : 442,
+        "width" : 580,
+        "x" : 180,
+        "y" : 210
+      }
+    },
+    "isActive" : false,
+    "isOnActiveSpace" : true,
+    "isVisible" : true,
+    "occlusionVisible" : true,
+    "scrollBarReplacements" : 0,
+    "scrollValue" : 0,
+    "scrollViewport" : 190,
+    "scrollY" : 0,
+    "startupReady" : true,
+    "text" : "fixture concurrent edit preserved"
+  },
+  "replayRefused" : true,
+  "scroll" : {
+    "boundaryRefused" : true,
+    "concurrentChangeRefused" : true,
+    "down" : {
+      "activationPolicy" : "accessory",
+      "activations" : 0,
+      "clicks" : 1,
+      "geometry" : {
+        "coordinateSystem" : "AppKit points, bottom-left origin",
+        "screens" : [
+          {
+            "height" : 1009,
+            "width" : 1728,
+            "x" : 0,
+            "y" : 75
+          }
+        ],
+        "window" : {
+          "height" : 442,
+          "width" : 580,
+          "x" : 180,
+          "y" : 210
+        }
+      },
+      "isActive" : false,
+      "isOnActiveSpace" : true,
+      "isVisible" : true,
+      "occlusionVisible" : true,
+      "scrollBarReplacements" : 0,
+      "scrollValue" : 0.042986425339366516,
+      "scrollViewport" : 190,
+      "scrollY" : 95,
+      "startupReady" : true,
+      "text" : "fixture concurrent edit preserved"
+    },
+    "final" : {
+      "activationPolicy" : "accessory",
+      "activations" : 0,
+      "clicks" : 1,
+      "geometry" : {
+        "coordinateSystem" : "AppKit points, bottom-left origin",
+        "screens" : [
+          {
+            "height" : 1009,
+            "width" : 1728,
+            "x" : 0,
+            "y" : 75
+          }
+        ],
+        "window" : {
+          "height" : 442,
+          "width" : 580,
+          "x" : 180,
+          "y" : 210
+        }
+      },
+      "isActive" : false,
+      "isOnActiveSpace" : true,
+      "isVisible" : true,
+      "occlusionVisible" : true,
+      "scrollBarReplacements" : 0,
+      "scrollValue" : 0.29999999999999999,
+      "scrollViewport" : 190,
+      "scrollY" : 663,
+      "startupReady" : true,
+      "text" : "fixture concurrent edit preserved"
+    },
+    "postDispatchUnknown" : true,
+    "receipt" : {
+      "deliveryMode" : "background",
+      "effect" : "confirmed",
+      "route" : "ax_scroll",
+      "scroll" : {
+        "after" : 0.042986425339366516,
+        "before" : 0,
+        "deltaPoints" : 95,
+        "direction" : "down",
+        "viewportPoints" : 190
+      },
+      "status" : "applied"
+    },
+    "replacedBarRefused" : true,
+    "replacement" : {
+      "activationPolicy" : "accessory",
+      "activations" : 0,
+      "clicks" : 1,
+      "geometry" : {
+        "coordinateSystem" : "AppKit points, bottom-left origin",
+        "screens" : [
+          {
+            "height" : 1009,
+            "width" : 1728,
+            "x" : 0,
+            "y" : 75
+          }
+        ],
+        "window" : {
+          "height" : 442,
+          "width" : 580,
+          "x" : 180,
+          "y" : 210
+        }
+      },
+      "isActive" : false,
+      "isOnActiveSpace" : true,
+      "isVisible" : true,
+      "occlusionVisible" : true,
+      "scrollBarReplacements" : 1,
+      "scrollValue" : 0.59999999999999998,
+      "scrollViewport" : 190,
+      "scrollY" : 1326,
+      "startupReady" : true,
+      "text" : "fixture concurrent edit preserved"
+    },
+    "replayRefused" : true,
+    "sentinel" : {
+      "activationPolicy" : "accessory",
+      "activations" : 0,
+      "clicks" : 0,
+      "geometry" : {
+        "coordinateSystem" : "AppKit points, bottom-left origin",
+        "screens" : [
+          {
+            "height" : 1009,
+            "width" : 1728,
+            "x" : 0,
+            "y" : 75
+          }
+        ],
+        "window" : {
+          "height" : 442,
+          "width" : 580,
+          "x" : 500,
+          "y" : 210
+        }
+      },
+      "isActive" : false,
+      "isOnActiveSpace" : true,
+      "isVisible" : true,
+      "occlusionVisible" : true,
+      "scrollBarReplacements" : 0,
+      "scrollValue" : 0,
+      "scrollViewport" : 190,
+      "scrollY" : 0,
+      "startupReady" : true,
+      "text" : ""
+    },
+    "unknownReadback" : {
+      "activationPolicy" : "accessory",
+      "activations" : 0,
+      "clicks" : 1,
+      "geometry" : {
+        "coordinateSystem" : "AppKit points, bottom-left origin",
+        "screens" : [
+          {
+            "height" : 1009,
+            "width" : 1728,
+            "x" : 0,
+            "y" : 75
+          }
+        ],
+        "window" : {
+          "height" : 442,
+          "width" : 580,
+          "x" : 180,
+          "y" : 210
+        }
+      },
+      "isActive" : false,
+      "isOnActiveSpace" : true,
+      "isVisible" : true,
+      "occlusionVisible" : true,
+      "scrollBarReplacements" : 0,
+      "scrollValue" : 0.59999999999999998,
+      "scrollViewport" : 190,
+      "scrollY" : 1326,
+      "startupReady" : true,
+      "text" : "fixture concurrent edit preserved"
+    },
+    "upReadback" : true
+  },
+  "secureInputRefused" : true,
+  "sentinel" : {
+    "activationPolicy" : "accessory",
+    "activations" : 0,
+    "clicks" : 0,
+    "geometry" : {
+      "coordinateSystem" : "AppKit points, bottom-left origin",
+      "screens" : [
+        {
+          "height" : 1009,
+          "width" : 1728,
+          "x" : 0,
+          "y" : 75
+        }
+      ],
+      "window" : {
+        "height" : 442,
+        "width" : 580,
+        "x" : 500,
+        "y" : 210
+      }
+    },
+    "isActive" : false,
+    "isOnActiveSpace" : true,
+    "isVisible" : true,
+    "occlusionVisible" : true,
+    "scrollBarReplacements" : 0,
+    "scrollValue" : 0,
+    "scrollViewport" : 190,
+    "scrollY" : 0,
+    "startupReady" : true,
+    "text" : ""
+  },
+  "status" : "PASS",
+  "takeoverSource" : "injected sticky marker",
+  "target" : {
+    "activationPolicy" : "accessory",
+    "activations" : 0,
+    "clicks" : 1,
+    "geometry" : {
+      "coordinateSystem" : "AppKit points, bottom-left origin",
+      "screens" : [
+        {
+          "height" : 1009,
+          "width" : 1728,
+          "x" : 0,
+          "y" : 75
+        }
+      ],
+      "window" : {
+        "height" : 442,
+        "width" : 580,
+        "x" : 180,
+        "y" : 210
+      }
+    },
+    "isActive" : false,
+    "isOnActiveSpace" : true,
+    "isVisible" : true,
+    "occlusionVisible" : true,
+    "scrollBarReplacements" : 0,
+    "scrollValue" : 0,
+    "scrollViewport" : 190,
+    "scrollY" : 0,
+    "startupReady" : true,
+    "text" : "背景入力 日本語 👩‍💻"
+  },
+  "targetPreviewCanonicalElement" : true,
+  "targetPreviewReadOnly" : true,
+  "targetPreviewSecureRefused" : true
+}

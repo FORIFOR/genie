@@ -1,0 +1,23 @@
+{
+  "status": "started",
+  "gateway": "http://127.0.0.1:43180",
+  "model": "gpt-6-sol",
+  "modelProvider": "codex",
+  "nativeAppLaunched": false,
+  "testDB": {
+    "container": "df511e4531df08123d46dfb71f0f3ab1e2238f1e62039ac72fd468c2b2658885",
+    "context": "colima-genie-transactions-20261002",
+    "host": "127.0.0.1",
+    "port": 32768,
+    "memoryLimitMiB": 384,
+    "cpuLimit": 1,
+    "usesManagedPreviewDatabaseServer": false
+  },
+  "testIdentity": "existing isolated synthetic host; private token file, no user account",
+  "dataRoot": "/tmp/genie-transactions-20261002/full-gate/app",
+  "localModelOptIn": false,
+  "externalTranslationOptIn": true,
+  "runnerSha256": "4f297076c5bf9c811f44513281761da09447258ec669c133965b7fef3e2bcf45",
+  "app": "/Users/shuhei/Projects/genie/apps/genie-macos/.build/Genie.app",
+  "runnerPath": "/private/tmp/genie-transactions-20261002/run-full-gate.py"
+}

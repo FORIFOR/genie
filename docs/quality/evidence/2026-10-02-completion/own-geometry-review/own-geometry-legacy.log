@@ -1,0 +1,220 @@
+{
+  "failures" : [
+    "swiftLabel missing",
+    "swiftEnabled missing",
+    "swiftDisabled missing",
+    "enabled state missing",
+    "disabled state missing"
+  ],
+  "native" : [
+    {
+      "enabled" : false,
+      "height" : 272,
+      "label" : "Genie Geometry Native Fixture",
+      "role" : "AXWindow",
+      "width" : 360,
+      "x" : 0,
+      "y" : 0
+    },
+    {
+      "enabled" : false,
+      "height" : 52,
+      "identifier" : "nativeFrame",
+      "role" : "AXGroup",
+      "width" : 180,
+      "x" : 20,
+      "y" : 200
+    },
+    {
+      "enabled" : true,
+      "height" : 34,
+      "label" : "固定した操作",
+      "role" : "AXButton",
+      "width" : 142,
+      "x" : 29,
+      "y" : 209
+    },
+    {
+      "enabled" : true,
+      "height" : 34,
+      "identifier" : "nativeButton",
+      "label" : "固定した操作",
+      "role" : "AXUnknown",
+      "width" : 142,
+      "x" : 29,
+      "y" : 209
+    },
+    {
+      "enabled" : false,
+      "height" : 32,
+      "role" : "AXUnknown",
+      "width" : 140,
+      "x" : 30,
+      "y" : 210
+    },
+    {
+      "enabled" : true,
+      "height" : 16,
+      "role" : "AXButton",
+      "width" : 16,
+      "x" : 8,
+      "y" : 8
+    },
+    {
+      "enabled" : false,
+      "height" : 16,
+      "role" : "AXButton",
+      "width" : 16,
+      "x" : 54,
+      "y" : 8
+    },
+    {
+      "enabled" : false,
+      "height" : 14,
+      "role" : "AXGroup",
+      "width" : 14,
+      "x" : 55,
+      "y" : 9
+    },
+    {
+      "enabled" : false,
+      "height" : 16,
+      "role" : "AXButton",
+      "width" : 16,
+      "x" : 31,
+      "y" : 8
+    },
+    {
+      "enabled" : false,
+      "height" : 240,
+      "role" : "AXUnknown",
+      "width" : 360,
+      "x" : 0,
+      "y" : 32
+    }
+  ],
+  "swift" : [
+    {
+      "enabled" : false,
+      "height" : 272,
+      "label" : "Genie Geometry SwiftUI Fixture",
+      "role" : "AXWindow",
+      "width" : 360,
+      "x" : 0,
+      "y" : 0
+    },
+    {
+      "enabled" : false,
+      "height" : 240,
+      "role" : "AXGroup",
+      "width" : 360,
+      "x" : 0,
+      "y" : 32
+    },
+    {
+      "enabled" : false,
+      "height" : 24,
+      "role" : "AXUnknown",
+      "width" : 84.5,
+      "x" : 138,
+      "y" : 132
+    },
+    {
+      "enabled" : false,
+      "height" : 24,
+      "role" : "AXUnknown",
+      "width" : 84.5,
+      "x" : 138,
+      "y" : 132
+    },
+    {
+      "enabled" : false,
+      "height" : 24,
+      "role" : "AXUnknown",
+      "width" : 84.5,
+      "x" : 138,
+      "y" : 184
+    },
+    {
+      "enabled" : true,
+      "height" : 16,
+      "role" : "AXButton",
+      "width" : 16,
+      "x" : 8,
+      "y" : 8
+    },
+    {
+      "enabled" : false,
+      "height" : 16,
+      "role" : "AXButton",
+      "width" : 16,
+      "x" : 54,
+      "y" : 8
+    },
+    {
+      "enabled" : false,
+      "height" : 14,
+      "role" : "AXGroup",
+      "width" : 14,
+      "x" : 55,
+      "y" : 9
+    },
+    {
+      "enabled" : false,
+      "height" : 16,
+      "role" : "AXButton",
+      "width" : 16,
+      "x" : 31,
+      "y" : 8
+    }
+  ]
+}
+OWN_GEOMETRY_FAIL
+OWN_GEOMETRY_LIVE []
+OWN_ATTRIBUTES 0 NSHostingView<GeometryProbeView> ["AXSize": "Optional(NSSize: {360, 240})", "AXPosition": "Optional(NSPoint: {500, 100})", "AXRole": "Optional(AXUnknown)"]
+OWN_GEOMETRY_LIVE []
+OWN_ATTRIBUTES 0 NSHostingView<GeometryProbeView> ["AXSize": "Optional(NSSize: {360, 240})", "AXPosition": "Optional(NSPoint: {500, 100})", "AXRole": "Optional(AXUnknown)"]
+OWN_GEOMETRY_LIVE []
+OWN_ATTRIBUTES 0 NSHostingView<GeometryProbeView> ["AXSize": "Optional(NSSize: {360, 240})", "AXPosition": "Optional(NSPoint: {500, 100})", "AXRole": "Optional(AXUnknown)"]
+OWN_GEOMETRY_LIVE []
+OWN_ATTRIBUTES 0 NSHostingView<GeometryProbeView> ["AXSize": "Optional(NSSize: {360, 240})", "AXPosition": "Optional(NSPoint: {500, 100})", "AXRole": "Optional(AXUnknown)"]
+OWN_GEOMETRY_LIVE []
+OWN_ATTRIBUTES 0 NSHostingView<GeometryProbeView> ["AXSize": "Optional(NSSize: {360, 240})", "AXPosition": "Optional(NSPoint: {500, 100})", "AXRole": "Optional(AXUnknown)"]
+OWN_GEOMETRY_LIVE []
+OWN_ATTRIBUTES 0 NSHostingView<GeometryProbeView> ["AXSize": "Optional(NSSize: {360, 240})", "AXPosition": "Optional(NSPoint: {500, 100})", "AXRole": "Optional(AXUnknown)"]
+OWN_GEOMETRY_LIVE []
+OWN_ATTRIBUTES 0 NSHostingView<GeometryProbeView> ["AXSize": "Optional(NSSize: {360, 240})", "AXPosition": "Optional(NSPoint: {500, 100})", "AXRole": "Optional(AXUnknown)"]
+OWN_GEOMETRY_LIVE []
+OWN_ATTRIBUTES 0 NSHostingView<GeometryProbeView> ["AXSize": "Optional(NSSize: {360, 240})", "AXPosition": "Optional(NSPoint: {500, 100})", "AXRole": "Optional(AXUnknown)"]
+OWN_GEOMETRY_LIVE []
+OWN_ATTRIBUTES 0 NSHostingView<GeometryProbeView> ["AXSize": "Optional(NSSize: {360, 240})", "AXPosition": "Optional(NSPoint: {500, 100})", "AXRole": "Optional(AXUnknown)"]
+OWN_GEOMETRY_LIVE []
+OWN_ATTRIBUTES 0 NSHostingView<GeometryProbeView> ["AXSize": "Optional(NSSize: {360, 240})", "AXPosition": "Optional(NSPoint: {500, 100})", "AXRole": "Optional(AXUnknown)"]
+OWN_GEOMETRY_LIVE []
+OWN_ATTRIBUTES 0 NSHostingView<GeometryProbeView> ["AXSize": "Optional(NSSize: {360, 240})", "AXPosition": "Optional(NSPoint: {500, 100})", "AXRole": "Optional(AXUnknown)"]
+OWN_GEOMETRY_LIVE []
+OWN_ATTRIBUTES 0 NSHostingView<GeometryProbeView> ["AXSize": "Optional(NSSize: {360, 240})", "AXPosition": "Optional(NSPoint: {500, 100})", "AXRole": "Optional(AXUnknown)"]
+OWN_GEOMETRY_LIVE []
+OWN_ATTRIBUTES 0 NSHostingView<GeometryProbeView> ["AXSize": "Optional(NSSize: {360, 240})", "AXPosition": "Optional(NSPoint: {500, 100})", "AXRole": "Optional(AXUnknown)"]
+OWN_GEOMETRY_LIVE []
+OWN_ATTRIBUTES 0 NSHostingView<GeometryProbeView> ["AXSize": "Optional(NSSize: {360, 240})", "AXPosition": "Optional(NSPoint: {500, 100})", "AXRole": "Optional(AXUnknown)"]
+OWN_GEOMETRY_LIVE []
+OWN_ATTRIBUTES 0 NSHostingView<GeometryProbeView> ["AXSize": "Optional(NSSize: {360, 240})", "AXPosition": "Optional(NSPoint: {500, 100})", "AXRole": "Optional(AXUnknown)"]
+OWN_GEOMETRY_LIVE []
+OWN_ATTRIBUTES 0 NSHostingView<GeometryProbeView> ["AXSize": "Optional(NSSize: {360, 240})", "AXPosition": "Optional(NSPoint: {500, 100})", "AXRole": "Optional(AXUnknown)"]
+OWN_GEOMETRY_LIVE []
+OWN_ATTRIBUTES 0 NSHostingView<GeometryProbeView> ["AXSize": "Optional(NSSize: {360, 240})", "AXPosition": "Optional(NSPoint: {500, 100})", "AXRole": "Optional(AXUnknown)"]
+OWN_GEOMETRY_LIVE []
+OWN_ATTRIBUTES 0 NSHostingView<GeometryProbeView> ["AXSize": "Optional(NSSize: {360, 240})", "AXPosition": "Optional(NSPoint: {500, 100})", "AXRole": "Optional(AXUnknown)"]
+OWN_GEOMETRY_LIVE []
+OWN_ATTRIBUTES 0 NSHostingView<GeometryProbeView> ["AXSize": "Optional(NSSize: {360, 240})", "AXPosition": "Optional(NSPoint: {500, 100})", "AXRole": "Optional(AXUnknown)"]
+OWN_GEOMETRY_LIVE []
+OWN_ATTRIBUTES 0 NSHostingView<GeometryProbeView> ["AXSize": "Optional(NSSize: {360, 240})", "AXPosition": "Optional(NSPoint: {500, 100})", "AXRole": "Optional(AXUnknown)"]
+OWN_GEOMETRY_LIVE []
+OWN_ATTRIBUTES 0 NSHostingView<GeometryProbeView> ["AXSize": "Optional(NSSize: {360, 240})", "AXPosition": "Optional(NSPoint: {500, 100})", "AXRole": "Optional(AXUnknown)"]
+OWN_GEOMETRY_LIVE []
+OWN_ATTRIBUTES 0 NSHostingView<GeometryProbeView> ["AXSize": "Optional(NSSize: {360, 240})", "AXPosition": "Optional(NSPoint: {500, 100})", "AXRole": "Optional(AXUnknown)"]
+OWN_GEOMETRY_LIVE []
+OWN_ATTRIBUTES 0 NSHostingView<GeometryProbeView> ["AXSize": "Optional(NSSize: {360, 240})", "AXPosition": "Optional(NSPoint: {500, 100})", "AXRole": "Optional(AXUnknown)"]
+OWN_GEOMETRY_LIVE []
+OWN_ATTRIBUTES 0 NSHostingView<GeometryProbeView> ["AXSize": "Optional(NSSize: {360, 240})", "AXPosition": "Optional(NSPoint: {500, 100})", "AXRole": "Optional(AXUnknown)"]

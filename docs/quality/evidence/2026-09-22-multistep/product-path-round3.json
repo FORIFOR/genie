@@ -1,0 +1,17 @@
+[
+  {
+    "scenario": "B",
+    "kind": "完遂",
+    "attempt": 3,
+    "goal": "名前の欄に genie、住所の欄に tokyo と入力する",
+    "criteria": "名前の欄に genie と表示されている\n住所の欄に tokyo と表示されている",
+    "expect": "completed",
+    "frontmostAtStart": "Terminal",
+    "taskId": "01a0c74a-6a53-7000-a3f7-c1290b90b94d",
+    "status": "FAILED",
+    "error": "task.step_failed",
+    "message": "activity StartToClose timeout",
+    "journal": [],
+    "seconds": 310
+  }
+]

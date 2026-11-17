@@ -3,6 +3,7 @@
 # 入力を Rust へ渡し、core で処理した構造化結果を Swift で受けて検証する。
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+source "$ROOT/scripts/build-resource-env.sh"
 CORE="$ROOT/core/genie-core"
 SWIFT="$ROOT/apps/genie-macos/Sources/GenieCore"
 INC="$ROOT/apps/genie-macos/Sources/GenieCoreFFI/include"

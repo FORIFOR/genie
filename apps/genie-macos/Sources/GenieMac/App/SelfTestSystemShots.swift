@@ -101,7 +101,7 @@ extension SelfTest {
         //   予定と ⌥Space は未確認にしておく（検査用の上書き。本番では nil）。
         Permissions.simulatedCalendar = .notDetermined
         Permissions.simulatedInputMonitoring = .notDetermined
-        SettingsWindowController.shared.show()
+        SettingsWindowController.shared.show(pane: .permissions)
         shoot("settings-permissions") { $0.w >= 440 && $0.w <= 480 && $0.h >= 380 && $0.h <= 600 }
         NSApp.windows.first { $0.title == "Genie 設定" }?.orderOut(nil)
         Permissions.simulatedCalendar = nil

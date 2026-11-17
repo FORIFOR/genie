@@ -1,0 +1,18 @@
+# Independent transaction-core verification
+
+2026-10-02 JST. Reviewer `/root/verification_audit` did not implement the transaction contracts/runtime/journal. The tests were written by its implementation agent; the reviewer read the code, requested corrections, and ran the tests separately. This is independent AI technical verification of a mock adapter and real local filesystem/process behavior. It is not a real merchant, broker, model, macOS input, or main-app E2E result.
+
+Candidate identity and commands are in [independent-core-run.json](independent-core-run.json); the base revision has uncommitted changes. `pnpm exec tsc -b workers/agent-host` exited 0. `node --test workers/agent-host/test/transaction-runtime.node.mjs` exited 0 with **12 passed, 0 failed, 0 skipped**. Complete output: [independent-core-build.log](independent-core-build.log), [independent-transaction-core.log](independent-transaction-core.log).
+
+| ID | Method / expected | Observed | Status |
+| --- | --- | --- | --- |
+| CORE-1 | Exact terms, currency arithmetic, budget, expiry and approval inputs hash before provider submit | Tampered destination, items, options, totals, time, bounds and approval rejected without provider submission | PASS in mock tests |
+| CORE-2 | Permanent durable attempt precedes provider call; multiple processes share one exclusive claim | Attempt file/file permissions and process concurrency assertions passed; no extra submit after claim | PASS in filesystem/process tests |
+| CORE-3 | Dropped response or crash after acceptance must retain unknown and reconcile after restart/new task ID | Recovery uses the original order identity and read-only lookup; corrupt claim blocks a fresh attempt | PASS in mock/process tests |
+| CORE-4 | Approval expiry/cancel during inspection stops before claim; in-flight deadline reaches adapter | Refusal and unknown paths preserve send-count invariants | PASS in mock tests; native adapter deadline behavior still requires separate verification |
+| CORE-5 | Receipt must bind full known order terms and cannot regress known order state | Provider ID, payment, time, stock terms, totals/items/destination, observation time, terminal state and fill preservation validated | PASS after review corrections |
+| CORE-6 | Paper stock acceptance, partial fill, full fill and cancellation with partial fills remain distinct | Correct states accepted; duplicate execution IDs, overfills, invalid prices/state combinations rejected | PASS in mock tests only |
+
+Review corrections: the first version of the receipt omitted payment method, requested time and stock order terms. It also accepted stale observation timestamps and state regression. The implementing agent added these checks and an atomic sequential receipt ledger; the reviewer read that correction before this independent run. The permanent claim uses temp-file fsync, exclusive hard-link publication and parent-directory fsync; later execution never releases the claim to resend. Concurrent receipt append retries against the latest sequence and validates progress before publishing.
+
+Limits: deduplication binds `provider + mode + account + orderKey`, independent of task IDs. A new order key is a different order, so this does not prove semantic duplicate detection for arbitrary repeated natural-language requests. Registered adapters remain a trusted boundary. A production broker's post-cancellation correction or late fill may produce an unknown result under the current terminal-state rule; no live broker compatibility is claimed. Main-app task approval, background checkout, user intervention, native deadline enforcement, and real-provider compatibility require additional evidence.

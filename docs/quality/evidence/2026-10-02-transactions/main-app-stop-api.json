@@ -1,0 +1,58 @@
+{
+  "id": "01a0f893-8c54-7000-8146-91e582646ef3",
+  "tenant_id": "REDACTED_ID_01",
+  "created_by": "01a0f811-030f-7000-99cd-6b2963b603e7",
+  "conversation_id": "01a0f893-8a6d-7000-87d7-2f5b8e9867b1",
+  "kind": "transaction.order",
+  "title": "注文の確認結果",
+  "status": "CANCELLED",
+  "input": {
+    "intent": {
+      "kind": "delivery",
+      "mode": "simulation",
+      "items": [
+        {
+          "id": "demo-burger",
+          "label": "模擬バーガー",
+          "options": [
+            "セットなし"
+          ],
+          "quantity": 1
+        }
+      ],
+      "account": "demo-account",
+      "currency": "JPY",
+      "orderKey": "turn:01a0f893-8c48-7000-b585-189830cd4225",
+      "provider": "genie.simulation",
+      "destination": {
+        "id": "demo-destination",
+        "label": "模擬配送先（配達なし）"
+      },
+      "maxTotalMinor": 800,
+      "requestedTime": "asap",
+      "paymentMethodRef": "demo-no-charge"
+    }
+  },
+  "result_artifact_id": null,
+  "error": {
+    "code": "task.step_failed",
+    "message": "注文結果を確認できていません。再注文せず、同じ注文の履歴を照会してください。",
+    "step_index": 1,
+    "retryable": false,
+    "recovery": "handoff",
+    "handoff_explanation": "自動でやり直していません。再実行する前に、実行先の履歴を確認してください。",
+    "transaction_result": {
+      "provider": "genie.simulation",
+      "mode": "simulation",
+      "account": "demo-account",
+      "orderKey": "turn:01a0f893-8c48-7000-b585-189830cd4225",
+      "quoteHash": "c01e08e1a3b6e3979226ce51eec26bb81d85f54464726962c4e3acdbb297d7b6",
+      "status": "unknown"
+    }
+  },
+  "created_at": "2026-10-01T17:46:54.413Z",
+  "started_at": "2026-10-01T17:46:54.501Z",
+  "completed_at": "2026-10-01T17:47:45.927Z",
+  "updated_at": "2026-10-01T17:47:45.927Z",
+  "current_step": null
+}

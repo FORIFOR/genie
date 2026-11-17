@@ -84,6 +84,23 @@ describe.skipIf(!url)('WorkContextService', () => {
     await db?.close();
   });
 
+  it('saves text with a half-cut emoji or a NUL instead of failing the whole sync', async () => {
+    // 件数を数える他のテストと混ざらないよう、別の人で入れる
+    const owner = uuidv7();
+    const id = `cut-${uuidv7()}`;
+    const result = await work.ingest(tenantId, owner, {
+      source: 'gmail',
+      cursor: 'h-cut',
+      watermark: null,
+      artifacts: [art(id, { title: 'ネタ入ってます \ud83d', body_excerpt: 'a\u0000b\ude00 😀' })],
+    });
+    expect(result.accepted).toBe(1);
+    const saved = (await work.artifacts(tenantId, owner)).find((a) => a.id === id);
+    expect(saved?.title).toBe('ネタ入ってます ');
+    // 揃った絵文字は残す
+    expect(saved?.body_excerpt).toBe('ab 😀');
+  });
+
   it('ingests once per source id, keeps the sync cursor, and brings people and projects into the world model', async () => {
     const first = await work.ingest(tenantId, userId, {
       source: 'gmail',

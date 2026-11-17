@@ -9,6 +9,7 @@ import {
 import { GenieError } from '@genie/contracts';
 import {
   approveSignal,
+  instructSignal,
   cancelSignal,
   getStateQuery,
   type TaskStateSnapshot,
@@ -85,6 +86,10 @@ export class TemporalTaskRuntime implements TaskRuntime {
     await this.#signal(workflowId, (handle) =>
       handle.signal(approveSignal, { approvalId, decision }),
     );
+  }
+
+  async instruct(workflowId: string, instruction: { requestId: string; text: string }): Promise<void> {
+    await this.#signal(workflowId, (handle) => handle.signal(instructSignal, instruction));
   }
 
   async cancel(workflowId: string, reason: string): Promise<void> {

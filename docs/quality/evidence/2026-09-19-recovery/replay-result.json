@@ -1,0 +1,35 @@
+{
+  "status": "PASS",
+  "environment": {
+    "os": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+    "node": "v26.5.0",
+    "temporalTypescript": "1.22.0"
+  },
+  "baseRevision": "28f89f2636a3b780e813ea902e07d2e4900a6e3f",
+  "sourceSha256": {
+    "services/task/src/workflows.ts": "1bf958cd74702eaac8b15c164f1b5619e6ebf1062d347807bb74a9974015b9c6",
+    "services/task/src/plan.ts": "67d9d8e7bc6a5646ec5fcfbaeb641bfb94e35c9b9b9c7a231564d71b3db9264c",
+    "services/task/test/replay-history.test.ts": "2117e883795af2ad6eaeb358bd07d827a91768895b929ae4b4b4b1f1d493e487"
+  },
+  "runs": [
+    {
+      "command": "ASTRA_CAPTURE_REPLAY=1 ASTRA_TEST_TEMPORAL_PATH=/private/var/folders/xn/mdmvpkwd0yx4tcr7rvn_3xv80000gn/T/temporal-sdk-typescript-1.22.0 pnpm --filter @genie/service-task test test/replay-history.test.ts",
+      "exitCode": 0,
+      "observed": "3 passed: genuine old-revision capture plus 2 current-workflow replays",
+      "log": "replay-capture.log"
+    },
+    {
+      "command": "pnpm --filter @genie/service-task test test/replay-history.test.ts",
+      "exitCode": 0,
+      "observed": "2 passed, 1 skipped (explicit capture/regeneration command only); both compatibility cases executed",
+      "log": "replay-offline.log"
+    }
+  ],
+  "initialHarnessFailures": {
+    "replay-capture-initial-path-failure.log": 1,
+    "replay-capture-initial-fixture-failure.log": "terminated by SIGTERM: missing fixture activity caused retry wait",
+    "replay-capture-initial-approval-fixture-failure.log": "terminated by SIGTERM: wrong fixture approval shape caused wait",
+    "replay-capture-initial-serialization-failure.log": 1,
+    "replay-capture-sdk-serializer-failure.log": 1
+  }
+}

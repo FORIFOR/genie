@@ -39,8 +39,7 @@ async function main(): Promise<void> {
     const transport = cloudClient(base, access_token, async (input, init) => {
       const response = await fetch(input, init);
       if (!response.ok) {
-        const failure = (await response.clone().json()) as { error?: { details?: unknown } };
-        console.error(JSON.stringify({ validation: failure.error?.details ?? [] }));
+        console.error(JSON.stringify({ request_failed: true, status: response.status }));
       }
       return response;
     });
@@ -53,7 +52,7 @@ async function main(): Promise<void> {
         for (const artifact of batch.artifacts) {
           assert.equal(artifact.body_excerpt, null);
           assert.equal(artifact.provenance.excerpt, null);
-          assert.equal(artifact.semantic, null);
+          assert.equal(artifact.semantic, null); // Findings travel separately; raw bodies never do.
         }
         artifactCount += batch.artifacts.length;
       }
@@ -69,6 +68,9 @@ async function main(): Promise<void> {
           (init?.method ?? (input instanceof Request ? input.method : 'GET')).toUpperCase(),
           'GET',
         );
+        const url = new URL(input instanceof Request ? input.url : String(input));
+        assert.notEqual(url.searchParams.get('format'), 'full');
+        assert.ok(!url.searchParams.get('$select')?.split(',').includes('body'));
         reads += 1;
         return fetch(input, init);
       },
@@ -87,6 +89,10 @@ async function main(): Promise<void> {
     assert.equal(ready.status, 'ready');
     assert.equal(ready.outcomes.length, 2);
     assert.ok(ready.outcomes.every((outcome) => outcome.status === 'synced'));
+    // This read-only harness intentionally has no local analyzer. It must not
+    // claim that body analysis happened merely because metadata was synchronized.
+    assert.equal(ready.analysis?.status, 'unavailable');
+    assert.equal(ready.analysis?.analyzed_count, 0);
     const analysisMs = Math.round(performance.now() - started);
     phase = 'confirm_and_resume';
     await cloud('/v1/work/initial-profile', 'PUT', ready.sections);

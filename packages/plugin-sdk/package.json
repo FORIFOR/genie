@@ -2,6 +2,7 @@
   "name": "@genie/plugin-sdk",
   "version": "0.0.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "description": "Plugin manifest parsing, signature verification and permission scope helpers.",
   "main": "./dist/index.js",

@@ -1,0 +1,2 @@
+SELFTEST_OK outcome-live: real request, persisted backend ID, 70 characters, reopened result, identical Markdown export; job=01a0b8fa-8965-7000-bf66-cd8bb4f31b7b
+DOCUMENT=/tmp/genie-quality-native-20260919-b/Genie-checklist.md

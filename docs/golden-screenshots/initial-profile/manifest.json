@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "fixture": "Initial Profile native self-test; synthetic data only",
+  "mail_limit": 100,
+  "logical_width": 800,
+  "logical_height": 680,
+  "scale": 2,
+  "verification": {
+    "capture_self_test": "SELFTEST_OK: 8 native captures; review/edit and defer/reopen actions verified; no external data or send",
+    "visual_review": "All eight states reviewed; 100-message copy and counts fit in light and dark appearances; no visible clipping or overlap.",
+    "geometry": "800 x 680 logical size unchanged for all eight states"
+  },
+  "files": [
+    {
+      "path": "analysing-dark.png",
+      "bytes": 264804,
+      "sha256": "199e1f3a298ad17119ac2c7a20abf2c84845fee24d3763ec81ab8903d2d3b3bf",
+      "pixel_width": 1600,
+      "pixel_height": 1360
+    },
+    {
+      "path": "analysing-light.png",
+      "bytes": 264535,
+      "sha256": "3d36f8e9361f3c1141971bfc2f0d815eb3a685474e90325beeda3edd3fe12106",
+      "pixel_width": 1600,
+      "pixel_height": 1360
+    },
+    {
+      "path": "editing-dark.png",
+      "bytes": 258114,
+      "sha256": "80fdb7c1da1b66b06f0c98da1d95d124dd51821452699d2f039507924bd63c8f",
+      "pixel_width": 1600,
+      "pixel_height": 1360
+    },
+    {
+      "path": "editing-light.png",
+      "bytes": 256913,
+      "sha256": "d32a0d88529c9c7c763a28beb119c75758053ebdcba2b43cc3fd900948477ea1",
+      "pixel_width": 1600,
+      "pixel_height": 1360
+    },
+    {
+      "path": "failed-dark.png",
+      "bytes": 261613,
+      "sha256": "2dffe7ae327ecc365d50826d63b85e39be02270bc0e5f50d561dd410e8e5a3ac",
+      "pixel_width": 1600,
+      "pixel_height": 1360
+    },
+    {
+      "path": "failed-light.png",
+      "bytes": 262356,
+      "sha256": "60e6a3c045e2e661e131a02c0e6da8b3cb0d4749017b83426c047e4d5b8d208f",
+      "pixel_width": 1600,
+      "pixel_height": 1360
+    },
+    {
+      "path": "ready-dark.png",
+      "bytes": 270133,
+      "sha256": "ec7ec485c53c884f86a2a371829618471ed758b9f5c1fa5ddee82be8fa9b221a",
+      "pixel_width": 1600,
+      "pixel_height": 1360
+    },
+    {
+      "path": "ready-light.png",
+      "bytes": 271027,
+      "sha256": "3a0fb1a2ce7a3e2fe889cc0e3240371f36549a3cdf60e7a4cb91120e13fb1640",
+      "pixel_width": 1600,
+      "pixel_height": 1360
+    }
+  ],
+  "geometry": {
+    "path": "geometry.json",
+    "bytes": 788,
+    "sha256": "dcab8e98f306ad57b6f316cac16360b909edb10509bf789bf44770ed5df05dbc"
+  }
+}

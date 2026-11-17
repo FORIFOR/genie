@@ -3,8 +3,10 @@
  *
  * 会話そのものは DB が正本。**打ち切っても出した分は消さない**（D-50）。
  */
+import { createHash } from 'node:crypto';
 import {
   GenieError,
+  CheckoutOrderDraft,
   COMPACTION_BATCH,
   RECENT_TURN_WINDOW,
   uuidv7,
@@ -16,10 +18,17 @@ import {
 } from '@genie/contracts';
 import { withTenant, type DbHandle } from '@genie/db';
 import { readEventsAfter } from '@genie/service-task';
+import { advanceCheckoutOrder, type CheckoutOrderTransition } from './checkout-order.js';
 
 export interface ConversationDeps {
   readonly db: DbHandle;
   readonly now?: () => Date;
+  readonly findAcceptedTask?: (
+    tenantId: string,
+    userId: string,
+    conversationId: string,
+    turnId: string,
+  ) => Promise<string | null>;
 }
 
 export interface AppendTurnInput {
@@ -28,15 +37,238 @@ export interface AppendTurnInput {
   readonly role: 'user' | 'assistant' | 'system';
   readonly modality: Modality;
   readonly text: string;
+  readonly id?: string;
 }
 
 export class ConversationService {
   readonly #db: DbHandle;
   readonly #now: () => Date;
+  readonly #findAcceptedTask: ConversationDeps['findAcceptedTask'];
 
   constructor(deps: ConversationDeps) {
     this.#db = deps.db;
+    this.#findAcceptedTask = deps.findAcceptedTask;
     this.#now = deps.now ?? (() => new Date());
+  }
+
+  /** A receipt is scoped to the caller, not merely to tenant membership. */
+  async reserveRequest(
+    tenantId: string,
+    userId: string,
+    conversationId: string,
+    requestId: string,
+    body: unknown,
+  ): Promise<{
+    fresh: boolean;
+    turnId: string;
+    response: Record<string, unknown> | null;
+    status: number | null;
+  }> {
+    const bodyHash = createHash('sha256').update(canonicalJson(body)).digest('hex');
+    return withTenant(this.#db, tenantId, async (tx) => {
+      const conversation = await tx
+        .selectFrom('conversations')
+        .select('id')
+        .where('id', '=', conversationId)
+        .where('created_by', '=', userId)
+        .executeTakeFirst();
+      if (!conversation) throw new GenieError('common.not_found', 'conversation not found');
+      const inserted = await tx
+        .insertInto('conversation_requests')
+        .values({
+          tenant_id: tenantId,
+          user_id: userId,
+          conversation_id: conversationId,
+          request_id: requestId,
+          body_hash: bodyHash,
+          turn_id: uuidv7(),
+        })
+        .onConflict((oc) =>
+          oc.columns(['tenant_id', 'user_id', 'conversation_id', 'request_id']).doNothing(),
+        )
+        .returningAll()
+        .executeTakeFirst();
+      const receipt =
+        inserted ??
+        (await tx
+          .selectFrom('conversation_requests')
+          .selectAll()
+          .where('tenant_id', '=', tenantId)
+          .where('user_id', '=', userId)
+          .where('conversation_id', '=', conversationId)
+          .where('request_id', '=', requestId)
+          .executeTakeFirstOrThrow());
+      if (receipt.body_hash !== bodyHash)
+        throw new GenieError('common.conflict', 'request_id already used with different input');
+      return {
+        fresh: !!inserted,
+        turnId: receipt.turn_id,
+        response: receipt.response as Record<string, unknown> | null,
+        status: receipt.response_status,
+      };
+    });
+  }
+
+  async prepareRequest(
+    tenantId: string,
+    userId: string,
+    conversationId: string,
+    requestId: string,
+    response: Record<string, unknown>,
+    dispatchTurnId?: string,
+  ): Promise<void> {
+    await withTenant(this.#db, tenantId, (tx) =>
+      tx
+        .updateTable('conversation_requests')
+        .set({
+          prepared_response: JSON.stringify({
+            ...response,
+            ...(dispatchTurnId ? { __dispatch_turn_id: dispatchTurnId } : {}),
+          }),
+        })
+        .where('tenant_id', '=', tenantId)
+        .where('user_id', '=', userId)
+        .where('conversation_id', '=', conversationId)
+        .where('request_id', '=', requestId)
+        .where('response', 'is', null)
+        .execute(),
+    );
+  }
+
+  async finishRequest(
+    tenantId: string,
+    userId: string,
+    conversationId: string,
+    requestId: string,
+    status: number,
+    response: Record<string, unknown>,
+  ): Promise<void> {
+    await withTenant(this.#db, tenantId, (tx) =>
+      tx
+        .updateTable('conversation_requests')
+        .set({ response: JSON.stringify(response), response_status: status })
+        .where('tenant_id', '=', tenantId)
+        .where('user_id', '=', userId)
+        .where('conversation_id', '=', conversationId)
+        .where('request_id', '=', requestId)
+        .where('response', 'is', null)
+        .execute(),
+    );
+  }
+
+  /** Read-only: never restarts work, even when reservation was followed by a crash. */
+  async requestStatus(
+    tenantId: string,
+    userId: string,
+    conversationId: string,
+    requestId: string,
+  ): Promise<{ status: 'pending' | 'resolved'; response?: Record<string, unknown> }> {
+    return withTenant(this.#db, tenantId, async (tx) => {
+      const row = await tx
+        .selectFrom('conversation_requests')
+        .selectAll()
+        .where('tenant_id', '=', tenantId)
+        .where('user_id', '=', userId)
+        .where('conversation_id', '=', conversationId)
+        .where('request_id', '=', requestId)
+        .executeTakeFirst();
+      if (!row) throw new GenieError('common.not_found', 'request not found');
+      if (row.response)
+        return { status: 'resolved', response: row.response as Record<string, unknown> };
+      // Task insertion is durable before the response is finalized. Its ID is safe
+      // to recover; queued/running is NOT a claim that execution has completed.
+      if (row.prepared_response) {
+        const { __dispatch_turn_id: dispatchTurnId, ...prepared } = row.prepared_response as Record<
+          string,
+          unknown
+        >;
+        const task = await this.#findAcceptedTask?.(
+          tenantId,
+          userId,
+          conversationId,
+          typeof dispatchTurnId === 'string' ? dispatchTurnId : row.turn_id,
+        );
+        if (task)
+          return {
+            status: 'resolved',
+            response: {
+              ...prepared,
+              task_id: task,
+              // Keep prepared capability limits/disclosures when dispatch acknowledgement is lost.
+            },
+          };
+      }
+      return { status: 'pending' };
+    });
+  }
+
+  /** Serialize slot updates so concurrent answers cannot replace one another. */
+  async advanceCheckoutOrder(
+    tenantId: string,
+    userId: string,
+    conversationId: string,
+    turnId: string,
+    text: string,
+  ): Promise<CheckoutOrderTransition | null> {
+    return withTenant(this.#db, tenantId, async (tx) => {
+      const owned = await tx
+        .selectFrom('conversations')
+        .select('id')
+        .where('id', '=', conversationId)
+        .where('created_by', '=', userId)
+        .executeTakeFirst();
+      if (!owned) throw new GenieError('common.not_found', 'conversation not found');
+      const row = await tx
+        .selectFrom('conversation_states')
+        .select('checkout_draft')
+        .where('conversation_id', '=', conversationId)
+        .forUpdate()
+        .executeTakeFirstOrThrow();
+      const draft =
+        row.checkout_draft === null ? null : CheckoutOrderDraft.parse(row.checkout_draft);
+      const next = advanceCheckoutOrder(draft, text, turnId);
+      if (next)
+        await tx
+          .updateTable('conversation_states')
+          .set({ checkout_draft: JSON.stringify(next.draft), updated_at: this.#now() })
+          .where('conversation_id', '=', conversationId)
+          .execute();
+      return next;
+    });
+  }
+
+  /** Acceptance is not cart completion. Keep its identity for repeat requests. */
+  async markCheckoutDispatched(
+    tenantId: string,
+    userId: string,
+    conversationId: string,
+    orderKey: string,
+    taskId: string,
+  ): Promise<void> {
+    await withTenant(this.#db, tenantId, async (tx) => {
+      const owned = await tx
+        .selectFrom('conversations')
+        .select('id')
+        .where('id', '=', conversationId)
+        .where('created_by', '=', userId)
+        .executeTakeFirst();
+      if (!owned) throw new GenieError('common.not_found', 'conversation not found');
+      const row = await tx
+        .selectFrom('conversation_states')
+        .select('checkout_draft')
+        .where('conversation_id', '=', conversationId)
+        .forUpdate()
+        .executeTakeFirstOrThrow();
+      if (row.checkout_draft === null) return;
+      const draft = CheckoutOrderDraft.parse(row.checkout_draft);
+      if (draft.orderKey !== orderKey) return;
+      const accepted = CheckoutOrderDraft.parse({ ...draft, taskId, status: 'dispatched' });
+      await tx
+        .updateTable('conversation_states')
+        .set({ checkout_draft: JSON.stringify(accepted), updated_at: this.#now() })
+        .where('conversation_id', '=', conversationId)
+        .execute();
+    });
   }
 
   async start(
@@ -133,7 +365,7 @@ export class ConversationService {
       const inserted = await tx
         .insertInto('turns')
         .values({
-          id: uuidv7(),
+          id: input.id ?? uuidv7(),
           tenant_id: input.tenantId,
           conversation_id: input.conversationId,
           role: input.role,
@@ -285,6 +517,7 @@ function toState(row: Record<string, unknown>): ConversationState {
     active_meeting: row['active_meeting'] ?? null,
     referents: row['referents'] ?? [],
     pending_approvals: row['pending_approvals'] ?? [],
+    checkout_draft: row['checkout_draft'] ?? null,
     response_mode: row['response_mode'],
     updated_at:
       row['updated_at'] instanceof Date ? row['updated_at'].toISOString() : row['updated_at'],
@@ -303,4 +536,20 @@ function toTurn(row: Record<string, unknown>): Turn {
     created_at:
       row['created_at'] instanceof Date ? row['created_at'].toISOString() : row['created_at'],
   } as Turn;
+}
+
+/** Stable hash of the parsed request including defaults; object key order is immaterial. */
+function canonicalJson(value: unknown): string {
+  if (Array.isArray(value)) return '[' + value.map(canonicalJson).join(',') + ']';
+  if (value !== null && typeof value === 'object')
+    return (
+      '{' +
+      Object.entries(value)
+        .filter(([, v]) => v !== undefined)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([k, v]) => JSON.stringify(k) + ':' + canonicalJson(v))
+        .join(',') +
+      '}'
+    );
+  return JSON.stringify(value) ?? 'null';
 }

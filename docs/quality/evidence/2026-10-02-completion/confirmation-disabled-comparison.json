@@ -1,0 +1,56 @@
+[
+  {
+    "name": "transaction-scope-bottom-light",
+    "size_px": [
+      1120,
+      680
+    ],
+    "changed_bounds_px": null,
+    "geometry_unchanged": true,
+    "before_sha256": "0dfd5d0622aa99e275c17312fa0cbeb9d883bc823ce3f28d49717fb810ee1730",
+    "after_sha256": "0dfd5d0622aa99e275c17312fa0cbeb9d883bc823ce3f28d49717fb810ee1730"
+  },
+  {
+    "name": "transaction-scope-bottom-dark",
+    "size_px": [
+      1120,
+      680
+    ],
+    "changed_bounds_px": null,
+    "geometry_unchanged": true,
+    "before_sha256": "7d19f0754da0ff2fa95c54ad3596db2108b460f53eb73a7301679309cb11d2be",
+    "after_sha256": "7d19f0754da0ff2fa95c54ad3596db2108b460f53eb73a7301679309cb11d2be"
+  },
+  {
+    "name": "transaction-invalid-bottom-light",
+    "size_px": [
+      1120,
+      680
+    ],
+    "changed_bounds_px": [
+      722,
+      584,
+      1080,
+      648
+    ],
+    "geometry_unchanged": true,
+    "before_sha256": "50fa8ca66e625f19e1e961d860d08673c7099cc03160439888b7750dc9b80586",
+    "after_sha256": "f7782d9163e8516dfa477fbd775c16e3be9ce6fbff931cce00c92a43ba1f57d4"
+  },
+  {
+    "name": "transaction-invalid-bottom-dark",
+    "size_px": [
+      1120,
+      680
+    ],
+    "changed_bounds_px": [
+      722,
+      584,
+      1080,
+      648
+    ],
+    "geometry_unchanged": true,
+    "before_sha256": "81621bd4e825dfc6bdb815629e2095809e9fa9dd4640e598a1c3868e0859ebf5",
+    "after_sha256": "46632f225316a2b739eb42a74f2fb426a013a31f13baf7a2115e1e0d73892578"
+  }
+]

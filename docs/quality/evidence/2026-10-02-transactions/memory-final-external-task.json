@@ -1,0 +1,54 @@
+{
+  "observed_at": "2026-10-01T17:51:15.790Z",
+  "modelProvider": "codex",
+  "model": "gpt-6-sol",
+  "task": {
+    "id": "01a0f896-2c25-7000-915d-c68314af40b6",
+    "tenant_id": "REDACTED_ID_01",
+    "created_by": "01a0f811-030f-7000-99cd-6b2963b603e7",
+    "conversation_id": "01a0f896-2ba5-7000-9306-9b0afa9576b4",
+    "kind": "plugin:com.astra.general:assistant",
+    "title": "次の架空のメモを3項目のチェックリストにしてください：映像を確認する、音声を確認する、休憩を取る。",
+    "status": "COMPLETED",
+    "input": {
+      "message": "次の架空のメモを3項目のチェックリストにしてください：映像を確認する、音声を確認する、休憩を取る。",
+      "question": "次の架空のメモを3項目のチェックリストにしてください：映像を確認する、音声を確認する、休憩を取る。",
+      "context_meta": {
+        "chars": 0,
+        "intent": "none",
+        "selected_artifacts": 0,
+        "available_artifacts": 0
+      }
+    },
+    "result_artifact_id": "01a0f896-4817-7000-825f-21807bef3c6d",
+    "error": null,
+    "created_at": "2026-10-01T17:49:46.397Z",
+    "started_at": "2026-10-01T17:49:46.448Z",
+    "completed_at": "2026-10-01T17:49:53.595Z",
+    "updated_at": "2026-10-01T17:49:53.595Z",
+    "current_step": null
+  },
+  "artifact": {
+    "id": "01a0f896-4817-7000-825f-21807bef3c6d",
+    "tenant_id": "REDACTED_ID_01",
+    "owner_id": "REDACTED_ID_02",
+    "type": "DOCUMENT",
+    "title": "次の架空のメモを3項目のチェックリストにしてください：映像を確認する、音声を確…",
+    "mime_type": "text/markdown",
+    "source_agent_id": "general",
+    "source_task_id": "01a0f896-2c25-7000-915d-c68314af40b6",
+    "source_meeting_id": null,
+    "parent_artifact_id": null,
+    "version": 1,
+    "object_key": "t/01a0f811-030f-7001-942c-866b8c10253b/a/01a0f896-4817-7000-825f-21807bef3c6d/v/1/3.md",
+    "size": 77,
+    "sha256": "ed744747545d05d76a8246abd2348a3b804311d3b4270ff1a81616621984db9b",
+    "tags": [],
+    "entities": [],
+    "lineage": [],
+    "sensitivity": "PRIVATE",
+    "searchable_text_ref": null,
+    "created_at": "2026-10-01T17:49:53.563Z",
+    "updated_at": "2026-10-01T17:49:53.563Z"
+  }
+}

@@ -1,0 +1,63 @@
+Creating: recovery
+Applying: 20260826010001_extensions.sql
+Applied: 20260826010001_extensions.sql in 9.489334ms
+Applying: 20260826010002_identity.sql
+Applied: 20260826010002_identity.sql in 16.939666ms
+Applying: 20260826010003_conversations.sql
+Applied: 20260826010003_conversations.sql in 12.025708ms
+Applying: 20260826010004_tasks.sql
+Applied: 20260826010004_tasks.sql in 24.579458ms
+Applying: 20260826010005_library.sql
+Applied: 20260826010005_library.sql in 11.877459ms
+Applying: 20260826010006_plugins.sql
+Applied: 20260826010006_plugins.sql in 16.699375ms
+Applying: 20260826010007_audit.sql
+Applied: 20260826010007_audit.sql in 8.910792ms
+Applying: 20260826010008_rls.sql
+Applied: 20260826010008_rls.sql in 5.190167ms
+Applying: 20260826020001_shares.sql
+Applied: 20260826020001_shares.sql in 10.04325ms
+Applying: 20260826020002_research.sql
+Applied: 20260826020002_research.sql in 10.704542ms
+Applying: 20260826030001_meetings.sql
+Applied: 20260826030001_meetings.sql in 19.613ms
+Applying: 20260826040001_plugin_assets.sql
+Applied: 20260826040001_plugin_assets.sql in 6.109292ms
+Applying: 20260826050001_agent_packages.sql
+Applied: 20260826050001_agent_packages.sql in 10.315791ms
+Applying: 20260826060001_world_model.sql
+Applied: 20260826060001_world_model.sql in 18.054333ms
+Applying: 20260827010001_conversation_state.sql
+Applied: 20260827010001_conversation_state.sql in 8.6685ms
+Applying: 20260827020001_onboarding.sql
+Applied: 20260827020001_onboarding.sql in 6.606625ms
+Applying: 20260827030001_connections.sql
+Applied: 20260827030001_connections.sql in 9.04975ms
+Applying: 20260827040001_workflow_assets.sql
+Applied: 20260827040001_workflow_assets.sql in 2.860041ms
+Applying: 20260827050001_receipt_step.sql
+Applied: 20260827050001_receipt_step.sql in 3.916833ms
+Applying: 20260827060001_attention_feedback.sql
+Applied: 20260827060001_attention_feedback.sql in 5.695875ms
+Applying: 20260827070001_agent_hosts.sql
+Applied: 20260827070001_agent_hosts.sql in 12.019333ms
+Applying: 20260827090000_host_step_requests.sql
+Applied: 20260827090000_host_step_requests.sql in 8.410875ms
+Applying: 20260827093000_host_step_request_key.sql
+Applied: 20260827093000_host_step_request_key.sql in 3.202041ms
+Applying: 20260827103000_meeting_segment_source.sql
+Applied: 20260827103000_meeting_segment_source.sql in 3.737458ms
+Applying: 20260827120000_evidence_provenance.sql
+Applied: 20260827120000_evidence_provenance.sql in 3.187166ms
+Applying: 20260827150000_user_identities.sql
+Applied: 20260827150000_user_identities.sql in 5.094125ms
+Applying: 20260907090000_work_context.sql
+Applied: 20260907090000_work_context.sql in 11.206792ms
+Applying: 20260907170000_work_sync_cursor.sql
+Applied: 20260907170000_work_sync_cursor.sql in 2.851125ms
+Applying: 20260909120000_initial_profiles.sql
+Applied: 20260909120000_initial_profiles.sql in 4.688542ms
+Applying: 20260910003000_initial_profile_snapshot.sql
+Applied: 20260910003000_initial_profile_snapshot.sql in 2.289ms
+Applying: 20260919090000_conversation_requests.sql
+Applied: 20260919090000_conversation_requests.sql in 5.384791ms

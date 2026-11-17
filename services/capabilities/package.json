@@ -2,6 +2,7 @@
   "name": "@genie/service-capabilities",
   "version": "0.0.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "description": "起動時に「何が本物で、何が代役か」を 1 箇所で答える。正本 §21・§25。",
   "main": "./dist/index.js",

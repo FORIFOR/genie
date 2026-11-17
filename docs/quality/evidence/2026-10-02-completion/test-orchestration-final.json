@@ -1,0 +1,60 @@
+{
+  "recordedAt": "2026-10-01T19:26:47.498405+00:00",
+  "acceptanceReplay": {
+    "exitCode": 0,
+    "passed": 2,
+    "skipped": 0,
+    "log": "replay-regression-separated.log"
+  },
+  "generation": {
+    "performed": false,
+    "tool": "services/task/scripts/replay-history.capture.ts",
+    "explicitConfig": "services/task/scripts/replay-capture.config.ts",
+    "optInMissingExit": 1,
+    "cachedPathMissingExit": 1,
+    "guardsRunBeforeWorkspaceOrServerAllocation": true,
+    "notes": "Expected refusal runs are recorded as negative checks, not as generation successes. Prior generation code moved; original runner 60s deadline and assertions preserved, nested finally strengthens cleanup. No histories regenerated."
+  },
+  "fixtures": {
+    "services/task/test/replay-fixtures/cancelled.json": {
+      "sha256": "c3f884e4c0b65abd0eea07f698a1ec92cf3e07c4f49b473f12ac30eab5d7b4b1",
+      "unchangedFromHEAD": true
+    },
+    "services/task/test/replay-fixtures/provenance.json": {
+      "sha256": "bb4e6e79ed4fbc5db3d5255dcdd183ce1f1ce372ad5699cde501d8923444a6e0",
+      "unchangedFromHEAD": true
+    },
+    "services/task/test/replay-fixtures/completed.json": {
+      "sha256": "90852ac562c2c27faea233a39423bd27102d85f553a451d4268eb85cdde7a42d",
+      "unchangedFromHEAD": true
+    }
+  },
+  "typescript": {
+    "initialExit": 2,
+    "initialLog": "test-types-current.log",
+    "failure": "TS7022 handle annotation",
+    "finalExit": 0,
+    "finalLog": "test-types-final.log"
+  },
+  "desktop": {
+    "exitCode": 0,
+    "passed": 357,
+    "skipped": 0,
+    "log": "desktop-tests-current.log"
+  },
+  "aggregationRegression": {
+    "exitCode": 0,
+    "passed": 14,
+    "log": "runner-skip-aggregation-final.log",
+    "scope": "Mocked production shell runner orchestration; does not launch native apps or models"
+  },
+  "sourceSHA256": {
+    "services/task/test/replay-history.test.ts": "fbf6b2c5266c4e37a125089a76819e238d8f74098dab4f4fae450a7320b8e562",
+    "services/task/scripts/replay-history.capture.ts": "640f97120273ced75cf0ce6dfe1b23362e147afd0517f312a018e82e9893d418",
+    "services/task/scripts/replay-capture.config.ts": "30c43e003edc2a517c50eddc579c74243d1e8305f3be572f041ef13f4a6489b9",
+    "scripts/verify-all.sh": "153d090f259f787a5bfa29b3cf584c1ef38a498b3e84c5ff4ae30584c33c10fc",
+    "scripts/verify-desktop-tests.sh": "6fb4b35a45b8242c89ee3f81ab20fd101e7f5f9923ec9506efaac202647b1718",
+    "scripts/tests/test_verification_resources.py": "74accdfcff948e565eeb8f961b60f390c2d74ae593cece5893e04e9c4b63cb93",
+    "tsconfig.tests.json": "161199494e7a314aae7253277742699af1f0a89f36652887786444778389b17d"
+  }
+}

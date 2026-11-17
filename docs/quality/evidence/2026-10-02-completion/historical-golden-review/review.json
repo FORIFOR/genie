@@ -1,0 +1,326 @@
+{
+  "reviewedAt": "2026-10-01T18:49:23.469294+00:00",
+  "method": "Independent visual review of 23 original saved PNGs with view_image; copied unchanged for preservation. Read source and reference geometry; no fresh capture, UI action, product modification or baseline adoption.",
+  "candidateTime": "2026-10-02 02:15 JST (PNG modification time); matches interrupted gate path; final current-source proof not available",
+  "baselineSelection": "macOS 27.0.1 exact profile/provenance absent; SelfTest golden falls back to root historical reference",
+  "scope": "Historical light-mode failure only; no dark candidate exists at the reviewed path. The approved earlier safe-top-32 profile is dimensional context, not an adopted macOS 27 baseline.",
+  "images": [
+    {
+      "group": "candidate",
+      "name": "01-voice-hud-idle",
+      "source": "/tmp/astra-shots-light/01-voice-hud-idle.png",
+      "stored": "candidate/01-voice-hud-idle.png",
+      "sha256": "2c778cb1e01b9b9950627e3d8484fc3bfc7e764a0819060ca667fc3352cdea77",
+      "pixels": [
+        220,
+        76
+      ],
+      "sourceModifiedAt": "2026-10-01T17:15:10.820139+00:00",
+      "reviewedWith": "view_image (actual original file)"
+    },
+    {
+      "group": "candidate",
+      "name": "02-voice-hud-listening",
+      "source": "/tmp/astra-shots-light/02-voice-hud-listening.png",
+      "stored": "candidate/02-voice-hud-listening.png",
+      "sha256": "5a313cbaf3a824d6db75a0156989fb0660fda4fd6ec7f7c35a3d97c37599c3d7",
+      "pixels": [
+        600,
+        100
+      ],
+      "sourceModifiedAt": "2026-10-01T17:15:12.721944+00:00",
+      "reviewedWith": "view_image (actual original file)"
+    },
+    {
+      "group": "candidate",
+      "name": "02b-voice-hud-preparing",
+      "source": "/tmp/astra-shots-light/02b-voice-hud-preparing.png",
+      "stored": "candidate/02b-voice-hud-preparing.png",
+      "sha256": "4a6ecc05188c465a61176886ca557c1acb8224ab541736dca574fcef9ba6acee",
+      "pixels": [
+        600,
+        100
+      ],
+      "sourceModifiedAt": "2026-10-01T17:15:11.838684+00:00",
+      "reviewedWith": "view_image (actual original file)"
+    },
+    {
+      "group": "candidate",
+      "name": "03-recording-workspace",
+      "source": "/tmp/astra-shots-light/03-recording-workspace.png",
+      "stored": "candidate/03-recording-workspace.png",
+      "sha256": "0a45cf8143f972dd348bf223e6204ef2ba5f1568a4647647ca05ab55ecf707b7",
+      "pixels": [
+        1080,
+        680
+      ],
+      "sourceModifiedAt": "2026-10-01T17:15:14.126170+00:00",
+      "reviewedWith": "view_image (actual original file)"
+    },
+    {
+      "group": "candidate",
+      "name": "04-recording-transcript",
+      "source": "/tmp/astra-shots-light/04-recording-transcript.png",
+      "stored": "candidate/04-recording-transcript.png",
+      "sha256": "fd088de487bb72861ab0e33cbcffe49981670a870a51599dfdafe26ec6b70543",
+      "pixels": [
+        1080,
+        680
+      ],
+      "sourceModifiedAt": "2026-10-01T17:15:16.591162+00:00",
+      "reviewedWith": "view_image (actual original file)"
+    },
+    {
+      "group": "candidate",
+      "name": "05-recording-rag",
+      "source": "/tmp/astra-shots-light/05-recording-rag.png",
+      "stored": "candidate/05-recording-rag.png",
+      "sha256": "03c614da16f5432ec5e7cdd4a92b3b124af81f33f2cdc045d05c14ae34cfafd3",
+      "pixels": [
+        1080,
+        680
+      ],
+      "sourceModifiedAt": "2026-10-01T17:15:17.830891+00:00",
+      "reviewedWith": "view_image (actual original file)"
+    },
+    {
+      "group": "candidate",
+      "name": "08-meeting-detail",
+      "source": "/tmp/astra-shots-light/08-meeting-detail.png",
+      "stored": "candidate/08-meeting-detail.png",
+      "sha256": "f7b7a70ebd8febbf7c4554ed7726e507eafa4cc66dd66cb9593ec1e07b23269d",
+      "pixels": [
+        1240,
+        820
+      ],
+      "sourceModifiedAt": "2026-10-01T17:15:27.975836+00:00",
+      "reviewedWith": "view_image (actual original file)"
+    },
+    {
+      "group": "candidate",
+      "name": "09-permission-denied",
+      "source": "/tmp/astra-shots-light/09-permission-denied.png",
+      "stored": "candidate/09-permission-denied.png",
+      "sha256": "d573c33bbb8351bbc04275b09ecfd2c12222454bb69772100624a4185988e6ac",
+      "pixels": [
+        1080,
+        680
+      ],
+      "sourceModifiedAt": "2026-10-01T17:15:20.855941+00:00",
+      "reviewedWith": "view_image (actual original file)"
+    },
+    {
+      "group": "candidate",
+      "name": "10-agent-timeline",
+      "source": "/tmp/astra-shots-light/10-agent-timeline.png",
+      "stored": "candidate/10-agent-timeline.png",
+      "sha256": "2325c6b2b63f1e7c9648df2f6c6030efd121f686a63b5973ac74067961c1a837",
+      "pixels": [
+        1080,
+        680
+      ],
+      "sourceModifiedAt": "2026-10-01T17:15:18.748519+00:00",
+      "reviewedWith": "view_image (actual original file)"
+    },
+    {
+      "group": "candidate",
+      "name": "11-meeting-canvas",
+      "source": "/tmp/astra-shots-light/11-meeting-canvas.png",
+      "stored": "candidate/11-meeting-canvas.png",
+      "sha256": "a049d126364b67975bbc1e0ed981b775571dc8bdc5df21158384c87d533510ac",
+      "pixels": [
+        1080,
+        680
+      ],
+      "sourceModifiedAt": "2026-10-01T17:15:19.656199+00:00",
+      "reviewedWith": "view_image (actual original file)"
+    },
+    {
+      "group": "root-reference",
+      "name": "01-voice-hud-idle",
+      "source": "/Users/shuhei/Projects/genie/docs/golden-screenshots/01-voice-hud-idle.png",
+      "stored": "root-reference/01-voice-hud-idle.png",
+      "sha256": "94f074bb0e8f414add8dd6fdbad3272d5f7241dc1effba2d94f217645371dae3",
+      "pixels": [
+        220,
+        44
+      ],
+      "sourceModifiedAt": "2026-09-13T20:05:23.277881+00:00",
+      "reviewedWith": "view_image (actual original file)"
+    },
+    {
+      "group": "root-reference",
+      "name": "02-voice-hud-listening",
+      "source": "/Users/shuhei/Projects/genie/docs/golden-screenshots/02-voice-hud-listening.png",
+      "stored": "root-reference/02-voice-hud-listening.png",
+      "sha256": "0ab0f37540fa9a13f084975fd6d41572e877f13b04a20a14ce573a6cf70f6085",
+      "pixels": [
+        600,
+        53
+      ],
+      "sourceModifiedAt": "2026-09-13T20:05:23.278095+00:00",
+      "reviewedWith": "view_image (actual original file)"
+    },
+    {
+      "group": "root-reference",
+      "name": "02b-voice-hud-preparing",
+      "source": "/Users/shuhei/Projects/genie/docs/golden-screenshots/02b-voice-hud-preparing.png",
+      "stored": "root-reference/02b-voice-hud-preparing.png",
+      "sha256": "d113a42ec3772c8d2855ccde3de869876bfb5a414a917b46ee453a780dfcc3a2",
+      "pixels": [
+        600,
+        53
+      ],
+      "sourceModifiedAt": "2026-09-13T20:05:23.278307+00:00",
+      "reviewedWith": "view_image (actual original file)"
+    },
+    {
+      "group": "root-reference",
+      "name": "03-recording-workspace",
+      "source": "/Users/shuhei/Projects/genie/docs/golden-screenshots/03-recording-workspace.png",
+      "stored": "root-reference/03-recording-workspace.png",
+      "sha256": "90f36ebd2045c1408e837654e663d87c518168c1009113648df6402eeb9adecf",
+      "pixels": [
+        1080,
+        680
+      ],
+      "sourceModifiedAt": "2026-09-13T20:05:23.279617+00:00",
+      "reviewedWith": "view_image (actual original file)"
+    },
+    {
+      "group": "root-reference",
+      "name": "04-recording-transcript",
+      "source": "/Users/shuhei/Projects/genie/docs/golden-screenshots/04-recording-transcript.png",
+      "stored": "root-reference/04-recording-transcript.png",
+      "sha256": "0d2ff7118f1e2e56bd5a31b157464e0830af736a79d08abf5d8228495dd56c94",
+      "pixels": [
+        1080,
+        680
+      ],
+      "sourceModifiedAt": "2026-09-13T20:05:23.280694+00:00",
+      "reviewedWith": "view_image (actual original file)"
+    },
+    {
+      "group": "root-reference",
+      "name": "05-recording-rag",
+      "source": "/Users/shuhei/Projects/genie/docs/golden-screenshots/05-recording-rag.png",
+      "stored": "root-reference/05-recording-rag.png",
+      "sha256": "ad16e51372fc91e22376372ecd82b4debd8c9ff7cd2394f20133c52ddca465f9",
+      "pixels": [
+        1080,
+        680
+      ],
+      "sourceModifiedAt": "2026-09-13T20:05:23.281088+00:00",
+      "reviewedWith": "view_image (actual original file)"
+    },
+    {
+      "group": "root-reference",
+      "name": "08-meeting-detail",
+      "source": "/Users/shuhei/Projects/genie/docs/golden-screenshots/08-meeting-detail.png",
+      "stored": "root-reference/08-meeting-detail.png",
+      "sha256": "975b03f64e7fd9b9c7317ccda6a2705d69466daa39db6ebcb10257b96987a7d6",
+      "pixels": [
+        1240,
+        820
+      ],
+      "sourceModifiedAt": "2026-09-08T00:33:43.739847+00:00",
+      "reviewedWith": "view_image (actual original file)"
+    },
+    {
+      "group": "root-reference",
+      "name": "09-permission-denied",
+      "source": "/Users/shuhei/Projects/genie/docs/golden-screenshots/09-permission-denied.png",
+      "stored": "root-reference/09-permission-denied.png",
+      "sha256": "110d3667d92c1866844ebf9b0bdc28a554189a93d5bb85f653b2c366e6ce5be2",
+      "pixels": [
+        1080,
+        680
+      ],
+      "sourceModifiedAt": "2026-09-13T20:05:23.281405+00:00",
+      "reviewedWith": "view_image (actual original file)"
+    },
+    {
+      "group": "root-reference",
+      "name": "10-agent-timeline",
+      "source": "/Users/shuhei/Projects/genie/docs/golden-screenshots/10-agent-timeline.png",
+      "stored": "root-reference/10-agent-timeline.png",
+      "sha256": "9267b6270163557c942894e9f95969b2dbd05c6eef8abe0f0d959e35e10f31b3",
+      "pixels": [
+        1080,
+        680
+      ],
+      "sourceModifiedAt": "2026-09-13T20:05:23.282240+00:00",
+      "reviewedWith": "view_image (actual original file)"
+    },
+    {
+      "group": "root-reference",
+      "name": "11-meeting-canvas",
+      "source": "/Users/shuhei/Projects/genie/docs/golden-screenshots/11-meeting-canvas.png",
+      "stored": "root-reference/11-meeting-canvas.png",
+      "sha256": "45b0876d22b2907bbef07d2525b1ba66a3b52821076e669334f574bab1af6142",
+      "pixels": [
+        1080,
+        680
+      ],
+      "sourceModifiedAt": "2026-09-13T20:05:23.282907+00:00",
+      "reviewedWith": "view_image (actual original file)"
+    },
+    {
+      "group": "approved-notch-reference",
+      "name": "01-voice-hud-idle",
+      "source": "/Users/shuhei/Projects/genie/docs/golden-screenshots/environments/macos-26.6.2-2x-safe-top-32/light/01-voice-hud-idle.png",
+      "stored": "approved-notch-reference/01-voice-hud-idle.png",
+      "sha256": "caa4acf3fbd0f415f4aabff66ac4b851547c257d1fe49a4d81b3de94ec2b958e",
+      "pixels": [
+        220,
+        76
+      ],
+      "sourceModifiedAt": "2026-09-13T20:05:23.322340+00:00",
+      "reviewedWith": "view_image (actual original file)"
+    },
+    {
+      "group": "approved-notch-reference",
+      "name": "02-voice-hud-listening",
+      "source": "/Users/shuhei/Projects/genie/docs/golden-screenshots/environments/macos-26.6.2-2x-safe-top-32/light/02-voice-hud-listening.png",
+      "stored": "approved-notch-reference/02-voice-hud-listening.png",
+      "sha256": "6935e11952f4b36cb435724cecac52a0c864ca25d098d5d56974e10337785218",
+      "pixels": [
+        600,
+        100
+      ],
+      "sourceModifiedAt": "2026-09-13T20:05:23.322558+00:00",
+      "reviewedWith": "view_image (actual original file)"
+    },
+    {
+      "group": "approved-notch-reference",
+      "name": "02b-voice-hud-preparing",
+      "source": "/Users/shuhei/Projects/genie/docs/golden-screenshots/environments/macos-26.6.2-2x-safe-top-32/light/02b-voice-hud-preparing.png",
+      "stored": "approved-notch-reference/02b-voice-hud-preparing.png",
+      "sha256": "8d1100189fa365bc1cbad7ceb34346d64ab513c9998ae0a60201d1346e96477a",
+      "pixels": [
+        600,
+        100
+      ],
+      "sourceModifiedAt": "2026-09-13T20:05:23.322726+00:00",
+      "reviewedWith": "view_image (actual original file)"
+    }
+  ],
+  "metadata": {
+    "capture-layout.json": "c5936f7a975cd0d376ad7a54ce51caecd7363a1591f1d46aa4dec6945207d3ab"
+  },
+  "referenceAndSourceHashesAtReview": {
+    "docs/DESIGN_SYSTEM.md": "38beb4d1d12c9a5e117d463ee262e4601cb736679772664820c0d7b6d2edd379",
+    "docs/ux-benchmark/compare/presence-mark/ROUND.md": "1962767c241a0ab7109b18995f8ff53cc04505c76dc9dedce44bec711af93f96",
+    "docs/ux-benchmark/compare/transcript-modes/ROUND.md": "1542d627b3a33231228b644c88e89c5332d3af3a76f4e32a38b180ed0ff7188a",
+    "docs/ux-benchmark/compare/notch-safe-area/ROUND.md": "71850a4efc108280f75905a23697412e0b7c2fc229dbbffd01020f427652104e",
+    "apps/genie-macos/Sources/GenieMac/App/SelfTest.swift": "feea363d768b73ea3adb0c7bceacfaac8bc6fdc2a8691f14340f8b7301df7cd7",
+    "apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDView.swift": "50c90055cd43e7cfd2de8969d4187bf68b382274eb9da937785b40f2eb3d09ae"
+  },
+  "findings": {
+    "hudGeometry": "root baseline mismatch; actual candidate equals approved notch-reference dimensions (220x76 / 600x100 / 600x100), top inset 32",
+    "productChanges": "brand/mark, blue accent, two-mode transcript, dictation purpose text, permission hint, main sidebar/toolbar content differ; not solely OS pixels",
+    "visualClipping": "No cropped primary controls/text or overlapping major panels observed in the ten candidate light fixtures",
+    "causalLimits": "Native chrome/font/gray differences are compatible with environment effects but source/state/OS differ; no causal percentage can be assigned",
+    "status": "FAIL retained for historical comparison; no new baseline accepted, current full gate pending"
+  }
+}

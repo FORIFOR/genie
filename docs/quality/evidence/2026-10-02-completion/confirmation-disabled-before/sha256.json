@@ -1,0 +1,10 @@
+{
+  "transaction-scope-bottom-light.png": "0dfd5d0622aa99e275c17312fa0cbeb9d883bc823ce3f28d49717fb810ee1730",
+  "transaction-scope-bottom-light.geometry.json": "32479f3dcb5579e9a01d630c9638b1f82d91191121895f6898721b5109021d36",
+  "transaction-scope-bottom-dark.png": "7d19f0754da0ff2fa95c54ad3596db2108b460f53eb73a7301679309cb11d2be",
+  "transaction-scope-bottom-dark.geometry.json": "32479f3dcb5579e9a01d630c9638b1f82d91191121895f6898721b5109021d36",
+  "transaction-invalid-bottom-light.png": "50fa8ca66e625f19e1e961d860d08673c7099cc03160439888b7750dc9b80586",
+  "transaction-invalid-bottom-light.geometry.json": "00357ee1d27ad29ff2687a0bd98b7fd42846c987365fa1b400ae4a68ac0040a2",
+  "transaction-invalid-bottom-dark.png": "81621bd4e825dfc6bdb815629e2095809e9fa9dd4640e598a1c3868e0859ebf5",
+  "transaction-invalid-bottom-dark.geometry.json": "00357ee1d27ad29ff2687a0bd98b7fd42846c987365fa1b400ae4a68ac0040a2"
+}

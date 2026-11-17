@@ -1,3 +1,4 @@
+import { approvalProof } from './approval-proof.js';
 /**
  * Temporal worker の起動口。実装仕様 §6.2。
  *
@@ -9,7 +10,7 @@
 import path from 'node:path';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { NativeConnection } from '@temporalio/worker';
-import { createDb, dbConfigFromEnv, withTenant, type DbHandle } from '@genie/db';
+import { createDb, dbConfigFromEnv } from '@genie/db';
 import { createLogger } from '@genie/telemetry';
 import { FsObjectStore, LibraryService } from '@genie/service-library';
 import {
@@ -35,8 +36,22 @@ import {
 import { assertReadyForProduction, canonicalSha256 } from '@genie/contracts';
 import { capabilityReport, capabilitySummary } from '@genie/service-capabilities';
 import { ConnectionService } from '@genie/service-plugin-registry';
-import { createTaskWorker, TASK_QUEUE, NoopPublisher } from '@genie/service-task';
+import {
+  createTaskWorker,
+  currentActivityCancellation,
+  isTaskCancelRequested,
+  TASK_QUEUE,
+  NoopPublisher,
+} from '@genie/service-task';
 import { HostBridge, HostStepExecutor, type ApprovalProof } from '@genie/service-agent-host';
+import {
+  PhoneConnectionStore,
+  oathraClient,
+  phoneConnections,
+  phoneExecutors,
+  phoneSetupFromEnv,
+  secretBoxFromEnv,
+} from '@genie/service-phone';
 import {
   DomainService,
   architectureExecutors,
@@ -137,6 +152,18 @@ async function main(): Promise<void> {
   const recordingRoot = path.resolve(process.env['ASTRA_RECORDING_ROOT'] ?? './.data/recordings');
   const meetings = new MeetingService({ db, publisher: NoopPublisher });
 
+  /*
+   * Oathra 経由の電話。**接続は利用者ごと**（phone_connections、トークンは GENIE_SECRET_KEY で封）。
+   * task を作った本人の接続だけを使い、無ければその step は「繋がっていない」で止まる。
+   * 環境変数の接続（GENIE_OATHRA_*）は、手元で試すための 1 人分の逃がし口。
+   */
+  const secrets = secretBoxFromEnv(process.env);
+  const phone = phoneConnections({
+    store: new PhoneConnectionStore({ db, secrets }),
+    fallback: phoneSetupFromEnv(process.env),
+  });
+  logger.info({ phone_secret_key: secrets ? secrets.keyId : 'not_configured' }, 'phone calls');
+
   const connection = await NativeConnection.connect({ address });
   const worker = await createTaskWorker(
     {
@@ -173,6 +200,19 @@ async function main(): Promise<void> {
          * 繋いでいないので、外から取ってきたふりはしない。
          */
         ...salesCrmExecutors(new DomainService({ db })),
+        /*
+         * 電話（伝言・営業）。承認カードを通った step だけがここに来る。
+         * 上限と相手は Oathra 側の委任が決め、Genie はその中でしか動かない。
+         */
+        ...phoneExecutors({
+          clientFor: async (owner) => {
+            const saved = await phone.connectionFor(owner);
+            return saved ? oathraClient(saved) : null;
+          },
+          // Temporal の取り消しと、Genie の取り消し（task が CANCELLING）の両方を見る
+          signal: currentActivityCancellation,
+          isCancelled: (task) => isTaskCancelRequested(db, task.tenantId, task.taskId),
+        }),
         ...meetingExecutors({
           meetings,
           library,
@@ -203,6 +243,9 @@ async function main(): Promise<void> {
   );
 
   const shutdown = (signal: string): void => {
+    // Temporal の SDK も同じシグナルで止める。止まった後に呼ぶと IllegalStateError で落ちる
+    // （2026-10-28: プレビューを止めるたびに worker.log に 121 回残っていた）
+    if (worker.getState() !== 'RUNNING') return;
     logger.info({ signal }, 'shutting down the task worker');
     worker.shutdown();
   };
@@ -218,64 +261,6 @@ async function main(): Promise<void> {
   await connection.close();
   await db.close();
 }
-
-/**
- * その step の承認の跡を引く。正本 §9。
- *
- * **無ければ null。**作らない。ここで嘘の跡を組み立てると、
- * 端末側の検査が意味を失い、二重の錠が一重になる。
- */
-async function approvalProof(
-  db: DbHandle,
-  where: { tenantId: string; taskId: string; stepIndex: number; toolId: string },
-): Promise<ApprovalProof | null> {
-  /*
-   * 対応の無い tool には承認を渡さない。
-   *
-   * **渡してしまうと、端末側の検査が「承認あり」で素通しになる。**
-   * 知らない tool は、そもそも端末が実行を断る側に倒す。
-   */
-  const operationId = OPERATION_FOR[where.toolId];
-  if (!operationId) return null;
-
-  const row = await withTenant(db, where.tenantId, (tx) =>
-    tx
-      .selectFrom('approvals')
-      .select(['id', 'decided_by', 'decided_at', 'expires_at'])
-      .where('task_id', '=', where.taskId)
-      .where('step_index', '=', where.stepIndex)
-      .where('status', '=', 'APPROVED')
-      .executeTakeFirst(),
-  );
-  if (!row?.decided_by || !row.decided_at) return null;
-
-  return {
-    approvalId: row.id,
-    operationId,
-    decision: 'APPROVED',
-    decidedBy: row.decided_by,
-    decidedAt: row.decided_at.toISOString(),
-    expiresAt: row.expires_at.toISOString(),
-  };
-}
-
-/**
- * manifest の tool 名と、端末側の操作名の対応。
- *
- * 2 つの名前があるのは、manifest が製品の語彙（`mail.send`）で書かれ、
- * connector が提供者の語彙（`gmail.send`）で書かれているから。
- * **対応はここ 1 箇所に置く。**散らばると、承認が黙って効かなくなる。
- */
-const OPERATION_FOR: Readonly<Record<string, string>> = {
-  'mail.send': 'gmail.send',
-  'outlook.mail.reply': 'outlook.mail.reply',
-  'mail.trash': 'gmail.trash',
-  'calendar.create_event': 'calendar.create',
-  'computer.click': 'computer.click',
-  'computer.type': 'computer.type',
-  'computer.key': 'computer.key',
-  'computer.run': 'computer.run',
-};
 
 main().catch((error: unknown) => {
   // 起動不能。握りつぶさず終了コードで知らせる。

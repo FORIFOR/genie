@@ -42,15 +42,22 @@ async function main() {
     throw new Error(`Install the selected local model first: ollama pull ${model}`);
   let identity = process.env.ASTRA_DESKTOP_ID;
   if (!identity) {
-    try {
-      identity = execFileSync(
-        'defaults',
-        ['read', 'com.astra.desktop', `astra.dev.identity.${base}`],
-        { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] },
-      ).trim();
-    } catch {
-      throw new Error('Open Genie once with the gateway running, then run this command again.');
+    // The Mac app (com.astra.mac) keeps its identity in its own defaults. The old desktop
+    // domain is read only as a fallback: a host signed in as another identity serves another
+    // tenant, and the app's tasks then wait for a host forever (PAUSED_HOST_OFFLINE).
+    for (const domain of ['com.astra.mac', 'com.astra.desktop']) {
+      try {
+        identity = execFileSync('defaults', ['read', domain, `astra.dev.identity.${base}`], {
+          encoding: 'utf8',
+          stdio: ['ignore', 'pipe', 'ignore'],
+        }).trim();
+        if (identity) break;
+      } catch {
+        // try the next domain
+      }
     }
+    if (!identity)
+      throw new Error('Open Genie once with the gateway running, then run this command again.');
   }
   const email = desktopEmail(identity);
   if (process.argv.includes('--check')) {

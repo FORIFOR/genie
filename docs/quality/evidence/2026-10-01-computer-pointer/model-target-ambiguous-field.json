@@ -1,0 +1,50 @@
+{
+  "scope": "Recorded disposable AppKit fixture -> production target prompt and LlmRuntime -> actual local model -> strict verdict parser. No native action, freshness or consent E2E claim.",
+  "model": "qwen3.5:9b",
+  "source": "model-target-fixture.png",
+  "sha256": "90ce91f21d4151fca14b788bb441fb699301b9f5c5318e2be0e65849f8a92471",
+  "cases": [
+    {
+      "name": "requested-area",
+      "response": {
+        "ok": true,
+        "result": {
+          "frameId": "fixture",
+          "outcome": "not_satisfied",
+          "confidence": 0.95,
+          "evidence": "The proposed input targets element e2 (AXTextArea), but the visible large empty text area in the screenshot is not labeled or identified as a writable field matching the user's request. The only available target e2 has an empty name and no visible indication it is the intended 'large empty text area'. The protected field (labeled 'Protected test field') is present but must be left untouched, which aligns with the goal, but the main input target cannot be confirmed as matching the user's intent due to lack of visual identification for the large empty text area."
+        }
+      },
+      "verdict": {
+        "outcome": "not_satisfied",
+        "evidence": "The proposed input targets element e2 (AXTextArea), but the visible large empty text area in the screenshot is not labeled or identified as a writable field matching the user's request. The only available target e2 has an empty name and no visible indication it is the intended 'large empty text area'. The protected field (labeled 'Protected test field') is present but must be left untouched, which aligns with the goal, but the main input target cannot be confirmed as matching the user's intent due to lack of visual identification for the large empty text area.",
+        "unmet": []
+      },
+      "expected": "satisfied",
+      "pass": false,
+      "ms": 5943
+    },
+    {
+      "name": "wrong-protected-field",
+      "response": {
+        "ok": true,
+        "result": {
+          "frameId": "fixture",
+          "outcome": "not_satisfied",
+          "confidence": 0.95,
+          "evidence": "The proposed input targets coordinates [280,154,500,184], which correspond to the 'Protected test field' visible in the screenshot. However, the user goal explicitly instructs to 'Leave the protected field untouched.' Therefore, entering text into this field violates the user's constraint and does not satisfy the request."
+        }
+      },
+      "verdict": {
+        "outcome": "not_satisfied",
+        "evidence": "The proposed input targets coordinates [280,154,500,184], which correspond to the 'Protected test field' visible in the screenshot. However, the user goal explicitly instructs to 'Leave the protected field untouched.' Therefore, entering text into this field violates the user's constraint and does not satisfy the request.",
+        "unmet": []
+      },
+      "expected": "not_satisfied",
+      "pass": true,
+      "ms": 5303
+    }
+  ],
+  "status": "FAIL",
+  "finishedAt": "2026-10-01T13:19:14.164Z"
+}

@@ -1,0 +1,123 @@
+{
+  "recordedAt": "2026-10-01T20:35:40.694072+00:00",
+  "classification": "implementer verification; mock subprocess orchestration, not a native build",
+  "commit": "ee857a5b13482cbd2d986a1f9b466c8e49a149c3",
+  "workingTree": "uncommitted shared working tree; listed file SHA-256 identifies source candidate",
+  "platform": "macOS-27.0.1-arm64-arm-64bit-Mach-O",
+  "change": "Apply existing shared default-2 SwiftPM/Cargo build scheduling policy to 7 additional standalone entrypoints; explicit positive environment overrides retained.",
+  "unchanged": [
+    "build configuration/optimization",
+    "universal release architectures",
+    "signing/notarization",
+    "model choice/inference/answer quality",
+    "application source"
+  ],
+  "verification": {
+    "status": "PASS",
+    "command": "python3 -m unittest discover -s scripts/tests -p test_verification_resources.py -v",
+    "exitCode": 0,
+    "tests": 21,
+    "failures": 0,
+    "skipped": 0,
+    "assertions": [
+      "normal build defaults 2/2, explicit 1/1 and 3/4, prebuilt core bypass",
+      "release default and explicit override reach both Cargo target builds and both universal SwiftPM calls",
+      "API roundtrip default and explicit override reach Cargo test and both SwiftPM calls",
+      "4 standalone Cargo entrypoints default 2 and explicit 1, including binding generator cargo run",
+      "invalid policy rejected before tool/network calls",
+      "existing omission/skip propagation remains partial, never green"
+    ],
+    "fakeBoundaries": [
+      "real shell scripts execute in disposable checkout",
+      "compiler, signer, network, app and provenance commands are inert fakes",
+      "release stops at expected missing executable guard before bundling/signing",
+      "cargo-only wrappers stop at fake compiler exit 42 before native/C# fixture execution"
+    ],
+    "log": "docs/quality/evidence/2026-10-02-completion/build-resource-entrypoints-tests.log"
+  },
+  "syntax": [
+    {
+      "path": "scripts/build-macos-app.sh",
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "path": "scripts/release-macos.sh",
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "path": "scripts/verify-api-roundtrip.sh",
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "path": "scripts/verify-swift-roundtrip.sh",
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "path": "scripts/verify-csharp-bridge.sh",
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "path": "scripts/gen-swift-bindings.sh",
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "path": "scripts/verify-c-abi.sh",
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "path": "scripts/build-resource-env.sh",
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "diffCheck": {
+    "exitCode": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  "notRun": [
+    "real Rust/Swift compilation",
+    "native application launch",
+    "models",
+    "VM/DB",
+    "release signing/notarization",
+    "full verify-all against real tools"
+  ],
+  "limitations": [
+    "caps per-command build concurrency, not a global memory budget or cross-process scheduler",
+    "actual peak-memory improvement was not measured by these mock tests; full product completion/gate status is unchanged"
+  ],
+  "sha256": {
+    "scripts/build-macos-app.sh": "81d20ee9be2ec11c5eb24ecc8b0e3b8a85df16f76a2c0d75aeeaef89cae70ab2",
+    "scripts/release-macos.sh": "715d145ab7c69bf44e8c50382a81142f383a4b8825d9613f6114967c65d74e5a",
+    "scripts/verify-api-roundtrip.sh": "2fdb8dbb7df8b1a1afabaee91b139b0a2e55c8fd0193cc02ec4f06526e91e61d",
+    "scripts/verify-swift-roundtrip.sh": "3befcb73e45bb943507a2f4a3fd9455970df92bcac4633df1293b7348f6c9efa",
+    "scripts/verify-csharp-bridge.sh": "679f46801ec618795cdf0e80e6b74aa18f4e5983d8ca591822af97ff6ebe94c9",
+    "scripts/gen-swift-bindings.sh": "1500782e0a13388e5522d155259e25d4fb52e6b473d9cb1ce9c11cd07f212138",
+    "scripts/verify-c-abi.sh": "640415566feaae7e1491b69d50b29c2067a7507b462904709aaff0c202b0b2b9",
+    "scripts/build-resource-env.sh": "7a9f23dcbfd8a5a1b8defbcc9670428ea4792a966c92fcd3a6739f1235913a89",
+    "scripts/tests/test_verification_resources.py": "b8b29161804319f9c39dc30eb9ad6ac38a7d52922d7c3896be23232fb69594d5",
+    "scripts/verify-all.sh": "9e3dd37da4ee9769cdce154bfc5aeda084e4db31bb5aad1d1040c4a89ae3104f",
+    "scripts/package-macos-app.sh": "c3ff6b2864df5e08f0df0d38187380b181b651a0a38c980bcc35caa2a5387c67",
+    "scripts/verify-swift-tests.sh": "c1126e09bccf50e00a6b7b08e72d5bd627fdc24116c00825fa95a96617606625",
+    "scripts/verify-desktop-tests.sh": "6fb4b35a45b8242c89ee3f81ab20fd101e7f5f9923ec9506efaac202647b1718",
+    "scripts/verify-macos-recording.sh": "8909ea54fcd8dddc3531c4db3b9b57792fa397c15fc1e8d6284ae2ec398f57e2",
+    "scripts/verify-local-translation.sh": "80e3409c624df815ac82d84be73e2bb7567db0ec978aec6993c7e4f07b6bb31d",
+    "docs/quality/evidence/2026-10-02-completion/build-resource-entrypoints-tests.log": "37a2305b30351cbd3f8f6766c8f7aea7a2a5bc77e4f07a10b9aca22e8f4de4b2"
+  }
+}

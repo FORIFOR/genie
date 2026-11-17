@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-10-01T17:12:31.989772+00:00",
+  "classification": "implementation verification by /root/computer_correctness; not independent verification of own code",
+  "workspace": "/Users/shuhei/Projects/genie",
+  "baseCommit": "ee857a5b13482cbd2d986a1f9b466c8e49a149c3",
+  "uncommitted": true,
+  "changes": [
+    "packages/contracts/src/transaction.ts",
+    "packages/contracts/src/task.ts",
+    "packages/contracts/src/events.ts",
+    "packages/contracts/test/task.test.ts",
+    "packages/contracts/test/events.test.ts",
+    "services/task/src/activity-types.ts",
+    "services/task/src/activities.ts",
+    "services/task/src/workflows.ts",
+    "services/task/test/transaction-workflow.test.ts",
+    "services/task/test/terminal-state.test.ts",
+    "services/task/test/transaction-approval.db.test.ts"
+  ],
+  "sourceSha256": {
+    "packages/contracts/src/transaction.ts": "65ebf8a778c0f0031186fe6a147fc0e49c526874a0abbdce9a608614a3d5a473",
+    "packages/contracts/src/task.ts": "da4c6b61403a26e576ac4d9b593543ab4545d6e40655dceaca24dce31e5dcd3b",
+    "packages/contracts/src/events.ts": "ffa3bab66b9a97f108ac6f24c3267a698f2b1d1cac232a0d78bc6ff9f9b2354f",
+    "packages/contracts/test/task.test.ts": "8bd87b3b9e9f2f7ec5196ac3d9cb310746591b3eb53140fb586d57bdf0d594ac",
+    "packages/contracts/test/events.test.ts": "acc3d3611602149f0251437c3e50cb04f5c8e79e48cd84a94e2625cf72796edd",
+    "services/task/src/activity-types.ts": "23c5d030898d477039ed81af1e6c41133eeb3676af3e2b8d86de86b139d90f27",
+    "services/task/src/activities.ts": "d4f9379e6e3e44811a0ae2b65954648a6321cc455fd55243b31cb1f38d7604c0",
+    "services/task/src/workflows.ts": "433e25e735c636e27d04296c6be290ef3dad25204ad53c78ccae721469ffe154",
+    "services/task/test/transaction-workflow.test.ts": "bfafc8581a46cd0f8f5a91632a72145c0274778bd3a2bdfc44ff691e08260ee4",
+    "services/task/test/terminal-state.test.ts": "998a78425057284e1cad6d2b850b23f69a8b916f088902ce0ebd2561738c6473",
+    "services/task/test/transaction-approval.db.test.ts": "ed03539d968ff4768978aedbde7bc39c5b1c8b2bf8c4d0be254c1d79d52ec1bb"
+  },
+  "commands": [
+    {
+      "command": "pnpm exec tsc -b services/task && pnpm exec tsc -p tsconfig.tests.json",
+      "exitCode": 0,
+      "evidence": "tool session 76184; no console output after prettier; no standalone log claimed"
+    },
+    {
+      "command": "pnpm exec vitest run packages/contracts/test/task.test.ts packages/contracts/test/events.test.ts services/task/test/transaction-workflow.test.ts services/task/test/terminal-workflow.test.ts services/task/test/replay-history.test.ts",
+      "exitCode": 0,
+      "log": "transaction-cancel-unit-replay-final.log",
+      "passed": 48,
+      "skipped": 1,
+      "skipReason": "prior-history fixture regeneration is explicit opt-in; both existing history replays passed"
+    },
+    {
+      "command": "PATH=/opt/homebrew/opt/libpq/bin:$PATH ASTRA_TEST_PGHOST=127.0.0.1 ASTRA_TEST_PGPORT=32768 ./infra/db/with-test-db.sh pnpm exec vitest run services/task/test/terminal-state.test.ts services/task/test/transaction-approval.db.test.ts services/task/test/transaction-authorization-ledger.db.test.ts services/api-gateway/test/transaction-authorizations.integration.test.ts",
+      "exitCode": 0,
+      "log": "transaction-cancel-db-final.log",
+      "passed": 30,
+      "skipped": 1,
+      "skipReason": "existing real-Temporal composition cancellation test requires ASTRA_TEST_TEMPORAL_PATH; no cached executable available; no download attempted",
+      "database": "isolated wrapper-created database on dedicated PostgreSQL port32768; wrapper completed cleanup"
+    },
+    {
+      "description": "Initial database run before TaskCancelledPayload schema correction",
+      "exitCode": 1,
+      "log": "transaction-cancel-db.log",
+      "passed": 28,
+      "failed": 2,
+      "skipped": 1,
+      "failure": "SSE/eventsAfter schema stripped saved error/message; fixed by optional typed fields; retained here as failed negative evidence"
+    }
+  ],
+  "logSha256": {
+    "transaction-cancel-unit-replay-final.log": "939005d8fbc7c11c07ef9ca290094a896b0507eaa050520cafd4b234d2be78ad",
+    "transaction-cancel-db-final.log": "b2cd31781f2e392b5268cfa0807b8f7bd8fbb739a66c76c97eea0d1353e15a61",
+    "transaction-cancel-db.log": "e52c516acdf1d71c3982a48a7332cdfdb470cc9e0b9de60440c90462bcbed25b"
+  },
+  "limits": [
+    "No new real-Temporal server cancellation history generated. New error branch covered by workflow activity mocks plus real PostgreSQL atomic transition and old recorded-history replay.",
+    "No native/UI actions or real order were executed by this verification. The earlier main-app cancelled-to-FAILED observation remains in FIXTURE_SESSION_EXIT.md.",
+    "Live providers remain unregistered. Stopping Genie is not proof of external order cancellation.",
+    "Temporal patch transaction-cancel-failure-v1 preserves old failure command shape. New patched transactions receive the cancellation-aware path."
+  ]
+}

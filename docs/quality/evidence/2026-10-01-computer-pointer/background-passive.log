@@ -1,0 +1,84 @@
+Evidence: /private/tmp/genie-background-native.8YgM3y
+STAGE route ax_press by element point 310,633 local 130,168
+STAGE route ax_value by element point 470,772 local 290,307
+STAGE takeover-marker human_takeover
+STAGE takeover-marker session_stopped
+TEST capture
+TEST click
+TEST capture for text
+TEST type
+{
+  "clipboardUnchanged" : true,
+  "cursorUnchanged" : true,
+  "existingTextRefused" : true,
+  "foregroundUnchangedDuringActions" : true,
+  "humanTakeoverRefused" : true,
+  "indicatorInputTransparent" : true,
+  "indicatorShown" : true,
+  "inputSource" : "none; passive preservation check only, no foreground typing test",
+  "keysRefused" : true,
+  "pointerAndStopOnScreen" : true,
+  "replayRefused" : true,
+  "secureInputRefused" : true,
+  "sentinel" : {
+    "activationPolicy" : "accessory",
+    "activations" : 0,
+    "clicks" : 0,
+    "geometry" : {
+      "coordinateSystem" : "AppKit points, bottom-left origin",
+      "screens" : [
+        {
+          "height" : 1007,
+          "width" : 1728,
+          "x" : 0,
+          "y" : 77
+        }
+      ],
+      "window" : {
+        "height" : 442,
+        "width" : 580,
+        "x" : 500,
+        "y" : 210
+      }
+    },
+    "isActive" : false,
+    "isOnActiveSpace" : true,
+    "isVisible" : true,
+    "occlusionVisible" : true,
+    "startupReady" : true,
+    "text" : ""
+  },
+  "status" : "PASS",
+  "takeoverSource" : "injected sticky marker",
+  "target" : {
+    "activationPolicy" : "accessory",
+    "activations" : 0,
+    "clicks" : 1,
+    "geometry" : {
+      "coordinateSystem" : "AppKit points, bottom-left origin",
+      "screens" : [
+        {
+          "height" : 1007,
+          "width" : 1728,
+          "x" : 0,
+          "y" : 77
+        }
+      ],
+      "window" : {
+        "height" : 442,
+        "width" : 580,
+        "x" : 180,
+        "y" : 210
+      }
+    },
+    "isActive" : false,
+    "isOnActiveSpace" : true,
+    "isVisible" : true,
+    "occlusionVisible" : true,
+    "startupReady" : true,
+    "text" : "背景入力 日本語 👩‍💻"
+  },
+  "targetPreviewCanonicalElement" : true,
+  "targetPreviewReadOnly" : true,
+  "targetPreviewSecureRefused" : true
+}

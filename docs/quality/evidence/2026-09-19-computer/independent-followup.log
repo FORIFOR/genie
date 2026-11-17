@@ -1,0 +1,27 @@
+✔ requires goal, criteria, durable run file and explicit approval ID (0.59225ms)
+✔ lost acceptance response: explicit recover reuses identical key and request, never approves (0.562542ms)
+✔ status and recover with known identity only read; missing identity never posts (0.106791ms)
+✔ approval belongs to current computer task and matching pending approval (0.269ms)
+✔ cancel only requests cancellation on same task, no success assertion (0.109084ms)
+✔ transport blocks redirects and does not retry errors (0.211167ms)
+✔ CLI rejects unsupported actions, external model URLs, ambiguous ports and unsafe names (0.802708ms)
+✔ model choice persists explicit intent, supports Ollama latest aliases and never picks a paid fallback (0.15425ms)
+✔ service environment does not inherit paid credentials, remote infrastructure or shell hooks (19.959333ms)
+✔ first boot persists private keys, ports and identity; later starts keep them and reject silent port changes (12.882625ms)
+✔ saved configuration is validated before forming compose operations (7.588166ms)
+✔ an unrelated nonempty state directory is never taken over (0.9345ms)
+✔ managed service stops when its supervisor disappears (93.07425ms)
+✔ managed Compose isolates named volumes and all published ports; migration mounts are read-only (6.471875ms)
+✔ port conflicts fail without modifying the listener (0.527208ms)
+✔ owned processes fail on exit and stop children; unrelated processes stay alive (36.169458ms)
+✔ command timeout, startup abort and bounded readiness cannot report success (68.747375ms)
+✔ entrypoint help works from a symlink with spaces and importing it starts nothing (105.480375ms)
+✔ network errors and redirects do not expose returned response bodies (18.959875ms)
+ℹ tests 19
+ℹ suites 0
+ℹ pass 19
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 454.939625

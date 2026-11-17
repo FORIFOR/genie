@@ -1,0 +1,11 @@
+test_invalid_bundle_or_signature_never_launches (test_privacy_egress_launcher.PrivacyEgressLauncherTests.test_invalid_bundle_or_signature_never_launches) ... ok
+test_missing_data_root_uses_disposable_library (test_privacy_egress_launcher.PrivacyEgressLauncherTests.test_missing_data_root_uses_disposable_library) ... ok
+test_selected_signed_identity_is_used_with_receipt_and_isolated_configuration (test_privacy_egress_launcher.PrivacyEgressLauncherTests.test_selected_signed_identity_is_used_with_receipt_and_isolated_configuration) ... ok
+test_success_marker_cannot_hide_failed_or_missing_normal_exit (test_privacy_egress_launcher.PrivacyEgressLauncherTests.test_success_marker_cannot_hide_failed_or_missing_normal_exit) ... ok
+test_unmeasured_and_skipped_stt_remain_partial (test_privacy_egress_launcher.PrivacyEgressLauncherTests.test_unmeasured_and_skipped_stt_remain_partial) ... ok
+test_wrong_result_or_failure_is_not_green (test_privacy_egress_launcher.PrivacyEgressLauncherTests.test_wrong_result_or_failure_is_not_green) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 8.411s
+
+OK

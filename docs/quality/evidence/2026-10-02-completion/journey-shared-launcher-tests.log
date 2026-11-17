@@ -1,0 +1,9 @@
+test_journeys_and_motion_launch_the_signed_app_with_isolated_data (test_journey_launcher.JourneyLauncherTests.test_journeys_and_motion_launch_the_signed_app_with_isolated_data) ... ok
+test_regular_developer_bundle_keeps_its_launchservices_identity (test_journey_launcher.JourneyLauncherTests.test_regular_developer_bundle_keeps_its_launchservices_identity) ... ok
+test_success_text_cannot_hide_a_crash_or_failed_exit (test_journey_launcher.JourneyLauncherTests.test_success_text_cannot_hide_a_crash_or_failed_exit) ... ok
+test_unknown_executable_is_not_launched_as_the_test_app (test_journey_launcher.JourneyLauncherTests.test_unknown_executable_is_not_launched_as_the_test_app) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 1.999s
+
+OK

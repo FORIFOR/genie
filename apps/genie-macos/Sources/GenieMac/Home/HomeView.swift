@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// §8 Home: KPI dashboard ではなく「今必要な仕事への入口」。greeting + intent、Attention 最大3、Active work、Recent。
+/// Home: 今日の情報を読み、必要な仕事を始める。取得値と依頼入力は同じ面に置く。
 /// 寸法/色/余白は tokens 由来（Palette/TypeScale/Space）。KPI は常設しない（§8.1）。
 struct HomeAttention: Identifiable {
     let id = UUID()
@@ -28,6 +28,7 @@ struct HomeView: View {
     private var intentPlaceholder: String { hasScreenshot ? "この画像について、何を知りたいですか？" : Facts.homeIntentPlaceholder }
     @ObservedObject private var nav = MainNav.shared
     @State private var submitIssue = ""
+    @State private var connectionTask: Task<Void, Never>?
     @State private var showContext = false
     /// 実データ。無ければその節ごと出さない。
     @State private var recentTasks: [AgentTask] = []
@@ -44,8 +45,10 @@ struct HomeView: View {
     @ObservedObject private var sessions = MeetingSessionStore.shared
     @ObservedObject private var sheetOpener = NewRecordingSheetOpener.shared
     @ObservedObject private var initialProfile = InitialProfileStore.shared
+    @ObservedObject private var dailyBrief = BriefStore.shared
     @ObservedObject private var work = WorkContextStore.shared
-    @ObservedObject private var consumer = ConsumerJourneyStore.shared
+    @ObservedObject private var backend = MainData.shared
+    @ObservedObject private var credentialRecovery = MainData.shared.credentialRecovery
     @FocusState private var intentFocused: Bool
 
     static func greetingForNow(_ date: Date = Date()) -> String {
@@ -58,7 +61,22 @@ struct HomeView: View {
 
     var body: some View {
         ZStack {
-            if initialProfile.visible && nav.intentVisualContext == nil { InitialProfileView() } else { homeBody }
+            if initialProfile.openRequested && initialProfile.visible && nav.intentVisualContext == nil {
+                VStack(alignment: .leading, spacing: 0) {
+                    ProbeButton(id: "homeBackFromProfile", action: {
+                        initialProfile.openRequested = false
+                    }) {
+                        Label("今日のまとめに戻る", systemImage: "chevron.left")
+                    }
+                    .buttonStyle(.borderless)
+                    .font(.system(size: S.type(TypeScale.secondarySize)))
+                    .padding(.horizontal, S.metric(Space.largePadding))
+                    .padding(.top, S.metric(Space.cardPadding))
+                    .accessibilityIdentifier("homeBackFromProfile")
+                    InitialProfileView()
+                }
+                .background(Palette.canvas(dark))
+            } else { homeBody }
             // §4 New Recording は Home に**重ねて**出す。window を増やさない。
             if sheetOpener.isOpen {
                 Color.black.opacity(0.24)
@@ -73,14 +91,11 @@ struct HomeView: View {
         }
         .animation(.easeOut(duration: 0.14), value: sheetOpener.isOpen)
         .onChange(of: nav.intentFocusRequest) { _, request in focusIntent(request) }
-        .onAppear { if nav.intentVisualContext != nil { intentFocused = true } }
-        .sheet(item: $consumer.active) { draft in
-            ConsumerJourneyView(draft: draft, onClose: { consumer.close($0) }, onResearch: { prompt, mode in
-                guard voice.ask(prompt, newConversation: true, visualContext: [], consumerPlanning: mode) else { return false }
-                if let id = voice.latestRequestID { nav.openTask = LocalStore.shared.loadTasks().first { $0.id == id } }
-                return true
-            })
+        .onChange(of: initialProfile.visible) { _, visible in
+            if !visible { initialProfile.openRequested = false }
         }
+        .onAppear { if nav.intentVisualContext != nil { intentFocused = true } }
+        .onDisappear { connectionTask?.cancel() }
     }
 
     private func focusIntent(_ request: UUID) {
@@ -101,16 +116,45 @@ struct HomeView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: S.metric(Space.largePadding)) {
                 if let live = sessions.live { RecordingNowCard(session: live) }
+                if !hasScreenshot {
+                    DailyBriefView(card: dailyBrief.latest, composing: dailyBrief.composing,
+                                   failure: dailyBrief.lastFailure, preferences: dailyBrief.preferences,
+                                   scheduleLabel: dailyBrief.scheduleLabel,
+                                   onRefresh: { dailyBrief.compose() },
+                                   onPreferences: { dailyBrief.updatePreferences($0) },
+                                   onLocationAuthorization: { dailyBrief.authorizeWeatherLocation() },
+                                   onConnections: { nav.select(.apps); nav.appsTab = .connectors },
+                                   onWork: { nav.select(.work) })
+                        .padding(.top, S.metric(Space.cardPadding))
+                    // 朝に「自分が何をすればよいか」を見せる。メール由来は候補のまま出し、
+                    // 本人が「TODOに追加」で確かめるまで TODO にしない（WorkContextCard）。
+                    if work.context != nil { WorkContextCard() }
+                    if hasPendingProfile {
+                        ProbeButton(id: "homeInitialProfile", action: { initialProfile.showExisting() }) {
+                            HStack(spacing: Space.base) {
+                                Label("プロフィールを確認", systemImage: "person.text.rectangle")
+                                Spacer()
+                                Text(initialProfile.starting || initialProfile.result?.status == "analysing" ? "整理中" : "内容を確認できます")
+                                    .foregroundStyle(Palette.muted(dark))
+                                Image(systemName: "chevron.right").accessibilityHidden(true)
+                            }.contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .font(.system(size: S.type(TypeScale.secondarySize)))
+                        .accessibilityIdentifier("homeInitialProfile")
+                    }
+                    Divider()
+                }
                 VStack(alignment: .leading, spacing: 8) {
                     if !hasScreenshot {
                         Text(greeting)
                             .font(.system(size: S.type(TypeScale.secondarySize)))
                             .foregroundStyle(Palette.muted(dark))
                     }
-                    Text(hasScreenshot ? "この画像について質問" : "今日は、何を形にしますか。")
-                        .font(.system(size: S.type(TypeScale.pageTitleSize), weight: TypeScale.pageTitleWeight))
+                    Text(hasScreenshot ? "この画像について質問" : "Genieに頼む")
+                        .font(.system(size: S.type(hasScreenshot ? TypeScale.pageTitleSize : TypeScale.sectionTitleSize), weight: TypeScale.pageTitleWeight))
                         .foregroundStyle(Palette.text(dark))
-                    Text(hasScreenshot ? "知りたいことや、してほしいことを書いてください。" : "つくりたいものと、実現したいことを教えてください。")
+                    Text(hasScreenshot ? "知りたいことや、してほしいことを書いてください。" : "メモから文章をつくり、Workで編集・Markdown保存できます。")
                         .font(.system(size: S.type(TypeScale.secondarySize)))
                         .foregroundStyle(Palette.muted(dark))
                 }
@@ -128,33 +172,16 @@ struct HomeView: View {
                 }
                 // Accepted requests have their own persistent workspace. Only preflight
                 // failures belong beside the draft; never repeat a full result here.
-                if !submitIssue.isEmpty {
+                // Keychain に断られている間は、送る前から確かめる手を出す（声の会話では送れないことしか分からない）。
+                if backend.connectionIssue == .credentialAccess {
+                    GatewayCredentialRecoveryView(state: credentialRecovery.state) {
+                        Task { await backend.confirmCredentialReadAfterUserRequest() }
+                    }
+                } else if !submitIssue.isEmpty {
                     Text(submitIssue).font(.system(size: S.type(TypeScale.secondarySize)))
                         .foregroundStyle(Palette.warning(dark)).textSelection(.enabled)
                 }
                 starterRequests
-                DisclosureGroup("映画・旅行・デリバリー") {
-                    VStack(alignment: .leading, spacing: Space.base) {
-                        ForEach(ConsumerJourneyKind.allCases) { kind in
-                            Button { consumer.present(kind) } label: {
-                                HStack(spacing: Space.cardPadding) {
-                                    Image(systemName: kind.symbol).frame(width: 24)
-                                    VStack(alignment: .leading, spacing: Space.compact) {
-                                        Text(kind.title).foregroundStyle(Palette.text(dark))
-                                        Text(kind.subtitle).font(.system(size: S.type(TypeScale.microSize)))
-                                    }
-                                    Spacer()
-                                    Image(systemName: "chevron.right")
-                                }.padding(Space.base).contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityIdentifier("homeConsumer-" + kind.rawValue)
-                        }
-                    }.padding(.top, Space.base)
-                }
-                .font(.system(size: S.type(TypeScale.secondarySize)))
-                .foregroundStyle(Palette.muted(dark))
-                .accessibilityIdentifier("homeConsumerDisclosure")
                 if !recentTasks.isEmpty {
                     VStack(alignment: .leading, spacing: 12) {
                         HStack {
@@ -190,7 +217,7 @@ struct HomeView: View {
                         if sessions.live == nil { StartRecordingCard() }
                         if recordedCount > 0 { recoverableRow }
                         if work.brief != nil { MeetingBriefRow() }
-                        if work.context != nil { WorkContextCard() }
+                        if hasScreenshot, work.context != nil { WorkContextCard() }
                         if !attention.isEmpty {
                             section("これからの予定")
                             ForEach(attention.prefix(3)) { upcomingRow($0) }
@@ -217,6 +244,7 @@ struct HomeView: View {
         .onAppear {
             loadReal()
             work.load()
+            dailyBrief.refreshIfDue()
             // 許可の状態は開くたびに読み直す。設定で許可して戻ってきても、
             // 予定を求める行が古い状態（初回に読んだ値）のままだった。
             calendar = Permissions.calendar
@@ -224,6 +252,11 @@ struct HomeView: View {
         .onReceive(NotificationCenter.default.publisher(for: LocalStore.tasksChanged).receive(on: RunLoop.main)) { _ in
             recentTasks = LocalStore.shared.loadTasks()
         }
+    }
+
+    private var hasPendingProfile: Bool {
+        initialProfile.starting || initialProfile.failure != nil ||
+            (initialProfile.result != nil && initialProfile.result?.finished != true)
     }
 
     private func openDetail(_ session: MeetingSession) {
@@ -255,16 +288,23 @@ struct HomeView: View {
                 .font(.system(size: S.type(TypeScale.bodySize)))
                 .foregroundStyle(Palette.text(dark))
                 .frame(height: S.metric(Metrics.homeComposerEditorHeight))
+            Text(ProcessInfo.processInfo.environment["ASTRA_MODEL_DISCLOSURE"]
+                 ?? "送信先: 接続先で設定されたモデル。外部モデルは内容を受信し、利用料金が発生する場合があります。接続設定を確認してから送信してください。")
+                .font(.system(size: S.type(TypeScale.microSize)))
+                .foregroundStyle(Palette.muted(dark))
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("homeModelDisclosure")
             HStack(spacing: 10) {
-                Button { voice.beginListening() } label: {
+                // 声で依頼する = Genie と会話（音声入力は文章を入れるだけなので、ここでは使わない）。
+                Button { voice.beginConversation() } label: {
                     Image(systemName: "mic").frame(width: 28, height: 28)
                 }
                 .buttonStyle(GenieControlStyle(radius: 8, filled: false))
-                .disabled(voice.requestInFlight)
+                .disabled(voice.requestInFlight || credentialRecovery.isChecking)
                 .accessibilityLabel("声で依頼する")
                 .help("声で依頼する")
                 .accessibilityIdentifier("homeIntentMic")
-                Text(voice.requestInFlight ? "依頼を処理しています…" : Facts.homeSubmitHint)
+                Text(connectionTask != nil ? "接続を確認しています…" : (voice.requestInFlight ? "依頼を処理しています…" : Facts.homeSubmitHint))
                     .font(.system(size: S.type(TypeScale.microSize)))
                     .foregroundStyle(Palette.muted(dark))
                 Spacer(minLength: 0)
@@ -275,7 +315,7 @@ struct HomeView: View {
                 }
                 .buttonStyle(.borderedProminent).tint(Palette.accent(dark))
                 .keyboardShortcut(UserShortcut.submitRequest.key, modifiers: UserShortcut.submitRequest.modifiers)
-                .disabled(nav.intentDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || voice.requestInFlight)
+                .disabled(nav.intentDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || voice.requestInFlight || connectionTask != nil || credentialRecovery.isChecking)
                 .accessibilityIdentifier("homeIntentSend")
             }
         }
@@ -332,19 +372,37 @@ struct HomeView: View {
     }
 
     private func submitIntent() {
+        guard connectionTask == nil, !voice.requestInFlight, !credentialRecovery.isChecking else { return }
+        let text = nav.intentDraft
+        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        let images = nav.intentVisualContext
         submitIssue = ""
-        if voice.ask(nav.intentDraft, newConversation: true, visualContext: nav.intentVisualContext) {
-            nav.finishIntentSubmission()
-            if let id = voice.latestRequestID {
-                nav.openTask = LocalStore.shared.loadTasks().first { $0.id == id }
+        connectionTask = Task { @MainActor in
+            defer { connectionTask = nil }
+            let result = await HomeIntentSubmission.run(
+                needsConnection: VoiceHUDState.homeIntentNeedsGateway(text, visualContext: images),
+                connect: { await MainData.shared.ensureConnected(afterUserAction: true) },
+                isCurrent: { nav.intentDraft == text && nav.intentVisualContext?.map(\.id) == images?.map(\.id) },
+                submit: { voice.ask(text, newConversation: true, visualContext: images) })
+            switch result {
+            case .submitted:
+                nav.finishIntentSubmission()
+                if let id = voice.latestRequestID {
+                    nav.openTask = LocalStore.shared.loadTasks().first { $0.id == id }
+                }
+            case .unavailable:
+                submitIssue = MainData.shared.connectionIssue?.message
+                    ?? "接続を確認してください。入力は残しています。"
+            case .rejected: submitIssue = voice.answer
+            case .cancelled, .draftChanged: break
             }
-        } else { submitIssue = voice.answer }
+        }
     }
 
     private var starterRequests: some View {
         HStack(alignment: .top, spacing: 12) {
-            starter("動画の構成案", detail: "冒頭から、最後の一言まで", icon: "film",
-                prompt: "短い動画の構成を3案つくってください。\nテーマ: \n届けたい相手: \n各案に、冒頭3秒の見せ方、展開、最後の一言を入れてください。")
+            starter("メモをチェックリストに", detail: "例文を編集して、最初の成果物へ", icon: "checklist",
+                prompt: TaskRequestRecord.firstExample)
             starter("Webの改善提案", detail: "課題を、伝わる提案に", icon: "rectangle.and.text.magnifyingglass",
                 prompt: "Webサイトの改善提案をまとめてください。\n会社・サービス: \n現在の内容と課題: \n目的: \n優先順位と、変更前後の文言案を含めてください。")
             starter("アイデアを具体化", detail: "検証できる計画をつくる", icon: "pencil.and.outline",
@@ -369,7 +427,7 @@ struct HomeView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(GenieControlStyle(radius: Metrics.paletteRadius, base: 0.0))
-        .accessibilityLabel(title + "の依頼文を入力")
+        .accessibilityLabel(title + "：依頼文を入力")
     }
 
     /// 節の見出し。**中身より小さく静かに**する。以前は 22pt で、行より目立っていた。

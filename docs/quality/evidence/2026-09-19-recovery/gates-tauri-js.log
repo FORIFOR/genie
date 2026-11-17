@@ -1,0 +1,157 @@
+
+> @genie/desktop@0.0.0 test /Users/shuhei/Projects/genie/apps/desktop
+> vitest run --passWithNoTests
+
+
+ RUN  v3.2.7 /Users/shuhei/Projects/genie/apps/desktop
+
+(node:36445) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:36439) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:36441) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:36446) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:36436) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:36447) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:36442) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:36440) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:36444) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:36437) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:36435) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:36443) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:36438) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ test/artifact-actions.test.tsx (4 tests) 146ms
+(node:36461) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ test/evidence.test.tsx (12 tests) 122ms
+ ✓ test/work-detail.test.tsx (15 tests) 170ms
+ ✓ test/apps.test.tsx (17 tests) 178ms
+ ✓ test/signin-providers.test.tsx (4 tests) 110ms
+ ✓ test/shortcut-settings.test.tsx (6 tests) 75ms
+ ✓ test/home-library.test.tsx (32 tests) 231ms
+stderr | test/meeting.test.tsx > MeetingProvider (§12) > records only after consent, then shows the minimal indicator
+In HTML, <button> cannot be a descendant of <button>.
+This will cause a hydration error.
+
+  <Harness client={{...}}>
+    <MeetingProvider client={{...}}>
+      <MeetingLayer>
+        <div className="astra-meet..." data-phase="live">
+>         <button
+>           type="button"
+>           className="astra-meeting-layer__collapsed"
+>           onClick={function onClick}
+>           aria-label="A社 新規提案 の画面を開く"
+>         >
+            <RecordingIndicator state="recording" title="A社 新規提案" elapsedMs={0} speakers={0} ...>
+              <div className="astra-rec" data-state="recording" role="status" aria-label="Recording ...">
+                <span>
+                <span>
+                <span>
+                <span>
+                <span>
+                <span>
+>               <button
+>                 type="button"
+>                 className="astra-rec__button"
+>                 aria-label="一時停止"
+>                 title="一時停止"
+>                 onClick={function togglePause}
+>               >
+                ...
+          ...
+      ...
+
+<button> cannot contain a nested <button>.
+See this log for the ancestor stack trace.
+
+ ✓ test/topbar.test.tsx (10 tests) 112ms
+ ✓ test/session.test.tsx (5 tests) 272ms
+ ✓ test/ux-acceptance.test.tsx (22 tests) 273ms
+(node:36465) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ test/meeting.test.tsx (26 tests) 389ms
+ ✓ test/shell.test.tsx (18 tests) 306ms
+ ✓ test/onboarding.test.tsx (12 tests) 609ms
+(node:36468) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:36469) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:36467) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:36470) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:36474) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:36478) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:36477) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:36479) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:36482) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ test/device-capabilities.test.tsx (5 tests) 55ms
+ ✓ test/proactive.test.tsx (6 tests) 114ms
+(node:36485) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:36487) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ test/dock.test.tsx (38 tests) 857ms
+ ✓ test/liquid-orb.test.ts (5 tests) 22ms
+ ✓ test/permission-ask.test.tsx (7 tests) 115ms
+ ✓ test/receipts.test.tsx (9 tests) 118ms
+ ✓ test/work.test.tsx (23 tests) 96ms
+ ✓ test/session-refresh.test.tsx (3 tests) 87ms
+ ✓ test/dock-pill.test.tsx (9 tests) 195ms
+ ✓ test/a11y-live.test.tsx (8 tests) 58ms
+ ✓ test/inspector.test.tsx (4 tests) 118ms
+ ✓ test/share-state.test.tsx (7 tests) 162ms
+(node:36489) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:36490) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:36492) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ test/boot.test.tsx (3 tests) 38ms
+ ✓ test/launchable.test.ts (5 tests) 33ms
+(node:36491) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ test/response.test.tsx (3 tests) 2ms
+ ✓ test/ux-metrics.test.ts (4 tests) 4ms
+(node:36496) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ test/dock-voice-mode.test.ts (8 tests) 3ms
+(node:36498) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:36499) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:36500) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ test/library-filters.test.ts (5 tests) 8ms
+ ✓ test/connect.test.ts (4 tests) 9ms
+(node:36507) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:36502) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ test/voice-runtime.test.ts (6 tests) 2ms
+ ✓ test/seed-view.test.ts (3 tests) 2ms
+ ✓ test/work-view.test.ts (6 tests) 3ms
+ ✓ test/approval-outcome.test.ts (3 tests) 1ms
+
+ Test Files  36 passed (36)
+      Tests  357 passed (357)
+   Start at  19:02:30
+   Duration  2.89s (transform 1.67s, setup 152ms, collect 12.70s, tests 5.09s, environment 8.56s, prepare 1.85s)
+

@@ -1,0 +1,26 @@
+{
+  "status": "FAIL_NOT_ADOPTED",
+  "scope": "Synthetic own NSWindow/AppKit/SwiftUI fixture on macOS 27.0.1, public local accessibility getters only",
+  "nativeCoordinateCheck": "PASS: nativeFrame public accessibilityFrame versus NSView.bounds converted to screen, <=0.5pt on each component",
+  "requiredSwiftUIIDs": [
+    "swiftLabel",
+    "swiftEnabled",
+    "swiftDisabled"
+  ],
+  "observedSwiftUIIDs": [],
+  "modernGetterAfterExternalQuery": "Anonymous AXUnknown elements only; text/IDs absent; enabled button reports false; duplicate button frame",
+  "legacyGetterAfterExternalQuery": "NSHostingView exports role/position/size, no AXChildren in accessibilityAttributeNames",
+  "externalCUAObservation": "Root independently observed all three expected IDs with correct labels and button enabled/disabled states; window screenshot is 720x544 pixels = 360x272 points",
+  "conclusion": "This measured local getter route cannot replace the existing external AX geometry gate. No universal claim about all public APIs is made.",
+  "productChanges": "None. Experimental collector moved outside app Sources to scripts/tests; no gate or reference update.",
+  "exitCode": 1,
+  "nativeFixtureCleanup": "Held fixture exited itself after the bounded 120-second observation window",
+  "hashes": {
+    "scripts/tests/OwnAccessibilityGeometry.swift": "8c8e423a9926f08d1580e9f685c1299ee3a5ac0fc0fd4fff7a0398359c4a1f29",
+    "scripts/tests/OwnAccessibilityGeometryHarness.swift": "78ac5cd988972f9a3d37dde514b49fb17e1161b9e480df6e8603836801486270",
+    "docs/quality/evidence/2026-10-02-completion/own-geometry-review/own-geometry-active.json.live.json": "153a368f9029bf43171dd945585e76bf974824ba9a04e08c785eed25be45eda1",
+    "docs/quality/evidence/2026-10-02-completion/own-geometry-review/own-geometry-legacy.json.live.json": "153a368f9029bf43171dd945585e76bf974824ba9a04e08c785eed25be45eda1",
+    "docs/quality/evidence/2026-10-02-completion/own-geometry-review/own-geometry-legacy.log": "1506a6e80635d54dc0289fdca493cd144446e5eaa73a2a651947ac36017e5608",
+    "docs/quality/evidence/2026-10-02-completion/own-geometry-review/own-geometry-legacy-build.log": "e73d4c7e11be8a3ecb4383fc5a5a51a3b97deb7acba08ecd2e7a82192a9979fc"
+  }
+}

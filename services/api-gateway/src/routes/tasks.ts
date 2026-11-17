@@ -13,6 +13,8 @@ import {
   IdempotencyKey,
   PageQuery,
   dockStateFor,
+  AddTaskInstructionRequest,
+  isOrcaMutation,
 } from '@genie/contracts';
 import type { TaskService } from '@genie/service-task';
 import type { App } from '../fastify.js';
@@ -27,6 +29,8 @@ export interface EvidenceReader {
 
 export interface TaskRouteDeps {
   readonly tasks: TaskService;
+  /** Attach Orca tasks created outside chat to the owner's existing LINE outbox. */
+  readonly watchOrcaTask?: (tenantId: string, userId: string, taskId: string) => Promise<void>;
   /** UI/UX §15 の Evidence。無ければその経路は 404 のまま。 */
   readonly evidence?: EvidenceReader;
   readonly redis: Redis | null;
@@ -57,6 +61,13 @@ export function registerTaskRoutes(app: App, deps: TaskRouteDeps): void {
         request: body,
         idempotencyKey: parsedKey.data,
       });
+
+      if (isOrcaMutation(result.task.kind) && deps.watchOrcaTask) {
+        // A notification outage must never turn an accepted task into a misleading HTTP error.
+        await deps
+          .watchOrcaTask(principal.tenantId, principal.userId, result.task.id)
+          .catch(() => undefined);
+      }
 
       // 冪等な再送は 200、新規受理は 202（実行はこれから）
       return reply.status(result.deduplicated ? 200 : 202).send(result.task);
@@ -99,6 +110,30 @@ export function registerTaskRoutes(app: App, deps: TaskRouteDeps): void {
     const principal = requirePrincipal();
     const body = CancelTaskRequest.parse(request.body ?? {});
     return deps.tasks.cancel(principal.tenantId, request.params.taskId, body.reason);
+  });
+
+  /**
+   * 動いている仕事への追加指示。返すのは「受け取った」（202）。反映したかは一覧で分かる
+   * （APPLIED と段 / NOT_APPLIED）。終わった仕事には 409（続きは新しい仕事として頼む）。
+   */
+  app.post<{ Params: { taskId: string } }>(
+    '/v1/tasks/:taskId/instructions',
+    async (request, reply) => {
+      const principal = requirePrincipal();
+      const body = AddTaskInstructionRequest.parse(request.body ?? {});
+      const instruction = await deps.tasks.addInstruction(
+        principal.tenantId,
+        request.params.taskId,
+        principal.userId,
+        body,
+      );
+      return reply.status(202).send(instruction);
+    },
+  );
+
+  app.get<{ Params: { taskId: string } }>('/v1/tasks/:taskId/instructions', async (request) => {
+    const principal = requirePrincipal();
+    return { items: await deps.tasks.listInstructions(principal.tenantId, request.params.taskId) };
   });
 
   app.get<{ Params: { taskId: string } }>('/v1/tasks/:taskId/approvals', async (request) => {

@@ -24,3 +24,4 @@ export {
 } from './tenant.js';
 export type { Database } from './types.js';
 export type * from './generated/schema.js';
+export { isTransactionAuthorizationApprovalActive } from './transaction-authority.js';

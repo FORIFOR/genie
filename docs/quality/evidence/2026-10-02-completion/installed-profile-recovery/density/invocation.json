@@ -1,0 +1,19 @@
+{
+  "label": "density",
+  "command": [
+    "/Applications/Genie.app/Contents/MacOS/Genie",
+    "--selftest",
+    "density",
+    "/private/tmp/genie-transactions-20261002/installed-profile-recovery/light-images",
+    "/private/tmp/genie-transactions-20261002/installed-profile-recovery/combined-density.json"
+  ],
+  "startedAt": "2026-10-01T22:26:22.513747+00:00",
+  "finishedAt": "2026-10-01T22:26:23.109820+00:00",
+  "exitCode": 0,
+  "receipt": {
+    "normalExit": true,
+    "exitCode": 0,
+    "schema": 1
+  },
+  "binarySHA256": "a01378c92ef466086c4e6e0c1f8263e66a9da61ec24d026c86ef6cda0f678801"
+}

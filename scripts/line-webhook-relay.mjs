@@ -1,0 +1,324 @@
+#!/usr/bin/env node
+/**
+ * LINE の Webhook だけを、手元の gateway へ通す中継。
+ *
+ *   LINE → https://<トンネル>/v1/channels/line/webhook → この中継（127.0.0.1）→ gateway
+ *
+ * LINE には Slack の Socket Mode のような「Mac から繋ぎに行く」受け方が無く、公開 HTTPS が要る。
+ * トンネル（cloudflared）を gateway に直接向けると、**開発用のサインイン（/v1/auth/dev/token）まで
+ * 外から呼べてしまう。**だからトンネルはこの中継に向け、ここでは次のものだけを通す:
+ *   - POST /v1/channels/line/webhook（クエリなし）
+ *   - 本文 1 MB まで（LINE の Webhook はこれより小さい）
+ *   - 渡す見出しは content-type と x-line-signature だけ（署名は gateway が確かめる）
+ * もう 1 つ、LINE から声で話すページ（docs/LINE_CALL.ja.md）を通す:
+ *   - GET /v1/channels/call/<32 字のリンク>（ページ）と、その /ws（音声の WebSocket）
+ *   - リンクは 10 分・1 回だけ使える乱数。認証の代わりにこれで守る（gateway が確かめる）
+ * みんなの計画（Action Board、src/board.ts）のページも通す（読むだけ）:
+ *   - GET /v1/channels/board/<32 字のリンク> と、その /state（JSON）
+ *   - リンクは 30 日の乱数。書き換える道は無い（決めるのは LINE のグループで）
+ *   - LINE の中で開く入口（LIFF）: GET /v1/channels/board?liff.state=/<リンク>。クエリは liff.state だけ渡す
+ * 仕事のホーム（src/work-home.ts）のページも通す（読むだけ。本人 1 人のリンク）:
+ *   - GET /v1/channels/work/<32 字のリンク> と、その /state、/item/s|t/<id>（仕事の台帳）
+ *   - LINE の中では、上の LIFF の入口に liff.state=/w/<リンク> で入る
+ * カードの画像（src/media.ts）も通す: GET /v1/channels/media/<32 字のリンク>（7 日。画像だけ）
+ * Genie のブラウザの画面（src/browser-snapshots.ts。隠したもの）も通す:
+ *   GET /v1/channels/snapshot/<32 字のリンク>（30 分。画像だけ。LINE が取りに来る）
+ * ブラウザの引き継ぎ（src/browser-handoff.ts）のページも通す（本人 1 人・15 分のリンク）:
+ *   - GET /v1/channels/handoff/<32 字のリンク>（ページ）と、その /ws（画面の流れと本人の操作の WebSocket）
+ *   - LINE の中では、上の LIFF の入口に liff.state=/h/<リンク> で入る
+ * 接続のつなぎ直し（src/connector-reconnect.ts）のページも通す（本人 1 人・15 分のリンク）:
+ *   - GET /v1/channels/reconnect/<32 字のリンク> と、その /status。POST その /callback（貼られた URL。4KB まで）
+ * 仕事のホームの承認ルールの取り消しも通す: POST /v1/channels/work/<リンク>/rules/<id>/revoke（本文なし）。
+ *   一覧は GET /v1/channels/work/<リンク>/rules（読むだけ）
+ * 別の PC の Claude Code の hooks も通す（services/api-gateway/src/remote-hooks.ts。鍵は gateway が確かめる）:
+ *   - POST /v1/agent-events/claude-code、POST /v1/agent-approvals/claude-code、POST /v1/agent-approvals/<id>/wait
+ *     渡す見出しは content-type と authorization だけ。本文 4 MB まで（道具の出力が大きい出来事は 413 で捨てる）
+ *   - GET /v1/agent-pair/<43 字の合言葉>（その PC に入れるスクリプト。10 分・1 回）
+ * 中継（公式アカウント 1 つ、docs/LINE_HUB.ja.md）を手元で動かすときは、`--hub` で
+ *   - POST /line/webhook を中継へ通す（LINE の Webhook URL はこちらにする）
+ * ほかはすべて 404。
+ *
+ *   node scripts/line-webhook-relay.mjs [--port 43190] [--gateway http://127.0.0.1:43123]
+ */
+import { createServer, request as httpRequest } from 'node:http';
+import { connect } from 'node:net';
+import { pathToFileURL } from 'node:url';
+
+export const WEBHOOK_PATH = '/v1/channels/line/webhook';
+export const HUB_WEBHOOK_PATH = '/line/webhook';
+export const MAX_BODY = 1024 * 1024;
+export const CALL_PAGE = /^\/v1\/channels\/call\/[A-Za-z0-9_-]{32}$/;
+export const CALL_SOCKET = /^\/v1\/channels\/call\/[A-Za-z0-9_-]{32}\/ws$/;
+/** みんなの計画（Action Board）のページと、その中身（読むだけ）。 */
+export const BOARD_PAGE = /^\/v1\/channels\/board\/[A-Za-z0-9_-]{32}(?:\/state)?$/;
+/** 仕事のホームのページと、その中身（読むだけ）。 */
+export const WORK_PAGE =
+  /^\/v1\/channels\/work\/[A-Za-z0-9_-]{32}(?:\/state|\/rules|\/item\/[st]\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})?$/;
+/** 仕事のホームで変えられる唯一のこと: Claude Code の承認ルールの取り消し（本文なしの POST）。 */
+export const WORK_RULE_REVOKE =
+  /^\/v1\/channels\/work\/[A-Za-z0-9_-]{32}\/rules\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/revoke$/;
+/** LIFF の入口（エンドポイント URL）。gateway がそのボードのページへ移す。 */
+export const BOARD_ENTRY = /^\/v1\/channels\/board$/;
+/** ブラウザの引き継ぎのページと、その WebSocket。 */
+export const HANDOFF_PAGE = /^\/v1\/channels\/handoff\/[A-Za-z0-9_-]{32}$/;
+export const RECONNECT_PAGE = /^\/v1\/channels\/reconnect\/[A-Za-z0-9_-]{32}(?:\/status)?$/;
+export const RECONNECT_CALLBACK = /^\/v1\/channels\/reconnect\/[A-Za-z0-9_-]{32}\/callback$/;
+export const HANDOFF_SOCKET = /^\/v1\/channels\/handoff\/[A-Za-z0-9_-]{32}\/ws$/;
+/** カードの画像（店の写真・地図）。gateway が Google から取り直して返す（キーは外へ出ない）。 */
+export const MEDIA = /^\/v1\/channels\/media\/[A-Za-z0-9_-]{32}$/;
+/** Genie のブラウザの画面（隠したもの。本人の「画面を見せて」で LINE が取りに来る）。 */
+export const SNAPSHOT = /^\/v1\/channels\/snapshot\/[A-Za-z0-9_-]{32}$/;
+/** 別の PC の Claude Code の hooks（鍵つき）。 */
+export const AGENT_HOOK =
+  /^\/v1\/(?:agent-events\/claude-code|agent-approvals\/claude-code|agent-approvals\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/wait)$/;
+export const AGENT_HOOK_MAX_BODY = 4 * 1024 * 1024;
+/** 別の PC に入れるスクリプト（合言葉つき）。 */
+export const AGENT_PAIR = /^\/v1\/agent-pair\/[A-Za-z0-9_-]{43}$/;
+
+/** LINE はリンクに ?openExternalBrowser=1 を残したまま開くので、クエリは捨ててから道を見る。 */
+const pathOf = (url) => (url ?? '').split('?')[0];
+
+/** 中継を作る。`fetchImpl` はテストで差し替える。 */
+export function createRelay({ gateway, hub = null, fetchImpl = fetch, log = () => {} }) {
+  const target = new URL(WEBHOOK_PATH, gateway);
+  const local = (u) => ['127.0.0.1', 'localhost', '[::1]'].includes(u.hostname);
+  if (!local(target)) throw new Error('gateway は手元（127.0.0.1）を指してください。');
+  const hubTarget = hub ? new URL(HUB_WEBHOOK_PATH, hub) : null;
+  if (hubTarget && !local(hubTarget)) throw new Error('中継は手元（127.0.0.1）を指してください。');
+  const server = createServer((req, res) => {
+    const done = (status, body = '') => {
+      res.writeHead(status, { 'content-type': 'text/plain; charset=utf-8' });
+      res.end(body);
+    };
+    if (
+      req.method === 'GET' &&
+      [
+        CALL_PAGE,
+        BOARD_PAGE,
+        WORK_PAGE,
+        BOARD_ENTRY,
+        MEDIA,
+        SNAPSHOT,
+        HANDOFF_PAGE,
+        RECONNECT_PAGE,
+        AGENT_PAIR,
+      ].some((re) => re.test(pathOf(req.url)))
+    ) {
+      // 通話・計画のページ。中身（HTML / JSON）をそのまま返す。見出しは gateway が付けたものだけ。
+      // クエリは捨てる。LIFF の入口だけ liff.state を残す（ほかの値は gateway へ渡さない）
+      const url = new URL(pathOf(req.url), gateway);
+      if (BOARD_ENTRY.test(url.pathname)) {
+        const state = new URL(req.url ?? '', 'http://x').searchParams.get('liff.state');
+        if (state) url.searchParams.set('liff.state', state);
+      }
+      const upstream = httpRequest(url, { method: 'GET', timeout: 10_000 }, (page) => {
+        const headers = {};
+        for (const key of ['content-type', 'cache-control', 'referrer-policy', 'x-robots-tag'])
+          if (page.headers[key]) headers[key] = page.headers[key];
+        res.writeHead(page.statusCode ?? 502, headers);
+        page.pipe(res);
+      });
+      upstream.on('error', () => done(502));
+      upstream.end();
+      return undefined;
+    }
+    if (req.method === 'POST' && RECONNECT_CALLBACK.test(pathOf(req.url))) {
+      // 本人が貼った URL。認可コードを含むので記録しない。答えはそのまま返す
+      const chunks = [];
+      let size = 0;
+      req.on('data', (chunk) => {
+        size += chunk.length;
+        if (size > 4096) {
+          req.destroy();
+          return;
+        }
+        chunks.push(chunk);
+      });
+      req.on('end', () => {
+        const body = Buffer.concat(chunks);
+        const upstream = httpRequest(
+          new URL(pathOf(req.url), gateway),
+          {
+            method: 'POST',
+            timeout: 10_000,
+            headers: { 'content-type': 'application/json', 'content-length': body.length },
+          },
+          (answer) => {
+            res.writeHead(answer.statusCode ?? 502, {
+              'content-type': 'application/json',
+              'cache-control': 'no-store',
+            });
+            answer.pipe(res);
+          },
+        );
+        upstream.on('error', () => done(502));
+        upstream.end(body);
+      });
+      return undefined;
+    }
+    if (req.method === 'POST' && AGENT_HOOK.test(req.url ?? '')) {
+      const auth = req.headers['authorization'];
+      if (typeof auth !== 'string' || !/^Bearer [A-Za-z0-9_-]{20,200}$/.test(auth)) {
+        req.resume();
+        return done(401);
+      }
+      const chunks = [];
+      let size = 0;
+      let tooLarge = false;
+      req.on('data', (chunk) => {
+        size += chunk.length;
+        if (size > AGENT_HOOK_MAX_BODY) {
+          tooLarge = true;
+          req.destroy();
+          return;
+        }
+        chunks.push(chunk);
+      });
+      req.on('close', () => {
+        if (tooLarge && !res.headersSent) done(413);
+      });
+      req.on('end', () => {
+        if (tooLarge) return;
+        const body = Buffer.concat(chunks);
+        // 承認の待ち（長く待つ問い合わせ）は 25 秒まで。少し長めに待つ
+        const upstream = httpRequest(
+          new URL(req.url ?? '', gateway),
+          {
+            method: 'POST',
+            timeout: 40_000,
+            headers: {
+              'content-type': 'application/json',
+              'content-length': body.length,
+              authorization: auth,
+            },
+          },
+          (answer) => {
+            res.writeHead(answer.statusCode ?? 502, {
+              'content-type': answer.headers['content-type'] ?? 'application/json',
+              'cache-control': 'no-store',
+            });
+            answer.pipe(res);
+          },
+        );
+        upstream.on('timeout', () => upstream.destroy());
+        upstream.on('error', () => {
+          if (!res.headersSent) done(502);
+        });
+        upstream.end(body);
+      });
+      return undefined;
+    }
+    if (req.method === 'POST' && WORK_RULE_REVOKE.test(pathOf(req.url))) {
+      // 承認ルールの取り消し。本文は捨てる（受け取らない）。状態だけを返す
+      req.resume();
+      const upstream = httpRequest(
+        new URL(pathOf(req.url), gateway),
+        { method: 'POST', timeout: 10_000, headers: { 'content-length': '0' } },
+        (answer) => {
+          answer.resume();
+          done(answer.statusCode ?? 502);
+        },
+      );
+      upstream.on('error', () => done(502));
+      upstream.end();
+      return undefined;
+    }
+    const forwardTo =
+      req.method === 'POST' && req.url === WEBHOOK_PATH
+        ? target
+        : req.method === 'POST' && req.url === HUB_WEBHOOK_PATH && hubTarget
+          ? hubTarget
+          : null;
+    if (!forwardTo) {
+      req.resume();
+      return done(404);
+    }
+    const chunks = [];
+    let size = 0;
+    let tooLarge = false;
+    req.on('data', (chunk) => {
+      size += chunk.length;
+      if (size > MAX_BODY) {
+        tooLarge = true;
+        req.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
+    req.on('close', () => {
+      if (tooLarge && !res.headersSent) done(413);
+    });
+    req.on('end', async () => {
+      if (tooLarge) return;
+      const headers = { 'content-type': req.headers['content-type'] ?? 'application/json' };
+      const signature = req.headers['x-line-signature'];
+      if (typeof signature === 'string') headers['x-line-signature'] = signature;
+      try {
+        const upstream = await fetchImpl(forwardTo, {
+          method: 'POST',
+          headers,
+          body: Buffer.concat(chunks),
+          signal: AbortSignal.timeout(10_000),
+        });
+        log(`line webhook → ${String(upstream.status)}`);
+        // 中身は返さない（LINE が見るのは状態だけ）
+        done(upstream.status);
+      } catch {
+        log('line webhook → gateway unreachable');
+        done(502);
+      }
+    });
+  });
+  // 通話の音声・ブラウザの引き継ぎ（WebSocket）。決まった道の upgrade だけを、見出しを絞って gateway へつなぐ
+  server.on('upgrade', (req, socket, head) => {
+    if (
+      req.method !== 'GET' ||
+      ![CALL_SOCKET, HANDOFF_SOCKET].some((re) => re.test(pathOf(req.url)))
+    ) {
+      socket.end('HTTP/1.1 404 Not Found\r\nConnection: close\r\n\r\n');
+      return;
+    }
+    const port = Number(target.port || 80);
+    const upstream = connect(port, target.hostname, () => {
+      const keep = ['sec-websocket-key', 'sec-websocket-version', 'sec-websocket-extensions'];
+      const lines = [
+        `GET ${pathOf(req.url)} HTTP/1.1`,
+        `Host: ${target.host}`,
+        'Connection: Upgrade',
+        'Upgrade: websocket',
+        ...keep.filter((k) => req.headers[k]).map((k) => `${k}: ${req.headers[k]}`),
+      ];
+      upstream.write(lines.join('\r\n') + '\r\n\r\n');
+      if (head?.length) upstream.write(head);
+      socket.pipe(upstream).pipe(socket);
+      log('call socket → gateway');
+    });
+    const close = () => {
+      socket.destroy();
+      upstream.destroy();
+    };
+    upstream.on('error', close);
+    socket.on('error', close);
+  });
+  return server;
+}
+
+function option(args, name, fallback) {
+  const i = args.indexOf(name);
+  return i >= 0 && args[i + 1] ? args[i + 1] : fallback;
+}
+
+if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
+  const args = process.argv.slice(2);
+  const port = Number(option(args, '--port', '43190'));
+  const gateway = option(args, '--gateway', 'http://127.0.0.1:43123');
+  const hub = option(args, '--hub', null);
+  const server = createRelay({
+    gateway,
+    hub,
+    log: (line) => console.log(`${new Date().toISOString()} ${line}`),
+  });
+  server.listen(port, '127.0.0.1', () => {
+    console.log(`LINE_RELAY_READY 127.0.0.1:${String(port)} → ${gateway}${WEBHOOK_PATH}`);
+  });
+}

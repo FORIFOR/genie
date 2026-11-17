@@ -1,0 +1,7 @@
+BEGIN session-reuse-1
+NATIVE_CAUSE Error: simulation_window_unavailable
+    at execute (file:///Users/shuhei/Projects/genie/workers/agent-host/dist/simulation-native-checkout.js:118:23)
+RESULT session-reuse-1 {"ok":false,"result":{"provider":"genie.simulation","mode":"simulation","account":"demo-account","orderKey":"session-reuse-1","quoteHash":"865680e5da0b5a4f090fcd6909d149ad1ea4a26db4abe5810260117f9dc95955","status":"unknown"},"error":{"code":"transaction.result_unknown","message":"注文結果を確認できていません。再注文せず、同じ注文の履歴を照会してください。"}}
+Error: native_baseline_failed
+    at file:///private/tmp/genie-transactions-20261002/session-reuse-native/run.mjs:30:23
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)

@@ -6,12 +6,17 @@ import { connectionConfiguration } from './connection-configuration.js';
  *
  * **Dock とは別プロセス。**Dock を閉じても、これは動き続ける。
  */
+import { randomUUID } from 'node:crypto';
 import { cloudClient } from './cloud.js';
 import { ApiSession } from './api-session.js';
 import { acquireHostInstance } from './instance-lock.js';
 import { homedir } from 'node:os';
-import { resolve } from 'node:path';
+import { resolve, join } from 'node:path';
 import { runInitialProfile } from './initial-profile.js';
+import {
+  initialProfileLocalConfig,
+  localInitialProfileAnalyzer,
+} from './initial-profile-analysis.js';
 import { createLogger } from '@genie/telemetry';
 import { credentialRef, connectorProviderConfig, type OauthProvider } from '@genie/oauth';
 import { LocalAgentHost } from './host.js';
@@ -19,15 +24,34 @@ import { httpTransport } from './transport.js';
 import { keychainFor } from './keychain.js';
 import { liveFaultTransport } from './live-fault-transport.js';
 import { ConnectorRuntime } from './connector-steps.js';
+import { recordRenewalRejected } from './connector-status.js';
 import { HostStepLoop } from './step-loop.js';
 import { httpStepTransport } from './step-transport.js';
 import { CodexCli } from './codex.js';
 import { ClaudeCodeCli } from './claude-code.js';
 import { LlmRuntime } from './llm-steps.js';
+import { localVisionRuntime } from './local-vision-model.js';
 import { HttpLlmClient } from './http-llm.js';
+import { CurrentInfoRunner } from './current-info/runner.js';
 import { CompositeRunner } from './runner.js';
+import { OrcaStatusRunner, findOrca } from './coding/orca-status-runner.js';
+import { OrcaActionRunner } from './coding/orca-action-runner.js';
+import { OrcaAdapter } from './coding/orca-adapter.js';
+import { OrcaSupervisor, httpOrcaSupervisionTransport } from './coding/orca-supervisor.js';
 import { ComputerVisionRuntime } from './computer-vision.js';
+import { CloudModelBudget } from './cloud-vision-budget.js';
+import { visualContextDir } from './visual-context.js';
 import { NativeVisionDevice } from './computer-vision-device.js';
+import { CheckoutAssistanceRuntime } from './checkout-assistance.js';
+import { OfficeEditRuntime } from './office/runtime.js';
+import { WorkPreviewRuntime } from './workpreview/runtime.js';
+import { BriefRuntime } from './brief/runtime.js';
+import { BrowserOpenRuntime } from './browser-open.js';
+import { BrowserReadRuntime } from './browser-read.js';
+import { httpHandoffApi } from './browser-handoff.js';
+import { TransactionRuntime } from './transaction-runtime.js';
+import { SimulationOrders } from './simulation-orders.js';
+import { nativeSimulationConfirmation } from './simulation-native-checkout.js';
 import { selectLanguageModel } from '@genie/contracts';
 import type { WorkSyncState, LanguageModelKind } from '@genie/contracts';
 import { DEFAULT_SYNC_INTERVAL_MS, WorkSyncLoop } from './work-sync.js';
@@ -74,8 +98,11 @@ async function main(): Promise<void> {
    * Claude Code のログインは Claude Code のもので、Genie は読まない。
    */
   const preferredCli = process.env['ASTRA_LLM_CLI'];
-  if (preferredCli && !['codex', 'claude_code', 'api', 'local', 'none'].includes(preferredCli))
-    throw new Error('ASTRA_LLM_CLI must be codex, claude_code, api, local, or none');
+  if (
+    preferredCli &&
+    !['codex', 'claude_code', 'api', 'gemini_api', 'local', 'none'].includes(preferredCli)
+  )
+    throw new Error('ASTRA_LLM_CLI must be codex, claude_code, api, gemini_api, local, or none');
   const llmKeychain = keychainFor(process.platform, deviceLabel);
   const httpClients: Partial<
     Record<'anthropic_api' | 'gemini_api' | 'openai_api' | 'local', HttpLlmClient>
@@ -146,6 +173,7 @@ async function main(): Promise<void> {
           : undefined;
   const llm = new LlmRuntime({
     ...(allowedKinds ? { allowedKinds } : {}),
+    log: (event, detail) => logger.warn(detail, event),
     ...(!preferredCli || preferredCli === 'codex'
       ? {
           codex: new CodexCli({
@@ -252,6 +280,31 @@ async function main(): Promise<void> {
   const faultFetch = liveFaultTransport(process.env);
   const runtime = new ConnectorRuntime({
     secrets,
+    // 提供者が更新を断ったら、Mac の Apps に「期限切れ」と出させる（失敗しても読み取りの結果は変えない）。
+    reportRenewalRejected: (pluginId, connectorId, fingerprint) =>
+      Promise.all([
+        recordRenewalRejected(pluginId, connectorId, fingerprint),
+        // 本人の LINE へ知らせる（同じ接続では gateway が 1 回にまとめる）
+        apiSession.fetch(`${baseUrl}/v1/connector-reconnects/rejected`, {
+          method: 'POST',
+          headers: {
+            authorization: `Bearer ${token}`,
+            'content-type': 'application/json',
+          },
+          body: JSON.stringify({
+            plugin_id: pluginId,
+            connector_id: connectorId,
+            fingerprint,
+          }),
+        }),
+      ])
+        .then(() => undefined)
+        .catch((error: unknown) =>
+          logger.warn(
+            { err: error instanceof Error ? error.message : 'unknown' },
+            'connector status write failed',
+          ),
+        ),
     ...(faultFetch ? { fetch: faultFetch } : {}),
     credentialRefFor: credentialRef,
     /*
@@ -272,20 +325,197 @@ async function main(): Promise<void> {
     },
   });
 
+  /*
+   * 画面を端末の外のモデルへ出すときの歯止め。**既定は無料の分だけ。**
+   * 有料は設定で明示したときだけ有効になり、そのときは上限を決めてもらう。
+   * 課金済みプロジェクトの鍵かどうかは API からは分からないので、利用者の申告で受ける。
+   */
+  const number = (name: string): number | undefined => {
+    const raw = process.env[name];
+    if (raw === undefined || raw === '') return undefined;
+    const value = Number(raw);
+    if (!Number.isFinite(value) || value < 0)
+      throw new Error(`${name} must be a non-negative number`);
+    return value;
+  };
+  const limit = (field: string, name: string): Record<string, number> => {
+    const value = number(name);
+    return value === undefined ? {} : { [field]: value };
+  };
+  const tier = process.env['ASTRA_CLOUD_VISION_TIER'] ?? 'free';
+  if (!['free', 'paid'].includes(tier))
+    throw new Error('ASTRA_CLOUD_VISION_TIER must be free or paid');
+  const budget = new CloudModelBudget({
+    tier: tier as 'free' | 'paid',
+    billedProject: process.env['ASTRA_CLOUD_VISION_BILLED_PROJECT'] === 'yes',
+    statePath: join(visualContextDir(), 'cloud-model-ledger.json'),
+    ...limit('taskCallLimit', 'ASTRA_CLOUD_VISION_TASK_CALLS'),
+    ...limit('monthlyCallLimit', 'ASTRA_CLOUD_VISION_MONTH_CALLS'),
+    ...limit('taskCostLimitUsd', 'ASTRA_CLOUD_VISION_TASK_USD'),
+    ...limit('monthlyCostLimitUsd', 'ASTRA_CLOUD_VISION_MONTH_USD'),
+    ...limit('pricePerCallUsd', 'ASTRA_CLOUD_VISION_PRICE_USD'),
+  });
+  // 有料にするなら、上限を決めずには始めない。「上げたら青天井」を作らない。
+  if (
+    tier === 'paid' &&
+    number('ASTRA_CLOUD_VISION_MONTH_CALLS') === undefined &&
+    number('ASTRA_CLOUD_VISION_MONTH_USD') === undefined
+  )
+    throw new Error(
+      'ASTRA_CLOUD_VISION_TIER=paid requires ASTRA_CLOUD_VISION_MONTH_CALLS or ASTRA_CLOUD_VISION_MONTH_USD',
+    );
+  const visionModel = process.env['ASTRA_COMPUTER_VISION_MODEL'];
+  const visionLlm =
+    visionModel !== undefined
+      ? await localVisionRuntime(
+          visionModel,
+          process.env['ASTRA_COMPUTER_VISION_URL'] ?? 'http://127.0.0.1:11434/v1',
+        )
+      : llm;
   const computerVision = new ComputerVisionRuntime({
     enabled: process.env['ASTRA_COMPUTER_USE'] === 'on',
-    model: llm,
-    selectModel: async () => selectLanguageModel(await llm.options())?.kind ?? null,
-    allowExternalPixels: process.env['ASTRA_COMPUTER_VISION_EXTERNAL'] === 'on',
+    model: visionLlm,
+    selectModel: async () => selectLanguageModel(await visionLlm.options())?.kind ?? null,
+    allowExternalPixels:
+      visionModel === undefined && process.env['ASTRA_COMPUTER_VISION_EXTERNAL'] === 'on',
     device: () => new NativeVisionDevice(process.env['ASTRA_COMPUTER_VISION_HELPER'] ?? ''),
+    budget,
+  });
+
+  // Transaction adapters are registered locally, never selected by a model-supplied URL.
+  // The only bundled submit adapter currently available is an explicitly named simulator.
+  const simulationEnabled = process.env['ASTRA_TRANSACTION_SIMULATION'] === 'on';
+  if (simulationEnabled && process.env['ASTRA_COMPUTER_USE'] !== 'on')
+    throw new Error('Transaction simulation requires background computer use.');
+  // Claims must survive visual-cache rotation; never derive them from screenshot storage.
+  const transactionRoot =
+    process.env['ASTRA_TRANSACTION_DATA_ROOT'] ??
+    join(
+      process.env['ASTRA_DATA_ROOT'] ?? join(homedir(), 'Library', 'Application Support', 'Genie'),
+      'Transactions',
+    );
+  const transactions = new TransactionRuntime({
+    journalDir: join(transactionRoot, 'journal'),
+    timeoutMs: 300_000,
+    adapters: simulationEnabled
+      ? [
+          new SimulationOrders({
+            root: join(transactionRoot, 'simulation'),
+            confirm: nativeSimulationConfirmation({
+              helper: process.env['ASTRA_COMPUTER_VISION_HELPER'] ?? '',
+              executable: process.env['ASTRA_TRANSACTION_SIMULATION_APP'] ?? '',
+            }),
+          }),
+        ]
+      : [],
   });
 
   const steps = new HostStepLoop({
     transport: httpStepTransport({ baseUrl, token, fetch: apiSession.fetch }),
-    runner: new CompositeRunner([runtime, computerVision, llm]),
+    // いまの情報（天気・ニュース）は端末で取る。モデルは使わない。
+    runner: new CompositeRunner(
+      [
+        runtime,
+        computerVision,
+        transactions,
+        new CheckoutAssistanceRuntime(),
+        // Word / Excel は端末で読み、端末のモデルに案を出させ、別名のコピーに書く。
+        new OfficeEditRuntime({
+          ask: async (args, signal) => {
+            const outcome = await llm.run(
+              { id: `office-${randomUUID()}`, toolId: 'llm.office_edit', args, approval: null },
+              signal,
+            );
+            if (!outcome.ok) throw new Error(outcome.error?.message ?? 'model failed');
+            return outcome.result;
+          },
+        }),
+        // 「〇〇の公式サイトを開いて」: 検索 → 公式の見極め → 既定のブラウザで開く。
+        new BrowserOpenRuntime({
+          ask: async (toolId, args, signal) => {
+            const started = Date.now();
+            const outcome = await llm.run(
+              { id: `browser-${randomUUID()}`, toolId, args, approval: null },
+              signal,
+            );
+            // 公式サイトを開くまでの内訳（検索・見極め）。開くまで 55 秒かかった原因を追えなかった（2026-10-19）
+            logger.info(
+              { tool: toolId, ms: Date.now() - started, ok: outcome.ok },
+              'official site lookup step',
+            );
+            if (!outcome.ok) throw new Error(outcome.error?.message ?? 'model failed');
+            return outcome.result;
+          },
+        }),
+        // 「<URL> を読んで要約して」: Genie 専用のブラウザ（画面に出さない）で読み、端末のモデルで答える。
+        new BrowserReadRuntime({
+          // ログインの壁に当たったら、本人に LINE で画面を見せて操作してもらう（済んだら続きを読む）
+          handoff: { api: httpHandoffApi({ baseUrl, hostId: id, fetch: apiSession.fetch }) },
+          ask: async (toolId, args, signal) => {
+            const started = Date.now();
+            const outcome = await llm.run(
+              { id: `browser-read-${randomUUID()}`, toolId, args, approval: null },
+              signal,
+            );
+            // 何を・何秒で・結果の種類だけ（ページの中身・アドレスは残さない）
+            logger.info(
+              { tool: toolId, ms: Date.now() - started, ok: outcome.ok },
+              'page read step',
+            );
+            if (!outcome.ok) throw new Error(outcome.error?.message ?? 'model failed');
+            return outcome.result;
+          },
+        }),
+        // 「端末を120台にしたら提案書も合わせた案を」: 案件の書類をコピーの上でそろえて変え、確かめる。
+        new WorkPreviewRuntime(),
+        // 今日のまとめ（読み取り専用。モデルは使わない）。
+        new BriefRuntime({
+          connectors: runtime,
+          onCalendarRead: (outcome) => logger.info(outcome, 'brief google calendar'),
+        }),
+        new CurrentInfoRunner(),
+        new OrcaStatusRunner(id),
+        new OrcaActionRunner(id),
+        llm,
+      ],
+      (toolId, outcome, ms) =>
+        // 1 つ終わるごとに 1 行（何を・何秒で・結果の種類）。引数や結果の中身は残さない
+        logger.info(
+          {
+            tool: toolId,
+            ms,
+            ok: outcome.ok,
+            ...(outcome.ok ? {} : { code: outcome.error?.code }),
+          },
+          'host step finished',
+        ),
+    ),
     onError: (error) => logger.warn({ err: error.message }, 'a step could not be handled'),
   });
   void steps.start(id);
+  let orcaSupervisor: OrcaSupervisor | null = null;
+  if (process.env['ASTRA_ORCA_WORKSPACE_ROOTS']) {
+    try {
+      const roots: unknown = JSON.parse(process.env['ASTRA_ORCA_WORKSPACE_ROOTS']);
+      const executable = await findOrca();
+      if (
+        executable &&
+        Array.isArray(roots) &&
+        roots.length &&
+        roots.every((value) => typeof value === 'string')
+      ) {
+        orcaSupervisor = new OrcaSupervisor({
+          hostId: id,
+          transport: httpOrcaSupervisionTransport({ baseUrl, token, fetch: apiSession.fetch }),
+          port: new OrcaAdapter({ executable, roots: roots as string[] }),
+          onError: (message) => logger.warn({ error: message }, 'Orca supervision check failed'),
+        });
+        orcaSupervisor.start();
+      }
+    } catch {
+      logger.warn({}, 'Orca supervision is not configured');
+    }
+  }
 
   /*
    * Work Context の同期。正本 §6、Work Context 仕様。
@@ -296,6 +526,8 @@ async function main(): Promise<void> {
   const cloud = cloudClient(baseUrl, token, apiSession.fetch);
   const workSync = new WorkSyncLoop({
     connectors: runtime,
+    sweepNoise: true,
+    onSwept: (outcome) => logger.info(outcome, 'work sync closed earlier ads'),
     llm: llm.forBackground(process.env['ASTRA_WORK_SYNC_METERED_LLM'] === 'on'),
     ...(process.env['ASTRA_WORK_SYNC_GOOGLE_QUERY']
       ? { googleQuery: process.env['ASTRA_WORK_SYNC_GOOGLE_QUERY'] }
@@ -316,13 +548,61 @@ async function main(): Promise<void> {
       logger.warn({ source, err: error.message }, 'work context sync failed for a source'),
   });
   let initialBusy = false;
+  // Initial body analysis has a local-only boundary, independent of the conversation provider.
+  // Reuse the explicitly selected local model; never silently send mail to a cloud fallback.
+  const initialConfig = initialProfileLocalConfig(process.env);
+  let initialAnalyzer: ReturnType<typeof localInitialProfileAnalyzer> | undefined;
+  try {
+    if (initialConfig)
+      initialAnalyzer = localInitialProfileAnalyzer({
+        ...initialConfig,
+        onDiagnostic: (code) =>
+          logger.warn({ code }, 'A local initial profile analysis step was unavailable'),
+        onSourceValidationFailure: (reason) =>
+          logger.warn({ reason }, 'Local initial profile source validation failed'),
+        onRecoverySummary: (summary) =>
+          logger.info(summary, 'Local initial profile recovery counts'),
+      });
+  } catch {
+    // A bad optional profile configuration must not disable conversation or connectors.
+    logger.warn(
+      'Local initial profile analysis is unavailable; check the local model configuration',
+    );
+  }
+  // 失敗が続く間は間を空ける（4 秒 → 最大 5 分）。以前は一時的な障害（DB の接続切れ）の間、
+  // 理由の無い警告を 4 秒ごとに出し続けていた（2026-09-29）。
+  let initialFailures = 0;
+  let initialNextAt = 0;
   const initialTimer = setInterval(() => {
     // Initial profiling is explicitly requested in Connections. Disabling
     // continuous background sync must not strand that user-requested job.
-    if (initialBusy) return;
+    if (initialBusy || Date.now() < initialNextAt) return;
     initialBusy = true;
-    void runInitialProfile({ cloud, connectors: runtime, refreshGrants })
-      .catch(() => logger.warn('initial profile could not finish; the lease will allow recovery'))
+    void runInitialProfile({
+      cloud,
+      connectors: runtime,
+      refreshGrants,
+      onDiagnostic: (phase, code) =>
+        logger.warn({ phase, code }, 'An initial profile read step was unavailable'),
+      ...(initialAnalyzer ? { analyze: initialAnalyzer } : {}),
+    })
+      .then(() => {
+        initialFailures = 0;
+        initialNextAt = 0;
+      })
+      .catch((error: unknown) => {
+        initialFailures++;
+        const waitMs = Math.min(300_000, 4_000 * 2 ** Math.min(initialFailures, 7));
+        initialNextAt = Date.now() + waitMs;
+        logger.warn(
+          {
+            err: error instanceof Error ? error.message : String(error),
+            failures: initialFailures,
+            retryInMs: waitMs,
+          },
+          'initial profile could not finish; the lease will allow recovery',
+        );
+      })
       .finally(() => {
         initialBusy = false;
       });
@@ -342,6 +622,7 @@ async function main(): Promise<void> {
     clearInterval(initialTimer);
     workSync.stop();
     steps.stop();
+    orcaSupervisor?.stop();
     void host.stop().finally(async () => {
       await instance.release();
       process.exit(0);

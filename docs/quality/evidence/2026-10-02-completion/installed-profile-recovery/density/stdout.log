@@ -1,0 +1,17 @@
+DENSITY 01-voice-hud-idle 地 88.4%
+DENSITY 02-voice-hud-listening 地 92.3%
+DENSITY 02b-voice-hud-preparing 地 92.9%
+DENSITY 03-recording-workspace 地 62.1%
+DENSITY 03b-recording-paused 地 62.6%
+DENSITY 04-recording-transcript 地 61.2%
+DENSITY 05-recording-rag 地 63.8%
+DENSITY 06-main-home 地 62.8%
+DENSITY 07-apps 地 44.2%
+DENSITY 08-meeting-detail 地 48.9%
+DENSITY 09-permission-denied 地 57.6%
+DENSITY 09b-stt-unavailable 地 62.1%
+DENSITY 09c-speech-denied 地 57.1%
+DENSITY 10-agent-timeline 地 60.7%
+DENSITY 11-meeting-canvas 地 63.3%
+DENSITY 12-recording-now 地 49.3%
+SELFTEST_OK density: 16面が基準以下（最も詰まっている 07-apps 44.2% / 最も空いている 02b-voice-hud-preparing 92.9%）

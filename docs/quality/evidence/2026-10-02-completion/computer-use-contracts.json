@@ -1,0 +1,72 @@
+{
+  "recordedAt": "2026-10-01T18:36:16.158828+00:00",
+  "classification": "Implementation verification; isolated host model/device mocks and native Foundation-only value policy",
+  "uncommitted": true,
+  "changes": [
+    "Explicit background type textMode append; native captured-value hash and final live identity checks preserve existing text",
+    "Read-only target previews attest canonical text role and resolve coordinates to a field beyond the public 60-candidate cap; host also binds requested center to exact resolved crop"
+  ],
+  "runs": [
+    {
+      "command": "isolated tsc (ES2022/NodeNext/strict/exactOptionalPropertyTypes/noUncheckedIndexedAccess, only computer-vision.ts/computer-vision-policy.ts/computer-vision-prompts.ts)",
+      "exitCode": 0,
+      "log": "computer-isolated-types.log"
+    },
+    {
+      "command": "GENIE_VISION_TEST_DIST=<isolated compiled source> node --test workers/agent-host/test/computer-vision.node.mjs workers/agent-host/test/background-vision.node.mjs",
+      "exitCode": 0,
+      "passed": 82,
+      "failed": 0,
+      "skipped": 0,
+      "durationMs": 5090.949,
+      "log": "computer-completion-node.log"
+    },
+    {
+      "command": "bash scripts/test-background-text-edit.sh",
+      "exitCode": 0,
+      "passedCases": 11,
+      "log": "computer-text-edit-pure.log",
+      "scope": "swiftc -j2 of 2 Foundation-only files; no AppKit or helper/app binary build"
+    },
+    {
+      "command": "bash -n of 5 touched helper/text policy scripts",
+      "exitCode": 0,
+      "scope": "syntax only"
+    }
+  ],
+  "sourceSha256": {
+    "workers/agent-host/src/computer-vision-policy.ts": "84d9da6c7b6974c6c2c9b0c3ece8fae7f72e308cb02bf323adbad5af2b885d9f",
+    "workers/agent-host/src/computer-vision.ts": "9839d721474d73bc29e8bc8352e35bfaec2423711fbfb12e3820cc606c97eaad",
+    "workers/agent-host/src/computer-vision-prompts.ts": "72187544bdc4833fb12bd636e85ed8e5d1411abeb54fd5069e23054ed2ff6f76",
+    "workers/agent-host/test/computer-vision.node.mjs": "ebdcb89f388c5cce85bc29ae17f1a2b6e9bfee1601b0cb18f15aa4853e113fb8",
+    "workers/agent-host/test/background-vision.node.mjs": "3509a8bef5746e6bad614091c19f160b43a5fe9df4a4c10d93cf73532f63c0d8",
+    "tools/computer-use/BackgroundTextEdit.swift": "be66409a0e1d699bde33da08c3a4ef49c0452033d31880f18d0a4183bc128262",
+    "tools/computer-use/BackgroundTextEditTests.swift": "6e7ad150cf204bd1c2411bc79e902b63ad48d7f9acafe7fb3adf5ac4ca8128e1",
+    "tools/computer-use/BackgroundAX.swift": "39ac646734bc7ddfa4ca29bbc141b22496592d2af94e23755b0757a71073413f",
+    "tools/computer-use/BackgroundAXTests.swift": "985d93f87214434f9ea246ecef28c6cac7e94583e1cc50e824272a46d9696ea1",
+    "tools/computer-use/genie-computer.swift": "a073af5032ac775b14f6ff612cfa8cc702a750ce7a6bf92cf0db00c078914912",
+    "scripts/test-background-text-edit.sh": "36602ed1489291c4d6a0d98ab8c3d1543b5a3d233ae3a73d496b1b7c6a44e911",
+    "scripts/build-computer-helper.sh": "49f1e19c197a53a4fdfa1e2ad6575941a44225c91837696cf03af78a49ad712f",
+    "scripts/build-computer-helper-unattended-test.sh": "735e1101e6b29a4aa954036efdfb5dfe85658cb4454c37db5fe3ebdb3b6501ef",
+    "scripts/test-background-computer.sh": "2a4d3ee22896a448d3bc1fbabbfff30b06d12de132c229ed5d18d4bcd933af53",
+    "scripts/test-native-input.sh": "f0b90a5c2018a66f2cbb89c79af9f75aaa35edbf6bc357485df1feada0050de8"
+  },
+  "logSha256": {
+    "computer-completion-node.log": "8e30e88b784543cab288c6c8a70023307bde48c759d9a80b8af4129f70aba9dd",
+    "computer-text-edit-pure.log": "4ba0d4b1488b8baf3864478926c2b5eb34228212211a9b9200c794d20906a70e",
+    "computer-isolated-types.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "notRun": [
+    "Updated production background helper compilation",
+    "Native BackgroundAX append/readback/sentinel regression added but not executed",
+    "Actual browser or website append; real model interpretation of append mode",
+    "Native scrolling delivery; still unsupported",
+    "Full workspace gate; actual order/payment/financial execution"
+  ],
+  "limits": [
+    "This does not establish real-site support or native input delivery.",
+    "Model semantic target verification remains probabilistic; native authorities are unchanged.",
+    "Existing public candidate cap remains 60 and AX traversal limit remains 2000.",
+    "Older helper previews without role metadata retain listed-field compatibility; unlisted fields fail closed until the updated helper is installed."
+  ]
+}

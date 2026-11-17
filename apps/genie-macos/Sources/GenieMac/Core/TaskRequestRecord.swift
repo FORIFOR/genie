@@ -2,6 +2,8 @@ import Foundation
 
 /// A user's request and its outcome are durable; credentials and captured pixels are not.
 struct TaskRequestRecord: Codable, Equatable {
+    static let firstExample = "次のメモを、次の行動と担当者が分かるチェックリストにしてください。アプリをテストする、デモを録画する、リリースノートを書く。分からない担当者は「未定」とし、文章だけを作ってください。"
+
     enum Phase: String, Codable {
         case submitting, working, waiting, complete, needsInput, failed, unknown, cancelled
         var title: String {
@@ -32,35 +34,69 @@ struct TaskRequestRecord: Codable, Equatable {
     var request: String
     var base: String
     var conversationID = ""
+    /// Saved before submission. Older records have no receipt and cannot infer acceptance.
+    var turnRequestID: String?
     var backendTaskID = ""
+    /// Optional to keep older history readable. Never infer an order from the user's prose.
+    var backendTaskKind: String?
+    var stopRequested: Bool?
+    var transactionResultUnknown: Bool?
     var artifactID = ""
     var phase: Phase = .submitting
     var result = ""
+    /// Optional for compatibility with older saved JSON; original model text is retained.
+    var editedResult: String?
+    var documentText: String { editedResult ?? result }
     var message = ""
     var updatedAt = Date()
     // Deliberately no token, OAuth reply metadata, screenshots, or automatic resend flag.
-    var canRefresh: Bool { !backendTaskID.isEmpty && phase != .complete && phase != .failed && phase != .cancelled }
+    var canRefresh: Bool {
+        let canLocate = !backendTaskID.isEmpty || (!conversationID.isEmpty && !(turnRequestID ?? "").isEmpty)
+        return canLocate && phase != .complete && phase != .failed && phase != .cancelled && phase != .needsInput
+    }
     var hasResult: Bool { phase == .complete && !result.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+    var canReuse: Bool { transactionResultUnknown != true && !(stopRequested == true && phase == .unknown) }
 }
 
 struct TaskReply {
     var text: String
     var phase: TaskRequestRecord.Phase
     var artifactID = ""
+    var taskKind: String?
+    var transactionResultUnknown = false
+    /// 例外のカード（天気・ニュース…）の答えなら、そのカード。`text` はカードの文（Work にはこちらを残す）。
+    var card: DockCard? = nil
     var settled: Bool { phase != .working && phase != .waiting }
 }
 
 extension AgentTask {
-    var stateTitle: String { requestRecord?.phase.title ?? status.displayTitle }
+    var stateTitle: String {
+        if let record = requestRecord, record.phase == .cancelled,
+           record.backendTaskKind?.hasPrefix("transaction.") == true { return "操作を止めました" }
+        return requestRecord?.phase.title ?? status.displayTitle
+    }
     var summary: String {
         guard let record = requestRecord else { return failureReason ?? startedAt.formatted(date: .abbreviated, time: .shortened) }
         guard record.hasResult else { return record.message }
-        let firstLine = String(record.result.split(separator: "\n").first ?? "")
+        let firstLine = String(record.documentText.split(separator: "\n").first ?? "")
         return firstLine.replacingOccurrences(of: #"^#{1,6}\s+"#, with: "", options: .regularExpression)
     }
     /// Export is deterministic and local. Opening or copying never asks the model again.
     var document: String {
         guard let record = requestRecord, record.hasResult else { return "" }
-        return "# \(title)\n\n\(record.result)\n\n---\n\n依頼\n\n\(record.request)\n"
+        return "# \(title)\n\n\(record.documentText)\n\n---\n\n依頼\n\n\(record.request)\n"
+    }
+}
+
+extension AgentTask {
+    /// Prepare an edit without changing task identity, phase or original model output.
+    func editingDocument(_ text: String) -> AgentTask? {
+        guard var record = requestRecord, record.hasResult,
+              !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+        record.editedResult = text
+        record.updatedAt = Date()
+        var edited = self
+        edited.requestRecord = record
+        return edited
     }
 }

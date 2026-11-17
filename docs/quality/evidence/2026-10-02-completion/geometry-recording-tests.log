@@ -1,0 +1,639 @@
+[0/1] Planning build
+Building for debugging...
+[0/7] Write swift-version--58304C5D6DBC2206.txt
+[1/7] Write sources
+[4/8] Emitting module GenieMac
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/GuidedSetup/GuidedSetupSelfTest.swift:144:21: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+142 |         // アバターの姿を残す（目視用）。
+143 |         if let win = overlay.avatar.window,
+144 |            let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(win.windowNumber), [.boundsIgnoreFraming, .bestResolution]) {
+    |                     `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+145 |             let png = NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:])
+146 |             try? png?.write(to: URL(fileURLWithPath: "\(outDir)/guided-setup-avatar.png"))
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/GuidedSetup/PermissionGuideCoordinator.swift:51:74: warning: passing non-Sendable parameter 'block' to function expecting a '@Sendable' closure
+ 48 |         }
+ 49 |         /// 遅延実行。検査では即時。
+ 50 |         var after: (TimeInterval, @escaping () -> Void) -> Void = { s, block in
+    |                                                                        `- note: parameter 'block' is implicitly non-Sendable
+ 51 |             DispatchQueue.main.asyncAfter(deadline: .now() + s, execute: block)
+    |                                                                          `- warning: passing non-Sendable parameter 'block' to function expecting a '@Sendable' closure
+ 52 |         }
+ 53 |         var now: () -> Date = Date.init
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Main/ConnectionsPane.swift:8:57: warning: main actor-isolated static property 'shared' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+  6 |     let apps: [String]
+  7 |     @ObservedObject private var connections: ConnectorState
+  8 |     init(apps: [String], connections: ConnectorState = .shared) {
+    |                                                         `- warning: main actor-isolated static property 'shared' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+  9 |         self.apps = apps; self.connections = connections
+ 10 |     }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Context/ConnectorState.swift:6:16: note: static property declared here
+  4 | @MainActor
+  5 | final class ConnectorState: ObservableObject {
+  6 |     static let shared = ConnectorState()
+    |                `- note: static property declared here
+  7 |     struct Source: Identifiable, Equatable {
+  8 |         let pluginId: String
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Places/NearbyPlaces.swift:31:81: warning: main actor-isolated static property 'shared' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+29 |     }
+30 | 
+31 |     static func search(_ intent: NearbyPlaceIntent, settings: PlacesSettings = .shared,
+   |                                                                                 `- warning: main actor-isolated static property 'shared' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+32 |                        location: CurrentLocation = .shared) async -> Result<PlacesCard, Failure> {
+33 |         guard settings.hasKey, settings.monthlyLimit > 0 else { return .failure(.needsKey) }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Places/PlacesSettings.swift:10:16: note: static property declared here
+ 8 | @MainActor
+ 9 | final class PlacesSettings: ObservableObject {
+10 |     static let shared = PlacesSettings()
+   |                `- note: static property declared here
+11 |     static let keychainKey = "googleMaps.apiKey"
+12 |     private static let limitKey = "genie.places.monthlySearches"
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Places/NearbyPlaces.swift:32:53: warning: main actor-isolated static property 'shared' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+30 | 
+31 |     static func search(_ intent: NearbyPlaceIntent, settings: PlacesSettings = .shared,
+32 |                        location: CurrentLocation = .shared) async -> Result<PlacesCard, Failure> {
+   |                                                     `- warning: main actor-isolated static property 'shared' can not be referenced from a nonisolated context; this is an error in the Swift 6 language mode
+33 |         guard settings.hasKey, settings.monthlyLimit > 0 else { return .failure(.needsKey) }
+34 |         guard settings.canSearch() else { return .failure(.limitReached) }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/Places/CurrentLocation.swift:10:16: note: static property declared here
+ 8 | @MainActor
+ 9 | final class CurrentLocation: NSObject, CLLocationManagerDelegate {
+10 |     static let shared = CurrentLocation()
+   |                `- note: static property declared here
+11 | 
+12 |     enum Failure: Error, Equatable {
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/RecordingWorkspace/CodexTranslation.swift:28:61: warning: converting non-Sendable function value to '@Sendable (CodexTranslation.Invocation) async throws -> CodexTranslation.Output' may introduce data races
+ 26 |     init(environment: [String: String] = ProcessInfo.processInfo.environment,
+ 27 |          executable: @escaping ([String: String]) throws -> URL = CodexTranslation.findExecutable,
+ 28 |          runner: @escaping Runner = CodexTranslationProcess.run) {
+    |                                                             `- warning: converting non-Sendable function value to '@Sendable (CodexTranslation.Invocation) async throws -> CodexTranslation.Output' may introduce data races
+ 29 |         self.environment = environment; self.executable = executable; self.runner = runner
+ 30 |     }
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[5/10] Compiling GenieMac SelfTest.swift
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:211:28: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 209 |             }
+ 210 |             guard let (winID, _, _) = best,
+ 211 |                   let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, winID, [.boundsIgnoreFraming, .bestResolution])
+     |                            `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 212 |             else { return nil }
+ 213 |             let rep = NSBitmapImageRep(cgImage: cg)
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:498:28: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 496 |                 ? [.bestResolution] : [.boundsIgnoreFraming, .nominalResolution]
+ 497 |             guard let (id, x, y, w, h) = found,
+ 498 |                   let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, id, opts),
+     |                            `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 499 |                   shadow || (cg.width == Int(w) && cg.height == Int(h))
+ 500 |             else { return nil }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:768:21: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 766 |         settle(0.8)
+ 767 |         if let big = workspaceWindow,
+ 768 |            let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, big.id, [.boundsIgnoreFraming, .nominalResolution]) {
+     |                     `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 769 |             let rep = NSBitmapImageRep(cgImage: cg)
+ 770 |             if let png = rep.representation(using: .png, properties: [:]) {
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:1220:28: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+1218 |             settle(0.6)
+1219 |             guard let win = NSApp.windows.first(where: { $0.isVisible && $0.frame.width > 900 }),
+1220 |                   let cg = CGWindowListCreateImage(
+     |                            `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+1221 |                     .null, .optionIncludingWindow, CGWindowID(win.windowNumber),
+1222 |                     [.boundsIgnoreFraming, .bestResolution]) else { return nil }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:2485:25: warning: call to main actor-isolated instance method 'shot(_:window:)' in a synchronous nonisolated context [#ActorIsolatedCall]
+2483 |                 surfaces = NSApp.windows.filter(\.isVisible).count - w0
+2484 |                 dockAnswerable = UIProbe.exists("confirmCancel")
+2485 |                 _ = rec.shot("04-confirm", window: JourneyRecorder.dockWindow())
+     |                         `- warning: call to main actor-isolated instance method 'shot(_:window:)' in a synchronous nonisolated context [#ActorIsolatedCall]
+2486 |                 _ = UIProbe.tap("confirmCancel")
+2487 |                 // 別の面が残っていたら、それも閉じる（残さないと 120 秒止まる）。
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/JourneyRecorder.swift:213:10: note: calls to instance method 'shot(_:window:)' from outside of its actor context are implicitly asynchronous
+211 |     /// 測っていた（開始直後の白紙を測ろうとして、地 91.9% と出たのがそれ）。
+212 |     @discardableResult
+213 |     func shot(_ name: String, window: NSWindow? = nil) -> Bool {
+    |          `- note: calls to instance method 'shot(_:window:)' from outside of its actor context are implicitly asynchronous
+214 |         let path = "\(outDir)/\(name).png"
+215 |         guard let win = window ?? Self.largestWindow(),
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:2485:68: warning: call to main actor-isolated static method 'dockWindow()' in a synchronous nonisolated context [#ActorIsolatedCall]
+2483 |                 surfaces = NSApp.windows.filter(\.isVisible).count - w0
+2484 |                 dockAnswerable = UIProbe.exists("confirmCancel")
+2485 |                 _ = rec.shot("04-confirm", window: JourneyRecorder.dockWindow())
+     |                                                                    `- warning: call to main actor-isolated static method 'dockWindow()' in a synchronous nonisolated context [#ActorIsolatedCall]
+2486 |                 _ = UIProbe.tap("confirmCancel")
+2487 |                 // 別の面が残っていたら、それも閉じる（残さないと 120 秒止まる）。
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/JourneyRecorder.swift:154:17: note: calls to static method 'dockWindow()' from outside of its actor context are implicitly asynchronous
+152 | 
+153 |     /// Dock（画面上端の常駐 panel）。level で見分ける。
+154 |     static func dockWindow() -> NSWindow? {
+    |                 `- note: calls to static method 'dockWindow()' from outside of its actor context are implicitly asynchronous
+155 |         NSApp.windows.first { $0.isVisible && $0.level == .statusBar }
+156 |     }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:2933:29: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+2931 |                 }
+2932 |                 // 窓 id 経由。dark へ切り替えた直後などに nil を返すことがある。
+2933 |                 var image = CGWindowListCreateImage(.null, .optionIncludingWindow, win.id,
+     |                             `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+2934 |                                                     [.boundsIgnoreFraming, .bestResolution])
+2935 |                 if image == nil {
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:2937:29: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+2935 |                 if image == nil {
+2936 |                     // 代わりに画面のその領域を撮る。窓の再描画中でもこちらは通ることが多い。
+2937 |                     image = CGWindowListCreateImage(rect, .optionOnScreenOnly, kCGNullWindowID, [.bestResolution])
+     |                             `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+2938 |                 }
+2939 |                 if let cg = image,
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:3569:24: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+3567 |                           width: f.width + pad * 2,
+3568 |                           height: f.height + pad * 2)
+3569 |         guard let cg = CGWindowListCreateImage(rect, .optionOnScreenOnly, kCGNullWindowID, [.bestResolution]),
+     |                        `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+3570 |               let png = NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:]) else {
+3571 |             print("SELFTEST_FAIL dockedge: 撮影できない"); exit(2)
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:3579:22: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+3577 |         settle(1.0)
+3578 |         let without = out.replacingOccurrences(of: ".png", with: "-without.png")
+3579 |         if let cg2 = CGWindowListCreateImage(rect, .optionOnScreenOnly, kCGNullWindowID, [.bestResolution]),
+     |                      `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+3580 |            let png2 = NSBitmapImageRep(cgImage: cg2).representation(using: .png, properties: [:]) {
+3581 |             try? png2.write(to: URL(fileURLWithPath: without))
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:4257:62: warning: conditional downcast from '(json: [String : Any], consumed: Int)?' to '(json: [String : Any], consumed: Int)' does nothing
+4255 |         // ① 1 通ぶん届いていなければ nil（エラーにしない）。
+4256 |         let full = frame(["type": "context", "payload": ["url": "https://example.com", "title": "T"]])
+4257 |         if (try? NativeMessagingHost.decode(full.prefix(3))) as? (json: [String: Any], consumed: Int) != nil {
+     |                                                              `- warning: conditional downcast from '(json: [String : Any], consumed: Int)?' to '(json: [String : Any], consumed: Int)' does nothing
+4258 |             fail.append("途中のバッファで復号した")
+4259 |         }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:4665:34: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+4663 |                 ids.removeAll(); texts.removeAll(); walk(app, 0)
+4664 |             } else { fail.append("会議と今日の状況を開けない") }
+4665 |             if let png, let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(w.windowNumber),
+     |                                  `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+4666 |                                                           [.boundsIgnoreFraming, .nominalResolution]) {
+4667 |                 try? NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:])?
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:4924:36: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+4922 |                     let until = Date().addingTimeInterval(0.4)
+4923 |                     while Date() < until { CFRunLoopRunInMode(.defaultMode, 0.05, true) }
+4924 |                     guard let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(window.windowNumber), [.boundsIgnoreFraming, .bestResolution]) else {
+     |                                    `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+4925 |                         throw CloudMeetingTranscription.Failure(message: "window capture failed")
+4926 |                     }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:4980:77: warning: backward matching of the unlabeled trailing closure is deprecated; label the argument with 'completion' to suppress this warning [#TrailingClosureMatching]
+4978 |                 }
+4979 |                 let passed = interim > 0 && final > 0 && texts.contains(where: { $0.contains("金曜日") }) && runtime.snapshot() != nil
+4980 |                 await withCheckedContinuation { continuation in runtime.end { continuation.resume() } }
+     |                                                                             `- warning: backward matching of the unlabeled trailing closure is deprecated; label the argument with 'completion' to suppress this warning [#TrailingClosureMatching]
+4981 |                 restore()
+4982 |                 guard passed else {
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/RecordingWorkspace/RecordingRuntime.swift:530:10: note: 'end(cloudCompletion:completion:)' declared here
+528 | 
+529 |     /// 停止して確定。書けた断片は残り、回復候補になる。
+530 |     func end(cloudCompletion: ((String, String?) -> Void)? = nil, completion: (() -> Void)? = nil) {
+    |          `- note: 'end(cloudCompletion:completion:)' declared here
+531 |         drainMixedAudio()
+532 |         mixTimer?.invalidate(); mixTimer = nil; mixClock = nil
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:5297:28: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+5295 |             }
+5296 |             guard winID != 0,
+5297 |                   let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, winID, [.boundsIgnoreFraming, .bestResolution])
+     |                            `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+5298 |             else { window.orderOut(nil); window.close(); return nil }
+5299 |             let rep = NSBitmapImageRep(cgImage: cg)
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:5702:28: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+5700 |         }
+5701 |         func shot(_ win: NSWindow) -> [UInt8]? {
+5702 |             guard let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(win.windowNumber),
+     |                            `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+5703 |                                                    [.boundsIgnoreFraming, .nominalResolution]),
+5704 |                   cg.width > 4, cg.height > 4 else { return nil }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:5972:21: warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+5970 |             .appendingPathComponent("meetings/screenshot-selftest").path
+5971 |         try? FileManager.default.removeItem(atPath: root)
+5972 |         guard (size ?? 0) > 1000, isPng else {
+     |                     `- warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+5973 |             print("SELFTEST_FAIL screenshot size=\(size ?? 0) isPng=\(isPng)"); exit(2)
+5974 |         }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:5973:57: warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+5971 |         try? FileManager.default.removeItem(atPath: root)
+5972 |         guard (size ?? 0) > 1000, isPng else {
+5973 |             print("SELFTEST_FAIL screenshot size=\(size ?? 0) isPng=\(isPng)"); exit(2)
+     |                                                         `- warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+5974 |         }
+5975 |         print("SELFTEST_OK screenshot: 実 PNG 保存 bytes=\(size ?? 0) isPng=\(isPng)")
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:5975:68: warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+5973 |             print("SELFTEST_FAIL screenshot size=\(size ?? 0) isPng=\(isPng)"); exit(2)
+5974 |         }
+5975 |         print("SELFTEST_OK screenshot: 実 PNG 保存 bytes=\(size ?? 0) isPng=\(isPng)")
+     |                                                              `- warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+5976 |         exit(0)
+5977 |     }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:6299:37: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+6297 |             settle(0.3)
+6298 |             let id = CGWindowID(max(0, win.windowNumber))
+6299 |             guard id != 0, let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, id, [.boundsIgnoreFraming, .bestResolution]),
+     |                                     `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+6300 |                   let png = NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:]) else {
+6301 |                 fail.append(name); return
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:6400:28: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+6398 |                   // golden は logical points で保存する。Retina の物理画素を使うと
+6399 |                   // 同じ 220x44pt の窓が 440x88px になり、別の寸法と誤判定される。
+6400 |                   let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, winID, [.boundsIgnoreFraming, .nominalResolution]),
+     |                            `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+6401 |                   cg.width == w, cg.height == h
+6402 |             else { return nil }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:7092:87: warning: mutation of captured var 'ready' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+7090 |         }
+7091 |         let readyLock = NSLock(); var ready = false
+7092 |         listener.stateUpdateHandler = { st in if case .ready = st { readyLock.lock(); ready = true; readyLock.unlock() } }
+     |                                                                                       `- warning: mutation of captured var 'ready' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+7093 |         listener.start(queue: q)
+7094 |         var waited = 0
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:7139:42: warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+7137 |         let recoverable = scanRecoverable(root: root, active: nil)
+7138 | 
+7139 |         guard closed == 1, exists, (size ?? 0) > 0, snap.elapsedLabel == "00:05",
+     |                                          `- warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+7140 |               recoverable.count == 1, recoverable[0].meetingId == "selftest"
+7141 |         else {
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:7142:80: warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+7140 |               recoverable.count == 1, recoverable[0].meetingId == "selftest"
+7141 |         else {
+7142 |             print("SELFTEST_FAIL closed=\(closed) exists=\(exists) size=\(size ?? 0) elapsed=\(snap.elapsedLabel) recoverable=\(recoverable.count)")
+     |                                                                                `- warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+7143 |             exit(3)
+7144 |         }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:7146:74: warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+7144 |         }
+7145 |         try? FileManager.default.removeItem(atPath: root)
+7146 |         print("SELFTEST_OK record: closed=\(closed) fragmentBytes=\(size ?? 0) elapsed=\(snap.elapsedLabel) recoverable=\(recoverable.count)")
+     |                                                                          `- warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+7147 |         exit(0)
+7148 |     }
+
+[#ActorIsolatedCall]: <https://docs.swift.org/compiler/documentation/diagnostics/actor-isolated-call>
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[#SendableClosureCaptures]: <https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures>
+[#TrailingClosureMatching]: <https://docs.swift.org/compiler/documentation/diagnostics/trailing-closure-matching>
+[6/10] Compiling GenieMac UIGeometry.swift
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:211:28: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 209 |             }
+ 210 |             guard let (winID, _, _) = best,
+ 211 |                   let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, winID, [.boundsIgnoreFraming, .bestResolution])
+     |                            `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 212 |             else { return nil }
+ 213 |             let rep = NSBitmapImageRep(cgImage: cg)
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:498:28: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 496 |                 ? [.bestResolution] : [.boundsIgnoreFraming, .nominalResolution]
+ 497 |             guard let (id, x, y, w, h) = found,
+ 498 |                   let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, id, opts),
+     |                            `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 499 |                   shadow || (cg.width == Int(w) && cg.height == Int(h))
+ 500 |             else { return nil }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:768:21: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 766 |         settle(0.8)
+ 767 |         if let big = workspaceWindow,
+ 768 |            let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, big.id, [.boundsIgnoreFraming, .nominalResolution]) {
+     |                     `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+ 769 |             let rep = NSBitmapImageRep(cgImage: cg)
+ 770 |             if let png = rep.representation(using: .png, properties: [:]) {
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:1220:28: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+1218 |             settle(0.6)
+1219 |             guard let win = NSApp.windows.first(where: { $0.isVisible && $0.frame.width > 900 }),
+1220 |                   let cg = CGWindowListCreateImage(
+     |                            `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+1221 |                     .null, .optionIncludingWindow, CGWindowID(win.windowNumber),
+1222 |                     [.boundsIgnoreFraming, .bestResolution]) else { return nil }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:2485:25: warning: call to main actor-isolated instance method 'shot(_:window:)' in a synchronous nonisolated context [#ActorIsolatedCall]
+2483 |                 surfaces = NSApp.windows.filter(\.isVisible).count - w0
+2484 |                 dockAnswerable = UIProbe.exists("confirmCancel")
+2485 |                 _ = rec.shot("04-confirm", window: JourneyRecorder.dockWindow())
+     |                         `- warning: call to main actor-isolated instance method 'shot(_:window:)' in a synchronous nonisolated context [#ActorIsolatedCall]
+2486 |                 _ = UIProbe.tap("confirmCancel")
+2487 |                 // 別の面が残っていたら、それも閉じる（残さないと 120 秒止まる）。
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/JourneyRecorder.swift:213:10: note: calls to instance method 'shot(_:window:)' from outside of its actor context are implicitly asynchronous
+211 |     /// 測っていた（開始直後の白紙を測ろうとして、地 91.9% と出たのがそれ）。
+212 |     @discardableResult
+213 |     func shot(_ name: String, window: NSWindow? = nil) -> Bool {
+    |          `- note: calls to instance method 'shot(_:window:)' from outside of its actor context are implicitly asynchronous
+214 |         let path = "\(outDir)/\(name).png"
+215 |         guard let win = window ?? Self.largestWindow(),
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:2485:68: warning: call to main actor-isolated static method 'dockWindow()' in a synchronous nonisolated context [#ActorIsolatedCall]
+2483 |                 surfaces = NSApp.windows.filter(\.isVisible).count - w0
+2484 |                 dockAnswerable = UIProbe.exists("confirmCancel")
+2485 |                 _ = rec.shot("04-confirm", window: JourneyRecorder.dockWindow())
+     |                                                                    `- warning: call to main actor-isolated static method 'dockWindow()' in a synchronous nonisolated context [#ActorIsolatedCall]
+2486 |                 _ = UIProbe.tap("confirmCancel")
+2487 |                 // 別の面が残っていたら、それも閉じる（残さないと 120 秒止まる）。
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/JourneyRecorder.swift:154:17: note: calls to static method 'dockWindow()' from outside of its actor context are implicitly asynchronous
+152 | 
+153 |     /// Dock（画面上端の常駐 panel）。level で見分ける。
+154 |     static func dockWindow() -> NSWindow? {
+    |                 `- note: calls to static method 'dockWindow()' from outside of its actor context are implicitly asynchronous
+155 |         NSApp.windows.first { $0.isVisible && $0.level == .statusBar }
+156 |     }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:2933:29: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+2931 |                 }
+2932 |                 // 窓 id 経由。dark へ切り替えた直後などに nil を返すことがある。
+2933 |                 var image = CGWindowListCreateImage(.null, .optionIncludingWindow, win.id,
+     |                             `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+2934 |                                                     [.boundsIgnoreFraming, .bestResolution])
+2935 |                 if image == nil {
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:2937:29: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+2935 |                 if image == nil {
+2936 |                     // 代わりに画面のその領域を撮る。窓の再描画中でもこちらは通ることが多い。
+2937 |                     image = CGWindowListCreateImage(rect, .optionOnScreenOnly, kCGNullWindowID, [.bestResolution])
+     |                             `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+2938 |                 }
+2939 |                 if let cg = image,
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:3569:24: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+3567 |                           width: f.width + pad * 2,
+3568 |                           height: f.height + pad * 2)
+3569 |         guard let cg = CGWindowListCreateImage(rect, .optionOnScreenOnly, kCGNullWindowID, [.bestResolution]),
+     |                        `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+3570 |               let png = NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:]) else {
+3571 |             print("SELFTEST_FAIL dockedge: 撮影できない"); exit(2)
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:3579:22: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+3577 |         settle(1.0)
+3578 |         let without = out.replacingOccurrences(of: ".png", with: "-without.png")
+3579 |         if let cg2 = CGWindowListCreateImage(rect, .optionOnScreenOnly, kCGNullWindowID, [.bestResolution]),
+     |                      `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+3580 |            let png2 = NSBitmapImageRep(cgImage: cg2).representation(using: .png, properties: [:]) {
+3581 |             try? png2.write(to: URL(fileURLWithPath: without))
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:4257:62: warning: conditional downcast from '(json: [String : Any], consumed: Int)?' to '(json: [String : Any], consumed: Int)' does nothing
+4255 |         // ① 1 通ぶん届いていなければ nil（エラーにしない）。
+4256 |         let full = frame(["type": "context", "payload": ["url": "https://example.com", "title": "T"]])
+4257 |         if (try? NativeMessagingHost.decode(full.prefix(3))) as? (json: [String: Any], consumed: Int) != nil {
+     |                                                              `- warning: conditional downcast from '(json: [String : Any], consumed: Int)?' to '(json: [String : Any], consumed: Int)' does nothing
+4258 |             fail.append("途中のバッファで復号した")
+4259 |         }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:4665:34: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+4663 |                 ids.removeAll(); texts.removeAll(); walk(app, 0)
+4664 |             } else { fail.append("会議と今日の状況を開けない") }
+4665 |             if let png, let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(w.windowNumber),
+     |                                  `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+4666 |                                                           [.boundsIgnoreFraming, .nominalResolution]) {
+4667 |                 try? NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:])?
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:4924:36: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+4922 |                     let until = Date().addingTimeInterval(0.4)
+4923 |                     while Date() < until { CFRunLoopRunInMode(.defaultMode, 0.05, true) }
+4924 |                     guard let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(window.windowNumber), [.boundsIgnoreFraming, .bestResolution]) else {
+     |                                    `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+4925 |                         throw CloudMeetingTranscription.Failure(message: "window capture failed")
+4926 |                     }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:4980:77: warning: backward matching of the unlabeled trailing closure is deprecated; label the argument with 'completion' to suppress this warning [#TrailingClosureMatching]
+4978 |                 }
+4979 |                 let passed = interim > 0 && final > 0 && texts.contains(where: { $0.contains("金曜日") }) && runtime.snapshot() != nil
+4980 |                 await withCheckedContinuation { continuation in runtime.end { continuation.resume() } }
+     |                                                                             `- warning: backward matching of the unlabeled trailing closure is deprecated; label the argument with 'completion' to suppress this warning [#TrailingClosureMatching]
+4981 |                 restore()
+4982 |                 guard passed else {
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/RecordingWorkspace/RecordingRuntime.swift:530:10: note: 'end(cloudCompletion:completion:)' declared here
+528 | 
+529 |     /// 停止して確定。書けた断片は残り、回復候補になる。
+530 |     func end(cloudCompletion: ((String, String?) -> Void)? = nil, completion: (() -> Void)? = nil) {
+    |          `- note: 'end(cloudCompletion:completion:)' declared here
+531 |         drainMixedAudio()
+532 |         mixTimer?.invalidate(); mixTimer = nil; mixClock = nil
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:5297:28: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+5295 |             }
+5296 |             guard winID != 0,
+5297 |                   let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, winID, [.boundsIgnoreFraming, .bestResolution])
+     |                            `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+5298 |             else { window.orderOut(nil); window.close(); return nil }
+5299 |             let rep = NSBitmapImageRep(cgImage: cg)
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:5702:28: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+5700 |         }
+5701 |         func shot(_ win: NSWindow) -> [UInt8]? {
+5702 |             guard let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(win.windowNumber),
+     |                            `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+5703 |                                                    [.boundsIgnoreFraming, .nominalResolution]),
+5704 |                   cg.width > 4, cg.height > 4 else { return nil }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:5972:21: warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+5970 |             .appendingPathComponent("meetings/screenshot-selftest").path
+5971 |         try? FileManager.default.removeItem(atPath: root)
+5972 |         guard (size ?? 0) > 1000, isPng else {
+     |                     `- warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+5973 |             print("SELFTEST_FAIL screenshot size=\(size ?? 0) isPng=\(isPng)"); exit(2)
+5974 |         }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:5973:57: warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+5971 |         try? FileManager.default.removeItem(atPath: root)
+5972 |         guard (size ?? 0) > 1000, isPng else {
+5973 |             print("SELFTEST_FAIL screenshot size=\(size ?? 0) isPng=\(isPng)"); exit(2)
+     |                                                         `- warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+5974 |         }
+5975 |         print("SELFTEST_OK screenshot: 実 PNG 保存 bytes=\(size ?? 0) isPng=\(isPng)")
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:5975:68: warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+5973 |             print("SELFTEST_FAIL screenshot size=\(size ?? 0) isPng=\(isPng)"); exit(2)
+5974 |         }
+5975 |         print("SELFTEST_OK screenshot: 実 PNG 保存 bytes=\(size ?? 0) isPng=\(isPng)")
+     |                                                              `- warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+5976 |         exit(0)
+5977 |     }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:6299:37: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+6297 |             settle(0.3)
+6298 |             let id = CGWindowID(max(0, win.windowNumber))
+6299 |             guard id != 0, let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, id, [.boundsIgnoreFraming, .bestResolution]),
+     |                                     `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+6300 |                   let png = NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:]) else {
+6301 |                 fail.append(name); return
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:6400:28: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+6398 |                   // golden は logical points で保存する。Retina の物理画素を使うと
+6399 |                   // 同じ 220x44pt の窓が 440x88px になり、別の寸法と誤判定される。
+6400 |                   let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, winID, [.boundsIgnoreFraming, .nominalResolution]),
+     |                            `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+6401 |                   cg.width == w, cg.height == h
+6402 |             else { return nil }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:7092:87: warning: mutation of captured var 'ready' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+7090 |         }
+7091 |         let readyLock = NSLock(); var ready = false
+7092 |         listener.stateUpdateHandler = { st in if case .ready = st { readyLock.lock(); ready = true; readyLock.unlock() } }
+     |                                                                                       `- warning: mutation of captured var 'ready' in concurrently-executing code; this is an error in the Swift 6 language mode [#SendableClosureCaptures]
+7093 |         listener.start(queue: q)
+7094 |         var waited = 0
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:7139:42: warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+7137 |         let recoverable = scanRecoverable(root: root, active: nil)
+7138 | 
+7139 |         guard closed == 1, exists, (size ?? 0) > 0, snap.elapsedLabel == "00:05",
+     |                                          `- warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+7140 |               recoverable.count == 1, recoverable[0].meetingId == "selftest"
+7141 |         else {
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:7142:80: warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+7140 |               recoverable.count == 1, recoverable[0].meetingId == "selftest"
+7141 |         else {
+7142 |             print("SELFTEST_FAIL closed=\(closed) exists=\(exists) size=\(size ?? 0) elapsed=\(snap.elapsedLabel) recoverable=\(recoverable.count)")
+     |                                                                                `- warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+7143 |             exit(3)
+7144 |         }
+
+/Users/shuhei/Projects/genie/apps/genie-macos/Sources/GenieMac/App/SelfTest.swift:7146:74: warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+7144 |         }
+7145 |         try? FileManager.default.removeItem(atPath: root)
+7146 |         print("SELFTEST_OK record: closed=\(closed) fragmentBytes=\(size ?? 0) elapsed=\(snap.elapsedLabel) recoverable=\(recoverable.count)")
+     |                                                                          `- warning: left side of nil coalescing operator '??' has non-optional type 'Int', so the right side is never used
+7147 |         exit(0)
+7148 |     }
+
+[#ActorIsolatedCall]: <https://docs.swift.org/compiler/documentation/diagnostics/actor-isolated-call>
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[#SendableClosureCaptures]: <https://docs.swift.org/compiler/documentation/diagnostics/sendable-closure-captures>
+[#TrailingClosureMatching]: <https://docs.swift.org/compiler/documentation/diagnostics/trailing-closure-matching>
+[6/11] Write Objects.LinkFileList
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[358](25ac62e5b3c53843-curve25519.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[359](0bbbd18bda93c05b-aes_nohw.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[360](00c879ee3285a50d-montgomery.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[361](00c879ee3285a50d-montgomery_inv.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[362](a0330e891e733f4e-ecp_nistz.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[364](a0330e891e733f4e-gfp_p384.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[366](aaa1ba3e455ee2e1-limbs.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[367](a4019cc0736b0423-mem.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[368](d5a9841f3dc6e253-poly1305.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[369](a0330e891e733f4e-p256-nistz.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[370](c322a0bcc369f531-chacha-armv8-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[371](c322a0bcc369f531-chacha20_poly1305_armv8-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[372](c322a0bcc369f531-aesv8-armx-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[373](c322a0bcc369f531-aesv8-gcm-armv8-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[374](c322a0bcc369f531-ghash-neon-armv8-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[375](c322a0bcc369f531-ghashv8-armx-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[376](c322a0bcc369f531-vpaes-armv8-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[377](c322a0bcc369f531-armv8-mont-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[378](c322a0bcc369f531-p256-armv8-asm-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[379](c322a0bcc369f531-sha512-armv8-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[380](c322a0bcc369f531-sha256-armv8-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[560](std-ddc72da0927e9db9.std.61a5f0013896dfb1-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[561](panic_unwind-63ea78ca2e1c0db3.panic_unwind.b9418b0471e31d36-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[562](object-c0adbf29d899f046.object.cf48ae80852c1dc4-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[564](addr2line-b92825ace6709456.addr2line.f3cce53e8c22052d-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[565](gimli-49cd0cae66d7f640.gimli.a9de2a852aa7a696-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[567](rustc_demangle-a5e20ae1249591d9.rustc_demangle.c8ddca633150ec1-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[569](hashbrown-7ef914ecbc5b3828.hashbrown.f3d328c4a0fd8a24-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[571](miniz_oxide-d817fa4718a8ef96.miniz_oxide.cf735aedbe58ef77-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[572](adler2-b603e41842b612c3.adler2.c400f6a6402c7116-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[576](alloc-7d19d4a84a64ec6c.alloc.650f235c7e2e357a-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[577](core-f186bd403406965f.core.aedb9fd4ead64aec-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[594](compiler_builtins-28935136ed986f39.compiler_builtins.bb8f0d37d096e781-cgu.016.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[722](compiler_builtins-28935136ed986f39.compiler_builtins.bb8f0d37d096e781-cgu.144.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[771](compiler_builtins-28935136ed986f39.compiler_builtins.bb8f0d37d096e781-cgu.193.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+[7/11] Linking GenieMac
+[9/12] Emitting module GenieMacTests
+[10/13] Compiling GenieMacTests UIGeometryRecordingTests.swift
+[10/13] Applying GenieMac
+[11/13] Write Objects.LinkFileList
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[358](25ac62e5b3c53843-curve25519.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[359](0bbbd18bda93c05b-aes_nohw.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[360](00c879ee3285a50d-montgomery.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[361](00c879ee3285a50d-montgomery_inv.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[362](a0330e891e733f4e-ecp_nistz.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[364](a0330e891e733f4e-gfp_p384.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[366](aaa1ba3e455ee2e1-limbs.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[367](a4019cc0736b0423-mem.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[368](d5a9841f3dc6e253-poly1305.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[369](a0330e891e733f4e-p256-nistz.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[370](c322a0bcc369f531-chacha-armv8-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[371](c322a0bcc369f531-chacha20_poly1305_armv8-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[372](c322a0bcc369f531-aesv8-armx-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[373](c322a0bcc369f531-aesv8-gcm-armv8-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[374](c322a0bcc369f531-ghash-neon-armv8-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[375](c322a0bcc369f531-ghashv8-armx-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[376](c322a0bcc369f531-vpaes-armv8-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[377](c322a0bcc369f531-armv8-mont-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[378](c322a0bcc369f531-p256-armv8-asm-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[379](c322a0bcc369f531-sha512-armv8-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[380](c322a0bcc369f531-sha256-armv8-ios64.o)) was built for newer 'macOS' version (26.5) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[560](std-ddc72da0927e9db9.std.61a5f0013896dfb1-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[561](panic_unwind-63ea78ca2e1c0db3.panic_unwind.b9418b0471e31d36-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[562](object-c0adbf29d899f046.object.cf48ae80852c1dc4-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[564](addr2line-b92825ace6709456.addr2line.f3cce53e8c22052d-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[565](gimli-49cd0cae66d7f640.gimli.a9de2a852aa7a696-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[567](rustc_demangle-a5e20ae1249591d9.rustc_demangle.c8ddca633150ec1-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[569](hashbrown-7ef914ecbc5b3828.hashbrown.f3d328c4a0fd8a24-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[571](miniz_oxide-d817fa4718a8ef96.miniz_oxide.cf735aedbe58ef77-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[572](adler2-b603e41842b612c3.adler2.c400f6a6402c7116-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[576](alloc-7d19d4a84a64ec6c.alloc.650f235c7e2e357a-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[577](core-f186bd403406965f.core.aedb9fd4ead64aec-cgu.0.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[594](compiler_builtins-28935136ed986f39.compiler_builtins.bb8f0d37d096e781-cgu.016.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[722](compiler_builtins-28935136ed986f39.compiler_builtins.bb8f0d37d096e781-cgu.144.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+ld: warning: object file (/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a[771](compiler_builtins-28935136ed986f39.compiler_builtins.bb8f0d37d096e781-cgu.193.rcgu.o)) was built for newer 'macOS' version (26.0) than being linked (14.0)
+[12/13] Linking genie-macosPackageTests
+Build complete! (14.13s)
+Test Suite 'Selected tests' started at 2026-10-02 04:34:45.608.
+Test Suite 'genie-macosPackageTests.xctest' started at 2026-10-02 04:34:45.609.
+Test Suite 'UIGeometryRecordingTests' started at 2026-10-02 04:34:45.609.
+Test Case '-[GenieMacTests.UIGeometryRecordingTests testAllSixStatesRoundTripBeforeSuccessIsReturned]' started.
+Test Case '-[GenieMacTests.UIGeometryRecordingTests testAllSixStatesRoundTripBeforeSuccessIsReturned]' passed (0.004 seconds).
+Test Case '-[GenieMacTests.UIGeometryRecordingTests testEmptyStateAndCaptureProblemsCannotPass]' started.
+Test Case '-[GenieMacTests.UIGeometryRecordingTests testEmptyStateAndCaptureProblemsCannotPass]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.UIGeometryRecordingTests testMissingStatesDoNotReplaceAnExistingReference]' started.
+Test Case '-[GenieMacTests.UIGeometryRecordingTests testMissingStatesDoNotReplaceAnExistingReference]' passed (0.001 seconds).
+Test Case '-[GenieMacTests.UIGeometryRecordingTests testWriteFailureIsReported]' started.
+Test Case '-[GenieMacTests.UIGeometryRecordingTests testWriteFailureIsReported]' passed (0.001 seconds).
+Test Case '-[GenieMacTests.UIGeometryRecordingTests testWrongOrDuplicateStateNamesCannotSubstituteForSixStates]' started.
+Test Case '-[GenieMacTests.UIGeometryRecordingTests testWrongOrDuplicateStateNamesCannotSubstituteForSixStates]' passed (0.000 seconds).
+Test Suite 'UIGeometryRecordingTests' passed at 2026-10-02 04:34:45.615.
+	 Executed 5 tests, with 0 failures (0 unexpected) in 0.006 (0.006) seconds
+Test Suite 'genie-macosPackageTests.xctest' passed at 2026-10-02 04:34:45.615.
+	 Executed 5 tests, with 0 failures (0 unexpected) in 0.006 (0.006) seconds
+Test Suite 'Selected tests' passed at 2026-10-02 04:34:45.615.
+	 Executed 5 tests, with 0 failures (0 unexpected) in 0.006 (0.007) seconds
+◇ Test run started.
+↳ Testing Library Version: 1902
+↳ Target Platform: arm64e-apple-macos14.0
+✔ Test run with 0 tests in 0 suites passed after 0.001 seconds.

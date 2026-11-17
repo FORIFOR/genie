@@ -1,0 +1,161 @@
+Build complete! (36.21s)
+Test Suite 'Selected tests' started at 2026-10-02 02:35:49.848.
+Test Suite 'genie-macosPackageTests.xctest' started at 2026-10-02 02:35:49.850.
+Test Suite 'ApprovalBoundaryTests' started at 2026-10-02 02:35:49.850.
+Test Case '-[GenieMacTests.ApprovalBoundaryTests testBackendApprovalCardIsNeverBelowR2SoItIsAlwaysShown]' started.
+Test Case '-[GenieMacTests.ApprovalBoundaryTests testBackendApprovalCardIsNeverBelowR2SoItIsAlwaysShown]' passed (0.002 seconds).
+Test Case '-[GenieMacTests.ApprovalBoundaryTests testBackendRiskMapsToFourLevelsAndUnknownIsTheHeaviest]' started.
+Test Case '-[GenieMacTests.ApprovalBoundaryTests testBackendRiskMapsToFourLevelsAndUnknownIsTheHeaviest]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.ApprovalBoundaryTests testCardsAreShownOneAtATimeAndAnswersNeedTheShownCardsID]' started.
+Test Case '-[GenieMacTests.ApprovalBoundaryTests testCardsAreShownOneAtATimeAndAnswersNeedTheShownCardsID]' passed (0.001 seconds).
+Test Case '-[GenieMacTests.ApprovalBoundaryTests testComputerRunCardAlwaysNamesWhereTheImageGoes]' started.
+Test Case '-[GenieMacTests.ApprovalBoundaryTests testComputerRunCardAlwaysNamesWhereTheImageGoes]' passed (0.081 seconds).
+Test Case '-[GenieMacTests.ApprovalBoundaryTests testConfirmApproveNeverMintsProofForTheR0R1Shortcut]' started.
+Test Case '-[GenieMacTests.ApprovalBoundaryTests testConfirmApproveNeverMintsProofForTheR0R1Shortcut]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.ApprovalBoundaryTests testDeclinedCardRejectsExactlyThatApprovalAndNeverApproves]' started.
+Test Case '-[GenieMacTests.ApprovalBoundaryTests testDeclinedCardRejectsExactlyThatApprovalAndNeverApproves]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.ApprovalBoundaryTests testFinancialCardPreservesEveryTermWithoutTruncatingItsScrollPreview]' started.
+Test Case '-[GenieMacTests.ApprovalBoundaryTests testFinancialCardPreservesEveryTermWithoutTruncatingItsScrollPreview]' passed (0.007 seconds).
+Test Case '-[GenieMacTests.ApprovalBoundaryTests testFollowKeepsWaitingWhenApprovalWasDeliveredButTheTaskHasNotResumed]' started.
+Test Case '-[GenieMacTests.ApprovalBoundaryTests testFollowKeepsWaitingWhenApprovalWasDeliveredButTheTaskHasNotResumed]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.ApprovalBoundaryTests testFollowWaitsTheWholeDeadlineThroughTheReader]' started.
+Test Case '-[GenieMacTests.ApprovalBoundaryTests testFollowWaitsTheWholeDeadlineThroughTheReader]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.ApprovalBoundaryTests testHeadlessIsUnansweredNotDeclined]' started.
+Test Case '-[GenieMacTests.ApprovalBoundaryTests testHeadlessIsUnansweredNotDeclined]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.ApprovalBoundaryTests testNothingPendingShowsNoCardAndAnswersNothing]' started.
+Test Case '-[GenieMacTests.ApprovalBoundaryTests testNothingPendingShowsNoCardAndAnswersNothing]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.ApprovalBoundaryTests testOtherDockStatesDoNotHideAPendingCard]' started.
+Test Case '-[GenieMacTests.ApprovalBoundaryTests testOtherDockStatesDoNotHideAPendingCard]' passed (0.024 seconds).
+Test Case '-[GenieMacTests.ApprovalBoundaryTests testPendingApprovalsParseTheServerShapeIntoACardWithoutFakeEdits]' started.
+Test Case '-[GenieMacTests.ApprovalBoundaryTests testPendingApprovalsParseTheServerShapeIntoACardWithoutFakeEdits]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.ApprovalBoundaryTests testPendingStateIsPublishedBeforeWaitingForThePersonsAnswer]' started.
+Test Case '-[GenieMacTests.ApprovalBoundaryTests testPendingStateIsPublishedBeforeWaitingForThePersonsAnswer]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.ApprovalBoundaryTests testRejectThatCannotBeDeliveredStaysHonestAndRefreshable]' started.
+Test Case '-[GenieMacTests.ApprovalBoundaryTests testRejectThatCannotBeDeliveredStaysHonestAndRefreshable]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.ApprovalBoundaryTests testReplyApprovalMustMatchTheShownDraft]' started.
+Test Case '-[GenieMacTests.ApprovalBoundaryTests testReplyApprovalMustMatchTheShownDraft]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.ApprovalBoundaryTests testServerWrittenLabelsAreShownAndTheCardStaysWithinTheConfirmationCap]' started.
+Test Case '-[GenieMacTests.ApprovalBoundaryTests testServerWrittenLabelsAreShownAndTheCardStaysWithinTheConfirmationCap]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.ApprovalBoundaryTests testUnansweredCardSendsNothingAndLeavesTheApprovalPending]' started.
+Test Case '-[GenieMacTests.ApprovalBoundaryTests testUnansweredCardSendsNothingAndLeavesTheApprovalPending]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.ApprovalBoundaryTests testWaitingForAnAnswerDoesNotBlockTheMainActor]' started.
+Test Case '-[GenieMacTests.ApprovalBoundaryTests testWaitingForAnAnswerDoesNotBlockTheMainActor]' passed (0.263 seconds).
+Test Case '-[GenieMacTests.ApprovalBoundaryTests testWaitKeepsWaitingUntilTheFullDeadlineInShortSlices]' started.
+Test Case '-[GenieMacTests.ApprovalBoundaryTests testWaitKeepsWaitingUntilTheFullDeadlineInShortSlices]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.ApprovalBoundaryTests testWaitStateClassification]' started.
+Test Case '-[GenieMacTests.ApprovalBoundaryTests testWaitStateClassification]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.ApprovalBoundaryTests testWaitStopsEarlyOnApprovalPendingOrTerminal]' started.
+Test Case '-[GenieMacTests.ApprovalBoundaryTests testWaitStopsEarlyOnApprovalPendingOrTerminal]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.ApprovalBoundaryTests testWaitSurvivesTransientErrorsButNotRepeatedOrPermanentOnes]' started.
+Test Case '-[GenieMacTests.ApprovalBoundaryTests testWaitSurvivesTransientErrorsButNotRepeatedOrPermanentOnes]' passed (0.000 seconds).
+Test Suite 'ApprovalBoundaryTests' passed at 2026-10-02 02:35:50.235.
+	 Executed 23 tests, with 0 failures (0 unexpected) in 0.383 (0.385) seconds
+Test Suite 'CodexTranslationTests' started at 2026-10-02 02:35:50.235.
+Test Case '-[GenieMacTests.CodexTranslationTests testCodexDefaultMatchesExternalSelectionWithoutChangingExplicitLocalOrAPI]' started.
+Test Case '-[GenieMacTests.CodexTranslationTests testCodexDefaultMatchesExternalSelectionWithoutChangingExplicitLocalOrAPI]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.CodexTranslationTests testFailureAndIncompleteOrToolOutputNeverBecomeTranslations]' started.
+Test Case '-[GenieMacTests.CodexTranslationTests testFailureAndIncompleteOrToolOutputNeverBecomeTranslations]' passed (0.015 seconds).
+Test Case '-[GenieMacTests.CodexTranslationTests testIsolationModelPromptAndOwnedTemporaryDirectoryCleanup]' started.
+Test Case '-[GenieMacTests.CodexTranslationTests testIsolationModelPromptAndOwnedTemporaryDirectoryCleanup]' passed (0.001 seconds).
+Test Case '-[GenieMacTests.CodexTranslationTests testLongCodexTranslationPreservesAllChunksAndNeverUsesHTTPConfiguration]' started.
+Test Case '-[GenieMacTests.CodexTranslationTests testLongCodexTranslationPreservesAllChunksAndNeverUsesHTTPConfiguration]' passed (0.010 seconds).
+Test Case '-[GenieMacTests.CodexTranslationTests testSharedPermitSerializesClientsAndCancelledQueuedTranslationNeverStarts]' started.
+Test Case '-[GenieMacTests.CodexTranslationTests testSharedPermitSerializesClientsAndCancelledQueuedTranslationNeverStarts]' passed (0.014 seconds).
+Test Suite 'CodexTranslationTests' passed at 2026-10-02 02:35:50.276.
+	 Executed 5 tests, with 0 failures (0 unexpected) in 0.040 (0.041) seconds
+Test Suite 'ContinuousSurfaceTests' started at 2026-10-02 02:35:50.276.
+Test Case '-[GenieMacTests.ContinuousSurfaceTests testAckAndRejection]' started.
+Test Case '-[GenieMacTests.ContinuousSurfaceTests testAckAndRejection]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.ContinuousSurfaceTests testCancelledResultShrinksAfterItsHoldButNotWhileHovered]' started.
+Test Case '-[GenieMacTests.ContinuousSurfaceTests testCancelledResultShrinksAfterItsHoldButNotWhileHovered]' passed (6.708 seconds).
+Test Case '-[GenieMacTests.ContinuousSurfaceTests testCompositionOrder]' started.
+Test Case '-[GenieMacTests.ContinuousSurfaceTests testCompositionOrder]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.ContinuousSurfaceTests testOneResultDoesNotEraseOtherRunningTasks]' started.
+Test Case '-[GenieMacTests.ContinuousSurfaceTests testOneResultDoesNotEraseOtherRunningTasks]' passed (0.001 seconds).
+Test Case '-[GenieMacTests.ContinuousSurfaceTests testResultHoldPolicy]' started.
+Test Case '-[GenieMacTests.ContinuousSurfaceTests testResultHoldPolicy]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.ContinuousSurfaceTests testStaleAndLateEventsAreDropped]' started.
+Test Case '-[GenieMacTests.ContinuousSurfaceTests testStaleAndLateEventsAreDropped]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.ContinuousSurfaceTests testSucceededWithoutArtifactIsNotShownAsComplete]' started.
+Test Case '-[GenieMacTests.ContinuousSurfaceTests testSucceededWithoutArtifactIsNotShownAsComplete]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.ContinuousSurfaceTests testTransactionStopUsesItsOwnExplanationWithoutRetry]' started.
+Test Case '-[GenieMacTests.ContinuousSurfaceTests testTransactionStopUsesItsOwnExplanationWithoutRetry]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.ContinuousSurfaceTests testUnknownTransactionTerminalDoesNotOfferRepeatSubmission]' started.
+Test Case '-[GenieMacTests.ContinuousSurfaceTests testUnknownTransactionTerminalDoesNotOfferRepeatSubmission]' passed (0.000 seconds).
+Test Suite 'ContinuousSurfaceTests' passed at 2026-10-02 02:35:56.987.
+	 Executed 9 tests, with 0 failures (0 unexpected) in 6.710 (6.711) seconds
+Test Suite 'MeetingTranslationHTTPTests' started at 2026-10-02 02:35:56.987.
+Test Case '-[GenieMacTests.MeetingTranslationHTTPTests testAlreadyEnglishDoesNotCallTheModelOrRewriteText]' started.
+Test Case '-[GenieMacTests.MeetingTranslationHTTPTests testAlreadyEnglishDoesNotCallTheModelOrRewriteText]' passed (0.010 seconds).
+Test Case '-[GenieMacTests.MeetingTranslationHTTPTests testLongUtterancePreservesTailAndCannotInvokeTools]' started.
+Test Case '-[GenieMacTests.MeetingTranslationHTTPTests testLongUtterancePreservesTailAndCannotInvokeTools]' passed (0.012 seconds).
+Test Case '-[GenieMacTests.MeetingTranslationHTTPTests testRetryOfLongUtteranceDoesNotResendSuccessfulChunks]' started.
+Test Case '-[GenieMacTests.MeetingTranslationHTTPTests testRetryOfLongUtteranceDoesNotResendSuccessfulChunks]' passed (0.008 seconds).
+Test Case '-[GenieMacTests.MeetingTranslationHTTPTests testServiceErrorAndRedirectAreNotSuccessfulTranslation]' started.
+Test Case '-[GenieMacTests.MeetingTranslationHTTPTests testServiceErrorAndRedirectAreNotSuccessfulTranslation]' passed (0.003 seconds).
+Test Suite 'MeetingTranslationHTTPTests' passed at 2026-10-02 02:35:57.020.
+	 Executed 4 tests, with 0 failures (0 unexpected) in 0.032 (0.033) seconds
+Test Suite 'MeetingTranslationTests' started at 2026-10-02 02:35:57.020.
+Test Case '-[GenieMacTests.MeetingTranslationTests testAutoOffRetainsSubmittedResultButDoesNotStartBacklog]' started.
+Test Case '-[GenieMacTests.MeetingTranslationTests testAutoOffRetainsSubmittedResultButDoesNotStartBacklog]' passed (0.033 seconds).
+Test Case '-[GenieMacTests.MeetingTranslationTests testEmptyTranslationIsAnErrorNotSuccess]' started.
+Test Case '-[GenieMacTests.MeetingTranslationTests testEmptyTranslationIsAnErrorNotSuccess]' passed (0.007 seconds).
+Test Case '-[GenieMacTests.MeetingTranslationTests testEndpointRulesPreventAccidentalExternalLocalTranslation]' started.
+Test Case '-[GenieMacTests.MeetingTranslationTests testEndpointRulesPreventAccidentalExternalLocalTranslation]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.MeetingTranslationTests testEngineSwitchDoesNotMixResults]' started.
+Test Case '-[GenieMacTests.MeetingTranslationTests testEngineSwitchDoesNotMixResults]' passed (0.014 seconds).
+Test Case '-[GenieMacTests.MeetingTranslationTests testLanguageSwitchFinishesOneRequestAndReusesItsPaidResult]' started.
+Test Case '-[GenieMacTests.MeetingTranslationTests testLanguageSwitchFinishesOneRequestAndReusesItsPaidResult]' passed (0.020 seconds).
+Test Case '-[GenieMacTests.MeetingTranslationTests testMalformedTruncatedAndEmptyResponsesFailClosed]' started.
+Test Case '-[GenieMacTests.MeetingTranslationTests testMalformedTruncatedAndEmptyResponsesFailClosed]' passed (0.001 seconds).
+Test Case '-[GenieMacTests.MeetingTranslationTests testOutputLimitMatchesDirectOpenAIAndLocalProtocol]' started.
+Test Case '-[GenieMacTests.MeetingTranslationTests testOutputLimitMatchesDirectOpenAIAndLocalProtocol]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.MeetingTranslationTests testRepeatedSelectionDoesNotAutomaticallyRetryFailure]' started.
+Test Case '-[GenieMacTests.MeetingTranslationTests testRepeatedSelectionDoesNotAutomaticallyRetryFailure]' passed (0.013 seconds).
+Test Case '-[GenieMacTests.MeetingTranslationTests testRetryKeepsCompletedRowsAndProcessesOnlyBacklog]' started.
+Test Case '-[GenieMacTests.MeetingTranslationTests testRetryKeepsCompletedRowsAndProcessesOnlyBacklog]' passed (0.013 seconds).
+Test Case '-[GenieMacTests.MeetingTranslationTests testSelectBeforeSpeechThenIncrementalFinals]' started.
+Test Case '-[GenieMacTests.MeetingTranslationTests testSelectBeforeSpeechThenIncrementalFinals]' passed (0.014 seconds).
+Test Suite 'MeetingTranslationTests' passed at 2026-10-02 02:35:57.135.
+	 Executed 10 tests, with 0 failures (0 unexpected) in 0.115 (0.116) seconds
+Test Suite 'TaskOutcomeTests' started at 2026-10-02 02:35:57.135.
+Test Case '-[GenieMacTests.TaskOutcomeTests testAtomicSaveRollsBackIfResultCannotBeSaved]' started.
+Test Case '-[GenieMacTests.TaskOutcomeTests testAtomicSaveRollsBackIfResultCannotBeSaved]' passed (0.001 seconds).
+Test Case '-[GenieMacTests.TaskOutcomeTests testBackendFailureCancellationAndEmptyOutputAreNeverSuccess]' started.
+Test Case '-[GenieMacTests.TaskOutcomeTests testBackendFailureCancellationAndEmptyOutputAreNeverSuccess]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.TaskOutcomeTests testCancellationEventUsesStructuredUnknownEvidenceAndKeepsOrdinaryDraftBehavior]' started.
+Test Case '-[GenieMacTests.TaskOutcomeTests testCancellationEventUsesStructuredUnknownEvidenceAndKeepsOrdinaryDraftBehavior]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.TaskOutcomeTests testCancelledTransactionWithUnknownReceiptIsNotPresentedAsCancelledOrder]' started.
+Test Case '-[GenieMacTests.TaskOutcomeTests testCancelledTransactionWithUnknownReceiptIsNotPresentedAsCancelledOrder]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.TaskOutcomeTests testClarificationIsNotReportedAsACompletedArtifact]' started.
+Test Case '-[GenieMacTests.TaskOutcomeTests testClarificationIsNotReportedAsACompletedArtifact]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.TaskOutcomeTests testEditedDocumentPersistsWithoutChangingOriginalOrIdentity]' started.
+Test Case '-[GenieMacTests.TaskOutcomeTests testEditedDocumentPersistsWithoutChangingOriginalOrIdentity]' passed (0.011 seconds).
+Test Case '-[GenieMacTests.TaskOutcomeTests testFailedUpdateKeepsResultUntilLocalSaveCanRecover]' started.
+Test Case '-[GenieMacTests.TaskOutcomeTests testFailedUpdateKeepsResultUntilLocalSaveCanRecover]' passed (0.001 seconds).
+Test Case '-[GenieMacTests.TaskOutcomeTests testLegacyDatabaseMigratesWithoutRemovingHistory]' started.
+Test Case '-[GenieMacTests.TaskOutcomeTests testLegacyDatabaseMigratesWithoutRemovingHistory]' passed (0.001 seconds).
+Test Case '-[GenieMacTests.TaskOutcomeTests testMissingResultCannotUnlockStoppedOrderAndReadFailureKeepsWarning]' started.
+Test Case '-[GenieMacTests.TaskOutcomeTests testMissingResultCannotUnlockStoppedOrderAndReadFailureKeepsWarning]' passed (0.001 seconds).
+Test Case '-[GenieMacTests.TaskOutcomeTests testOlderRecordWithoutEditsStillDecodes]' started.
+Test Case '-[GenieMacTests.TaskOutcomeTests testOlderRecordWithoutEditsStillDecodes]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.TaskOutcomeTests testOnlyKnownUnfinishedJobsCanBeRefreshed]' started.
+Test Case '-[GenieMacTests.TaskOutcomeTests testOnlyKnownUnfinishedJobsCanBeRefreshed]' passed (0.000 seconds).
+Test Case '-[GenieMacTests.TaskOutcomeTests testReceiptIdentitySurvivesRestartAndEnablesReadOnlyRecovery]' started.
+Test Case '-[GenieMacTests.TaskOutcomeTests testReceiptIdentitySurvivesRestartAndEnablesReadOnlyRecovery]' passed (0.009 seconds).
+Test Case '-[GenieMacTests.TaskOutcomeTests testRequestAndResultSurviveRestartAndExportWithoutModel]' started.
+Test Case '-[GenieMacTests.TaskOutcomeTests testRequestAndResultSurviveRestartAndExportWithoutModel]' passed (0.007 seconds).
+Test Case '-[GenieMacTests.TaskOutcomeTests testSavedTransactionKindSurvivesMissingContextAndFailedRead]' started.
+Test Case '-[GenieMacTests.TaskOutcomeTests testSavedTransactionKindSurvivesMissingContextAndFailedRead]' passed (0.001 seconds).
+Test Case '-[GenieMacTests.TaskOutcomeTests testUnknownTransactionStopPersistsAndLateRunningReadCannotEraseIt]' started.
+Test Case '-[GenieMacTests.TaskOutcomeTests testUnknownTransactionStopPersistsAndLateRunningReadCannotEraseIt]' passed (0.000 seconds).
+Test Suite 'TaskOutcomeTests' passed at 2026-10-02 02:35:57.170.
+	 Executed 15 tests, with 0 failures (0 unexpected) in 0.033 (0.034) seconds
+Test Suite 'genie-macosPackageTests.xctest' passed at 2026-10-02 02:35:57.170.
+	 Executed 66 tests, with 0 failures (0 unexpected) in 7.314 (7.319) seconds
+Test Suite 'Selected tests' passed at 2026-10-02 02:35:57.170.
+	 Executed 66 tests, with 0 failures (0 unexpected) in 7.314 (7.321) seconds
+◇ Test run started.
+↳ Testing Library Version: 1902
+↳ Target Platform: arm64e-apple-macos14.0
+✔ Test run with 0 tests in 0 suites passed after 0.001 seconds.

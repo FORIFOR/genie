@@ -17,12 +17,15 @@
  */
 import {
   GenieError,
+  canonicalSha256,
+  isOrcaMutation,
   looksLikeSecretName,
   looksLikeSecretValue,
   stateFromHeartbeat,
   uuidv7,
 } from '@genie/contracts';
-import { withTenant, type DbHandle } from '@genie/db';
+import { sql } from 'kysely';
+import { isTransactionAuthorizationApprovalActive, withTenant, type DbHandle } from '@genie/db';
 
 /**
  * 承認された事実。cloud が発行し、**端末が使う前にもう一度確かめる。**
@@ -37,6 +40,7 @@ export interface ApprovalProof {
   readonly decidedBy: string;
   readonly decidedAt: string;
   readonly expiresAt: string;
+  readonly inputsHash?: string;
 }
 
 export interface HostStepRequest {
@@ -56,6 +60,23 @@ export interface HostStepRequest {
   readonly expiresAt: string;
 }
 
+export interface OrcaSupervisionJob {
+  readonly requestId: string;
+  readonly taskId: string;
+  readonly path: string;
+  readonly agent: 'claude' | 'codex';
+  readonly fallbackAgent: 'claude' | 'codex';
+  readonly prompt: string;
+  readonly terminal: string;
+  readonly approvalExpiresAt: string;
+  readonly switchingSince: string | null;
+}
+
+export type OrcaSupervisionOutcome =
+  | { readonly state: 'finished' }
+  | { readonly state: 'blocked' | 'uncertain'; readonly reason: string }
+  | { readonly state: 'switched'; readonly terminal: string; readonly agent: 'claude' | 'codex' };
+
 export interface BridgeDeps {
   readonly db: DbHandle;
   readonly now?: () => Date;
@@ -71,6 +92,13 @@ export interface BridgeDeps {
  */
 export const DEFAULT_REQUEST_TTL_MS = 15 * 60_000;
 
+const EXECUTABLE_TASK_STATUSES = [
+  'PENDING',
+  'RUNNING',
+  'WAITING_APPROVAL',
+  'PAUSED_HOST_OFFLINE',
+] as const;
+
 interface Row {
   id: string;
   task_id: string;
@@ -85,6 +113,49 @@ interface Row {
   error: unknown;
   created_at: Date;
   expires_at: Date;
+}
+
+function jsonRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function orcaJob(
+  row: Row & { completed_at: Date | null },
+  includeSettled = false,
+): OrcaSupervisionJob | null {
+  if (row.tool_id !== 'coding.orca.launch' || row.status !== 'DONE') return null;
+  const args = jsonRecord(row.args),
+    result = jsonRecord(row.result),
+    proof = jsonRecord(row.approval);
+  const supervision = jsonRecord(result['supervision']);
+  if (!includeSettled && supervision['state'] && supervision['state'] !== 'switching') return null;
+  if (
+    (args['agent'] !== 'claude' && args['agent'] !== 'codex') ||
+    (args['fallback_agent'] !== 'claude' && args['fallback_agent'] !== 'codex') ||
+    args['agent'] === args['fallback_agent'] ||
+    result['agent'] !== args['agent'] ||
+    result['state'] !== 'launched' ||
+    typeof args['path'] !== 'string' ||
+    typeof args['prompt'] !== 'string' ||
+    typeof result['terminal'] !== 'string' ||
+    result['failover'] ||
+    typeof proof['expiresAt'] !== 'string' ||
+    !row.completed_at
+  )
+    return null;
+  return {
+    requestId: row.id,
+    taskId: row.task_id,
+    path: args['path'],
+    agent: args['agent'],
+    fallbackAgent: args['fallback_agent'],
+    prompt: args['prompt'],
+    terminal: result['terminal'],
+    approvalExpiresAt: proof['expiresAt'],
+    switchingSince: typeof supervision['at'] === 'string' ? supervision['at'] : null,
+  };
 }
 
 function toRequest(row: Row): HostStepRequest {
@@ -117,13 +188,14 @@ export class HostBridge {
   }
 
   /** いま仕事を渡せる端末があるか。**無ければ止める理由になる。** */
-  async hasOnlineHost(tenantId: string, userId: string): Promise<boolean> {
+  async hasOnlineHost(tenantId: string, userId: string, hostId?: string): Promise<boolean> {
     const now = this.#now().getTime();
     const rows = await withTenant(this.#db, tenantId, (tx) =>
       tx
         .selectFrom('agent_hosts')
         .select(['last_seen_at', 'models'])
         .where('user_id', '=', userId)
+        .$if(hostId !== undefined, (qb) => qb.where('id', '=', hostId!))
         .execute(),
     );
     return rows.some(
@@ -143,6 +215,7 @@ export class HostBridge {
    */
   async request(input: {
     tenantId: string;
+    userId?: string;
     taskId: string;
     stepIndex: number;
     toolId: string;
@@ -158,9 +231,52 @@ export class HostBridge {
     requestKey?: string;
   }): Promise<HostStepRequest> {
     assertNoCredentials(input.args);
+    const orcaOperation = input.toolId.startsWith('coding.orca.');
+    const orcaMutation = isOrcaMutation(input.toolId);
+    const targetHost = input.args['host_id'];
+    if (orcaOperation && (!input.userId || typeof targetHost !== 'string')) {
+      throw new GenieError('host.capability_denied', 'Orca operation needs a target host');
+    }
+    if (
+      orcaMutation &&
+      (!input.userId ||
+        typeof targetHost !== 'string' ||
+        input.approval?.operationId !== input.toolId ||
+        input.approval.decision !== 'APPROVED' ||
+        input.approval.inputsHash !== (await canonicalSha256(input.args)) ||
+        Date.parse(input.approval.expiresAt) <= this.#now().getTime())
+    ) {
+      throw new GenieError(
+        'host.capability_denied',
+        'Orca operation needs a current approval bound to this host and input',
+      );
+    }
     const at = this.#now();
 
     const row = await withTenant(this.#db, input.tenantId, async (tx) => {
+      // Task cancellation takes the same row lock. A retried activity cannot enqueue
+      // another input after the cancellation has committed.
+      const task = await tx
+        .selectFrom('tasks')
+        .select(['status', 'created_by'])
+        .where('id', '=', input.taskId)
+        .forUpdate()
+        .executeTakeFirst();
+      if (!task || !(EXECUTABLE_TASK_STATUSES as readonly string[]).includes(task.status)) {
+        throw new GenieError('common.conflict', 'this task no longer accepts host work');
+      }
+      if (orcaOperation) {
+        if (task.created_by !== input.userId)
+          throw new GenieError('host.capability_denied', 'task owner mismatch');
+        const host = await tx
+          .selectFrom('agent_hosts')
+          .select('id')
+          .where('id', '=', targetHost as string)
+          .where('user_id', '=', input.userId!)
+          .executeTakeFirst();
+        if (!host)
+          throw new GenieError('host.capability_denied', 'target host is not owned by this user');
+      }
       const existing = await tx
         .selectFrom('host_step_requests')
         .selectAll()
@@ -205,6 +321,14 @@ export class HostBridge {
         .selectAll()
         .where('status', '=', 'PENDING')
         .where('expires_at', '>', at)
+        .where(
+          sql<boolean>`(tool_id not like 'coding.orca.%' or args->>'host_id' = ${input.hostId})`,
+        )
+        .where(
+          'task_id',
+          'in',
+          tx.selectFrom('tasks').select('id').where('status', 'in', EXECUTABLE_TASK_STATUSES),
+        )
         .orderBy('created_at', 'asc')
         .limit(1)
         .forUpdate()
@@ -220,6 +344,73 @@ export class HostBridge {
         .executeTakeFirstOrThrow();
     });
     return row ? toRequest(row as Row) : null;
+  }
+
+  /** Read-only revocation check, including a claimed step waiting on native consent. */
+  async executionAllowed(input: {
+    tenantId: string;
+    userId: string;
+    requestId: string;
+    hostId: string;
+  }): Promise<boolean> {
+    return withTenant(this.#db, input.tenantId, async (tx) => {
+      const row = await tx
+        .selectFrom('host_step_requests')
+        .innerJoin('tasks', 'tasks.id', 'host_step_requests.task_id')
+        .innerJoin('agent_hosts', 'agent_hosts.id', 'host_step_requests.host_id')
+        .select([
+          'host_step_requests.id',
+          'host_step_requests.tool_id',
+          'host_step_requests.args',
+          'host_step_requests.approval',
+          'host_step_requests.task_id',
+          'host_step_requests.step_index',
+        ])
+        .where('host_step_requests.id', '=', input.requestId)
+        .where('host_step_requests.host_id', '=', input.hostId)
+        .where('agent_hosts.user_id', '=', input.userId)
+        .where('host_step_requests.status', '=', 'CLAIMED')
+        .where('host_step_requests.expires_at', '>', this.#now())
+        .where('tasks.status', 'in', EXECUTABLE_TASK_STATUSES)
+        .executeTakeFirst();
+      if (!row) return false;
+      if (isOrcaMutation(row.tool_id)) {
+        const proof =
+          row.approval && typeof row.approval === 'object' && !Array.isArray(row.approval)
+            ? (row.approval as Record<string, unknown>)
+            : {};
+        if (
+          proof['operationId'] !== row.tool_id ||
+          proof['decision'] !== 'APPROVED' ||
+          proof['inputsHash'] !== (await canonicalSha256(row.args)) ||
+          typeof proof['approvalId'] !== 'string'
+        )
+          return false;
+        const approved = await tx
+          .selectFrom('approvals')
+          .select(['id', 'status', 'expires_at'])
+          .where('id', '=', proof['approvalId'])
+          .where('task_id', '=', row.task_id)
+          .where('step_index', '=', row.step_index)
+          .executeTakeFirst();
+        return (
+          approved?.status === 'APPROVED' && approved.expires_at.getTime() > this.#now().getTime()
+        );
+      }
+      if (row.tool_id !== 'transaction.submit') return true;
+      const proof =
+        row.approval && typeof row.approval === 'object' && !Array.isArray(row.approval)
+          ? (row.approval as Record<string, unknown>)
+          : {};
+      if (typeof proof['approvalId'] !== 'string') return false;
+      return isTransactionAuthorizationApprovalActive(tx, {
+        approvalId: proof['approvalId'],
+        now: this.#now(),
+        inputsHash: await canonicalSha256(row.args),
+        taskId: row.task_id,
+        stepIndex: row.step_index,
+      });
+    });
   }
 
   /**
@@ -247,10 +438,12 @@ export class HostBridge {
     requestId: string;
     hostId: string;
     error: { code: string; message: string };
+    result?: unknown;
   }): Promise<void> {
     await this.#settle(input.tenantId, input.requestId, input.hostId, {
       status: 'FAILED',
       error: JSON.stringify(input.error),
+      result: JSON.stringify(input.result ?? null),
     });
   }
 
@@ -289,6 +482,206 @@ export class HostBridge {
         .executeTakeFirst(),
     );
     return row ? toRequest(row as Row) : null;
+  }
+
+  /** Durable pending turns: the host can resume observation after a restart. */
+  async listOrcaSupervisions(input: {
+    tenantId: string;
+    userId: string;
+    hostId: string;
+  }): Promise<OrcaSupervisionJob[]> {
+    const rows = await withTenant(this.#db, input.tenantId, (tx) =>
+      tx
+        .selectFrom('host_step_requests')
+        .innerJoin('tasks', 'tasks.id', 'host_step_requests.task_id')
+        .innerJoin('agent_hosts', 'agent_hosts.id', 'host_step_requests.host_id')
+        .selectAll('host_step_requests')
+        .where('host_step_requests.host_id', '=', input.hostId)
+        .where('agent_hosts.user_id', '=', input.userId)
+        .where('tasks.created_by', '=', input.userId)
+        .where('host_step_requests.tool_id', '=', 'coding.orca.launch')
+        .where('host_step_requests.status', '=', 'DONE')
+        .where(
+          'host_step_requests.completed_at',
+          '>',
+          new Date(this.#now().getTime() - 25 * 60 * 60_000),
+        )
+        .orderBy('host_step_requests.completed_at', 'asc')
+        .limit(100)
+        .execute(),
+    );
+    return rows.flatMap((row) => {
+      const job = orcaJob(row as Row & { completed_at: Date | null });
+      return job ? [job] : [];
+    });
+  }
+
+  async getOrcaSupervision(input: {
+    tenantId: string;
+    userId: string;
+    taskId: string;
+  }): Promise<unknown | null> {
+    const row = await withTenant(this.#db, input.tenantId, (tx) =>
+      tx
+        .selectFrom('host_step_requests')
+        .innerJoin('tasks', 'tasks.id', 'host_step_requests.task_id')
+        .select(['host_step_requests.args', 'host_step_requests.result'])
+        .where('host_step_requests.task_id', '=', input.taskId)
+        .where('tasks.created_by', '=', input.userId)
+        .where('host_step_requests.tool_id', '=', 'coding.orca.launch')
+        .where('host_step_requests.status', '=', 'DONE')
+        .orderBy('host_step_requests.completed_at', 'desc')
+        .executeTakeFirst(),
+    );
+    if (!row) return null;
+    const args = jsonRecord(row.args),
+      result = jsonRecord(row.result);
+    if (args['fallback_agent'] !== 'claude' && args['fallback_agent'] !== 'codex') return null;
+    const supervision = jsonRecord(result['supervision']);
+    return {
+      state: supervision['state'] ?? (result['failover'] ? 'switched_before_launch' : 'monitoring'),
+      primary_agent: args['agent'],
+      fallback_agent: args['fallback_agent'],
+      primary_terminal: result['terminal'],
+      ...(supervision['outcome'] ? { outcome: supervision['outcome'] } : {}),
+    };
+  }
+
+  /** Claim the one permitted replacement before touching the original terminal. */
+  async beginOrcaSwitch(input: {
+    tenantId: string;
+    userId: string;
+    hostId: string;
+    requestId: string;
+  }): Promise<boolean> {
+    return withTenant(this.#db, input.tenantId, async (tx) => {
+      const row = await tx
+        .selectFrom('host_step_requests')
+        .innerJoin('tasks', 'tasks.id', 'host_step_requests.task_id')
+        .innerJoin('agent_hosts', 'agent_hosts.id', 'host_step_requests.host_id')
+        .selectAll('host_step_requests')
+        .where('host_step_requests.id', '=', input.requestId)
+        .where('host_step_requests.host_id', '=', input.hostId)
+        .where('agent_hosts.user_id', '=', input.userId)
+        .where('tasks.created_by', '=', input.userId)
+        .forUpdate()
+        .executeTakeFirst();
+      if (!row || !orcaJob(row as Row & { completed_at: Date | null })) return false;
+      const result = jsonRecord(row.result),
+        proof = jsonRecord(row.approval);
+      if (jsonRecord(result['supervision'])['state']) return false;
+      if (
+        proof['operationId'] !== 'coding.orca.launch' ||
+        proof['decision'] !== 'APPROVED' ||
+        proof['inputsHash'] !== (await canonicalSha256(row.args)) ||
+        typeof proof['approvalId'] !== 'string'
+      )
+        return false;
+      const approved = await tx
+        .selectFrom('approvals')
+        .select(['status', 'expires_at'])
+        .where('id', '=', proof['approvalId'])
+        .where('task_id', '=', row.task_id)
+        .where('step_index', '=', row.step_index)
+        .executeTakeFirst();
+      if (approved?.status !== 'APPROVED' || approved.expires_at <= this.#now()) return false;
+      await tx
+        .updateTable('host_step_requests')
+        .set({
+          result: JSON.stringify({
+            ...result,
+            supervision: { state: 'switching', at: this.#now().toISOString() },
+          }),
+        })
+        .where('id', '=', row.id)
+        .execute();
+      return true;
+    });
+  }
+
+  /** Settle once; repeat reports of the same outcome are safe after a lost response. */
+  async finishOrcaSupervision(input: {
+    tenantId: string;
+    userId: string;
+    hostId: string;
+    requestId: string;
+    outcome: OrcaSupervisionOutcome;
+  }): Promise<{ taskId: string; userId: string; outcome: OrcaSupervisionOutcome }> {
+    return withTenant(this.#db, input.tenantId, async (tx) => {
+      const row = await tx
+        .selectFrom('host_step_requests')
+        .innerJoin('tasks', 'tasks.id', 'host_step_requests.task_id')
+        .innerJoin('agent_hosts', 'agent_hosts.id', 'host_step_requests.host_id')
+        .selectAll('host_step_requests')
+        .select('tasks.created_by')
+        .where('host_step_requests.id', '=', input.requestId)
+        .where('host_step_requests.host_id', '=', input.hostId)
+        .where('agent_hosts.user_id', '=', input.userId)
+        .where('tasks.created_by', '=', input.userId)
+        .forUpdate()
+        .executeTakeFirst();
+      const job = row ? orcaJob(row as Row & { completed_at: Date | null }, true) : null;
+      if (!row || !job)
+        throw new GenieError('common.conflict', 'Orca supervision is not available');
+      if (
+        input.outcome.state === 'switched' &&
+        (input.outcome.agent !== job.fallbackAgent ||
+          input.outcome.terminal === job.terminal ||
+          !/^term_[a-f\d-]{16,80}$/i.test(input.outcome.terminal))
+      )
+        throw new GenieError('common.validation_failed', 'invalid Orca replacement identity');
+      const result = jsonRecord(row.result),
+        previous = jsonRecord(result['supervision']);
+      if (previous['state'] && previous['state'] !== 'switching') {
+        if ((await canonicalSha256(previous['outcome'])) !== (await canonicalSha256(input.outcome)))
+          throw new GenieError('common.conflict', 'Orca supervision has a different outcome');
+        return { taskId: row.task_id, userId: row.created_by, outcome: input.outcome };
+      }
+      if (input.outcome.state === 'switched' && previous['state'] !== 'switching')
+        throw new GenieError('common.conflict', 'Orca switch was not claimed');
+      await tx
+        .updateTable('host_step_requests')
+        .set({
+          result: JSON.stringify({
+            ...result,
+            supervision: {
+              state: input.outcome.state,
+              at: this.#now().toISOString(),
+              outcome: input.outcome,
+            },
+          }),
+        })
+        .where('id', '=', row.id)
+        .execute();
+      return { taskId: row.task_id, userId: row.created_by, outcome: input.outcome };
+    });
+  }
+
+  /**
+   * 止められた仕事の、**まだ誰も取っていない**依頼を取り下げる。
+   *
+   * 取り下げたら true。待っている側はそこで待ちを終えられる。
+   * 止めた後の依頼は `claimNext` がもう渡さないので、待っても決着しない。
+   *
+   * **取られた依頼には触らない。**端末は既に走らせているかもしれず、
+   * その結果（送信済み・結果不明）は端末だけが言える。
+   * 条件は 1 文の中で確かめる。同時に取りに来た端末と、取り下げが両方通ることはない。
+   */
+  async withdrawUnclaimed(tenantId: string, requestId: string): Promise<boolean> {
+    const withdrawn = await withTenant(this.#db, tenantId, (tx) =>
+      tx
+        .deleteFrom('host_step_requests')
+        .where('id', '=', requestId)
+        .where('status', '=', 'PENDING')
+        .where(
+          'task_id',
+          'not in',
+          tx.selectFrom('tasks').select('id').where('status', 'in', EXECUTABLE_TASK_STATUSES),
+        )
+        .returning('id')
+        .executeTakeFirst(),
+    );
+    return withdrawn !== undefined;
   }
 
   /**

@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import GenieCore
 
@@ -15,7 +16,8 @@ final class ConnectorState: ObservableObject {
         var id: String { statusKey }
         var statusKey: String { readOnly ? pluginId : "\(pluginId)#\(connectorId)" }
     }
-    enum Status: Equatable { case connected, disconnected, cannotConnect, connecting, checking, disconnecting, failed(String) }
+    /// `expired`: 提供者が更新を断った（host が資格情報に印を付けた）。つなぎ直すまで読めない。
+    enum Status: Equatable { case connected, expired, disconnected, cannotConnect, connecting, checking, disconnecting, failed(String) }
     struct Credential: Codable {
         let clientId: String
         let accessToken: String
@@ -26,6 +28,10 @@ final class ConnectorState: ObservableObject {
         var accountLabel: String?
         var usable: Bool {
             !accessToken.isEmpty && (refreshToken?.isEmpty == false || expiresAt.flatMap { ISO8601DateFormatter().date(from: $0) }.map { $0 > Date() } == true)
+        }
+        /// 接続の指紋。host（`credentialFingerprint`）と同じ計算。「更新を断られた」がこの接続のことかを見分ける。
+        var fingerprint: String {
+            String(SHA256.hash(data: Data((refreshToken ?? accessToken).utf8)).map { String(format: "%02x", $0) }.joined().prefix(32))
         }
     }
     struct Record: Decodable {
@@ -45,6 +51,13 @@ final class ConnectorState: ObservableObject {
         var remove: (String, String, Source) async throws -> Void
         var exchange: (String, String, String?, ConnectorFlow.Pending, String) async throws -> Credential
         var account: (String, String) async -> String?
+        /// host が「提供者に更新を断られた」と記録した接続の指紋。無ければ nil。
+        var rejected: (Source) -> String? = { _ in nil }
+        /// 読めなくなった項目を、本人の「つなぎ直す」で作り直す。無ければ通常の保存だけ。
+        var replaceLocked: ((Source, String) throws -> Void)? = nil
+        /// gateway への呼び出し（LINE からのつなぎ直し）。答えの本文を返す。届かなければ nil。
+        var remote: (String, String, String, String, [String: Any]?) async -> Data? = { _, _, _, _, _ in nil }
+        var startsRemoteLoop = false
     }
     @Published var connected: Set<String> = []
     @Published private(set) var status: [String: Status] = [:]
@@ -62,10 +75,13 @@ final class ConnectorState: ObservableObject {
     private var work: Task<Void, Never>?
     private var activeSources: [Source] = []
     private var injectedSources: Bool
+    /// 検査で渡す書く接続（無ければ組み込みのプラグインの宣言から引く）
+    private var injectedActions: [Source]?
 
-    init(sources: [Source]? = nil, dependencies: Dependencies? = nil) {
+    init(sources: [Source]? = nil, actions: [Source]? = nil, dependencies: Dependencies? = nil) {
         deps = dependencies ?? Self.liveDependencies()
         injectedSources = sources != nil
+        injectedActions = actions
         if let sources { self.sources = sources }
         reloadSources()
     }
@@ -114,6 +130,7 @@ final class ConnectorState: ObservableObject {
     func source(named app: String) -> Source? { sources.first { $0.name == app } }
     func status(of app: String) -> Status? { source(named: app).flatMap { status[$0.statusKey] } }
     func actionsSource(pluginId: String, connectorId: String) -> Source? {
+        if let injectedActions { return injectedActions.first { $0.pluginId == pluginId && $0.connectorId == connectorId } }
         let store = PluginRuntimeStore.shared; store.load()
         guard let m = store.manifests.first(where: { $0.id == pluginId }), let c = m.connectors.first(where: { $0.id == connectorId && !$0.readOnly }) else { return nil }
         return Source(pluginId: pluginId, name: m.name, purpose: c.purpose ?? "送る・動かす", provider: c.provider, connectorId: c.id, scopes: c.scopes, readOnly: false)
@@ -139,6 +156,7 @@ final class ConnectorState: ObservableObject {
             sources.forEach { update($0, .disconnected) }
         }
         self.base = base; self.token = token; refresh()
+        if deps.startsRemoteLoop { startRemoteReconnects() }
     }
     func refresh() {
         guard activeProvider == nil else { return }
@@ -153,7 +171,12 @@ final class ConnectorState: ObservableObject {
             do {
                 let rows = try await deps.list(base, token, s)
                 guard attempt == generation, activeProvider == nil, !Task.isCancelled else { return }
-                let local = try deps.read(s).flatMap { try JSONDecoder().decode(Credential.self, from: Data($0.utf8)) }
+                let local: Credential?
+                do { local = try deps.read(s).flatMap { try JSONDecoder().decode(Credential.self, from: Data($0.utf8)) } }
+                catch KeychainStore.KeychainError.accessDenied {
+                    // 項目はあるのにアプリが読めない（host の書き戻しで partition が変わった）。つなぎ直すしかない。
+                    update(s, canConnect(s.name) ? .expired : .cannotConnect); continue
+                }
                 let recorded = rows.first { $0.connectorId == s.connectorId && $0.state == "CONNECTED" }
                 let expected = Self.connectionClientId(provider: s.provider, readOnly: s.readOnly, env: deps.configuration())
                 let valid = recorded.map { r in
@@ -161,7 +184,15 @@ final class ConnectorState: ObservableObject {
                 } ?? false
                 if valid, let local, local.usable, local.clientId == expected, Self.permits(s, granted: local.grantedScopes),
                    Self.scopesSafe(local.grantedScopes, for: sources.filter { $0.provider == s.provider }) {
-                    update(s, .connected); accounts[s.provider] = local.accountLabel ?? recorded?.accountLabel
+                    // 保存はあっても、提供者が更新を断っていれば「接続済み」とは言わない（2026-10-19、7 日で失効した Gmail）。
+                    let refused = deps.rejected(s) == local.fingerprint
+                    update(s, refused ? .expired : .connected)
+                    // 本人の LINE へ。host は断られたときにしか知らせず、次に更新を試すのが翌日のこともある（同じ接続では gateway が 1 回にまとめる）
+                    if refused {
+                        _ = await deps.remote(base, token, "POST", "/v1/connector-reconnects/rejected",
+                            ["plugin_id": s.pluginId, "connector_id": s.connectorId, "fingerprint": local.fingerprint])
+                    }
+                    accounts[s.provider] = local.accountLabel ?? recorded?.accountLabel
                 } else { update(s, canConnect(s.name) ? .disconnected : .cannotConnect) }
             } catch {
                 guard attempt == generation, !Task.isCancelled else { return }
@@ -169,6 +200,75 @@ final class ConnectorState: ObservableObject {
             }
         }
     }
+    // MARK: LINE からのつなぎ直し（services/api-gateway/src/connector-reconnect.ts）
+    // 保存はアプリだけができる（host からキーチェーンへ書くとアプリが読めなくなる）ので、ここで受ける。
+
+    private struct RemoteItem: Decodable {
+        let id: String
+        let provider: String
+        let state: String
+        let code: String?
+        let error: String?
+        let callback_state: String?
+        /// 書く接続の許可（例: Google カレンダーに予定を入れる）。無ければ読む接続のつなぎ直し
+        let plugin_id: String?
+        let connector_id: String?
+    }
+    private struct RemoteResponse: Decodable { let items: [RemoteItem] }
+    private var remoteFlows: [String: ConnectorFlow.Pending] = [:]
+    private var remoteLoop: Task<Void, Never>?
+
+    func startRemoteReconnects(interval: Duration = .seconds(10)) {
+        guard remoteLoop == nil else { return }
+        remoteLoop = Task { [weak self] in
+            while !Task.isCancelled {
+                await self?.pollRemoteReconnects()
+                try? await Task.sleep(for: interval)
+            }
+        }
+    }
+
+    func pollRemoteReconnects() async {
+        guard let base, let token,
+              let data = await deps.remote(base, token, "GET", "/v1/connector-reconnects/pending", nil),
+              let items = try? JSONDecoder().decode(RemoteResponse.self, from: data).items else { return }
+        for item in items {
+            // 書く接続の許可は、その接続だけで取る（読む接続の許可をまとめて取り直さない）
+            let list: [Source]
+            if let pluginId = item.plugin_id, let connectorId = item.connector_id {
+                list = actionsSource(pluginId: pluginId, connectorId: connectorId).map { [$0] } ?? []
+            } else {
+                list = sources.filter { $0.provider == item.provider }
+            }
+            let path = "/v1/connector-reconnects/\(item.id)"
+            guard let first = list.first,
+                  let clientId = Self.connectionClientId(provider: first.provider, readOnly: first.readOnly, env: deps.configuration()) else {
+                _ = await deps.remote(base, token, "POST", "\(path)/finished", ["ok": false]); continue
+            }
+            if item.state == "requested" {
+                var scopes = Set(list.flatMap(\.scopes))
+                if first.readOnly { scopes.formUnion(first.provider == "google" ? ["openid", "email"] : ["User.Read"]) }
+                guard let prepared = ConnectorFlow.prepareRemote(provider: first.provider, clientId: clientId, scopes: scopes.sorted()) else {
+                    _ = await deps.remote(base, token, "POST", "\(path)/finished", ["ok": false]); continue
+                }
+                remoteFlows[item.id] = prepared.pending
+                _ = await deps.remote(base, token, "POST", "\(path)/authorize", ["authorize_url": prepared.url])
+            } else if item.state == "code", let pending = remoteFlows.removeValue(forKey: item.id) {
+                let callback = OauthCallback(code: item.code, state: item.callback_state, error: item.error, errorDescription: nil, idToken: nil, displayName: nil)
+                await finish(list: list, callback: callback, pending: pending, clientId: clientId,
+                    secret: ConnectionConfiguration.clientSecret(provider: first.provider, readOnly: first.readOnly, values: deps.configuration()),
+                    base: base, token: token)
+                let ok = list.contains { status[$0.statusKey] == .connected }
+                var body: [String: Any] = ["ok": ok]
+                if ok, let account = accounts[first.provider] { body["account"] = account }
+                _ = await deps.remote(base, token, "POST", "\(path)/finished", body)
+            } else if item.state == "code" {
+                // アプリが手続きの途中で起動し直した。verifier が無いので交換できない
+                _ = await deps.remote(base, token, "POST", "\(path)/finished", ["ok": false])
+            }
+        }
+    }
+
     @discardableResult func connect(_ app: String) -> Bool { source(named: app).map { connect(source: $0) } ?? false }
     @discardableResult func connect(source: Source) -> Bool { begin([source]) }
     @discardableResult func connectProvider(_ provider: String) -> Bool { begin(sources.filter { $0.provider == provider }) }
@@ -228,9 +328,12 @@ final class ConnectorState: ObservableObject {
             credential.accountLabel = await deps.account(first.provider, credential.accessToken)
             guard attempt == generation, !Task.isCancelled else { return }
             for s in accepted {
-                let previous = try deps.read(s)
+                // 読めない古い項目は、戻す先にもならない。本人がつなぎ直しているので作り直す。
+                var locked = false
+                let previous: String?
+                do { previous = try deps.read(s) } catch KeychainStore.KeychainError.accessDenied { previous = nil; locked = true }
                 let text = String(decoding: try JSONEncoder().encode(credential), as: UTF8.self)
-                try deps.write(s, text)
+                if locked, let replace = deps.replaceLocked { try replace(s, text) } else { try deps.write(s, text) }
                 do { try await deps.register(base, token, s, credential) }
                 catch {
                     if let previous { try? deps.write(s, previous) } else { try? deps.delete(s) }

@@ -1,0 +1,37 @@
+{
+  "checkedAt": "2026-09-19T10:05:05.586981+00:00",
+  "baseRevision": "28f89f2636a3b780e813ea902e07d2e4900a6e3f",
+  "environment": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+  "sourceSha256": {
+    "services/conversation/src/service.ts": "d115ef07c321a70e43280830899b88f563a3aa86c55c547b4c8e4d754983e1b1",
+    "services/task/src/service.ts": "4283c52e58a51975f85552e8002e8b6261f7a6a76e706de3c6e7177310da129c",
+    "services/api-gateway/src/routes/conversations.ts": "21466db4c0299514e2f501fd0d1a49047df05eddaebf8f45c8c46ee1f59dbca9",
+    "services/api-gateway/src/server.ts": "4df9a17afda6c0258e0dde2a1dd4c9cb1081f4f14c6c6b5b0e4a8dd81e972ce7",
+    "services/api-gateway/test/support.ts": "9a842f5d324e18fa755cfe1020fdfb06be60fb26168eda4079f778484b60440e",
+    "services/api-gateway/test/conversations-recovery.integration.test.ts": "9b9811fbde7a584f8a33abb31c215f470cd634b947001d83cb599287d7d0a7f2",
+    "infra/db/migrations/20260919090000_conversation_requests.sql": "c035b50d0585df539ce0afc0508e628775eb91a4e49512429193d63ecaf2c7c9",
+    "infra/db/schema.sql": "f75fd78ab852c4a21fea69dcd1b42f27a901abc651faab3f05e8bfe595f57834",
+    "packages/db/src/generated/schema.ts": "ebef93f4e6f99ae01f08077009003170f9da4bd2faaadf238553994cedbb9006",
+    "packages/contracts/src/conversation.ts": "f3b99e51597573403f2cd961f5ff430f1dc4fd8fe4d1098da5a69caa99ee1baa",
+    "core/genie-core/src/api.rs": "c721c532aebf298767e4aff94a68099e632a6691a7c33c8f0ec9b02c8bba78e0",
+    "apps/genie-macos/Sources/GenieMac/Core/TaskRequestRecord.swift": "2dd192838f8482efdccf7a61588ef5f57acdc72883da5e023bf6afc6324e7b5e",
+    "apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift": "675237df5ebbf9919ca89850f74eccd96fc9b23fd02388f2f574422ad9a027bb",
+    "apps/genie-macos/Sources/GenieMac/RecordingWorkspace/GenieCoreBridge.swift": "0fddf212c7a64498bf13b2cbb085ecd004a9328d17cc949d8c0c88f4033907c1",
+    "apps/genie-macos/Tests/GenieMacTests/TaskOutcomeTests.swift": "c1284f508f7aa348b9156823a4d43eddce1c0db408f4b7608af811d9a3d0e18c"
+  },
+  "commands": [
+    {
+      "command": "TEST_DATABASE_URL='postgres://genie_app:genie_app@127.0.0.1:32769/recovery?sslmode=disable' TEST_IDENTITY_DATABASE_URL='postgres://astra_identity:astra_identity@127.0.0.1:32769/recovery?sslmode=disable' pnpm --filter @genie/service-api-gateway test test/conversations-recovery.integration.test.ts",
+      "exitCode": 0,
+      "result": "9 passed; no skips",
+      "log": "recovery-independent-backend.log"
+    },
+    {
+      "command": "cargo test --manifest-path core/genie-core/Cargo.toml receipt_tests",
+      "exitCode": 0,
+      "result": "2 passed; 42 unrelated tests filtered out",
+      "log": "recovery-independent-rust.log"
+    }
+  ],
+  "initialCommandCorrection": "The first pnpm command used nonexistent filter @genie/api-gateway; exit 0 but no projects matched. It is NOT test evidence; retained in recovery-independent-initial-filter.log."
+}

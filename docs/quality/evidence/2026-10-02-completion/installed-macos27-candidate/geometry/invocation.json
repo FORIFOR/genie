@@ -1,0 +1,33 @@
+{
+  "startedAt": "2026-10-01T20:45:02.956426+00:00",
+  "finishedAt": "2026-10-01T20:45:11.305322+00:00",
+  "command": [
+    "/usr/bin/open",
+    "-n",
+    "-W",
+    "--env",
+    "ASTRA_DATA_ROOT=/private/tmp/genie-transactions-20261002/installed-macos27/geometry/data",
+    "--env",
+    "ASTRA_SELFTEST_EXIT_RECEIPT=/private/tmp/genie-transactions-20261002/installed-macos27/geometry/exit.json",
+    "--stdout",
+    "/private/tmp/genie-transactions-20261002/installed-macos27/geometry/stdout.log",
+    "--stderr",
+    "/private/tmp/genie-transactions-20261002/installed-macos27/geometry/stderr.log",
+    "/Applications/Genie.app",
+    "--args",
+    "-astra.transcription.cloudGoogleSTT",
+    "NO",
+    "--selftest",
+    "geometry",
+    "/private/tmp/genie-transactions-20261002/installed-macos27/geometry/snapshots",
+    "--record"
+  ],
+  "openExitCode": 0,
+  "receipt": {
+    "normalExit": true,
+    "schema": 1,
+    "exitCode": 0
+  },
+  "binarySHA256": "2880bc06f89e4a468d8c9c2981fc2916b87265ee0868cedce86fe1348fa3d74e",
+  "remainingNamedAppPids": []
+}

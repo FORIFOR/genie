@@ -1,0 +1,68 @@
+{
+  "recordedAt": "2026-10-01T17:43:43.750022+00:00",
+  "executor": "root",
+  "reviewer": "verification_audit",
+  "classification": "Root-executed tests; reviewer copied and read all three completed logs and matching test source, without rerunning. No independent native UI E2E.",
+  "invocationEvidence": "Root reported serial Swift test execution with --jobs 1; exact complete command line is not embedded in the logs. Isolated cases are identified by full test method and required environment below.",
+  "mainRun": {
+    "file": "native-memory-lifecycle-tests.log",
+    "executedReportedByXCTest": 74,
+    "passed": 72,
+    "skipped": 2,
+    "failures": 0,
+    "suites": [
+      "ApprovalBoundaryTests",
+      "CodexTranslationProcessTests",
+      "CodexTranslationTests",
+      "ContinuousSurfaceTests",
+      "MeetingTranslationHTTPTests",
+      "MeetingTranslationTests",
+      "TaskOutcomeTests"
+    ]
+  },
+  "separateRuns": [
+    {
+      "file": "native-memory-shutdown-test.log",
+      "test": "CodexTranslationProcessTests.testApplicationShutdownEntrypointCleansOwnedChildAndContext",
+      "requiredOptIn": "ASTRA_VERIFY_CODEX_SHUTDOWN=1",
+      "passed": 1,
+      "durationSeconds": 2.209,
+      "scope": "Actual owned fake child that ignores TERM; shutdown kills child and removes private context."
+    },
+    {
+      "file": "native-external-translation-test.log",
+      "test": "CodexTranslationTests.testRealCodexTranslationOnlyWithExplicitOptIn",
+      "requiredOptIn": "ASTRA_VERIFY_CODEX_TRANSLATION=1",
+      "passed": 1,
+      "durationSeconds": 4.903,
+      "configuredModel": "gpt-6-sol",
+      "fictionalInput": "The meeting is Friday at 3 pm.",
+      "assertedOutput": "Japanese contains Friday and either 15:00 or explicit afternoon plus 3:00.",
+      "scope": "Actual Codex translation CLI request; selected model is configured explicitly, not independently attested upstream."
+    }
+  ],
+  "uniqueTestsPassed": 74,
+  "countingNote": "72 passed plus the two previously skipped cases executed separately = 74 unique passing tests; do not count 76. Earlier 66-test run overlaps.",
+  "logs": [
+    {
+      "file": "native-memory-lifecycle-tests.log",
+      "sha256": "01b4f15b484472cbf9c3af998a2989bef2f1e0a380e14049c4043d7f9c71a8db"
+    },
+    {
+      "file": "native-memory-shutdown-test.log",
+      "sha256": "e59b5b7a3676d209c6eb2c053dee8695456e45c6c58d5de2dde3fb5a8db8ba45"
+    },
+    {
+      "file": "native-external-translation-test.log",
+      "sha256": "b9830d79021dc8b8b020aeeb51006239a6de7ed49d8fbd797f36575583d04706"
+    }
+  ],
+  "sourceScope": "AppDelegate signal-hook relocation occurred after unit compilation per root. Current source received separate read-only review; final release package build was still running at this record. No release-build or actual main-app SIGTERM claim.",
+  "limits": [
+    "Not whole-product gate",
+    "Not a live meeting translation quality benchmark",
+    "Not streaming failure reproduction",
+    "No actual main-app Quit/SIGTERM E2E test"
+  ],
+  "releaseFollowUp": "Later root release --jobs 1 package PASS including final AppDelegate signal-hook relocation. See memory-release-candidate.json; actual main-app SIGTERM E2E remains separate."
+}

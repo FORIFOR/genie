@@ -1,0 +1,116 @@
+{
+  "recordedAt": "2026-10-01T17:57:14.897127+00:00",
+  "classification": "Root-operated main-app simulated Stop E2E; implementation author performs read-only saved-evidence inspection, not independent reproduction",
+  "candidate": "uncommitted working tree; release main app PID 85691; related candidate identity in memory-release-candidate.json",
+  "taskId": "01a0f893-8c54-7000-8146-91e582646ef3",
+  "orderKey": "turn:01a0f893-8c48-7000-b585-189830cd4225",
+  "quoteHash": "c01e08e1a3b6e3979226ce51eec26bb81d85f54464726962c4e3acdbb297d7b6",
+  "intervalUtc": {
+    "createdAt": "2026-10-01T17:46:54.413Z",
+    "completedAt": "2026-10-01T17:47:45.927Z"
+  },
+  "api": {
+    "source": "/private/tmp/genie-transactions-20261002/memory-final-tasks.json",
+    "sourceSha256": "a2e89c98c0acfc15398bd17f5e1db3ac89e06f53dfa579fa5574380695a7ea32",
+    "extractedRecord": "main-app-stop-api.json",
+    "extractedRecordSha256": "f6f18cf3f879c9de3f8a1c65a8c35b880ef4a9030f4f847a1306bd3bb8ea298c",
+    "status": "CANCELLED",
+    "resultArtifactId": null,
+    "transactionResult": {
+      "provider": "genie.simulation",
+      "mode": "simulation",
+      "account": "demo-account",
+      "orderKey": "turn:01a0f893-8c48-7000-b585-189830cd4225",
+      "quoteHash": "c01e08e1a3b6e3979226ce51eec26bb81d85f54464726962c4e3acdbb297d7b6",
+      "status": "unknown"
+    }
+  },
+  "ownedFixture": {
+    "activations": 0,
+    "visible": true,
+    "commandId": "470136a2-5ef9-423d-b178-c8c5e4d368c5",
+    "windowId": 2681,
+    "clicks": 0,
+    "ready": true,
+    "onActiveSpace": true,
+    "quoteHash": "c01e08e1a3b6e3979226ce51eec26bb81d85f54464726962c4e3acdbb297d7b6",
+    "pid": 87135,
+    "sessionId": "892cdc06-a7bc-4e61-9eee-6540d34d118b",
+    "status": "受付前"
+  },
+  "readOnlyFilesystemSnapshot": {
+    "capturedAt": "2026-10-01T17:57:14.897127+00:00",
+    "orderDirectory": "/private/tmp/genie-transactions-20261002/preview/app/Transactions/simulation/ee1816815be415b6280a759e71cb44bbfea85af02eee68a64381a4be0ee416cb",
+    "orderFiles": [
+      "checkout.json",
+      "quote.json",
+      "window.json"
+    ],
+    "receiptExists": false,
+    "journalFiles": [
+      "5d5dbd95baf8eb42b3bdda1c816e92f033c96af1ba7a39fde1ea085ab73176a4.attempt.json"
+    ]
+  },
+  "hostIdentityNote": "Journal field taskId is HostStep.id (claim response host request ID 01a0f893-ef72-7000-a4d7-c4ee68b1b845), not API task ID. Evidence is joined by exact provider/mode/account/orderKey/quoteHash; no claim is made they are the same ID.",
+  "rootUiObservations": [
+    "Normal production blue native picker remained unapproved; root clicked Stop in the main Dock.",
+    "Immediate text: 操作の停止を依頼しました。注文の受付結果は未確認です。再注文せず履歴を確認してください",
+    "Final Work view: 状況を確認してください; 操作を止めました。注文の受付結果は未確認です...",
+    "この依頼を使う disabled; read-only 状況を確認 preserved the same unknown state."
+  ],
+  "rootProcessObservation": {
+    "approximateTimeUtc": "2026-10-01T17:51:00Z",
+    "fixturePid": 87135,
+    "helperPid": 87137,
+    "bothAbsent": true,
+    "cleanupSentSignal": false,
+    "attribution": "Root ps/identity-limited cleanup report; exit cause not established"
+  },
+  "passScope": [
+    "Accepted stop persisted as CANCELLED with structured unknown identity",
+    "Owned fixture last saved state has zero clicks and 受付前; no receipt or observation exists at readback",
+    "Root observed conservative stop wording and disabled re-order/reuse through read-only refresh"
+  ],
+  "limits": [
+    "No real merchant, delivery, broker, financial trade, or external order cancellation was exercised.",
+    "checkout.json candidate.status=accepted is prepared input; it is not a persisted receipt.",
+    "The fixture received a load command over stdin and window.json has a commandId; absence of a command.json file is not evidence that no commands were sent.",
+    "Zero saved clicks and no receipt support this scoped pre-consent stop observation, not a universal proof of no delivered OS events.",
+    "No exit cause is assigned to later process absence.",
+    "No new GUI, model, database, API mutation, build, or test was performed by the evidence collector.",
+    "Historical failed Stop and interrupted full gate remain preserved; this is not whole-product completion."
+  ],
+  "sourceSha256": {
+    "services/task/src/workflows.ts": "4576e214131ccadc0f553eae952f3d3be20dbe8eeec2b7b1d776395f3796e4aa",
+    "services/task/src/activities.ts": "377adbbacaab75eef729b7f88fb3c65c8953ff494468488259459bad57dc2c83",
+    "workers/agent-host/src/transaction-runtime.ts": "6ef645a2d434ed3f75e59af0c69bfcc3b6c821e71579de0aaba5a349c0917c8a",
+    "workers/agent-host/src/step-transport.ts": "e0a0894f615097637d953e0c82aea0b5e37f35804c047a8c14ed1070daf74ed5",
+    "workers/agent-host/src/simulation-native-checkout.ts": "6e9893d043933f8a204c3f3d85135c32c43c7ae3f5e7a1e566fa446c1072aa3c",
+    "tools/computer-use/CheckoutSimulation.swift": "55ecaf32df458ed55b87f623eede2f9be2a76a0ca1a903018508827fa341559f"
+  },
+  "copiedEvidence": {
+    "main-app-stop-quote.json": {
+      "source": "/private/tmp/genie-transactions-20261002/preview/app/Transactions/simulation/ee1816815be415b6280a759e71cb44bbfea85af02eee68a64381a4be0ee416cb/quote.json",
+      "sha256": "04cccd7a2b586d00223c0f4686ee17bb6e5fc5a19dc344fe9b8ba191a6dca33f",
+      "sourceModifiedAt": "2026-10-01T17:46:55.350842+00:00"
+    },
+    "main-app-stop-checkout.json": {
+      "source": "/private/tmp/genie-transactions-20261002/preview/app/Transactions/simulation/ee1816815be415b6280a759e71cb44bbfea85af02eee68a64381a4be0ee416cb/checkout.json",
+      "sha256": "fd699d1facdd534a096509d4277204e593cf9bc7b2a93113751a01f2c8a44dab",
+      "sourceModifiedAt": "2026-10-01T17:47:21.560480+00:00"
+    },
+    "main-app-stop-window.json": {
+      "source": "/private/tmp/genie-transactions-20261002/preview/app/Transactions/simulation/ee1816815be415b6280a759e71cb44bbfea85af02eee68a64381a4be0ee416cb/window.json",
+      "sha256": "fac8a6e1001afb6220c69a7b2e899abff049a10edf0b773618cc8305288182bf",
+      "sourceModifiedAt": "2026-10-01T17:47:22.031812+00:00"
+    },
+    "main-app-stop-attempt.json": {
+      "source": "/private/tmp/genie-transactions-20261002/preview/app/Transactions/journal/5d5dbd95baf8eb42b3bdda1c816e92f033c96af1ba7a39fde1ea085ab73176a4.attempt.json",
+      "sha256": "49ebf8a31760bc3ca2e24a4436d9b9c7033fc5f866857566f750bc537409ecff"
+    },
+    "main-app-stop-launch.log": {
+      "source": "/private/tmp/genie-transactions-20261002/preview-memory-final-launch.log",
+      "sha256": "f9620611b76c1c070a038d5f154ff4f62f9eacd10ba78e685f57cd47020da36a"
+    }
+  }
+}

@@ -19,6 +19,12 @@ export interface AgentHostRouteDeps {
    * 空の口を用意して 200 を返すと、端末は「やることが無い」と思い込む。
    */
   readonly bridge?: HostBridge;
+  readonly notifyOrcaSupervision?: (
+    tenantId: string,
+    userId: string,
+    taskId: string,
+    outcome: import('@genie/service-agent-host').OrcaSupervisionOutcome,
+  ) => Promise<void>;
 }
 
 const HeartbeatRequest = z.object({
@@ -38,11 +44,24 @@ const CompleteStepRequest = z.object({
 });
 const FailStepRequest = z.object({
   host_id: z.uuid(),
+  result: z.unknown().optional(),
   error: z.object({
     code: z.string().min(1).max(80),
     /** 画面に出せる言葉で。tool 側の文言をそのまま流さない（§7.2）。 */
     message: z.string().min(1).max(400),
   }),
+});
+const OrcaSupervisionOutcomeSchema = z.discriminatedUnion('state', [
+  z.object({ state: z.literal('finished') }),
+  z.object({ state: z.enum(['blocked', 'uncertain']), reason: z.string().min(1).max(200) }),
+  z.object({
+    state: z.literal('switched'),
+    terminal: z.string().min(1).max(256),
+    agent: z.enum(['claude', 'codex']),
+  }),
+]);
+const FinishOrcaSupervisionRequest = ClaimStepRequest.extend({
+  outcome: OrcaSupervisionOutcomeSchema,
 });
 
 const CheckpointRequest = z.object({
@@ -147,6 +166,93 @@ export function registerAgentHostRoutes(app: App, deps: AgentHostRouteDeps): voi
     return next ? reply.send(next) : reply.status(204).send();
   });
 
+  app.get('/v1/host-steps/orca-supervisions', async (request) => {
+    const principal = requirePrincipal();
+    const query = ClaimStepRequest.parse(request.query ?? {});
+    if (!deps.bridge) throw new GenieError('common.not_found', 'the host bridge is not connected');
+    return {
+      items: await deps.bridge.listOrcaSupervisions({
+        tenantId: principal.tenantId,
+        userId: principal.userId,
+        hostId: query.host_id,
+      }),
+    };
+  });
+  app.get<{ Params: { taskId: string } }>('/v1/tasks/:taskId/orca-supervision', async (request) => {
+    const principal = requirePrincipal();
+    if (!deps.bridge) throw new GenieError('common.not_found', 'the host bridge is not connected');
+    const state = await deps.bridge.getOrcaSupervision({
+      tenantId: principal.tenantId,
+      userId: principal.userId,
+      taskId: request.params.taskId,
+    });
+    if (!state) throw new GenieError('common.not_found', 'Orca supervision is not available');
+    return state;
+  });
+
+  app.post<{ Params: { requestId: string } }>(
+    '/v1/host-steps/:requestId/orca-supervision/begin',
+    async (request) => {
+      const principal = requirePrincipal();
+      const body = ClaimStepRequest.parse(request.body ?? {});
+      if (!deps.bridge)
+        throw new GenieError('common.not_found', 'the host bridge is not connected');
+      return {
+        claimed: await deps.bridge.beginOrcaSwitch({
+          tenantId: principal.tenantId,
+          userId: principal.userId,
+          hostId: body.host_id,
+          requestId: request.params.requestId,
+        }),
+      };
+    },
+  );
+  app.post<{ Params: { requestId: string } }>(
+    '/v1/host-steps/:requestId/orca-supervision/finish',
+    async (request, reply) => {
+      const principal = requirePrincipal();
+      const body = FinishOrcaSupervisionRequest.parse(request.body ?? {});
+      if (!deps.bridge)
+        throw new GenieError('common.not_found', 'the host bridge is not connected');
+      const settled = await deps.bridge.finishOrcaSupervision({
+        tenantId: principal.tenantId,
+        userId: principal.userId,
+        hostId: body.host_id,
+        requestId: request.params.requestId,
+        outcome: body.outcome,
+      });
+      if (deps.notifyOrcaSupervision) {
+        await deps
+          .notifyOrcaSupervision(
+            principal.tenantId,
+            settled.userId,
+            settled.taskId,
+            settled.outcome,
+          )
+          .catch(() => undefined);
+      }
+      return reply.status(204).send();
+    },
+  );
+
+  app.post<{ Params: { requestId: string } }>(
+    '/v1/host-steps/:requestId/authority',
+    async (request) => {
+      const principal = requirePrincipal();
+      const body = ClaimStepRequest.parse(request.body ?? {});
+      if (!deps.bridge)
+        throw new GenieError('common.not_found', 'the host bridge is not connected');
+      return {
+        allowed: await deps.bridge.executionAllowed({
+          tenantId: principal.tenantId,
+          userId: principal.userId,
+          requestId: request.params.requestId,
+          hostId: body.host_id,
+        }),
+      };
+    },
+  );
+
   app.post<{ Params: { requestId: string } }>(
     '/v1/host-steps/:requestId/complete',
     async (request, reply) => {
@@ -178,6 +284,7 @@ export function registerAgentHostRoutes(app: App, deps: AgentHostRouteDeps): voi
         requestId: request.params.requestId,
         hostId: body.host_id,
         error: body.error,
+        result: body.result,
       });
       return reply.status(204).send();
     },

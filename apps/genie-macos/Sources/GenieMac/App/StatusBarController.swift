@@ -14,8 +14,9 @@ final class StatusBarController {
         guard item == nil else { return }
         let status = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = status.button {
-            button.image = NSImage(systemSymbolName: "waveform", accessibilityDescription: "Genie")
-            button.image?.isTemplate = true
+            // Genie の印（ランプ）。template なのでメニューバーの明暗に合わせて色が変わる。
+            button.image = GenieBrandMark.image(height: 13)
+            button.setAccessibilityLabel("Genie")
             button.toolTip = "Genie"
         }
         status.menu = buildMenu()
@@ -54,6 +55,20 @@ final class StatusBarController {
         )
         rec.target = self
         menu.addItem(rec)
+        let wake = NSMenuItem(title: Facts.menuWakeWord, action: #selector(toggleWakeWord), keyEquivalent: "")
+        wake.target = self
+        wake.state = WakeController.shared.enabled ? .on : .off
+        menu.addItem(wake)
+        let tryWake = NSMenuItem(title: Facts.menuTryWake, action: #selector(tryWakeWord), keyEquivalent: "")
+        tryWake.target = self
+        menu.addItem(tryWake)
+        let diagnose = NSMenuItem(title: Facts.menuDiagnose, action: #selector(diagnoseVoice), keyEquivalent: "")
+        diagnose.target = self
+        menu.addItem(diagnose)
+        let enroll = NSMenuItem(title: Facts.menuWakeEnroll, action: #selector(enrollWakeWord), keyEquivalent: "")
+        enroll.target = self
+        enroll.isEnabled = !WakeEnrollment.shared.running
+        menu.addItem(enroll)
 
         menu.addItem(.separator())
 
@@ -109,6 +124,24 @@ final class StatusBarController {
             .map { ($0.title, $0.action != nil && $0.target != nil) }
     }
 
+    @objc func toggleWakeWord() {
+        WakeController.shared.enabled.toggle()
+    }
+    @objc func tryWakeWord() { WakeController.shared.simulateWake() }
+    @objc func diagnoseVoice() { VoiceHUDState.shared.diagnoseVoice() }
+    @objc func enrollWakeWord() {
+        Task { @MainActor in
+            // 録れたかどうかを言う（無音のまま「録れた」と思わせない。2026-10-18 の録音は無音だった）。
+            let recording = await WakeEnrollment.shared.record()
+            let alert = NSAlert()
+            alert.messageText = recording == nil ? Facts.wakeEnrollNoVoice
+                : recording?.learnedCalls == nil ? Facts.wakeEnrollTooFew : Facts.wakeEnrollSaved
+            alert.addButton(withTitle: Facts.updateClose)
+            NSApp.activate(ignoringOtherApps: true)
+            alert.runModal()
+        }
+    }
+
     @objc private func openMain() { MainWindowController.shared.showSection(.home) }
     @objc private func toggleControls() {
         if WindowCoordinator.shared.isVoiceHUDVisible {
@@ -120,7 +153,7 @@ final class StatusBarController {
     @objc private func toggleRecording() { WindowCoordinator.shared.toggleRecording() }
     @objc private func openSettings() { SettingsWindowController.shared.show() }
     @objc private func openGuide() { NSWorkspace.shared.open(Self.guideURL) }
-    @objc private func startGuidedSetup() { SettingsWindowController.shared.show() }
+    @objc private func startGuidedSetup() { SettingsWindowController.shared.show(pane: .permissions) }
     @objc private func checkUpdates() {
         guard let reason = SoftwareUpdate.shared.checkNow() else { return }
         Self.presentUpdateUnavailable(reason: reason)

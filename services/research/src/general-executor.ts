@@ -64,6 +64,25 @@ function attachmentsOf(input: TaskLike, step: StepLike): VisualAttachment[] {
   });
 }
 
+/** 直前の会話（turn.ts の historyOf が作ったもの）。形の違う行は捨てる。 */
+function historyOf(input: TaskLike, step: StepLike): { role: 'user' | 'genie'; text: string }[] {
+  const raw = Array.isArray(step.args['history'])
+    ? step.args['history']
+    : Array.isArray(input.input['history'])
+      ? input.input['history']
+      : [];
+  return raw
+    .flatMap((item) => {
+      const row = item as Record<string, unknown> | null;
+      const role = row?.['role'];
+      const text = row?.['text'];
+      if ((role !== 'user' && role !== 'genie') || typeof text !== 'string' || !text.trim())
+        return [];
+      return [{ role, text: text.slice(0, 300) } as { role: 'user' | 'genie'; text: string }];
+    })
+    .slice(-6);
+}
+
 /** 題名。長い依頼をそのまま題にしない。 */
 function titleOf(text: string): string {
   const firstLine = text.split('\n')[0]!.trim();
@@ -82,10 +101,13 @@ export function generalExecutors(model: LanguageModel): Record<string, Executor>
         const context = value(input, step, 'context') ?? undefined;
         const attachments = attachmentsOf(input, step);
         // 添付が無ければ、これまで通りの形で呼ぶ（cloud 実装は第 3 引数を知らなくてよい）。
+        const history = historyOf(input, step);
         const answer =
-          attachments.length > 0
-            ? await model.answer(question, context, attachments)
-            : await model.answer(question, context);
+          history.length > 0
+            ? await model.answer(question, context, attachments, history)
+            : attachments.length > 0
+              ? await model.answer(question, context, attachments)
+              : await model.answer(question, context);
 
         return {
           result: { answered: true },

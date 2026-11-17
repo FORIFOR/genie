@@ -1,0 +1,71 @@
+Evidence: /private/tmp/genie-background-web.rhGzqI
+STAGE tree-unsettled attempt=0
+STAGE route ax_web_link by element point 302,593 local 122,158
+{
+  "after" : {
+    "activations" : 0,
+    "isActive" : false,
+    "isOnActiveSpace" : true,
+    "isVisible" : true,
+    "loading" : false,
+    "navigations" : 2,
+    "title" : "Fixture details page",
+    "url" : "http:\/\/127.0.0.1:61578\/second"
+  },
+  "afterFrameId" : "cv-1b627356-9de5-43b6-b01a-dbf7bd6912f9",
+  "before" : {
+    "activations" : 0,
+    "isActive" : false,
+    "isOnActiveSpace" : true,
+    "isVisible" : true,
+    "loading" : false,
+    "navigations" : 1,
+    "title" : "Fixture first page",
+    "url" : "http:\/\/127.0.0.1:61578\/first"
+  },
+  "clipboardUnchanged" : true,
+  "cursorUnchanged" : true,
+  "foregroundUnchanged" : true,
+  "negativeLinksRefused" : 2,
+  "receipt" : {
+    "deliveryMode" : "background",
+    "effect" : "confirmed",
+    "route" : "ax_web_link",
+    "status" : "applied"
+  },
+  "replayRefused" : true,
+  "requests" : {
+    "\/first" : 1,
+    "\/second" : 1
+  },
+  "scope" : "Owned WebKit fixture; test-created grant, not production Safari consent",
+  "sentinel" : {
+    "activationPolicy" : "accessory",
+    "activations" : 0,
+    "clicks" : 0,
+    "geometry" : {
+      "coordinateSystem" : "AppKit points, bottom-left origin",
+      "screens" : [
+        {
+          "height" : 1009,
+          "width" : 1728,
+          "x" : 0,
+          "y" : 75
+        }
+      ],
+      "window" : {
+        "height" : 442,
+        "width" : 580,
+        "x" : 500,
+        "y" : 210
+      }
+    },
+    "isActive" : false,
+    "isOnActiveSpace" : true,
+    "isVisible" : true,
+    "occlusionVisible" : true,
+    "startupReady" : true,
+    "text" : ""
+  },
+  "status" : "PASS"
+}

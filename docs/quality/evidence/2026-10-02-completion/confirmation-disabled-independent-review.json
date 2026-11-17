@@ -1,0 +1,65 @@
+{
+  "recordedAt": "2026-10-01T19:13:32.083429+00:00",
+  "reviewer": "/root/verification_audit",
+  "method": "Independent source/log review plus view_image inspection of four new PNGs and two before-invalid PNGs; no actual app/button action by reviewer",
+  "visualVerdict": "PASS limited to these four offscreen states; no text/control clipping, invalid state distinguishable in light/dark, valid unchanged",
+  "images": [
+    {
+      "name": "transaction-scope-bottom-light",
+      "beforeSHA256": "0dfd5d0622aa99e275c17312fa0cbeb9d883bc823ce3f28d49717fb810ee1730",
+      "afterSHA256": "0dfd5d0622aa99e275c17312fa0cbeb9d883bc823ce3f28d49717fb810ee1730",
+      "matchesOwnerHashes": true,
+      "geometryEqual": true,
+      "geometrySHA256": "32479f3dcb5579e9a01d630c9638b1f82d91191121895f6898721b5109021d36",
+      "observed": "valid unchanged and readable"
+    },
+    {
+      "name": "transaction-scope-bottom-dark",
+      "beforeSHA256": "7d19f0754da0ff2fa95c54ad3596db2108b460f53eb73a7301679309cb11d2be",
+      "afterSHA256": "7d19f0754da0ff2fa95c54ad3596db2108b460f53eb73a7301679309cb11d2be",
+      "matchesOwnerHashes": true,
+      "geometryEqual": true,
+      "geometrySHA256": "32479f3dcb5579e9a01d630c9638b1f82d91191121895f6898721b5109021d36",
+      "observed": "valid unchanged and readable"
+    },
+    {
+      "name": "transaction-invalid-bottom-light",
+      "beforeSHA256": "50fa8ca66e625f19e1e961d860d08673c7099cc03160439888b7750dc9b80586",
+      "afterSHA256": "f7782d9163e8516dfa477fbd775c16e3be9ce6fbff931cce00c92a43ba1f57d4",
+      "matchesOwnerHashes": true,
+      "geometryEqual": true,
+      "geometrySHA256": "00357ee1d27ad29ff2687a0bd98b7fd42846c987365fa1b400ae4a68ac0040a2",
+      "observed": "invalid muted grey button visually distinct from valid red; whole button label and orange validation/reservation explanations readable"
+    },
+    {
+      "name": "transaction-invalid-bottom-dark",
+      "beforeSHA256": "81621bd4e825dfc6bdb815629e2095809e9fa9dd4640e598a1c3868e0859ebf5",
+      "afterSHA256": "46632f225316a2b739eb42a74f2fb426a013a31f13baf7a2115e1e0d73892578",
+      "matchesOwnerHashes": true,
+      "geometryEqual": true,
+      "geometrySHA256": "00357ee1d27ad29ff2687a0bd98b7fd42846c987365fa1b400ae4a68ac0040a2",
+      "observed": "invalid muted grey button visually distinct from valid red; whole button label and orange validation/reservation explanations readable"
+    }
+  ],
+  "sourceHashes": {
+    "scripts/ui-taste-count.py": "0c86e2b7a2002d6ab144fcaf385c59d5028ddbf0d9aa0b5c8eb04dbe8f986410",
+    "scripts/tests/test_ui_taste_count.py": "57ee81f4584aa4e0e24b92e56ff7ea2b02d3f404210ced272c47eefcaa496b5d",
+    "apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDView.swift": "c0f4bb75e1e943f99bbbd87bc4a9d6c4264e574aabcd9a61d0efd897d77c156e",
+    "apps/genie-macos/Tests/GenieMacTests/TransactionAuthorizationTests.swift": "78f1fb151ff3ab721e9f2782fdbcb987b7371f406ec1d860d7b2a775338239e4"
+  },
+  "logHashes": {
+    "ui-taste-unit.log": "65378dcad145da2497120819bebfc3c46534dce9714ce064b3d809a56654aca2",
+    "confirmation-disabled-tests.log": "4cb902713865c3a64f65ee0533b1d54b61ca855b4bdbccff5b080f9ab2201f4d",
+    "python-regression-current.log": "309738ea891df1e7feaf4de278797cf23e96236d00f72927ef50342c7e06cbcc"
+  },
+  "executionEvidence": {
+    "uiTasteCounter": "6 tests PASS in saved log, including canonical duplicate path rejection",
+    "confirmation": "2 tests PASS saved log; rendered Probe action after arm delay invalid->zero POST/no frozenBody/no message, corrected spec nonnil; not physical click",
+    "python": "50 tests PASS in current saved log; supersedes earlier49 run, not 99 unique tests"
+  },
+  "limitations": [
+    "No actual order or grant was submitted.",
+    "No final package/whole-product gate result follows from these fixture images.",
+    "No live user readability study or accessibility/contrast conformance certification."
+  ]
+}

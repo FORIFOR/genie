@@ -1,0 +1,104 @@
+# PUBLIC DIAGNOSTIC EXCERPT — not the full original sample
+# Original SHA-256: f01193c79e22c560ce6a66d9f7ede94e12187513e4831df81d64cc21802ca990
+# Original lines 1–98 retained; loaded-image inventory omitted.
+# Original thread/sample counts and stack frames are unchanged; user home path is masked.
+# Private original location and transformation: ../2026-10-02-completion/publication-redactions.json
+
+Analysis of sampling GenieMac (pid 86610) every 1 millisecond
+Process:         GenieMac [86610]
+Path:            /Users/[local-user]/*/Genie.app/Contents/MacOS/GenieMac
+Load Address:    0x1028d0000
+Identifier:      com.astra.desktop
+Version:         1.0 (1)
+Code Type:       ARM64
+Platform:        macOS
+Parent Process:  bash [86583]
+Target Type:     live task
+
+Date/Time:       2026-10-01 21:54:28.019 +0900
+Launch Time:     2026-10-01 21:52:35.196 +0900
+OS Version:      macOS 27.0.1 (26A434)
+Report Version:  7
+Analysis Tool:   /usr/bin/sample
+
+Physical footprint:         148.7M
+Physical footprint (peak):  371.2M
+Idle exit:                  untracked
+----
+
+Call graph:
+    838 Thread_1182859   DispatchQueue_1: com.apple.main-thread  (serial)
+    + 838 start  (in dyld) + 6688  [0x19ffcfe80]
+    +   838 GenieMac_main  (in GenieMac) + 104  [0x102900508]  main.swift:9
+    +     838 -[NSApplication run]  (in AppKit) + 396  [0x1a4a0f90c]
+    +       838 -[NSApplication(NSEventRouting) nextEventMatchingMask:untilDate:inMode:dequeue:]  (in AppKit) + 292  [0x1a529426c]
+    +         838 -[NSApplication(NSEventRouting) _nextEventMatchingEventMask:untilDate:inMode:dequeue:]  (in AppKit) + 780  [0x1a5294748]
+    +           838 _DPSNextEvent  (in AppKit) + 1288  [0x1a4a1c7c0]
+    +             838 AEProcessAppleEvent  (in HIToolbox) + 68  [0x1ad7f3454]
+    +               838 aeProcessAppleEvent  (in AE) + 484  [0x1a8bf5a0c]
+    +                 838 ???  (in AE)  load address 0x1a8bf1000 + 0xaf9c  [0x1a8bfbf9c]
+    +                   838 ???  (in AE)  load address 0x1a8bf1000 + 0xb53c  [0x1a8bfc53c]
+    +                     838 _NSAppleEventManagerGenericHandler  (in Foundation) + 80  [0x1a1b41004]
+    +                       838 -[NSAppleEventManager dispatchRawAppleEvent:withRawReply:handlerRefCon:]  (in Foundation) + 316  [0x1a1b4120c]
+    +                         838 -[NSApplication(NSAppleEventHandling) _handleCoreEvent:withReplyEvent:]  (in AppKit) + 488  [0x1a4a22a94]
+    +                           838 -[NSApplication(NSAppleEventHandling) _handleAEOpenEvent:]  (in AppKit) + 488  [0x1a4a22e80]
+    +                             838 -[NSApplication _sendFinishLaunchingNotification]  (in AppKit) + 176  [0x1a4a247a8]
+    +                               838 -[NSApplication _postDidFinishNotification]  (in AppKit) + 312  [0x1a4a24a14]
+    +                                 838 -[NSNotificationCenter postNotificationName:object:userInfo:]  (in Foundation) + 88  [0x1a1b1838c]
+    +                                   838 _CFXNotificationPost  (in CoreFoundation) + 688  [0x1a04273d0]
+    +                                     838 _CFXRegistrationPost  (in CoreFoundation) + 440  [0x1a04ea2d8]
+    +                                       838 ___CFXRegistrationPost_block_invoke  (in CoreFoundation) + 92  [0x1a04ea394]
+    +                                         838 __CFNOTIFICATIONCENTER_IS_CALLING_OUT_TO_AN_OBSERVER__  (in CoreFoundation) + 148  [0x1a045b1a0]
+    +                                           838 @objc GenieAppDelegate.applicationDidFinishLaunching(_:)  (in GenieMac) + 112  [0x102a557a8]  /<compiler-generated>:0
+    +                                             838 GenieAppDelegate.applicationDidFinishLaunching(_:)  (in GenieMac) + 344  [0x102a5483c]  GenieAppDelegate.swift:9
+    +                                               838 static SelfTest.run(_:)  (in GenieMac) + 14420  [0x102b8b6d4]  SelfTest.swift:171
+    +                                                 838 specialized static SelfTest.render()  (in GenieMac) + 9348  [0x102c3023c]  SelfTest.swift:7011
+    +                                                   838 specialized SettingsView.init(showAdditionalPermissions:)  (in GenieMac) + 1052  [0x102ce8528]  SettingsView.swift:21
+    +                                                     838 _dispatch_once_callout  (in libdispatch.dylib) + 32  [0x1a01e7624]
+    +                                                       838 _dispatch_client_callout  (in libdispatch.dylib) + 16  [0x1a01fe5a0]
+    +                                                         838 one-time initialization function for shared  (in GenieMac) + 72  [0x102b13820]  PlacesSettings.swift:10
+    +                                                           838 specialized PlacesSettings.init(defaults:)  (in GenieMac) + 368  [0x102b14048]  PlacesSettings.swift:27
+    +                                                             838 specialized static KeychainStore.get(_:)  (in GenieMac) + 500  [0x102a68224]  KeychainStore.swift:52
+    +                                                               838 SecItemCopyMatching  (in Security) + 344  [0x1a40d8dc8]
+    +                                                                 838 SecItemCopyMatching_osx(__CFDictionary const*, void const**)  (in Security) + 2140  [0x1a40d7f68]
+    +                                                                   838 AddItemResults(__SecKeychainItem*, __SecIdentity*, SecItemParams*, __CFAllocator const*, __CFArray**, void const**)  (in Security) + 548  [0x1a40dbe9c]
+    +                                                                     838 SecKeychainItemCopyContent  (in Security) + 316  [0x1a40fac1c]
+    +                                                                       838 Security::KeychainCore::ItemImpl::getContent(SecItemClass*, SecKeychainAttributeList*, unsigned int*, void**)  (in Security) + 760  [0x1a40b5874]
+    +                                                                         838 Security::KeychainCore::ItemImpl::getContent(Security::CssmClient::DbAttributes*, Security::CssmDataContainer*)  (in Security) + 572  [0x1a40af368]
+    +                                                                           838 Security::CssmClient::SSDbUniqueRecordImpl::get(Security::CssmClient::DbAttributes*, Security::CssmDataContainer*, cssm_access_credentials const*)  (in Security) + 288  [0x1a3e418d8]
+    +                                                                             838 Security::CssmClient::SSGroupImpl::decodeDataBlob(cssm_data const&, cssm_access_credentials const*, Security::Allocator&, cssm_data&)  (in Security) + 640  [0x1a3ff3444]
+    +                                                                               838 CSSM_DecryptDataFinal  (in Security) + 172  [0x1a408df24]
+    +                                                                                 838 cssm_DecryptDataFinal(long, unsigned long long, cssm_data*)  (in Security) + 208  [0x1a3ff7fe4]
+    +                                                                                   838 Security::CSPFullPluginSession::CSPContext::final(Security::CssmData&, Security::Allocator&)  (in Security) + 68  [0x1a3e4619c]
+    +                                                                                     838 SSCryptContext::outputSize(bool, unsigned long)  (in Security) + 332  [0x1a3fcf590]
+    +                                                                                       838 Security::SecurityServer::ClientSession::decrypt(Security::Context const&, unsigned int, Security::CssmData const&, Security::CssmData&, Security::Allocator&)  (in Security) + 764  [0x1a4161334]
+    +                                                                                         838 mach_msg  (in libsystem_kernel.dylib) + 24  [0x1a0360fac]
+    +                                                                                           838 mach_msg_overwrite  (in libsystem_kernel.dylib) + 480  [0x1a0369a28]
+    +                                                                                             838 mach_msg2_internal  (in libsystem_kernel.dylib) + 76  [0x1a03738e0]
+    +                                                                                               838 mach_msg2_trap  (in libsystem_kernel.dylib) + 8  [0x1a0360c20]
+    838 Thread_1182867
+    + 838 start_wqthread  (in libsystem_pthread.dylib) + 8  [0x1a03a0ce0]
+    +   838 _pthread_wqthread  (in libsystem_pthread.dylib) + 368  [0x1a03a1fe8]
+    +     838 __workq_kernreturn  (in libsystem_kernel.dylib) + 8  [0x1a03629ec]
+    838 Thread_1182868: com.apple.NSEventThread
+    + 838 thread_start  (in libsystem_pthread.dylib) + 8  [0x1a03a0cec]
+    +   838 _pthread_start  (in libsystem_pthread.dylib) + 136  [0x1a03a5d00]
+    +     838 _NSEventThread  (in AppKit) + 184  [0x1a4b40844]
+    +       838 _CFRunLoopRunSpecificWithOptions  (in CoreFoundation) + 536  [0x1a053f82c]
+    +         838 __CFRunLoopRun  (in CoreFoundation) + 1172  [0x1a0465334]
+    +           838 __CFRunLoopServiceMachPort  (in CoreFoundation) + 160  [0x1a0466aec]
+    +             838 mach_msg  (in libsystem_kernel.dylib) + 24  [0x1a0360fac]
+    +               838 mach_msg_overwrite  (in libsystem_kernel.dylib) + 480  [0x1a0369a28]
+    +                 838 mach_msg2_internal  (in libsystem_kernel.dylib) + 76  [0x1a03738e0]
+    +                   838 mach_msg2_trap  (in libsystem_kernel.dylib) + 8  [0x1a0360c20]
+    838 Thread_1182883
+      838 start_wqthread  (in libsystem_pthread.dylib) + 8  [0x1a03a0ce0]
+        838 _pthread_wqthread  (in libsystem_pthread.dylib) + 368  [0x1a03a1fe8]
+          838 __workq_kernreturn  (in libsystem_kernel.dylib) + 8  [0x1a03629ec]
+
+Total number in stack (recursive counted multiple, when >=5):
+
+Sort by top of stack, same collapsed (when >= 5):
+        __workq_kernreturn  (in libsystem_kernel.dylib)        1676
+        mach_msg2_trap  (in libsystem_kernel.dylib)        1676
+

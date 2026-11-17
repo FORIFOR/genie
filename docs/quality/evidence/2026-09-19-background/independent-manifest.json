@@ -1,0 +1,11 @@
+{
+  "time": "2026-09-19T12:02:32.694180+00:00",
+  "revision": "28f89f2636a3b780e813ea902e07d2e4900a6e3f",
+  "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+  "method": "read-only static review; no desktop action or test binary executed",
+  "sha256": {
+    "tools/computer-use/BackgroundAX.swift": "4f966b1c2824acad6adb4ccde1c86c3fe14ec88fd30a01d77d72d5c141fd09dd",
+    "tools/computer-use/BackgroundAXTests.swift": "a3330ee3d602eb3a1dea9e43f32fbf15a648ae31cb37e37db2a34157e49135eb",
+    "workers/agent-host/src/computer-vision-device.ts": "a1363c29460394bdd6dfdfc79978a7dc95bb3c87bd17ffcfaa103e07f633ed57"
+  }
+}

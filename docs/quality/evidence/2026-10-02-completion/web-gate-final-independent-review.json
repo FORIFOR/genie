@@ -1,0 +1,120 @@
+{
+  "recordedAt": "2026-10-01T19:47:43.306904+00:00",
+  "method": "Independent read-only evidence/source review and SHA-256 comparison; no native, Swift, model, VM or whole-gate execution by reviewer. Root/implementation agent executed saved runs.",
+  "webManifestChecks": {
+    "manifestSidecar": true,
+    "source": {
+      "tools/computer-use/BackgroundAX.swift": true,
+      "tools/computer-use/BackgroundWebLink.swift": true,
+      "tools/computer-use/BackgroundWebLinkTests.swift": true,
+      "tools/computer-use/BackgroundWebFixture.swift": true,
+      "tools/computer-use/BackgroundWebTests.swift": true,
+      "tools/computer-use/BackgroundScroll.swift": true,
+      "tools/computer-use/BackgroundScrollTests.swift": true,
+      "tools/computer-use/BackgroundAXTests.swift": true,
+      "tools/computer-use/BackgroundFixture.swift": true,
+      "tools/computer-use/BackgroundTextEdit.swift": true,
+      "tools/computer-use/genie-computer.swift": true,
+      "tools/computer-use/GeneratedPointerMetrics.swift": true,
+      "tools/computer-use/BackgroundNativeInput.swift": true,
+      "tools/computer-use/PrivateSPIBridge.swift": true,
+      "tools/computer-use/TargetPreview.swift": true,
+      "scripts/test-background-web.sh": true,
+      "scripts/test-background-web-policy.sh": true,
+      "scripts/test-background-computer.sh": true,
+      "scripts/build-computer-helper.sh": true,
+      "scripts/build-computer-helper-unattended-test.sh": true,
+      "scripts/test-native-input.sh": true,
+      "workers/agent-host/src/computer-vision.ts": true,
+      "workers/agent-host/src/computer-vision-policy.ts": true,
+      "workers/agent-host/src/computer-vision-prompts.ts": true,
+      "workers/agent-host/src/computer-vision-device.ts": true,
+      "workers/agent-host/test/computer-vision.node.mjs": true,
+      "workers/agent-host/test/background-vision.node.mjs": true,
+      "workers/agent-host/test/computer-scroll-device.node.mjs": true
+    },
+    "artifacts": {
+      "computer-web-policy.log": true,
+      "computer-web-native-round1.log": true,
+      "computer-web-native-final.log": true,
+      "computer-web-node-final.log": true,
+      "computer-web-types-final.log": true,
+      "computer-scroll-web-combined-native.log": true,
+      "computer-final-helper-build.log": true,
+      "computer-final-helper-sign.log": true,
+      "computer-final-helper-status.json": true,
+      "computer-web-native-round1-result.json": true,
+      "computer-web-native-final-result.json": true,
+      "computer-scroll-web-combined-result.json": true
+    },
+    "productionBinary": true
+  },
+  "webFinal": {
+    "verdict": "PASS limited saved owned fixture",
+    "unknownNavigationNeverResent": true,
+    "blockedNavigations": 1,
+    "requests": {
+      "/first": 1,
+      "/second": 1
+    },
+    "scope": "Owned WebKit fixture; test-created grant, not production Safari consent",
+    "note": "After the unknown-case refusal, a fresh independent test action navigates a different link. This is not production retry after unknown."
+  },
+  "combinedNative": {
+    "status": "PASS",
+    "scrollChecks": {
+      "replacedBarRefused": true,
+      "postDispatchUnknown": true,
+      "replayRefused": true,
+      "concurrentChangeRefused": true,
+      "upReadback": true,
+      "boundaryRefused": true
+    },
+    "passiveChecks": {
+      "foregroundUnchangedDuringActions": true,
+      "cursorUnchanged": true,
+      "clipboardUnchanged": true
+    },
+    "note": "Owned passive fixture and test-created grant, no human IME or arbitrary-site claim."
+  },
+  "geometry": {
+    "savedTestResult": "5 passed /0fail/0skip; full log independently read",
+    "sourceAndBinaryChecks": {
+      "apps/genie-macos/Sources/GenieMac/App/SelfTest.swift": true,
+      "apps/genie-macos/Sources/GenieMac/App/UIGeometry.swift": true,
+      "apps/genie-macos/Tests/GenieMacTests/UIGeometryRecordingTests.swift": true,
+      "apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDView.swift": true,
+      "apps/genie-macos/Sources/GenieMac/App/TerminationDispatch.swift": true,
+      "apps/genie-macos/Sources/GenieMac/App/GenieAppDelegate.swift": true,
+      "apps/genie-macos/.build/Genie.app/Contents/MacOS/GenieMac": true
+    },
+    "actualElementGeometryStatus": "NOT_RUN: original bundle has no existing AX grant; preview geometry SKIP retained; no profile adoption",
+    "unusedCollectorRemovedFromProduction": true
+  },
+  "orchestration": {
+    "sourceMatchesSavedCheckpoint": {
+      "services/task/test/replay-history.test.ts": true,
+      "services/task/scripts/replay-history.capture.ts": true,
+      "services/task/scripts/replay-capture.config.ts": true,
+      "scripts/verify-all.sh": false,
+      "scripts/verify-desktop-tests.sh": true,
+      "scripts/tests/test_verification_resources.py": true,
+      "tsconfig.tests.json": true
+    },
+    "note": "verify-all changed after the14-case saved orchestration run to include new checks. Earlier focused result is preserved; not evidence of current whole-gate execution."
+  },
+  "currentGateSource": {
+    "scripts/verify-all.sh": "9e3dd37da4ee9769cdce154bfc5aeda084e4db31bb5aad1d1040c4a89ae3104f",
+    ".github/workflows/computer-vision.yml": "7578ad17d8ab4d73d9eb684dacc40806cc14e1086fb11a938b44fd677757c7bf",
+    "scripts/test-background-text-edit.sh": "bf0815017969804b1a8ddecac9db9719907a6ccdf60c79dbf2bc96c9b651ada4",
+    "scripts/test-background-scroll.sh": "57790a4e7aa8e17032d7c5ee75513f7a45c249f8791005cb47facb9583d86b66",
+    "scripts/test-background-web-policy.sh": "821e681992deab94c90df6a6138e886d5b9d1b906727e6e0d5927c29700e32b1"
+  },
+  "gateReview": "Foundation text/scroll/web pure policies and scroll-device/CLI Node tests are wired. Initially omitted background-vision.node.mjs was reported; both fullgate and CI now include it. CLI/transaction CLI and test path filters are present. No further concrete omission found in this requested addition review.",
+  "limitations": [
+    "Current whole verify-all not run; no release verdict change.",
+    "Cloud image-egress propagation and selected helper CLI preflight mismatch are being corrected by root/pointer; not reviewed here.",
+    "Production candidate signature/status is not production Safari consent or model-planned browser operation.",
+    "Noa sustained streaming and live merchant/broker completion remain unproven."
+  ]
+}

@@ -95,6 +95,38 @@ describe('event envelope', () => {
     expect(EVENT_TYPES).toContain('task.cancelled');
   });
 
+  it('keeps unconfirmed order evidence through cancellation SSE encoding and decoding', () => {
+    const transaction_result = {
+      mode: 'simulation',
+      provider: 'fixture',
+      account: 'fixture-account',
+      orderKey: 'order-1',
+      quoteHash: 'a'.repeat(64),
+      status: 'unknown',
+    };
+    const payload = {
+      reason: 'user_requested',
+      message: 'Genie stopped; order outcome unconfirmed.',
+      error: {
+        code: 'task.step_failed',
+        message: 'Unknown',
+        step_index: 1,
+        retryable: false,
+        transaction_result,
+      },
+    };
+    const parsed = EventEnvelope.parse(base('task.cancelled', payload));
+    const frame = toSseFrame(parsed);
+    const data = frame
+      .split('\n')
+      .find((line) => line.startsWith('data: '))!
+      .slice(6);
+    expect(decodeEvent(JSON.parse(data)).event.payload).toMatchObject(payload);
+    expect(
+      EventEnvelope.parse(base('task.cancelled', { reason: 'ordinary stop' })).payload,
+    ).toEqual({ reason: 'ordinary stop' });
+  });
+
   it('marks exactly the Phase 0 emitters', () => {
     for (const t of PHASE0_EVENT_TYPES) expect(EVENT_TYPES).toContain(t);
     expect(PHASE0_EVENT_TYPES).not.toContain('conversation.delta');

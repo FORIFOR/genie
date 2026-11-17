@@ -1,0 +1,5 @@
+wrote infra/db/schema.sql (    4091 lines, server major 16)
+• Using dialect 'postgres'.
+• Introspecting database...
+✓ Introspected 56 tables and generated ./src/generated/schema.ts in 22ms.
+  

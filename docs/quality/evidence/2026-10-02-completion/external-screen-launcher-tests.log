@@ -1,0 +1,46 @@
+✔ scoped Mac launch gets the same absolute Codex executable that was verified (4.907125ms)
+✔ CLI rejects unsupported actions, external model URLs, ambiguous ports and unsafe names (0.434708ms)
+✔ transaction simulation is explicit, requires computer use and only exports the local fixture executable (3.610625ms)
+✔ native app launches through LaunchServices with instance-only scope and a waited lifecycle (0.316334ms)
+✔ native app monitor accepts confirmed normal exit and keeps early or abnormal exits as failures (80.990708ms)
+✔ native app monitor reads lifecycle at exit and does not replace an existing stop or failure (0.205541ms)
+✔ native ownership distinguishes simultaneous app instances and rejects PID reuse without matching argv (0.170958ms)
+✔ native process inspection takes one snapshot and never treats inspection errors as exit (0.3255ms)
+✔ native stop waits through macOS exiting argv loss and accepts only proven death (0.447917ms)
+✔ native stop verifies absence, escalates only after grace, and fails if exit stays unconfirmed (0.1935ms)
+✔ native stop rejects PID/start/argv changes before TERM and immediately before KILL (0.202167ms)
+✔ native stop does not report success after inspection or signal failures (0.133625ms)
+✔ native stop waits for a real tiny child exit and escalates a TERM-resistant child only (314.566375ms)
+✔ explicit local Docker selection pins child operations without inheriting or changing the user context (0.241542ms)
+✔ Docker endpoint changes are revalidated on every start and remote/relative/missing contexts fail closed (0.277ms)
+✔ explicit Docker context persists for restart, migrates legacy state optionally and prevents changing its database host (30.513625ms)
+✔ model choice persists explicit intent, supports Ollama latest aliases and never picks a paid fallback (0.264459ms)
+✔ external CLI selection needs explicit opt-in, persists that choice, and never inherits the old local model (7.968959ms)
+✔ external conversation selection does not authorize screen egress or import credentials (7.71075ms)
+✔ screen opt-in is separate, persists only for the exact provider/model, and can be revoked (6.55075ms)
+✔ screen permission cannot leak from another state directory or enable an inactive computer route (11.538959ms)
+✔ computer status probes the selected helper anew and exposes only bounded status fields (99.741333ms)
+✔ unknown, invalid or failed helper probes remain unavailable without subprocess output disclosure (0.237875ms)
+✔ Codex omitted model uses the same explicit model for host, native translation and disclosure (6.046792ms)
+✔ explicit local selection reaches native translation with its exact model and endpoint (6.807667ms)
+✔ CLI readiness uses its own authentication boundary without a generated prompt or credential copy (0.240666ms)
+✔ Ollama cloud models and renamed remote aliases cannot be disclosed as local inference (0.247916ms)
+✔ service environment does not inherit paid credentials, remote infrastructure or shell hooks (6.289458ms)
+✔ first boot persists private keys, ports and identity; later starts keep them and reject silent port changes (8.441917ms)
+✔ saved configuration is validated before forming compose operations (5.354708ms)
+✔ an unrelated nonempty state directory is never taken over (0.799083ms)
+✔ managed service stops when its supervisor disappears (98.605375ms)
+✔ managed Compose isolates named volumes and all published ports; migration mounts are read-only (6.426375ms)
+✔ port conflicts fail without modifying the listener (0.394458ms)
+✔ owned processes fail on exit and stop children; unrelated processes stay alive (39.338375ms)
+✔ command timeout, startup abort and bounded readiness cannot report success (68.16025ms)
+✔ entrypoint help works from a symlink with spaces and importing it starts nothing (105.504625ms)
+✔ network errors and redirects do not expose returned response bodies (8.772875ms)
+ℹ tests 38
+ℹ suites 0
+ℹ pass 38
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1002.14975

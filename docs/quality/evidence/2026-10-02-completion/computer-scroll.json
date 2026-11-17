@@ -1,0 +1,102 @@
+{
+  "recordedAt": "2026-10-01T19:20:29.053170+00:00",
+  "classification": "Implementation verification with separate independent source review; no browser, model or production-consent execution",
+  "uncommitted": true,
+  "runs": [
+    {
+      "command": "isolated strict tsc including NativeVisionDevice and its local dependencies",
+      "exitCode": 0,
+      "log": "computer-scroll-types-device.log"
+    },
+    {
+      "command": "GENIE_VISION_TEST_DIST=<isolated compiled source> node --test computer-vision.node.mjs background-vision.node.mjs",
+      "exitCode": 0,
+      "passed": 86,
+      "failed": 0,
+      "skipped": 0,
+      "log": "computer-scroll-node.log"
+    },
+    {
+      "command": "GENIE_VISION_TEST_DIST=<isolated compiled source> node --test computer-scroll-device.node.mjs",
+      "exitCode": 0,
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "log": "computer-scroll-device.log"
+    },
+    {
+      "command": "bash scripts/test-background-scroll.sh",
+      "exitCode": 0,
+      "passedCases": 14,
+      "log": "computer-scroll-pure.log"
+    },
+    {
+      "command": "GENIE_FIXTURE_PASSIVE=1 GENIE_NO_PRIVATE_SPI=1 GENIE_FIXTURE_SCROLL=1 bash scripts/test-background-computer.sh",
+      "exitCode": 0,
+      "result": "computer-scroll-native-final-result.json",
+      "log": "computer-scroll-native-final.log",
+      "scope": "Owned AppKit target and sentinel, test-created grant. Full append/preview/secure/stop checks plus vertical scroll/down/up/edge/replay/concurrency/postdispatch unknown and exact AX object replacement."
+    }
+  ],
+  "priorFailures": [
+    {
+      "log": "computer-scroll-native-round1.log",
+      "reason": "stale_frame in existing append-race stage, before scroll. Not reproduced; cause unresolved; no freshness gate weakened."
+    },
+    {
+      "log": "computer-scroll-native-round2.log",
+      "reason": "Standard NSScroller lacks optional min/max and its decoration overflows parent rect by 1pt; no scroll input occurred. Bounds compatibility changed only with normalized document geometry proof retained."
+    }
+  ],
+  "replacementProof": {
+    "snapshotFile": "cv-e534cbd8-5c91-4515-866b-89cc137238c4.png.snapshot.json",
+    "attemptRecordExists": true,
+    "attemptRecordSha256": "6436fecfc458363a95a10a7c96654c3e6b4488b9d7ef3fde32cca949b7185a10",
+    "interpretation": "Marker-time describe equality passed before .used creation; then setter-adjacent AX object identity rejected the replaced bar with target_changed. Retained old control was never used for scroll delivery."
+  },
+  "sourceSha256": {
+    "workers/agent-host/src/computer-vision.ts": "a95f23c32c54d32e4eae818cc5e8433103c418241624dff1c9bde1515555afb6",
+    "workers/agent-host/src/computer-vision-policy.ts": "5f103bfe90ff896e473d7213cda453ff94869306ab7c60da178f521bf2ecc24e",
+    "workers/agent-host/src/computer-vision-prompts.ts": "e7e715e2571c0f31d111cab6bd95af52dcccc3649b8dbe1e1900b93ff6940734",
+    "workers/agent-host/src/computer-vision-device.ts": "a4d94e541d624ba91a0099d3d6bc36a879cb8b26c906649b90aa8d171f290ccf",
+    "workers/agent-host/test/computer-vision.node.mjs": "324875e8e5b2b855ed00beee9b10233d75bce828de166823ec9a6611b74d0e52",
+    "workers/agent-host/test/background-vision.node.mjs": "3c6e1b25e767b4ad1c69e2322c9e0230e66116add1adbda888077438c6e41430",
+    "workers/agent-host/test/computer-scroll-device.node.mjs": "43de474e25972b1e225df9087981809ee4b4a1fab71b1d4427eff944fc8f3782",
+    "tools/computer-use/BackgroundAX.swift": "d7ebb648f3f2e672a7075b8dfef0f8f59ac66949e0bdcabe225c5305e969dc85",
+    "tools/computer-use/BackgroundAXTests.swift": "d1022bbee73a36d27b1ca55f70234226b92c2825ff7d7b96593687c150a7fd34",
+    "tools/computer-use/BackgroundScroll.swift": "ddc05bec49bf3a1defabba0e1081ed58e5463d3f3149cbf9a058d0a580c2a25f",
+    "tools/computer-use/BackgroundScrollTests.swift": "68123201f0aa02c85db60e663f46b337d6c86b3e25345a6da11d935ac09b5dbd",
+    "tools/computer-use/BackgroundFixture.swift": "5d9b388b121cb4ba46a71a3f82e3708e459273e56a02dcf299c667bbee12dabb",
+    "tools/computer-use/genie-computer.swift": "deecc09c10519803f2efb5aa833ebbb2b5c166dd87a25d15ff8c26a1f2a1a879",
+    "scripts/test-background-scroll.sh": "57790a4e7aa8e17032d7c5ee75513f7a45c249f8791005cb47facb9583d86b66",
+    "scripts/test-background-computer.sh": "72c583ab4c4d69e4a1d890f0ba1baf478211c3d71a486d5cefc1a89ac0f20d2e",
+    "scripts/build-computer-helper.sh": "87ffe6ba64efd7fdda06c69e9700a576212ea53c428651a9f999113b4459d889",
+    "scripts/build-computer-helper-unattended-test.sh": "01abfb5c101f27ebf8a7e7715f9ab776613189307eca8d1b2bbfa1f6364bc4fb",
+    "scripts/test-native-input.sh": "fc102893f4b114567908086a9af36676ae55b23f22a2612622b4467841954238"
+  },
+  "artifactSha256": {
+    "computer-scroll-native-round1.log": "6dbe12ff4dc4d320371265e0844a6240090d079872cd827bec25db79626cffd6",
+    "computer-scroll-native-round2.log": "f7ad07a5f8a1ef63067b6625f80db7c12718cb3f6567bacc575bf742154be5fd",
+    "computer-scroll-native-round3.log": "54b5902623fab825a79bfdbf7d0d818c594785aa19332f1490e582c39d6c829e",
+    "computer-scroll-native-final.log": "d1093c70e6278ca39b345a384e61192c87812ddcbc5ecd97d48019f934374672",
+    "computer-scroll-native-final-result.json": "3d664d3351b940762a65a65ec64cae696120579f15ec269b2f0c6d557dea2cfd",
+    "computer-scroll-pure.log": "105fccc06f9745d9803b84ed9753b405aa66e67db971250987446df67a7f5dd7",
+    "computer-scroll-node.log": "08efd2f101bf08829110400e05daea11273a2e08ce99e8035699175957d7d40a",
+    "computer-scroll-device.log": "9d2d2d0c50157fac274aa1ded558bd496bc66ebc14386fd9683863fae05890d7",
+    "computer-scroll-types-device.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "notRun": [
+    "Production scroll helper candidate compilation/signature/status (old append Completion candidate untouched)",
+    "Actual Safari/Chromium/browser or model-planned scrolling",
+    "Production target-consent E2E for scroll",
+    "Live orders, payments, securities transactions",
+    "Full workspace gate by this agent"
+  ],
+  "limits": [
+    "Vertical standard AXScrollArea with one direct full-content child and an owned writable normalized vertical scrollbar only; horizontal scrollbar is unsupported.",
+    "No wheel/private-SPI fallback. Unknown geometry/no movement is not success; postdispatch mismatch is unknown and never retried.",
+    "AX has no atomic compare-and-set; final pointer/geometry/authority checks cannot eliminate the tiny interval before setting.",
+    "Native watcher interruption is tested with a sticky marker in passive mode, not a live human participant.",
+    "Observed foreground/pointer/clipboard preservation is limited to these owned fixture cases."
+  ]
+}

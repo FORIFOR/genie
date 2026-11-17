@@ -22,7 +22,7 @@ interface RawStep {
 export function httpStepTransport(config: StepTransportConfig): StepTransport {
   const doFetch = config.fetch ?? globalThis.fetch;
 
-  const call = async (path: string, body: unknown): Promise<unknown> => {
+  const call = async (path: string, body: unknown, signal?: AbortSignal): Promise<unknown> => {
     const response = await doFetch(`${config.baseUrl}${path}`, {
       method: 'POST',
       headers: {
@@ -30,6 +30,7 @@ export function httpStepTransport(config: StepTransportConfig): StepTransport {
         'content-type': 'application/json',
       },
       body: JSON.stringify(body),
+      ...(signal ? { signal } : {}),
     });
     if (!response.ok) {
       const text = await response.text();
@@ -40,6 +41,22 @@ export function httpStepTransport(config: StepTransportConfig): StepTransport {
   };
 
   return {
+    async executionAllowed(requestId, hostId, signal) {
+      const body = await call(
+        `/v1/host-steps/${encodeURIComponent(requestId)}/authority`,
+        { host_id: hostId },
+        signal,
+      );
+      if (
+        !body ||
+        typeof body !== 'object' ||
+        !('allowed' in body) ||
+        typeof body.allowed !== 'boolean'
+      ) {
+        throw new Error('invalid host execution authority response');
+      }
+      return body.allowed;
+    },
     async claim(hostId) {
       const body = (await call('/v1/host-steps/claim', { host_id: hostId })) as RawStep | null;
       if (!body) return null;
@@ -53,8 +70,12 @@ export function httpStepTransport(config: StepTransportConfig): StepTransport {
     async complete(requestId, hostId, result) {
       await call(`/v1/host-steps/${requestId}/complete`, { host_id: hostId, result });
     },
-    async fail(requestId, hostId, error) {
-      await call(`/v1/host-steps/${requestId}/fail`, { host_id: hostId, error });
+    async fail(requestId, hostId, error, result) {
+      await call(`/v1/host-steps/${requestId}/fail`, {
+        host_id: hostId,
+        error,
+        ...(result === undefined ? {} : { result }),
+      });
     },
   };
 }

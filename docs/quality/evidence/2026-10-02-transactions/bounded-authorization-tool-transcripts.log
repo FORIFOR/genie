@@ -1,0 +1,40 @@
+PROVENANCE: Transcribed from this agent's returned tool results, not a new execution.
+The original commands were not redirected to a file. The visible output below is
+preserved with tool chunk/session identifiers and returned exit codes.
+
+[Evaluator; tool chunk 0dc5fc, session 72985; exit_code 0]
+Command: pnpm exec vitest run packages/contracts/test/transaction-authorization.test.ts
+ ✓ packages/contracts/test/transaction-authorization.test.ts (3 tests) 17ms
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  01:25:18
+   Duration  481ms (transform 69ms, setup 0ms, collect 98ms, tests 17ms, environment 0ms, prepare 45ms)
+
+[Initial isolated DB regression; tool chunk 92432d, session 40009; exit_code 0]
+Command: PATH=/opt/homebrew/opt/libpq/bin:$PATH ASTRA_TEST_PGPORT=32768 ./infra/db/with-test-db.sh pnpm exec vitest run services/task/test/transaction-authorization-ledger.db.test.ts services/agent-host/test/bridge.db.test.ts services/api-gateway/test/tasks.integration.test.ts
+ ✓ services/agent-host/test/bridge.db.test.ts (19 tests) 512ms
+ ✓ services/task/test/transaction-authorization-ledger.db.test.ts (7 tests) 1009ms
+   ✓ bounded authorization atomic ledger > serializes quota in independent processes and reserves at most the total budget and count  376ms
+ ✓ services/api-gateway/test/tasks.integration.test.ts (26 tests) 852ms
+ Test Files  3 passed (3)
+      Tests  52 passed (52)
+   Start at  01:25:57
+   Duration  3.14s (transform 880ms, setup 0ms, collect 2.98s, tests 2.37s, environment 0ms, prepare 155ms)
+
+[Ledger with production worker proof chain; tool chunk b21ae8, session 14637; exit_code 0]
+Command: PATH=/opt/homebrew/opt/libpq/bin:$PATH ASTRA_TEST_PGPORT=32768 ./infra/db/with-test-db.sh pnpm exec vitest run services/task/test/transaction-authorization-ledger.db.test.ts
+ RUN  v3.2.7 /Users/shuhei/Projects/genie
+ ✓ services/task/test/transaction-authorization-ledger.db.test.ts (8 tests) 748ms
+   ✓ bounded authorization atomic ledger > serializes quota in independent processes and reserves at most the total budget and count  300ms
+ Test Files  1 passed (1)
+      Tests  8 passed (8)
+   Start at  01:33:16
+   Duration  1.55s (transform 214ms, setup 0ms, collect 485ms, tests 748ms, environment 0ms, prepare 46ms)
+
+[Entire tests typecheck after the new integrated test; tool chunk e6ed5b, session 30020; exit_code 0]
+Command: pnpm exec tsc -p tsconfig.tests.json
+Output: empty
+
+[Diff whitespace check after the new integrated test; tool chunk c7f884; exit_code 0]
+Command: git diff --check
+Output: empty

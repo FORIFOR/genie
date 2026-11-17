@@ -62,6 +62,9 @@ extension SelfTest {
         print("ORB_DISPLAY visible=\(window.isVisible) occlusion=\(window.occlusionState.contains(.visible)) appHidden=\(NSApp.isHidden) viewHidden=\(view.isHiddenOrHasHiddenAncestor) paused=\(view.isPaused) size=\(view.drawableSize) frames=\(view.renderedFrames)")
         if view.renderedFrames == 0 || view.isPaused {failures.append("visible display link did not render")}
         view.configure(mode:.speaking,level:1,reduced:true)
+        // 止めた直後は、すでに飛んでいる 1 枚が後から着く。それを数え始めに含めない。
+        // （含めていたため、機械が混んでいるときだけ落ちていた。止まっているかは次の 200ms で見る）
+        try? await Task.sleep(for:.milliseconds(120))
         let frozen=view.renderedFrames
         try? await Task.sleep(for:.milliseconds(200))
         if !view.isPaused || view.renderedFrames != frozen {failures.append("Reduce Motion kept rendering")}

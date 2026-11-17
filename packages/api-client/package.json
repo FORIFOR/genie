@@ -2,6 +2,7 @@
   "name": "@genie/api-client",
   "version": "0.0.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "description": "contracts に対する HTTP / SSE クライアント。desktop と share-web が使う。",
   "main": "./dist/index.js",

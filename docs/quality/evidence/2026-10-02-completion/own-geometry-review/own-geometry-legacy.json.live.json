@@ -1,0 +1,75 @@
+[
+  {
+    "enabled" : false,
+    "height" : 272,
+    "label" : "Genie Geometry SwiftUI Fixture",
+    "role" : "AXWindow",
+    "width" : 360,
+    "x" : 0,
+    "y" : 0
+  },
+  {
+    "enabled" : false,
+    "height" : 240,
+    "role" : "AXGroup",
+    "width" : 360,
+    "x" : 0,
+    "y" : 32
+  },
+  {
+    "enabled" : false,
+    "height" : 24,
+    "role" : "AXUnknown",
+    "width" : 84.5,
+    "x" : 138,
+    "y" : 132
+  },
+  {
+    "enabled" : false,
+    "height" : 24,
+    "role" : "AXUnknown",
+    "width" : 84.5,
+    "x" : 138,
+    "y" : 132
+  },
+  {
+    "enabled" : false,
+    "height" : 24,
+    "role" : "AXUnknown",
+    "width" : 84.5,
+    "x" : 138,
+    "y" : 184
+  },
+  {
+    "enabled" : true,
+    "height" : 16,
+    "role" : "AXButton",
+    "width" : 16,
+    "x" : 8,
+    "y" : 8
+  },
+  {
+    "enabled" : false,
+    "height" : 16,
+    "role" : "AXButton",
+    "width" : 16,
+    "x" : 54,
+    "y" : 8
+  },
+  {
+    "enabled" : false,
+    "height" : 14,
+    "role" : "AXGroup",
+    "width" : 14,
+    "x" : 55,
+    "y" : 9
+  },
+  {
+    "enabled" : false,
+    "height" : 16,
+    "role" : "AXButton",
+    "width" : 16,
+    "x" : 31,
+    "y" : 8
+  }
+]

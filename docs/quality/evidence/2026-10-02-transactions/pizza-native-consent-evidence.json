@@ -1,0 +1,25 @@
+{
+  "at": "2026-10-01T16:23:46.786983+00:00",
+  "method": "Independent read-only inspection of owned preview stage log and production source; no desktop input or new execution",
+  "classification": "Native consent path observed; identity of input actor is unverified",
+  "stageLogPath": "/private/tmp/genie-transactions-20261002/preview/logs/host.log",
+  "stageLogSha256": "2469b912fb304003a191adda5de36eb1e6fbaa196c2a64931239e5eb70592d5a",
+  "stageLines": [
+    "STAGE alert-returned-1000-popup-1",
+    "STAGE selected-app-Genie_模擬注文",
+    "STAGE route ax_press by element point 306,698 local 126,233"
+  ],
+  "sourcePath": "/Users/shuhei/Projects/genie/tools/computer-use/BackgroundAX.swift",
+  "sourceSha256": "3d853b25a4e83d551cc7967b0c06d2bf567bfc62a4ac67142dbf7b7eaec31183",
+  "observed": "Modal returned first-button result 1000 with selected popup index 1, then selected-app and ax_press route were recorded.",
+  "sourceInterpretation": "Production select accepts only alertFirstButtonReturn and positive popup selection, checks expected PID+bundle and records selected-app. It did not take the unattended branch.",
+  "limits": [
+    "These stage lines have no input-actor or event provenance and cannot establish that a human personally selected or clicked.",
+    "This supports the local simulated pizza receipt only, not real delivery, live payment, or complete end-to-end approval UX."
+  ],
+  "relatedEvidence": [
+    "pizza-provider-evidence.json",
+    "production-helper-app-candidate.json",
+    "completed-pizza-watcher-cleanup.json"
+  ]
+}

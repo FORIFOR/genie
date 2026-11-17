@@ -2,6 +2,7 @@
   "name": "@genie/audio",
   "version": "0.0.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "description": "音声の取り込み契約。出所を落とさない PCM frame と、混合・変換の規則。正本 §11・§12。",
   "main": "./dist/index.js",

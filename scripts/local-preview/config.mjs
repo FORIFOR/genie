@@ -1,13 +1,64 @@
 import { createHash, generateKeyPairSync, randomBytes, randomUUID } from 'node:crypto';
-import { mkdir, readFile, open, rename, rm, readdir, chmod, realpath } from 'node:fs/promises';
+import {
+  mkdir,
+  readFile,
+  open,
+  rename,
+  rm,
+  readdir,
+  chmod,
+  realpath,
+  lstat,
+} from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { resolve, join } from 'node:path';
+import { resolve, join, isAbsolute } from 'node:path';
 import { createServer } from 'node:net';
+import { constants } from 'node:fs';
+import { isDeepStrictEqual } from 'node:util';
 import { localEndpoint } from '../doctor-local-preview.mjs';
 
 export const PNPM_VERSION = '10.12.2';
 export const DEFAULT_PORT = 43123;
 export const DEFAULT_STATE = join(homedir(), 'Library/Application Support/Genie/local-preview');
+export const DEFAULT_CODEX_MODEL = 'gpt-6-sol';
+export const DEFAULT_CLAUDE_CODE_MODEL = 'claude-sonnet-5-5';
+export const DEFAULT_GEMINI_MODEL = 'gemini-2.5-flash';
+/** Gemini's OpenAI-compatible endpoint. Fixed here: an external destination is never a free-form option. */
+export const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/openai';
+/** The host reads the key from this Keychain service (account = the preview project). */
+export const GEMINI_KEYCHAIN_SERVICE = 'com.astra.connector.llm.gemini_api';
+
+/**
+ * 外部の提供元。名前はホストが名乗るモデルの種別（`LANGUAGE_MODEL_KINDS`）と同じにする。
+ * 起動後の確認は、ホストの名乗りとこの名前を突き合わせる。
+ */
+const EXTERNAL_PROVIDERS = {
+  codex: { defaultModel: DEFAULT_CODEX_MODEL, recipient: 'OpenAI', via: 'Codex接続' },
+  claude_code: {
+    defaultModel: DEFAULT_CLAUDE_CODE_MODEL,
+    recipient: 'Anthropic',
+    via: 'Claude Code接続',
+  },
+  gemini_api: { defaultModel: DEFAULT_GEMINI_MODEL, recipient: 'Google', via: 'Gemini API' },
+};
+export const MODEL_PROVIDERS = ['local', ...Object.keys(EXTERNAL_PROVIDERS)];
+
+export function isExternalProvider(provider) {
+  return Object.hasOwn(EXTERNAL_PROVIDERS, provider);
+}
+
+/** The model actually used: the saved choice, or the provider's default. */
+export function selectedModel(config) {
+  return config?.model ?? EXTERNAL_PROVIDERS[config?.modelProvider]?.defaultModel ?? null;
+}
+
+/** Who receives the request, in the words shown to the person. */
+export function modelRecipient(config) {
+  const external = EXTERNAL_PROVIDERS[config?.modelProvider];
+  return external
+    ? `${external.recipient} / ${external.via} (${selectedModel(config)})`
+    : `このMac (${config?.model ?? '未選択'})`;
+}
 
 export function parseOptions(args) {
   const result = { command: 'start', stateDir: DEFAULT_STATE, open: true };
@@ -18,23 +69,132 @@ export function parseOptions(args) {
     '--state-dir': 'stateDir',
     '--port': 'port',
     '--model': 'model',
+    '--model-provider': 'modelProvider',
     '--model-url': 'modelURL',
+    '--computer-vision-model': 'computerVisionModel',
     '--app': 'app',
+    '--orca-root': 'orcaRoot',
+    '--docker-context': 'dockerContext',
+    /*
+     * 画面操作ヘルパーの道。**既定は今までどおりリポジトリが建てた本番の実行ファイル。**
+     * 明示したときだけ別のものを使う。試験用のビルドを指すためにあり、
+     * どちらを使ったかは起動時の記録（`unattendedTest`）に残る。
+     */
+    '--computer-helper': 'computerHelper',
+    /*
+     * チャット（LINE / Slack）と、送った写真を読む鍵の置き場所（0600 のファイル）。
+     * **明示したときだけ読み、CHANNEL_ENV_KEYS の名前だけを gateway に渡す。**
+     */
+    '--channels-env': 'channelsEnv',
+    // 無料のトンネルは起動し直すと URL が変わる。ファイルより優先する
+    '--public-url': 'publicUrl',
   };
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     if (arg === '--help' || arg === '-h') result.help = true;
     else if (arg === '--no-open') result.open = false;
     else if (arg === '--computer-use') result.computerUse = true;
+    else if (arg === '--work-sync') result.workSync = true;
+    else if (arg === '--allow-cloud') result.allowCloud = true;
+    else if (arg === '--allow-external-screen') result.allowExternalScreen = true;
+    else if (arg === '--no-external-screen') result.allowExternalScreen = false;
+    else if (arg === '--transaction-simulation') result.transactionSimulation = true;
     else if (fields[arg] && args[i + 1] && !args[i + 1].startsWith('--'))
       result[fields[arg]] = args[++i];
     else throw new Error('不明なオプションです。--help で起動方法を確認してください。');
   }
   result.stateDir = resolve(result.stateDir);
+  if (result.computerHelper !== undefined) result.computerHelper = resolve(result.computerHelper);
+  if (result.channelsEnv !== undefined) result.channelsEnv = resolve(result.channelsEnv);
+  if (result.orcaRoot !== undefined && !isAbsolute(result.orcaRoot))
+    throw new Error('--orca-root には絶対パスを指定してください。');
   if (result.port !== undefined) result.port = portNumber(result.port);
   if (result.model !== undefined) validateModel(result.model);
+  if (result.computerVisionModel !== undefined) {
+    validateModel(result.computerVisionModel);
+    assertLocalModel(result.computerVisionModel);
+    if (!result.computerUse)
+      throw new Error('--computer-vision-model には --computer-use が必要です。');
+    if (result.allowExternalScreen === true)
+      throw new Error('ローカル画面モデルには --allow-external-screen を指定しません。');
+  }
+  if (result.modelProvider !== undefined) validateModelProvider(result.modelProvider);
+  if (isExternalProvider(result.modelProvider) && result.modelURL !== undefined)
+    throw new Error('外部モデルの接続では --model-url を指定しません。');
   if (result.modelURL !== undefined) result.modelURL = localEndpoint(result.modelURL);
+  if (result.dockerContext !== undefined) validateDockerContextName(result.dockerContext);
+  if (result.transactionSimulation && !result.computerUse)
+    throw new Error('--transaction-simulation には --computer-use が必要です。');
+  if (result.allowExternalScreen === true && !result.computerUse)
+    throw new Error('--allow-external-screen には --computer-use が必要です。');
   return result;
+}
+
+/**
+ * `--channels-env` のファイルに書いてよい名前（鍵ではない設定だけ）。
+ * **鍵（トークン・API キー）はファイルに置かない。**キーチェーン 1 か所に置き、起動時に Genie.app から読む
+ * （local-preview/secrets.mjs、docs/SECRETS.ja.md）。
+ */
+export const CHANNEL_ENV_KEYS = Object.freeze([
+  'GENIE_UNDERSTAND_MODEL',
+  'GENIE_TIMEZONE',
+  // LINE から声で話す（docs/LINE_CALL.ja.md）。キーはキーチェーン（Mac の「会話」と同じ Gemini のキー）
+  'GENIE_CALL_MONTHLY_MINUTES',
+  'GENIE_CALL_MODEL',
+  'GENIE_PUBLIC_URL',
+  // 計画のボードを LINE の中で開く LIFF アプリの ID（公開の値。docs/LINE_GROUPS.ja.md）
+  'GENIE_LINE_LIFF_ID',
+  // LINE の中継（公式アカウント 1 つ）の場所。鍵（GENIE_LINE_HUB_CREDENTIAL）はキーチェーン
+  'GENIE_LINE_HUB_URL',
+  // LINE のコーディング依頼で使う、Orca 許可フォルダ内の既存プロジェクト。
+  'GENIE_LINE_ORCA_PROJECT',
+  // 複数の Agent Host がオンラインなら、この端末だけを使う。
+  'GENIE_LINE_ORCA_HOST_ID',
+]);
+
+/**
+ * `KEY=VALUE` の行を読み、CHANNEL_ENV_KEYS の名前だけを返す。
+ * 値の入った鍵の行があれば `secrets` に名前を返す（呼ぶ側が断る）。ほかの名前は `ignored`（値は返さない）。
+ */
+export function channelEnvironment(text, secretNames = []) {
+  const env = {};
+  const ignored = [];
+  const secrets = [];
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line || line.startsWith('#')) continue;
+    const match = /^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/.exec(line);
+    if (!match) throw new Error('--channels-env のファイルは KEY=VALUE の行だけにしてください。');
+    const [, key, value] = match;
+    const unquoted = value.replace(/^(['"])(.*)\1$/, '$2');
+    if (CHANNEL_ENV_KEYS.includes(key)) {
+      if (unquoted) env[key] = unquoted;
+    } else if (secretNames.includes(key)) {
+      if (unquoted) secrets.push(key);
+    } else ignored.push(key);
+  }
+  return { env, ignored, secrets };
+}
+
+export function validateDockerContextName(name) {
+  if (typeof name !== 'string' || !/^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,127}$/.test(name))
+    throw new Error('Docker context名を確認してください。');
+  return name;
+}
+
+/** Resolve and revalidate on every start, before any daemon or Compose operation. */
+export async function dockerEnvironment(env, requested, probe) {
+  const name = requested ?? (await probe('docker', ['context', 'show'], env));
+  validateDockerContextName(name);
+  const endpoint = await probe(
+    'docker',
+    ['context', 'inspect', name, '--format', '{{.Endpoints.docker.Host}}'],
+    env,
+  );
+  if (typeof endpoint !== 'string' || !/^unix:\/\/\/[^/\s?#\u0000][^\s?#\u0000]*$/.test(endpoint))
+    throw new Error('Docker contextは絶対パスのローカルunixソケットである必要があります。');
+  // Pin only child processes. Do not change the user's selected context or inherit DOCKER_HOST.
+  return { name, env: { ...env, DOCKER_CONTEXT: name } };
 }
 
 export function portNumber(value) {
@@ -47,6 +207,243 @@ export function validateModel(value) {
   if (typeof value !== 'string' || !/^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,159}$/.test(value))
     throw new Error('モデル名を確認してください。ollama list に表示される名前を指定できます。');
   return value;
+}
+
+export function validateModelProvider(value) {
+  if (!MODEL_PROVIDERS.includes(value))
+    throw new Error(
+      '--model-provider は local / codex / claude_code / gemini_api のいずれかを指定してください。',
+    );
+  return value;
+}
+
+/** Opt in once per selected external provider; preserve that explicit choice across restart. */
+export function modelConfiguration(config, options = {}) {
+  const previous = validateModelProvider(config.modelProvider ?? 'local');
+  const provider = validateModelProvider(options.modelProvider ?? previous);
+  if (isExternalProvider(provider) && options.modelURL !== undefined)
+    throw new Error('外部モデルの接続では --model-url を指定しません。');
+  if (
+    provider !== 'local' &&
+    options.allowCloud !== true &&
+    !(previous === provider && config.allowCloud === true)
+  )
+    throw new Error(
+      `外部モデルへ送信するには --model-provider ${provider} --allow-cloud を指定してください。`,
+    );
+  const model =
+    options.model ??
+    (provider === previous ? config.model : null) ??
+    EXTERNAL_PROVIDERS[provider]?.defaultModel ??
+    null;
+  if (model) validateModel(model);
+  if (
+    options.allowExternalScreen === true &&
+    (!options.computerUse || !SCREEN_PROVIDERS.includes(provider))
+  )
+    throw new Error(
+      '--allow-external-screen は --computer-use と、Codex 接続または Claude Code 接続でのみ指定できます。',
+    );
+  // A conversation opt-in never authorizes automatic screenshot capture/egress.
+  // Persist only an explicit screen choice for this exact provider and model.
+  const externalScreenAuthorization =
+    options.allowExternalScreen === true
+      ? { provider, model }
+      : options.allowExternalScreen !== false &&
+          SCREEN_PROVIDERS.includes(provider) &&
+          config.externalScreenAuthorization?.provider === provider &&
+          config.externalScreenAuthorization?.model === model
+        ? { provider, model }
+        : null;
+  return {
+    ...config,
+    modelProvider: provider,
+    allowCloud: provider !== 'local',
+    model,
+    externalScreenAuthorization,
+    ...(options.modelURL !== undefined ? { modelURL: localEndpoint(options.modelURL) } : {}),
+  };
+}
+
+/** A loopback transport does not make a cloud model local. Never silently relabel it. */
+export function assertLocalModel(model, metadata = {}) {
+  if (/(?:^|[:/_-])cloud(?:$|[:/_-])/i.test(model) || metadata.remote_host || metadata.remote_model)
+    throw new Error(
+      'Ollamaのクラウドモデルをローカルとして起動できません。外部接続には --model-provider codex --allow-cloud を指定してください。',
+    );
+  return model;
+}
+
+export function modelEnvironment(config) {
+  const provider = validateModelProvider(config.modelProvider ?? 'local');
+  if (isExternalProvider(provider)) {
+    if (config.allowCloud !== true) throw new Error('外部モデルの送信許可がありません。');
+    const model = validateModel(selectedModel(config));
+    if (provider === 'codex') return { ASTRA_LLM_CLI: 'codex', ASTRA_CODEX_MODEL: model };
+    if (provider === 'claude_code')
+      return { ASTRA_LLM_CLI: 'claude_code', ASTRA_CLAUDE_CODE_MODEL: model };
+    // The key stays in the Keychain; the host reads it. Never place it in this environment.
+    return {
+      ASTRA_LLM_CLI: 'gemini_api',
+      ASTRA_GEMINI_API_URL: GEMINI_API_URL,
+      ASTRA_GEMINI_MODEL: model,
+    };
+  }
+  if (config.model) assertLocalModel(config.model);
+  return {
+    ASTRA_LLM_CLI: 'local',
+    ASTRA_LOCAL_LLM_URL: config.modelURL,
+    ASTRA_LOCAL_LLM_MODEL: config.model,
+    ASTRA_LOCAL_LLM_REASONING_EFFORT: 'none',
+  };
+}
+
+/** A per-start local vision override; does not alter the saved conversation model. */
+export function computerVisionConfiguration(config, options = {}) {
+  if (options.computerVisionModel === undefined) return config;
+  if (options.computerUse !== true)
+    throw new Error('--computer-vision-model には --computer-use が必要です。');
+  const model = assertLocalModel(validateModel(options.computerVisionModel));
+  const modelURL = localEndpoint(config.modelURL);
+  if (new URL(modelURL).pathname.replace(/\/$/, '') !== '/v1')
+    throw new Error('ローカル画面モデルには Ollama の /v1 接続先が必要です。');
+  return { modelProvider: 'local', model, modelURL };
+}
+
+/**
+ * 画面の画像を外へ送ってよい接続。どちらもサインイン済みの CLI で、Genie は資格情報を読まない。
+ * Claude Code には道具を 1 つも渡さず、画像を本文で渡す（agent-host の `askWithImages`）。
+ */
+export const SCREEN_PROVIDERS = ['codex', 'claude_code'];
+export const SCREEN_TASK_CALLS = 30;
+export const SCREEN_MONTH_CALLS = 3000;
+
+export function externalScreenAllowed(config, computerUse = false) {
+  const provider = config?.modelProvider;
+  return (
+    computerUse === true &&
+    SCREEN_PROVIDERS.includes(provider) &&
+    config.allowCloud === true &&
+    config.externalScreenAuthorization?.provider === provider &&
+    config.externalScreenAuthorization?.model ===
+      (config.model ?? EXTERNAL_PROVIDERS[provider].defaultModel)
+  );
+}
+
+export function modelAppEnvironment(config) {
+  const provider = config.modelProvider ?? 'local';
+  const external = EXTERNAL_PROVIDERS[provider];
+  // Also validate the saved permission before rendering an external disclosure.
+  const selected = modelEnvironment(config);
+  return external
+    ? {
+        ASTRA_MODEL_DISCLOSURE: `送信先: ${external.recipient} の ${selectedModel(config)}（${external.via}）。依頼した文章や添付画像を外部モデルへ送ります。`,
+        ASTRA_LLM_CLI: provider,
+        ASTRA_LOCAL_VISION: '0',
+        ...(provider === 'codex' ? { ASTRA_CODEX_MODEL: selected.ASTRA_CODEX_MODEL } : {}),
+      }
+    : {
+        ASTRA_MODEL_DISCLOSURE: `送信先: このMacの ${config.model}（${config.modelURL}）。外部モデルへの切替はありません。`,
+        ASTRA_LLM_CLI: 'local',
+        ASTRA_LOCAL_VISION: '1',
+        ASTRA_LOCAL_LLM_URL: selected.ASTRA_LOCAL_LLM_URL,
+        ASTRA_LOCAL_LLM_MODEL: selected.ASTRA_LOCAL_LLM_MODEL,
+      };
+}
+
+/** Non-secret, selected connection only. It never carries credentials or readiness. */
+export function desktopConnectionDescriptor(config, stateDir) {
+  if (!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(config.identity ?? ''))
+    throw new Error('通常起動の端末識別子を確認してください。');
+  const selected = modelEnvironment(config);
+  const provider = selected.ASTRA_LLM_CLI;
+  const external = isExternalProvider(provider);
+  const name = validateModel(external ? selectedModel(config) : selected.ASTRA_LOCAL_LLM_MODEL);
+  return {
+    version: 1,
+    gatewayURL: `http://127.0.0.1:${portNumber(config.port)}`,
+    workspace: join(stateDir, 'app'),
+    desktopIdentity: config.identity,
+    model: external
+      ? { provider, name }
+      : { provider, name, url: localEndpoint(selected.ASTRA_LOCAL_LLM_URL) },
+    externalAuthorization: external ? { provider, model: name } : null,
+  };
+}
+
+/** Only a ready standard workspace becomes the direct-launch choice. */
+async function checkDesktopDirectory(stateDir) {
+  const directory = await lstat(stateDir);
+  if (
+    !directory.isDirectory() ||
+    directory.isSymbolicLink() ||
+    directory.uid !== process.getuid() ||
+    (directory.mode & 0o7777) !== 0o700 ||
+    (await realpath(stateDir)) !== resolve(stateDir)
+  )
+    throw new Error('通常起動の保存先の所有者・アクセス権を確認してください。');
+}
+
+export async function saveDesktopConnection(
+  config,
+  stateDir,
+  { ready = false, standardState = DEFAULT_STATE } = {},
+) {
+  if (!ready || resolve(stateDir) !== resolve(standardState)) return false;
+  await checkDesktopDirectory(stateDir);
+  await privateJSON(
+    join(stateDir, 'desktop-connection.json'),
+    desktopConnectionDescriptor(config, stateDir),
+  );
+  return true;
+}
+
+/** Revoke a stale ready choice before persisting a different selection. Never
+ * delete it: absence would revive the old unconfigured local defaults. */
+export async function invalidateDesktopConnection(
+  config,
+  stateDir,
+  { standardState = DEFAULT_STATE } = {},
+) {
+  if (resolve(stateDir) !== resolve(standardState)) return false;
+  await checkDesktopDirectory(stateDir);
+  const file = join(stateDir, 'desktop-connection.json');
+  let old = null,
+    handle;
+  try {
+    handle = await open(file, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+    const info = await handle.stat();
+    if (!info.isFile() || info.uid !== process.getuid() || (info.mode & 0o7777) !== 0o600)
+      throw new Error('通常起動の接続設定の所有者・アクセス権を確認してください。');
+    const buffer = Buffer.alloc(16_385);
+    let length = 0;
+    while (length < buffer.length) {
+      const { bytesRead } = await handle.read(buffer, length, buffer.length - length, null);
+      if (!bytesRead) break;
+      length += bytesRead;
+    }
+    const after = await handle.stat();
+    if (
+      length <= 16_384 &&
+      length === info.size &&
+      info.size === after.size &&
+      info.mtimeMs === after.mtimeMs &&
+      info.ctimeMs === after.ctimeMs
+    ) {
+      try {
+        old = JSON.parse(buffer.subarray(0, length).toString('utf8'));
+      } catch {
+        /* keep invalid */
+      }
+    }
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+  } finally {
+    await handle?.close();
+  }
+  if (isDeepStrictEqual(old, desktopConnectionDescriptor(config, stateDir))) return false;
+  await privateJSON(file, { version: 1, selectionPending: true });
+  return true;
 }
 
 export function selectModel(installed, requested) {
@@ -76,6 +473,10 @@ export function systemEnvironment(source = process.env) {
   // Never inherit .env, paid providers, remote Docker contexts, or injected Node flags.
   const allowed = [
     'PATH',
+    // エージェントの仕事（agent-jobs.ts）の設定。鍵ではない
+    'GENIE_AGENT_CLAUDE_MODEL',
+    'GENIE_AGENT_DAILY_BUDGET_USD',
+    'GENIE_IMPROVE_REPO',
     'HOME',
     'USER',
     'LOGNAME',
@@ -133,6 +534,7 @@ export async function availablePort(port = 0) {
 }
 
 export async function loadConfig(stateDir, options = {}) {
+  if (options.dockerContext !== undefined) validateDockerContextName(options.dockerContext);
   await mkdir(stateDir, { recursive: true, mode: 0o700 });
   const entries = await readdir(stateDir);
   if (entries.length && !entries.includes('runtime.json'))
@@ -157,6 +559,16 @@ export async function loadConfig(stateDir, options = {}) {
       throw new Error(
         'この保存先のポートは固定されています。既存ポートを使うか、別の --state-dir を指定してください。',
       );
+    if (options.dockerContext !== undefined) {
+      if (config.dockerContext !== undefined && config.dockerContext !== options.dockerContext)
+        throw new Error(
+          'この保存先のDocker contextは固定されています。別の --state-dir を指定してください。',
+        );
+      if (config.dockerContext === undefined) {
+        config.dockerContext = options.dockerContext;
+        await privateJSON(file, config);
+      }
+    }
     return config;
   }
   const keys = generateKeyPairSync('ed25519', {
@@ -187,6 +599,7 @@ export async function loadConfig(stateDir, options = {}) {
     publicKey: keys.publicKey,
     model: null,
     modelURL: 'http://127.0.0.1:11434/v1',
+    ...(options.dockerContext !== undefined ? { dockerContext: options.dockerContext } : {}),
   };
   await privateJSON(file, config);
   return config;
@@ -213,6 +626,23 @@ export function validateConfig(config) {
   )
     throw new Error('保存された署名鍵を読み取れません。');
   localEndpoint(config.modelURL);
+  const provider = validateModelProvider(config.modelProvider ?? 'local');
+  if (config.allowCloud !== undefined && typeof config.allowCloud !== 'boolean')
+    throw new Error('保存された外部モデルの送信許可が不正です。');
+  if (provider !== 'local' && config.allowCloud !== true)
+    throw new Error('保存された外部モデルには明示的な送信許可が必要です。');
+  const screen = config.externalScreenAuthorization;
+  if (
+    screen != null &&
+    (typeof screen !== 'object' ||
+      Array.isArray(screen) ||
+      Object.keys(screen).sort().join(',') !== 'model,provider' ||
+      !SCREEN_PROVIDERS.includes(provider) ||
+      screen.provider !== provider ||
+      screen.model !== (config.model ?? EXTERNAL_PROVIDERS[provider].defaultModel))
+  )
+    throw new Error('保存された画面画像の送信許可が選択中の提供元・モデルと一致しません。');
+  if (config.dockerContext !== undefined) validateDockerContextName(config.dockerContext);
   if (config.model) validateModel(config.model);
 }
 
@@ -287,8 +717,17 @@ export function composeConfig(config, repo) {
   };
 }
 
-export function serviceEnvironment(config, stateDir, repo, source = process.env) {
+/** 普段の Native 起動と同じ設定だけを共有する。別保存先は明示した同期以外では隔離する。 */
+export function usesNativeConnectionConfig(
+  stateDir,
+  { workSync = false, platform = process.platform } = {},
+) {
+  return platform === 'darwin' && (workSync || resolve(stateDir) === resolve(DEFAULT_STATE));
+}
+
+export function serviceEnvironment(config, stateDir, repo, source = process.env, options = {}) {
   const env = systemEnvironment(source);
+  const vision = computerVisionConfiguration(config, options);
   const database = (role) =>
     `postgres://${role}:${config.appPassword}@127.0.0.1:${config.postgresPort}/genie_preview?sslmode=disable`;
   return {
@@ -298,6 +737,8 @@ export function serviceEnvironment(config, stateDir, repo, source = process.env)
     ASTRA_API_HOST: '127.0.0.1',
     ASTRA_API_PORT: String(config.port),
     ASTRA_API_URL: `http://127.0.0.1:${config.port}`,
+    // Match the native preview app's image handover and keep run journals isolated.
+    ASTRA_DATA_ROOT: join(stateDir, 'app'),
     ASTRA_GATEWAY_URL: `http://127.0.0.1:${config.port}`,
     DATABASE_URL: database('genie_app'),
     ASTRA_DB_IDENTITY_URL: database('astra_identity'),
@@ -312,11 +753,26 @@ export function serviceEnvironment(config, stateDir, repo, source = process.env)
     ASTRA_OBJECT_STORE_ROOT: join(stateDir, 'objects'),
     ASTRA_RECORDING_ROOT: join(stateDir, 'recordings'),
     ASTRA_BUILTIN_PLUGINS_DIR: join(repo, 'plugins/builtin'),
-    ASTRA_LLM_CLI: 'local',
-    ASTRA_LOCAL_LLM_URL: config.modelURL,
-    ASTRA_LOCAL_LLM_MODEL: config.model,
-    ASTRA_LOCAL_LLM_REASONING_EFFORT: 'none',
-    ASTRA_WORK_SYNC: 'off',
+    ...modelEnvironment(config),
+    ...(options.computerVisionModel === undefined
+      ? {}
+      : { ASTRA_COMPUTER_VISION_MODEL: vision.model, ASTRA_COMPUTER_VISION_URL: vision.modelURL }),
+    ASTRA_COMPUTER_VISION_EXTERNAL: externalScreenAllowed(vision, options.computerUse)
+      ? 'on'
+      : 'off',
+    // 画面の画像を外へ送るときの歯止め。区切り 1 つ（host は区切りごとに数え直す）で 30 回、月 3000 回まで。
+    // 仕事 1 つでは区切り 4 つまでなので、多くて 120 回。
+    ...(externalScreenAllowed(vision, options.computerUse)
+      ? {
+          ASTRA_CLOUD_VISION_TASK_CALLS: String(SCREEN_TASK_CALLS),
+          ASTRA_CLOUD_VISION_MONTH_CALLS: String(SCREEN_MONTH_CALLS),
+        }
+      : {}),
+    // つないだ Gmail・カレンダーを Work へ同期する（本人が --work-sync で起動したときだけ。周りの環境変数では入らない）。
+    ASTRA_WORK_SYNC: options.workSync === true ? 'on' : 'off',
+    // 明示した読取でも期限更新が必要。起動側が確かめた Native の OAuth 設定を渡す。
+    // 保存先を分けた host の隔離既定は維持し、周りの環境変数からは取り込まない。
+    ...(options.connectionsConfig ? { ASTRA_CONNECTIONS_CONFIG: options.connectionsConfig } : {}),
     ASTRA_WORK_SYNC_METERED_LLM: 'off',
     ASTRA_DEVICE_LABEL: config.project,
     ASTRA_DESKTOP_ID: config.identity,

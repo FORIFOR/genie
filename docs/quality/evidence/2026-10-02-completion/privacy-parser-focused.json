@@ -1,0 +1,42 @@
+{
+  "recordedAt": "2026-10-01T23:23:23.071454+00:00",
+  "scope": "Implementer static source-check and fake LaunchServices regression only; no native app/model/service call",
+  "priorFailure": {
+    "fullGateAttempt": 2,
+    "pythonFailureCount": 7,
+    "reason": "Exact func beginConversation() extractor returned an empty body for optional geminiSettings argument; production consent/key/budget checks remained present",
+    "retainedResult": "FAIL; this focused pass does not replace that full-gate outcome"
+  },
+  "change": "Recognize the uniquely scoped function with optional arguments, mask comments/literals, and require the three guard tokens before the sole in-function provider constructor. Nested block comments are masked. Interpolated literals inside the checked function conservatively require review; this is a bounded source guard, not a Swift compiler or runtime proof.",
+  "validation": [
+    {
+      "command": "python3 -m unittest discover -s scripts/tests -p test_privacy_egress_launcher.py -v",
+      "exitCode": 0,
+      "passed": 12,
+      "failed": 0,
+      "log": "docs/quality/evidence/2026-10-02-completion/privacy-parser-focused.log"
+    },
+    {
+      "command": "bash -n scripts/verify-privacy-egress.sh",
+      "exitCode": 0
+    },
+    {
+      "command": "git diff --check -- scripts/verify-privacy-egress.sh scripts/tests/test_privacy_egress_launcher.py",
+      "exitCode": 0
+    }
+  ],
+  "negativeCoverage": [
+    "Each required token missing or only after construction",
+    "Guards in another function",
+    "No matching function or duplicate matching functions",
+    "Constructor outside the function or multiple constructors",
+    "Comment, nested block comment, plain/raw/multiline/interpolated string tokens are not evidence",
+    "Failed/missing normal exit and unmeasured/skipped native result remain fail/partial"
+  ],
+  "sourceHashes": {
+    "scripts/verify-privacy-egress.sh": "d5f728e4eb6ac49bdf90c67708742a81bccd10bc64aaef2b8a5bf1e223514a1d",
+    "scripts/tests/test_privacy_egress_launcher.py": "75d1e03bb19f51fb37d77be888acd3706f397c300836c0ca57a77bc7d78ce42a"
+  },
+  "logSha256": "dfb779294959143b8fa3f4771dee86725c41efae7222253165697eb712fcfcfd",
+  "limits": "No threshold, production consent/budget, expected fake exit, or native measurement was relaxed. Full gate requires a separate rerun."
+}

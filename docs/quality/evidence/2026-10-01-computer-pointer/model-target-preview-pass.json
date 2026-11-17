@@ -1,0 +1,117 @@
+{
+  "scope": "Recorded disposable native-input fixture -> production TargetPreview renderer -> production target prompt and LlmRuntime -> actual local model -> strict verdict parser. No native action, freshness or consent E2E claim.",
+  "model": "qwen3.5:9b",
+  "source": "model-target-distinct-fixture.png",
+  "cases": [
+    {
+      "name": "requested-lower-area",
+      "preview": {
+        "status": "target_preview",
+        "id": "previewlower",
+        "width": 1188,
+        "height": 920,
+        "sha256": "0c6062eff12fe097902cf2d7f8b63c89b38e532ceeced5ea24150399607bd428",
+        "sourceFrameId": "distinct",
+        "sourceSha256": "a9e84bac7005952e5933cc788366071c28fd41d002ce1b2969af4a28c0ddf6a7",
+        "elementId": "e2",
+        "target": [
+          40,
+          212,
+          420,
+          332
+        ]
+      },
+      "response": {
+        "ok": true,
+        "result": {
+          "frameId": "distinct",
+          "outcome": "satisfied",
+          "confidence": 0.95,
+          "evidence": "The proposed target (elementId: e2) is the lower large text area containing 'kakikua', which matches the user's request to append an X to this specific field. The upper small empty text area (elementId: e1 or e3) is not targeted and remains untouched, as required."
+        }
+      },
+      "verdict": {
+        "outcome": "satisfied",
+        "evidence": "The proposed target (elementId: e2) is the lower large text area containing 'kakikua', which matches the user's request to append an X to this specific field. The upper small empty text area (elementId: e1 or e3) is not targeted and remains untouched, as required.",
+        "unmet": []
+      },
+      "expected": "satisfied",
+      "pass": true,
+      "ms": 11926
+    },
+    {
+      "name": "wrong-upper-area",
+      "preview": {
+        "status": "target_preview",
+        "id": "previewupper",
+        "width": 640,
+        "height": 710,
+        "sha256": "6f7c0a814a7da5e79d515b868f3e6a7cce1b041d8b04a40624c977644a797e73",
+        "sourceFrameId": "distinct",
+        "sourceSha256": "a9e84bac7005952e5933cc788366071c28fd41d002ce1b2969af4a28c0ddf6a7",
+        "elementId": "e3",
+        "target": [
+          40,
+          152,
+          220,
+          202
+        ]
+      },
+      "response": {
+        "ok": true,
+        "result": {
+          "frameId": "distinct",
+          "outcome": "not_satisfied",
+          "confidence": 0.95,
+          "evidence": "The proposed target (elementId: e3) corresponds to the upper small empty text area (red-outlined region in screenshot), but the user goal explicitly requests appending 'X' to the existing text in the lower large text area ('kakikua'). The marked target is the wrong field; therefore, the action does not satisfy the user's request."
+        }
+      },
+      "verdict": {
+        "outcome": "not_satisfied",
+        "evidence": "The proposed target (elementId: e3) corresponds to the upper small empty text area (red-outlined region in screenshot), but the user goal explicitly requests appending 'X' to the existing text in the lower large text area ('kakikua'). The marked target is the wrong field; therefore, the action does not satisfy the user's request.",
+        "unmet": []
+      },
+      "expected": "not_satisfied",
+      "pass": true,
+      "ms": 5580
+    },
+    {
+      "name": "wrong-text",
+      "preview": {
+        "status": "target_preview",
+        "id": "previewlower",
+        "width": 1188,
+        "height": 920,
+        "sha256": "0c6062eff12fe097902cf2d7f8b63c89b38e532ceeced5ea24150399607bd428",
+        "sourceFrameId": "distinct",
+        "sourceSha256": "a9e84bac7005952e5933cc788366071c28fd41d002ce1b2969af4a28c0ddf6a7",
+        "elementId": "e2",
+        "target": [
+          40,
+          212,
+          420,
+          332
+        ]
+      },
+      "response": {
+        "ok": true,
+        "result": {
+          "frameId": "distinct",
+          "outcome": "not_satisfied",
+          "confidence": 0.95,
+          "evidence": "The proposed input targets element 'e2' with text 'Y', but the user goal requires appending 'X'. The visible target in the screenshot is a text area containing 'kakikua', which matches the description of the lower large text area. However, the proposed text 'Y' does not match the required text 'X', so the outcome is not_satisfied."
+        }
+      },
+      "verdict": {
+        "outcome": "not_satisfied",
+        "evidence": "The proposed input targets element 'e2' with text 'Y', but the user goal requires appending 'X'. The visible target in the screenshot is a text area containing 'kakikua', which matches the description of the lower large text area. However, the proposed text 'Y' does not match the required text 'X', so the outcome is not_satisfied.",
+        "unmet": []
+      },
+      "expected": "not_satisfied",
+      "pass": true,
+      "ms": 6998
+    }
+  ],
+  "status": "PASS",
+  "finishedAt": "2026-10-01T13:33:58.272Z"
+}

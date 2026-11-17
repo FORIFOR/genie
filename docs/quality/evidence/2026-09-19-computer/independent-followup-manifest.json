@@ -1,0 +1,15 @@
+{
+  "time": "2026-09-19T11:11:28.561046+00:00",
+  "command": [
+    "node",
+    "--test",
+    "scripts/tests/managed-local-preview.test.mjs",
+    "scripts/tests/computer-use.test.mjs"
+  ],
+  "exit": 0,
+  "files": {
+    "scripts/computer-use.mjs": "f759139822ad0e58c2651988733a57e76332febb567b8ce55c5fdda09c7da0dc",
+    "scripts/local-preview/config.mjs": "2092447a09956c2cd8297663b40a37035b1a5bd31401121e04d35ef6ce6f6e3a",
+    "scripts/tests/managed-local-preview.test.mjs": "549ecdd88652b949ebf9d4469511acba9392db92202c0288f99b084d36de61b6"
+  }
+}

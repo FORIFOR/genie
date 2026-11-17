@@ -1,0 +1,80 @@
+{
+  "schema": 1,
+  "recordedAt": "2026-10-01T23:18:19.472351+00:00",
+  "method": "Independent saved-record/log/hash review only. Root ran attempt2; reviewer did not rerun tests, use GUI or change source.",
+  "status": "FAIL",
+  "attempt": 2,
+  "binarySha256": "8b46350c5bb3a4330320689898171c59a5fd0dc9cf1947dd6548a4d4f2af668d",
+  "exitCode": 1,
+  "completedAt": "2026-10-01T23:13:24.230333+00:00",
+  "failureScopes": [
+    {
+      "scope": "privacy static parser plus its launcher regression",
+      "status": "FAIL",
+      "observed": "Old exact func beginConversation() source split does not recognize optional settings argument and reports all3guard tokens missing. The same source checker causes7 fixture regression failures. Actual authorization guards were separately source-reviewed and unchanged; parser proposal is not yet a passing gate run."
+    },
+    {
+      "scope": "E2E-001 step7 summary",
+      "status": "FAIL",
+      "observed": "AI summary returned a generic no-response failure. Separate nearby ScreenCaptureKit -3801 warnings are recorded but do not establish the AI failure cause. Diagnosis ongoing."
+    }
+  ],
+  "unmeasured": [
+    {
+      "scope": "T0-idle-to-listening frame pacing",
+      "status": "NOT_MEASURED",
+      "effectiveFps": 45.69737184593168,
+      "targetFps": 60
+    },
+    {
+      "scope": "T2-notes-to-workspace frame pacing",
+      "status": "NOT_MEASURED",
+      "effectiveFps": 49.975366473075375,
+      "displayRoundedFps": 50,
+      "targetFps": 60
+    }
+  ],
+  "newScopedPasses": [
+    {
+      "scope": "micrelease",
+      "observed": "Local-pipeline fixture uses real CoreAudio measurement. All10observed opening/closing cases report during=true/after=false, reopen=true, quick-close=false. This does not test paid Gemini lifecycle."
+    },
+    {
+      "scope": "aistop",
+      "observed": "ServerCANCELLING observed; local stopped result stayed failed and did not become success after late response. This proves the asserted UI/stop regression, not confirmed cancellation of a real external purchase."
+    },
+    {
+      "scope": "journeys",
+      "observed": "JA/JB/JC each success=true, no unexpected windows/focus theft/errors. Observed surface continuity passes; fps not globally passed."
+    },
+    {
+      "scope": "Swift",
+      "observed": "Saved aggregate reports322unit+1shutdown+1external semantic tests, all0failures. No whole-service claim."
+    }
+  ],
+  "aggregationNote": "VERIFY_ALL_NOT_RUN reports8lines, including6 propagated negative fixture diagnostics from the failing parser-regression suite. Those are not6additional genuine runtime permission or STT skips. Two genuine motion scopes remain unmeasured.",
+  "memory": {
+    "samples": 412,
+    "pressureLevels": {
+      "1": 412
+    },
+    "guardAborted": false,
+    "limit": "Isolated verification run only; not proof of real-stream endurance or causal memory improvement."
+  },
+  "history": {
+    "attempt1FailPreserved": true,
+    "attempt1LogSha256": "977b3bfea3b378c2041784e77e0cd402470e9f6ced429f207446769df9594971",
+    "attempt3": "No passing attempt3 evidence exists at this checkpoint."
+  },
+  "evidence": {
+    "docs/quality/evidence/2026-10-02-completion/installed-gate-attempt-2/verify-all-installed-current.log": "9ff74f651f9d5b7754cd3ce941c488e534a6a5e93d0b9f0995e2fcbd04e44833",
+    "docs/quality/evidence/2026-10-02-completion/installed-gate-attempt-2/verify-all-installed-current-exit.json": "6890d138a620bd0b17fd324950d0a04e6cae3dfe60d3f42468671ff08c4dfdd4",
+    "docs/quality/evidence/2026-10-02-completion/installed-gate-attempt-2/verify-all-installed-pressure.json": "6df539c669872ed2aaf79c055e62c464d14c0c44f96f455fb75aa6ea2a705dd6",
+    "docs/quality/evidence/2026-10-02-completion/installed-gate-attempt-2/motion-result.json": "87ac8b8b3356987a5b26a96b101ec40cddf4e236a3cf3ff8c55bd50e22a4fbae"
+  },
+  "limits": [
+    "User workspace was not used; real Keychain recovery and next intentional Home send remain separate human verification.",
+    "Live merchant/broker transactions and long streaming stability are not established.",
+    "Source fixes and scoped successful tests do not override the actual attempt2 exit1."
+  ]
+}

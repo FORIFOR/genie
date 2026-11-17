@@ -310,6 +310,29 @@ export class GenieClient {
     };
   }
 
+  /** Read a saved request receipt after response loss. Never resubmits a turn. */
+  async getTurnReceipt(conversationId: string, requestId: string) {
+    return this.http.request(
+      { method: 'GET', path: `/v1/conversations/${conversationId}/requests/${requestId}` },
+      (value) =>
+        z
+          .discriminatedUnion('status', [
+            z.object({ status: z.literal('pending') }),
+            z.object({
+              status: z.literal('resolved'),
+              response: z.object({
+                needs_clarification: z.boolean(),
+                answer: z.object({ text: z.string() }).optional(),
+                intent: z.string().optional(),
+                task_id: z.string().nullable().optional(),
+                notice: z.string().nullable().optional(),
+              }),
+            }),
+          ])
+          .parse(value),
+    );
+  }
+
   /** 利用者が許したときだけ、確定用の音声を Google STT へ送る。 */
   transcribeVoice(
     request: z.input<typeof VoiceTranscriptionRequest>,

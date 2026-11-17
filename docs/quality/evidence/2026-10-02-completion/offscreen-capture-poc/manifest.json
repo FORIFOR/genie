@@ -1,0 +1,61 @@
+{
+  "recordedAt": "2026-10-01T20:23:39.407918+00:00",
+  "classification": "Two authorized lightweight owned-window PoC attempts; acceptance not met, capture A/B NOT_RUN. No production change.",
+  "sourceLocation": "Private temporary directory only; source is not copied to repository evidence",
+  "sourceSha256": {
+    "/private/tmp/genie-offscreen-capture-poc/OffscreenCapture.round1.swift": "a0e96afd78330250ab9c0081d228c327dd2e8c0dcc7ab5574d5009c67d84b438",
+    "/private/tmp/genie-offscreen-capture-poc/OffscreenCapture.swift": "1d0ef2f29e0f4a08a2c8953f1d8196f9ba6939f6ec781b76062f0613b9173b72"
+  },
+  "commands": [
+    {
+      "round": 1,
+      "compile": "swiftc -j 1 -parse-as-library <private source> -o <private executable>",
+      "compileExitCode": 0,
+      "runtimeExitCode": 1,
+      "timeoutSeconds": 15,
+      "result": "result-round1.json",
+      "reason": "cg_window_not_offscreen",
+      "captureCalls": 0,
+      "memoryPressureBefore": 1,
+      "memoryPressureAfter": 1
+    },
+    {
+      "round": 2,
+      "compile": "swiftc -j 1 -parse-as-library <private source> -o <private executable>",
+      "compileExitCode": 0,
+      "runtimeExitCode": 1,
+      "timeoutSeconds": 15,
+      "result": "result-round2.json",
+      "reason": "cg_classifies_owned_window_as_onscreen",
+      "change": "Metadata only: separate missing window from OS onScreen=true; project only own PID/window frame and flags. Existing acceptance guard unchanged.",
+      "captureCalls": 0,
+      "memoryPressureBefore": 1,
+      "memoryPressureAfter": 1
+    }
+  ],
+  "artifacts": {
+    "result-round1.json": "aa505538d8c63bc21a561428b66aa2af2696003e1b2411533492a8a1dfdfef06",
+    "result-round2.json": "c6a18015545171b6ab846757f0dde647060e50df778a10941a6f9f06449f7099"
+  },
+  "finding": "The owned panel frame was outside every display in NSWindow and matching CG/SC coordinates, but both CG onScreen and SC isOnScreen were true. Geometric offscreen and OS onscreen classification are not equivalent.",
+  "notEstablished": [
+    "SCScreenshotManager capture of this window",
+    "Fresh A-to-B pixels",
+    "Production picker selection",
+    "Other Space behavior",
+    "Minimized or hidden behavior",
+    "Actual Safari support",
+    "Foreground/cursor/clipboard preservation checks at the end of the PoC (early return preceded these checks)"
+  ],
+  "safety": [
+    "Existing screen-capture preflight required; no permission request API",
+    "Only self-generated PID and exact windowID were eligible for capture; no capture call actually occurred",
+    "No Safari/other-user window image or content read",
+    "No global mouse/key input or app activation call",
+    "Temporary own window was ordered out/closed with defer and process exited",
+    "Memory pressure normal before and after both executions",
+    "No model, VM or production build",
+    "Source remains private temporary; persisted result contains only synthetic window and display geometry/state"
+  ],
+  "next": "Separate the geometric-offscreen test protocol from an OS-offscreen/other-Space protocol before any further run. Do not relabel these failures as passes or infer capture incapability from a pre-capture guard."
+}

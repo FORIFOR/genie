@@ -1,0 +1,20 @@
+{
+  "source": "User-supplied /Users/shuhei/Downloads/oss-quality-kit",
+  "version": "2.0.0-draft",
+  "sha256": {
+    "outcome-first-ux/SKILL.md": "510076c580094ec2fa786dad12dcb7a035c924179cb05cbf3ee8ea91017072f0",
+    "world-class-ui/SKILL.md": "5bf07b0926bd09e064d44f57f4d8e904038bf65c015b9be835a31dcabdca02c9",
+    "oss-standard-audit/SKILL.md": "3802c758a0d5781e12ef698fd0d41cb7e6f0f1ce2f961cdb5208a2d360ed8ac9",
+    "independent-product-verification/SKILL.md": "f1806d0438ae2d4bfc579bc43e4260cdb432629d855717113f09868f1394113d",
+    "contract-first-build/SKILL.md": "ec5dd3c115f93375b5ca29005707256ba362e9f791985d760ac3a1485d884ce4",
+    "contract-first-build/references/evidence-contract.md": "b503ed59b9bea86807f5988e118503b0b4b9f97d84f35cfd0aa6c4bdeebf23a4",
+    "independent-product-verification/references/evidence-contract.md": "b503ed59b9bea86807f5988e118503b0b4b9f97d84f35cfd0aa6c4bdeebf23a4",
+    "oss-standard-audit/references/evidence-contract.md": "b503ed59b9bea86807f5988e118503b0b4b9f97d84f35cfd0aa6c4bdeebf23a4",
+    "world-class-ui/references/voiceos-plaud.md": "fe1daba9147813915064b5b06f5fe84e5882d0b0bd254a38eef2daf0d36d2cfc",
+    "world-class-ui/references/visual-review.md": "4b967488fe316e1ef759c76c3483b25b0859a8bef67038d3f801a31849b015c3",
+    "world-class-ui/references/craft-system.md": "3658c423882e64e8c847944d0fab0d97d50b066accbe17e8bbdf83822f27f56e",
+    "world-class-ui/references/evidence-contract.md": "b503ed59b9bea86807f5988e118503b0b4b9f97d84f35cfd0aa6c4bdeebf23a4",
+    "outcome-first-ux/references/evidence-contract.md": "b503ed59b9bea86807f5988e118503b0b4b9f97d84f35cfd0aa6c4bdeebf23a4"
+  },
+  "match": true
+}

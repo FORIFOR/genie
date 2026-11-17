@@ -1,0 +1,14 @@
+
+> @genie/service-api-gateway@0.0.0 test /Users/shuhei/Projects/genie/services/api-gateway
+> vitest run --passWithNoTests test/conversations-recovery.integration.test.ts
+
+
+ RUN  v3.2.7 /Users/shuhei/Projects/genie/services/api-gateway
+
+ ✓ test/conversations-recovery.integration.test.ts (9 tests) 589ms
+
+ Test Files  1 passed (1)
+      Tests  9 passed (9)
+   Start at  19:03:51
+   Duration  1.61s (transform 340ms, setup 0ms, collect 848ms, tests 589ms, environment 0ms, prepare 39ms)
+

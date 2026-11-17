@@ -1,0 +1,115 @@
+{
+  "recordedAt": "2026-10-01T17:54:09.472893+00:00",
+  "executor": "root",
+  "reviewer": "verification_audit",
+  "classification": "Root native UI and scoped read-only API observations; reviewer read saved launch and task/artifact-metadata JSON, validated reported displayed-text hash, and did not operate GUI or call the API.",
+  "candidate": "GenieTransactionMemory.app from memory-release-candidate.json",
+  "appPID": 85691,
+  "startup": {
+    "project": "genie-preview-f68d0fef8411",
+    "gateway": "http://127.0.0.1:43180",
+    "modelProvider": "codex",
+    "model": "gpt-6-sol",
+    "externalModel": true,
+    "computerDelivery": "background",
+    "computerHelperUnattendedTest": false,
+    "helper": "Dedicated current Blue helper reported by root",
+    "colima": {
+      "profile": "genie-transactions-20261002",
+      "cpus": 2,
+      "memoryGiB": 2
+    }
+  },
+  "mainUIReportedByRoot": {
+    "homeDestination": "OpenAI / gpt-6-sol",
+    "input": "次の架空のメモを3項目のチェックリストにしてください：映像を確認する、音声を確認する、休憩を取る。",
+    "allThreeChecklistItemsVisible": true,
+    "displayedText": "- [ ] 映像を確認する\n- [ ] 音声を確認する\n- [ ] 休憩を取る",
+    "finalUIState": "Home with empty input"
+  },
+  "taskReadback": {
+    "id": "01a0f896-2c25-7000-915d-c68314af40b6",
+    "status": "COMPLETED",
+    "createdAt": "2026-10-01T17:49:46.397Z",
+    "completedAt": "2026-10-01T17:49:53.595Z",
+    "resultArtifactId": "01a0f896-4817-7000-825f-21807bef3c6d",
+    "error": null
+  },
+  "artifactValidation": {
+    "id": "01a0f896-4817-7000-825f-21807bef3c6d",
+    "sourceTaskMatches": true,
+    "bytes": 77,
+    "sha256": "ed744747545d05d76a8246abd2348a3b804311d3b4270ff1a81616621984db9b",
+    "reportedDisplayedTextMatchesArtifactMetadataHash": true,
+    "bodyDownloadedByReviewer": false
+  },
+  "runtimeMeasurementsReportedByRoot": {
+    "approximateTimeUTC": "2026-10-01T17:50:00Z",
+    "memoryPressureFreePercent": 61,
+    "vmMemoryPressure": 1,
+    "swapUsedMiB": 2607.94,
+    "appRSSKiB": 163952,
+    "containersHealthy": [
+      "postgres",
+      "redis",
+      "temporal"
+    ],
+    "dockerStatsMiB": {
+      "temporal": 248.4,
+      "redis": 13.45,
+      "postgres": 157.6
+    },
+    "containerAccounting": "Container use is inside the VM; do not add these values again to VM memory."
+  },
+  "otherModelObservationReportedByRoot": {
+    "approximateTimeUTC": "2026-10-01T17:46:00Z",
+    "memoryPressureFreePercent": 43,
+    "vmMemoryPressure": 1,
+    "ollamaModel": "noa-qwen35-9b-text:verified",
+    "residentSizeReported": "5.2 GB",
+    "genieVerificationQwen25Present": false,
+    "action": "Not touched; belongs to the separate Noa workload.",
+    "laterApproximateTimeUTC": "2026-10-01T17:50:00Z",
+    "laterOllamaPs": "empty",
+    "attributionLimit": "The other workload may have ended. This task does not attribute its unload or total memory delta to Genie."
+  },
+  "evidence": [
+    {
+      "file": "memory-final-external-task.json",
+      "sha256": "92b8abf0b4c7c5cd7cb8c2281e3e329261e301a532397bcc525dffd467c5b5d2"
+    },
+    {
+      "file": "preview-memory-final-launch.log",
+      "sha256": "f9620611b76c1c070a038d5f154ff4f62f9eacd10ba78e685f57cd47020da36a"
+    }
+  ],
+  "limits": [
+    "No upstream per-request model attestation beyond selected CLI/configuration",
+    "Not arbitrary-site computer-use or live commercial order verification",
+    "Not actual app Quit/SIGTERM during translation E2E",
+    "Not streaming failure reproduction or causal memory benchmark",
+    "Whole-product gate incomplete; no commit/push/release approval claim"
+  ],
+  "latestRootSnapshot": {
+    "file": "memory-final-runtime-observation.json",
+    "sha256": "f592c72becea0c63eab5aed4d708c63a769151a4b9bc082cf6544397cf4152b6",
+    "observedAt": "2026-10-01T17:54:12.949712+00:00",
+    "classification": "Root read-only runtime snapshot, copied byte-for-byte by reviewer.",
+    "memoryPressureFreePercent": 62,
+    "vmMemoryPressure": 1,
+    "swapUsedMiB": 2607.94,
+    "appPID": 85691,
+    "appRSSKiB": 164624,
+    "modelProvider": "codex",
+    "model": "gpt-6-sol",
+    "containersHealthyMinutes": 8,
+    "loadedOllamaModels": "empty at this snapshot only",
+    "fixtureAndHelperExited": "Reported by root; main app, model connection and preview services remain active."
+  },
+  "subsequentActualStopFailure": {
+    "evidence": "termination-hang-review.json",
+    "status": "FAIL: real managed SIGTERM hang, P1",
+    "currentState": "Owned preview app/services/VM stopped by root; saved external-model configuration unchanged. Prior running snapshots are historical.",
+    "recoveryAroundJST": "2026-10-02T03:08:00+09:00"
+  }
+}

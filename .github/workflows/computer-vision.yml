@@ -4,8 +4,15 @@ on:
     paths:
       - 'workers/agent-host/**'
       - 'services/task/**'
+      - 'packages/contracts/**'
+      - 'services/agent-host/**'
       - 'tools/computer-use/**'
       - 'scripts/build-computer-helper.sh'
+      - 'scripts/test-background-*.sh'
+      - 'scripts/tests/computer-use.test.mjs'
+      - 'scripts/computer-use.mjs'
+      - 'scripts/transaction-use.mjs'
+      - 'scripts/tests/transaction-use.test.mjs'
       - '.github/workflows/computer-vision.yml'
   push:
     branches: [main]
@@ -29,4 +36,8 @@ jobs:
       - run: pnpm build
       - run: pnpm exec tsc -p tsconfig.tests.json
       - run: bash scripts/build-computer-helper.sh
-      - run: node --test workers/agent-host/test/computer-vision.node.mjs workers/agent-host/test/computer-vision-integration.node.mjs
+      - run: bash scripts/test-background-text-edit.sh
+      - run: bash scripts/test-background-scroll.sh
+      - run: bash scripts/test-background-web-policy.sh
+      - run: node --test workers/agent-host/test/computer-vision.node.mjs workers/agent-host/test/computer-vision-integration.node.mjs workers/agent-host/test/background-vision.node.mjs workers/agent-host/test/computer-scroll-device.node.mjs workers/agent-host/test/cloud-budget.node.mjs scripts/tests/computer-use.test.mjs
+      - run: node --test workers/agent-host/test/transaction-runtime.node.mjs workers/agent-host/test/simulation-orders.node.mjs workers/agent-host/test/simulation-native-session.node.mjs scripts/tests/transaction-use.test.mjs

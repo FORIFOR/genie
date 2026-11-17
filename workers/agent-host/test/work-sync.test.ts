@@ -93,6 +93,8 @@ function harness(
       | 'metadataOnly'
       | 'onSourceStart'
       | 'onOutcome'
+      | 'sweepNoise'
+      | 'noiseSweepLimit'
     >;
   } = {},
 ): Harness {
@@ -288,6 +290,136 @@ describe('syncing work context from the device', () => {
     expect(artifacts).toHaveLength(1);
     expect(artifacts[0]!.direction).toBe('inbound');
   });
+  it('keeps promotions and bulk mail out of Work, so an ad never becomes an unreplied request', async () => {
+    const h = harness({
+      connected: ['com.astra.gmail/gmail'],
+      granted: GOOGLE_GRANTS,
+      routes: (url) => {
+        if (url.includes('/messages?'))
+          return url.includes('labelIds=INBOX')
+            ? { body: { messages: [{ id: 'in1' }, { id: 'ad1' }] } }
+            : { body: { messages: [] } };
+        if (url.includes('/messages/ad1'))
+          return {
+            body: gmailMessage('ad1', '事前エントリー受付中◆6周年大感謝祭', [
+              'INBOX',
+              'IMPORTANT',
+              'CATEGORY_PROMOTIONS',
+            ]),
+          };
+        return defaultRoutes(url);
+      },
+    });
+    await h.loop.syncOnce();
+    const artifacts = h.batches.find((b) => b.source === 'gmail')!.artifacts;
+    expect(artifacts.map((a) => a.id)).toEqual(['gmail:in1']);
+  });
+  /** 入口で除く前に取り込んだ広告を、起動ごとに 1 回だけ閉じた形で上書きする（要対応に残らない）。 */
+  it('closes ads taken in before the filter, 7 days per sync back to 45 days, without moving the cursor', async () => {
+    const asked: string[] = [];
+    const h = harness({
+      connected: ['com.astra.gmail/gmail'],
+      granted: GOOGLE_GRANTS,
+      initial: { sweepNoise: true },
+      llm: (step) => {
+        asked.push(step.id);
+        return { ok: true, result: null };
+      },
+      routes: (url) => {
+        if (url.includes('/messages?')) {
+          const q = new URL(url).searchParams.get('q') ?? '';
+          if (q.includes('category:promotions'))
+            return { body: { messages: [{ id: 'old-ad' }, { id: 'in1' }] } };
+          return url.includes('labelIds=INBOX')
+            ? { body: { messages: [{ id: 'in1' }] } }
+            : { body: { messages: [] } };
+        }
+        if (url.includes('/messages/old-ad'))
+          return {
+            body: gmailMessage('old-ad', 'TOBU POINT 期限のお知らせ', [
+              'INBOX',
+              'CATEGORY_PROMOTIONS',
+            ]),
+          };
+        return defaultRoutes(url);
+      },
+    });
+    await h.loop.syncOnce();
+    const first = h.batches.filter((b) => b.source === 'gmail').flatMap((b) => b.artifacts);
+    expect(first.map((a) => a.id)).toEqual(['gmail:in1', 'gmail:old-ad']);
+    expect(first.find((a) => a.id === 'gmail:old-ad')).toMatchObject({
+      responded: true,
+      completed: true,
+      semantic: null,
+      due_at: null,
+    });
+    // 閉じたものは意味づけを頼まない
+    expect(asked.some((id) => id.includes('old-ad'))).toBe(false);
+    // cursor は普段の読み取りの分だけ（広告の時刻で進めない）
+    const cursor = h.loop.cursors.get('gmail');
+    expect(cursor).toBeDefined();
+    // 次の同期は、その前の 7 日。受信箱のラベルで絞らない（アーカイブした広告も閉じる）。
+    const sweeps = () =>
+      h.urls
+        .filter((url) => url.includes('/messages?') && url.includes('category%3Apromotions'))
+        .map((url) => new URL(url));
+    for (let i = 0; i < 10; i++) await h.loop.syncOnce();
+    const windows = sweeps().map((url) => {
+      const q = url.searchParams.get('q') ?? '';
+      expect(url.searchParams.getAll('labelIds')).toEqual([]);
+      return [Number(/after:(\d+)/.exec(q)![1]), Number(/before:(\d+)/.exec(q)![1])] as const;
+    });
+    // 遡りきったら止まる（45 日を 7 日ずつ: 7 回）
+    expect(windows).toHaveLength(7);
+    for (let i = 1; i < windows.length; i++) expect(windows[i]![1]).toBe(windows[i - 1]![0]);
+    const span = (windows[0]![1] - windows.at(-1)![0]) / 86_400;
+    expect(span).toBeGreaterThanOrEqual(45);
+    expect(h.loop.cursors.get('gmail')).toBe(cursor);
+  });
+
+  /** 7 日で読める上限（400 通）に届いたら、読めた中でいちばん古いメールから次を続ける（7 日先へ飛ばない）。 */
+  it('continues from the oldest ad it read when a slice fills the read limit', async () => {
+    const h = harness({
+      connected: ['com.astra.gmail/gmail'],
+      granted: GOOGLE_GRANTS,
+      initial: { sweepNoise: true, noiseSweepLimit: { pages: 2, pageSize: 5 } },
+      routes: (url) => {
+        if (url.includes('/messages?')) {
+          const q = new URL(url).searchParams.get('q') ?? '';
+          if (!q.includes('category:promotions')) return { body: { messages: [] } };
+          const page = Number(new URL(url).searchParams.get('pageToken') ?? '0');
+          return {
+            body: {
+              messages: Array.from({ length: 5 }, (_, i) => ({ id: `ad-${page}-${i}` })),
+              ...(page < 1 ? { nextPageToken: String(page + 1) } : {}),
+            },
+          };
+        }
+        const ad = /\/messages\/(ad-(\d)-(\d+))/.exec(url);
+        if (ad) {
+          // 新しい順。いちばん古いのは最後のページの最後（2 日前）
+          const order = Number(ad[2]) * 5 + Number(ad[3]);
+          return {
+            body: {
+              ...gmailMessage(ad[1]!, `広告 ${order}`, ['INBOX', 'CATEGORY_PROMOTIONS']),
+              internalDate: String(NOW.getTime() - (order + 1) * 432_000),
+            },
+          };
+        }
+        return defaultRoutes(url);
+      },
+    });
+    await h.loop.syncOnce();
+    await h.loop.syncOnce();
+    const windows = h.urls
+      .filter((url) => url.includes('/messages?') && url.includes('category%3Apromotions'))
+      .filter((url) => !url.includes('pageToken'))
+      .map((url) => new URL(url).searchParams.get('q') ?? '');
+    expect(windows).toHaveLength(2);
+    const oldest = Math.floor((NOW.getTime() - 10 * 432_000) / 1000);
+    expect(windows[1]).toContain(`before:${String(oldest)}`);
+  }, 20_000);
+
   it('restricts both Google sources before fetching mail details or classifying', async () => {
     const h = harness({
       connected: ['com.astra.gmail/gmail', 'com.astra.google-calendar/google-calendar'],
@@ -336,7 +468,7 @@ describe('syncing work context from the device', () => {
     expect(reads.filter((k) => k.includes('-actions'))).toEqual([]);
     // 触るのは読む接続の鍵だけ（繋いでいない source の「有無」の確認も読む接続の鍵で）
     for (const key of reads)
-      expect(key).toMatch(/\/(gmail|google-calendar|outlook|microsoft-todo)$/);
+      expect(key).toMatch(/\/(gmail|google-calendar|outlook|microsoft-todo)(\.host-renewal)?$/);
   });
 
   it('does not read a connected service whose read permission was withheld', async () => {

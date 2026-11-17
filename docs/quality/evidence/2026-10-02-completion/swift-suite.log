@@ -1,0 +1,4 @@
+macOS_swift_unit: 	 Executed 284 tests, with 0 failures (0 unexpected) in 14.474 (14.496) seconds
+macOS_swift_shutdown: 	 Executed 1 test, with 0 failures (0 unexpected) in 2.174 (2.175) seconds
+macOS_swift_external_translation: 	 Executed 1 test, with 0 failures (0 unexpected) in 5.032 (5.033) seconds
+SWIFT_TESTS_OK: unit, isolated shutdown and external semantic fixture completed

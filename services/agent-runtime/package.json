@@ -2,6 +2,7 @@
   "name": "@genie/service-agent-runtime",
   "version": "0.0.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "description": "Skills, tools, domain policies and agent delegation.",
   "main": "./dist/index.js",

@@ -1,0 +1,12 @@
+{
+  "revision": "28f89f2636a3b780e813ea902e07d2e4900a6e3f",
+  "files": {
+    "services/task/src/activities.ts": "43c5f101765ec935bdcfd43fa87c8d50bac1fdadcb927ccfe281d7f68770cb0d",
+    "services/task/src/activity-types.ts": "bb27bb987ae896daf97e3d43a871bcf2dffa1e29e03a25d4886421798d6c5c59",
+    "services/task/src/service.ts": "74ad1e12412af2353ce0fd0fab258c5e1ca03f58c3c4aff29c61a6eea0fdc580",
+    "services/task/src/workflows.ts": "1bf958cd74702eaac8b15c164f1b5619e6ebf1062d347807bb74a9974015b9c6",
+    "services/task/test/terminal-state.test.ts": "78052a92cf2ddcfbc6c9653f467ab8ceb9f467490c2f521403e7ccc89092e74c",
+    "services/task/test/task.e2e.test.ts": "b1d87e6bf7a40701b637d49f638c3d3299575c2082f4a9ca8025064dee504145",
+    "services/task/test/terminal-workflow.test.ts": "3bfbf09a937062692c89f8a2b0a261a349cc4842d77acc9dc57bc971987d337d"
+  }
+}

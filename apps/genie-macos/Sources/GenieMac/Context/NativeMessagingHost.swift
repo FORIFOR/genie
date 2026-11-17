@@ -45,11 +45,13 @@ enum NativeMessagingHost {
     @MainActor
     @discardableResult
     static func handle(_ message: [String: Any], now: Date = Date()) -> Bool {
-        guard message["type"] as? String == "context",
+        guard let privacy = try? RegistrationPrivacyGuard.observe(), !privacy.blocked, message["type"] as? String == "context",
               let payloadJSON = message["payload"] as? [String: Any],
               let payload = BrowserPayload.from(json: payloadJSON)
         else { return false }
-        GenieStateStore.shared.updateContext([payload.fact(now: now)], now: now)
+        let fact = payload.fact(now: now)
+        guard (try? RegistrationPrivacyGuard.validate(privacy)) != nil else { return false }
+        GenieStateStore.shared.updateContext([fact], now: now)
         return true
     }
 
@@ -57,8 +59,10 @@ enum NativeMessagingHost {
     @MainActor
     static func runLoop() {
         var buffer = Data()
+        var privacy: RegistrationPrivacyGuard.Observation?
         let input = FileHandle.standardInput
         while true {
+            if buffer.isEmpty { privacy = try? RegistrationPrivacyGuard.observe() }
             let chunk = input.availableData
             if chunk.isEmpty { break }   // Chrome が切った
             buffer.append(chunk)
@@ -66,7 +70,10 @@ enum NativeMessagingHost {
                 do {
                     guard let (json, consumed) = try decode(buffer) else { break }
                     buffer.removeFirst(consumed)
-                    handle(json)
+                    // Keep the observation from before the blocking read, including
+                    // partially received frames. A browser exit cannot release a
+                    // context message buffered during protected registration.
+                    if let privacy, (try? RegistrationPrivacyGuard.validate(privacy)) != nil { handle(json) }
                 } catch {
                     // 壊れたフレームは復帰できないので捨てて終わる（黙って誤読しない）。
                     NSLog("astra native messaging: bad frame \(error)")

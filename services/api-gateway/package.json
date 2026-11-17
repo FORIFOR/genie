@@ -2,6 +2,7 @@
   "name": "@genie/service-api-gateway",
   "version": "0.0.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "description": "Auth, tenant routing, rate limiting, REST entrypoint and realtime WebSocket fan-out.",
   "main": "./dist/index.js",
@@ -46,12 +47,18 @@
     "@genie/service-context": "workspace:*",
     "@genie/service-capabilities": "workspace:*",
     "@genie/service-agent-runtime": "workspace:*",
-    "@genie/service-agent-host": "workspace:*"
+    "@genie/service-agent-host": "workspace:*",
+    "@genie/service-phone": "workspace:*",
+    "@genie/service-channels": "workspace:*",
+    "@genie/service-schedule": "workspace:*",
+    "@genie/service-understand": "workspace:*",
+    "@genie/service-vocabulary": "workspace:*"
   },
   "devDependencies": {
+    "@genie/plugin-sdk": "workspace:*",
+    "@genie/service-line-hub": "workspace:*",
     "@types/ws": "^8.18.1",
     "vitest": "catalog:",
-    "ws": "^8.21.3",
-    "@genie/plugin-sdk": "workspace:*"
+    "ws": "^8.21.3"
   }
 }

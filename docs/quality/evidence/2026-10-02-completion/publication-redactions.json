@@ -1,0 +1,195 @@
+{
+  "schema": 1,
+  "recordedAt": "2026-10-01T21:43:24.818530+00:00",
+  "purpose": "Minimize user/workspace identifiers and irrelevant loaded-image inventory in public evidence without changing observed test outcomes.",
+  "method": "Original exact bytes backed up privately with mode0600 before transformation. Public digests refer to transformed files. Private originals are not included in the repository; no claim that these public excerpts are raw originals.",
+  "scope": "Five API result JSON files and two diagnostic samples; only dependent hash-reference updates elsewhere. No product/source/test expectation changes.",
+  "identifierMappingPublished": false,
+  "artifacts": [
+    {
+      "publicFile": "docs/quality/evidence/2026-10-02-completion/safari-task-start.json",
+      "privateOriginal": "/private/tmp/genie-transactions-20261002/publication-originals/docs/quality/evidence/2026-10-02-completion/safari-task-start.json",
+      "privateOriginalMode": "0600",
+      "originalSha256": "92627b8d80fbce7d5ae304afb378fc5d581cac8026f1ec2acbaf03cd195a8d85",
+      "publishedSha256": "a61af4762bcf840b90da5f6b2ffc1dc63b69ad6fe7d1df2166b880f316801b07",
+      "transformation": {
+        "kind": "identifier-value-replacement",
+        "keys": {
+          "tenant_id": 1
+        },
+        "consistency": "same original identifier maps to same opaque replacement across these five files; original values are not in this manifest"
+      },
+      "originalPublished": false
+    },
+    {
+      "publicFile": "docs/quality/evidence/2026-10-02-completion/safari-task-status.json",
+      "privateOriginal": "/private/tmp/genie-transactions-20261002/publication-originals/docs/quality/evidence/2026-10-02-completion/safari-task-status.json",
+      "privateOriginalMode": "0600",
+      "originalSha256": "6d4f215221c86dfa31ffd93e2eb9b5697532f4a5dff0d984d85177418a3755b5",
+      "publishedSha256": "4c7c7ff3c7041f4c0d15ad7996e6fb37dc0b2aba51980fe753fe16c21d28f9fb",
+      "transformation": {
+        "kind": "identifier-value-replacement",
+        "keys": {
+          "tenant_id": 1
+        },
+        "consistency": "same original identifier maps to same opaque replacement across these five files; original values are not in this manifest"
+      },
+      "originalPublished": false
+    },
+    {
+      "publicFile": "docs/quality/evidence/2026-10-02-transactions/bounded-ui-reuse-readback.json",
+      "privateOriginal": "/private/tmp/genie-transactions-20261002/publication-originals/docs/quality/evidence/2026-10-02-transactions/bounded-ui-reuse-readback.json",
+      "privateOriginalMode": "0600",
+      "originalSha256": "028edc83d6466a25548d737cab4dd88dca2c5d35bc53472ceedff3568ddfa34c",
+      "publishedSha256": "1e01bc7fc28003e55b2421853ea91a75a23b9da4c78e3f595970985ddb409466",
+      "transformation": {
+        "kind": "identifier-value-replacement",
+        "keys": {
+          "tenant_id": 4
+        },
+        "consistency": "same original identifier maps to same opaque replacement across these five files; original values are not in this manifest"
+      },
+      "originalPublished": false
+    },
+    {
+      "publicFile": "docs/quality/evidence/2026-10-02-transactions/main-app-stop-api.json",
+      "privateOriginal": "/private/tmp/genie-transactions-20261002/publication-originals/docs/quality/evidence/2026-10-02-transactions/main-app-stop-api.json",
+      "privateOriginalMode": "0600",
+      "originalSha256": "b73ec4e4dd1790a659e23847f098ebf9cbfaa5859826ee2622c7b0a73e3d3700",
+      "publishedSha256": "f6f18cf3f879c9de3f8a1c65a8c35b880ef4a9030f4f847a1306bd3bb8ea298c",
+      "transformation": {
+        "kind": "identifier-value-replacement",
+        "keys": {
+          "tenant_id": 1
+        },
+        "consistency": "same original identifier maps to same opaque replacement across these five files; original values are not in this manifest"
+      },
+      "originalPublished": false
+    },
+    {
+      "publicFile": "docs/quality/evidence/2026-10-02-transactions/memory-final-external-task.json",
+      "privateOriginal": "/private/tmp/genie-transactions-20261002/publication-originals/docs/quality/evidence/2026-10-02-transactions/memory-final-external-task.json",
+      "privateOriginalMode": "0600",
+      "originalSha256": "3e01e768edcc47c9ee9a5697d400a353d03556c6c443dc5d731b5e6037fb4a7e",
+      "publishedSha256": "92b8abf0b4c7c5cd7cb8c2281e3e329261e301a532397bcc525dffd467c5b5d2",
+      "transformation": {
+        "kind": "identifier-value-replacement",
+        "keys": {
+          "tenant_id": 2,
+          "owner_id": 1
+        },
+        "consistency": "same original identifier maps to same opaque replacement across these five files; original values are not in this manifest"
+      },
+      "originalPublished": false
+    },
+    {
+      "publicFile": "docs/quality/evidence/2026-10-01-computer-pointer/render-blocked.sample.txt",
+      "privateOriginal": "/private/tmp/genie-transactions-20261002/publication-originals/docs/quality/evidence/2026-10-01-computer-pointer/render-blocked.sample.txt",
+      "privateOriginalMode": "0600",
+      "originalSha256": "f01193c79e22c560ce6a66d9f7ede94e12187513e4831df81d64cc21802ca990",
+      "publishedSha256": "b6201575b81c6f601323564a663c720ae3c07e2017b62be64e015351df4d7c18",
+      "transformation": {
+        "kind": "diagnostic-stack-excerpt",
+        "originalLinesRetained": [
+          1,
+          98
+        ],
+        "originalLineCount": 1242,
+        "removedSection": "Binary Images and following loaded-image inventory",
+        "userHomePathOccurrencesMasked": 1,
+        "threadAndFrameNumbers": "preserved verbatim"
+      },
+      "originalPublished": false
+    },
+    {
+      "publicFile": "docs/quality/evidence/2026-10-02-transactions/termination-hang.sample.txt",
+      "privateOriginal": "/private/tmp/genie-transactions-20261002/publication-originals/docs/quality/evidence/2026-10-02-transactions/termination-hang.sample.txt",
+      "privateOriginalMode": "0600",
+      "originalSha256": "1e61cd50ca32cb97ce5345344e20dbcfac6ac265293a22fd75cf680ea561c269",
+      "publishedSha256": "8c0bb45108d958305a9f8c606a8a4e4a7e4cb7bd0b14cc4713b03b490463e5ad",
+      "transformation": {
+        "kind": "diagnostic-stack-excerpt",
+        "originalLinesRetained": [
+          1,
+          100
+        ],
+        "originalLineCount": 1258,
+        "removedSection": "Binary Images and following loaded-image inventory",
+        "userHomePathOccurrencesMasked": 0,
+        "threadAndFrameNumbers": "preserved verbatim"
+      },
+      "originalPublished": false
+    }
+  ],
+  "hashReferenceUpdates": [
+    {
+      "file": "docs/quality/evidence/2026-10-01-computer-pointer/manifest.json",
+      "originalSha256": "62ad5d6f7270838887c02b13155ebd8fb219c507a4a04fa7cc304cfb4c01e0b7",
+      "publishedSha256": "644b766043d3d70590ba8b2ca1890826c8d09bebca47bf1713db6b8e2518c4bc",
+      "transformation": "only referenced digests updated to published/redacted artifacts",
+      "privateOriginal": "/private/tmp/genie-transactions-20261002/publication-originals/docs/quality/evidence/2026-10-01-computer-pointer/manifest.json"
+    },
+    {
+      "file": "docs/quality/evidence/2026-10-02-completion/COMPLETION_STATUS.json",
+      "originalSha256": "a727f93ebc269680e332d9581dea81d273a14a26f98ba09e28640e84b3688f7b",
+      "publishedSha256": "a109c95a4ff5cd3dbfaa584dda1cdf4d9c3d27617eb8f0571705b1f5d55e957b",
+      "transformation": "only referenced digests updated to published/redacted artifacts",
+      "privateOriginal": "/private/tmp/genie-transactions-20261002/publication-originals/docs/quality/evidence/2026-10-02-completion/COMPLETION_STATUS.json"
+    },
+    {
+      "file": "docs/quality/evidence/2026-10-02-completion/full-gate-current-independent-review.json",
+      "originalSha256": "e1bb606be34891103f84605e88a3d19cd73ad0a0cc1e569a7036fe42d15a8e8d",
+      "publishedSha256": "4dbc513fa48ce63cf720154b56b60ac69e976020312c13d46ee42491cf59d685",
+      "transformation": "only referenced digests updated to published/redacted artifacts",
+      "privateOriginal": "/private/tmp/genie-transactions-20261002/publication-originals/docs/quality/evidence/2026-10-02-completion/full-gate-current-independent-review.json"
+    },
+    {
+      "file": "docs/quality/evidence/2026-10-02-completion/safari-public-verification.json",
+      "originalSha256": "0830ef0362327cdf0056dace8555d5816fd9d0e74cde585bfd27d68cc3ebd292",
+      "publishedSha256": "15186f0e44171d78fa450bd27740b2cabcd417eb3d4b3827a409fbf2434f0821",
+      "transformation": "only referenced digests updated to published/redacted artifacts",
+      "privateOriginal": "/private/tmp/genie-transactions-20261002/publication-originals/docs/quality/evidence/2026-10-02-completion/safari-public-verification.json"
+    },
+    {
+      "file": "docs/quality/evidence/2026-10-02-transactions/bounded-ui-reuse-candidate.json",
+      "originalSha256": "1676337d5776790582c8e1a08e42da88b57fe7b7e7add934e72b8aa4e87cb55c",
+      "publishedSha256": "1784bfffe749b9f8060646df6e57d2b95c3e1bec8e3cf42ac2d29b32ecdc683b",
+      "transformation": "only referenced digests updated to published/redacted artifacts",
+      "privateOriginal": "/private/tmp/genie-transactions-20261002/publication-originals/docs/quality/evidence/2026-10-02-transactions/bounded-ui-reuse-candidate.json"
+    },
+    {
+      "file": "docs/quality/evidence/2026-10-02-transactions/main-app-stop-unknown.json",
+      "originalSha256": "3fdb48145dfc198756047bf0408271a40f147ccd10cd593f1b46bc8ab76fad7b",
+      "publishedSha256": "7b4f4f832cc792cbb5c4ebca9855ed5c32a74442ff99fb6e8fe3324175f06e31",
+      "transformation": "only referenced digests updated to published/redacted artifacts",
+      "privateOriginal": "/private/tmp/genie-transactions-20261002/publication-originals/docs/quality/evidence/2026-10-02-transactions/main-app-stop-unknown.json"
+    },
+    {
+      "file": "docs/quality/evidence/2026-10-02-transactions/main-app-stop-unknown.json.sha256",
+      "originalSha256": "2715750a843915f794cc85e43e194f0f18810daf34797d0ee06a902846951c4d",
+      "publishedSha256": "13c53893c11909c6952e998c47a53f95fc19c54fbde347ae5a88098faf0d6024",
+      "transformation": "only referenced digests updated to published/redacted artifacts",
+      "privateOriginal": "/private/tmp/genie-transactions-20261002/publication-originals/docs/quality/evidence/2026-10-02-transactions/main-app-stop-unknown.json.sha256"
+    },
+    {
+      "file": "docs/quality/evidence/2026-10-02-transactions/memory-final-runtime.json",
+      "originalSha256": "2e1cfa36bcf9e76321592ba4e19f4bc96522f441502a5889e8d8bacd6ef8dbf7",
+      "publishedSha256": "e7e4b8f066b17b60ff862a53d50b9f2ff1999cd4b2e875968529358b40c25ef0",
+      "transformation": "only referenced digests updated to published/redacted artifacts",
+      "privateOriginal": "/private/tmp/genie-transactions-20261002/publication-originals/docs/quality/evidence/2026-10-02-transactions/memory-final-runtime.json"
+    },
+    {
+      "file": "docs/quality/evidence/2026-10-02-transactions/termination-hang-review.json",
+      "originalSha256": "51f652effc8101c491a28d397555864e766461098ff6934f01753781edb0b81d",
+      "publishedSha256": "adf9e481f15a741d556d6e6b046572be361c185b575ef77572c5095eeaeea3ab",
+      "transformation": "only referenced digests updated to published/redacted artifacts",
+      "privateOriginal": "/private/tmp/genie-transactions-20261002/publication-originals/docs/quality/evidence/2026-10-02-transactions/termination-hang-review.json"
+    }
+  ],
+  "limitations": [
+    "This is publication redaction, not a new execution or validation of the underlying product result.",
+    "Thread numbers, stack-frame content and diagnostic counts in retained sample sections are preserved; user home path and complete Binary Images inventory are excluded.",
+    "Private original identifiers are intentionally not written into this manifest.",
+    "No new all-image privacy audit is implied."
+  ]
+}

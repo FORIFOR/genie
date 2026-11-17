@@ -1,0 +1,8 @@
+test_empty_environment_runs_under_system_bash_nounset (test_macos_recording_env.MacOSRecordingEnvironmentTests.test_empty_environment_runs_under_system_bash_nounset) ... ok
+test_forwarded_values_stay_single_arguments (test_macos_recording_env.MacOSRecordingEnvironmentTests.test_forwarded_values_stay_single_arguments) ... ok
+test_launch_failure_is_not_reported_as_a_pass (test_macos_recording_env.MacOSRecordingEnvironmentTests.test_launch_failure_is_not_reported_as_a_pass) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.055s
+
+OK

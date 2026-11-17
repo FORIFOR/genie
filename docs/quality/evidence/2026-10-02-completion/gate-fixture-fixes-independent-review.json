@@ -1,0 +1,110 @@
+{
+  "schema": 1,
+  "recordedAt": "2026-10-01T22:54:53.156049+00:00",
+  "reviewer": "/root/verification_audit",
+  "method": "Independent read-only review of the three narrow code changes and saved combined manifest/relink log. No code edits, native launch, tests or permission actions by reviewer.",
+  "status": "PASS",
+  "statusScope": "Source correctness and scoped stored test evidence; current release/native rerun not yet verified.",
+  "checks": [
+    {
+      "id": "GFF1",
+      "status": "PASS",
+      "scope": "micrelease settings isolation",
+      "observed": "All seven conversation starts receive the same fresh UserDefaults-suite GeminiLiveSettings with initialHasKey:false. This suppresses key presence reads and paid-provider selection only in this fixture. Default nil still reads shared settings and the permission continuation retains explicit injection. Live CoreAudio during=true and after=false checks, 2-second start, 1.5-second stop and all lifecycle routes remain unchanged. New fake capture test also rejects silent pipeline fallback for an enabled provider without budget."
+    },
+    {
+      "id": "GFF2",
+      "status": "PASS",
+      "scope": "Gateway reachability source",
+      "observed": "GET changes from auth providers to existing /healthz configured auth:false/rateLimit:false. Three-second timeout and unsuccessful response/transport rejection remain. Authentication rate-limit configuration is unchanged. This establishes gateway liveness only, not dependent-service readiness."
+    },
+    {
+      "id": "GFF3",
+      "status": "PASS",
+      "scope": "Motion reporting source",
+      "observed": "Success text now describes observed surface continuity and points to actual fps/unmeasured details. NOT_MEASURED output, Swift pacing calculation, thresholds and verify-all aggregation remain unchanged. Fake 46fps regression checks that uncertainty is retained and 60fps success is not claimed."
+    }
+  ],
+  "evidence": {
+    "combinedManifest": "docs/quality/evidence/2026-10-02-completion/gate-fixture-fixes/manifest.json",
+    "combinedManifestSha256": "93e28edc8e5fee66571012390c5971495024614ee56a8b278e72a43878d78fcc",
+    "sourceHashes": {
+      "apps/genie-macos/Sources/GenieMac/VoiceHUD/VoiceHUDState.swift": "e71fc95da88a408ffccb27c7985b40c7e5be6818a8974cb225a045e54159c345",
+      "apps/genie-macos/Sources/GenieMac/App/SelfTestMicRelease.swift": "61ecb7ddb1abd35cb83190ba75caf0450830282ba2d1e1347b81df7e9b0b19ff",
+      "apps/genie-macos/Tests/GenieMacTests/ConversationWiringTests.swift": "7ac4faa4d309147e9336391223084f2a94a816cd165ead389602b28a19fda7bd",
+      "core/genie-core/src/api.rs": "914c671cd14837d89a5d60cc467b13339d331c0154389790c977bad91779df79",
+      "scripts/verify-journeys.sh": "42245fce220c9f1d022f5a5b4d3e3b7201579345ecb71b6006c702fcd7a70af2",
+      "scripts/tests/test_journey_launcher.py": "956be6065ce586e971d7134968ec50e96d14d76921d1d35773da9ce251a05d2f"
+    },
+    "coreArchive": {
+      "path": "/Users/shuhei/Projects/genie/core/genie-core/target/debug/libgenie_core.a",
+      "sha256": "55fa96e8cc6c0604a5934fee0d250cac3e7f5d105b32550f06cc10d7345ca6c5"
+    },
+    "swiftRelinkLog": "docs/quality/evidence/2026-10-02-completion/gate-fixture-fixes/relink-tests.log",
+    "swiftRelinkLogSha256": "63d9e9ec5275083d10980e15ad68e7065c6af31482b97a430976aa711511b48a",
+    "swiftPassedCasesCounted": 21,
+    "swiftSkips": 0,
+    "swiftNativeAndXCTestLinkObserved": "Saved log has [1/5] Linking GenieMac and [4/5] Linking genie-macosPackageTests.",
+    "rustAndShellFocusedResults": "Implementer record reports localhost Rust2/2 and fake launcher5/5; not independently rerun.",
+    "reachabilityImplementerRecordSha256": "7083a3e37407618bfc8a68a3dbaed29a8b7568c9a1cf46487a90a69ee8c66659"
+  },
+  "limits": [
+    "Prior installed full gate FAIL remains preserved; every after-close mic observation was false, and six conversation cases did not reach running input at the sample. This is not evidence of a close-time mic leak.",
+    "The old mic attempt may have contacted the actual Gemini service and received remote prepayment refusal; it is not classified as only local budget refusal or zero external connections.",
+    "An earlier429 is temporally consistent with the aistop skip, but the route was not identified, so direct causation is not proven.",
+    "No fps improvement is claimed. The existing46fps NOT_MEASURED and1533ms STT latency observation remain unmet.",
+    "Static archive was previously not a tracked SwiftPM link input; current debug relink is logged. Final release-stage source/archive/binary linkage must be checked separately.",
+    "Linker warnings say some Rust archive objects target newer macOS than the Swift14.0 deployment target. Current-host checks do not prove older macOS compatibility.",
+    "No whole-service/release/real-order completion or real Keychain recovery is established."
+  ],
+  "followUps": [
+    {
+      "recordedAt": "2026-10-01T22:57:19.946410+00:00",
+      "method": "Independent read of saved package/facts failure record and hash checks; no reproduction by reviewer.",
+      "status": "BLOCKED",
+      "scope": "Release stage approval",
+      "observed": "Release compile and strict signature passed, but packaged facts invocation and one private diagnostic invocation hit UniFFI API checksum mismatch (facts exit -5). Combined package exit1. Installed a01378c remains unmodified; revised candidate must not be adopted.",
+      "evidence": "docs/quality/evidence/2026-10-02-completion/gate-fixture-fixes/release-round1-failure.json",
+      "evidenceSha256": "8640dcc5d4b29855c533a09fce08206884256ae48b37de68c6c37943a01ba6a4",
+      "files": {
+        "release-package-round1-fail.log": "40e7362e8964f1788aae07fc887e8cb03bd24223edc470d717a5b7ec471fd1cb",
+        "facts-round1-fail.log": "7405a294e1686535a8e8c87409485204bcc641579d8425fd22cbec525bd41195"
+      },
+      "limits": [
+        "Source review PASS above is not a runnable release-candidate PASS.",
+        "Root/core owner is investigating generated bindings/archive consistency; no root cause asserted by this reviewer."
+      ]
+    },
+    {
+      "recordedAt": "2026-10-01T23:03:10.258561+00:00",
+      "method": "Independent read-only generated diff, source/archive hashes, generation check log and saved focused test log review. No generation/build/tests rerun by reviewer.",
+      "status": "PASS",
+      "scope": "Generated binding correction only; final release stage remains pending.",
+      "observed": "Generated Swift differs in exactly apiReachable documentation and its expected checksum13704 to59910. RecordingSnapshot API/signatures and C header unchanged. Regular generation --check log says bindings current. Rust archive remains55fa96e8. Saved post-generation tests contain24 passed cases and no skipped cases.",
+      "evidence": "docs/quality/evidence/2026-10-02-completion/reachability-uniffi-binding-fix.json",
+      "evidenceSha256": "14771771cf3557d0637328e94d4934bb4909360390665fd6cf90865c2839d72c",
+      "sourceHashes": {
+        "core/genie-core/src/api.rs": "914c671cd14837d89a5d60cc467b13339d331c0154389790c977bad91779df79",
+        "apps/genie-macos/Sources/GenieCore/genie_core.swift": "eead7f6a8e939d25167a9d38926a127c05f06bb126dff4de97b533ca908dca15",
+        "apps/genie-macos/Sources/GenieCoreFFI/include/genie_coreFFI.h": "26d0865dc5454805c37a98135100c8e1bf9e878560108d50076bea946423afad",
+        "apps/genie-macos/Sources/GenieCoreFFI/include/module.modulemap": "c23a9725a56d6e5ca25b6ddd6de5e0849d1d77f4f93d3e00ecf9f1088a1bdbc1"
+      },
+      "staticArchiveSha256": "55fa96e8cc6c0604a5934fee0d250cac3e7f5d105b32550f06cc10d7345ca6c5",
+      "focusedTestLog": "/private/tmp/genie-transactions-20261002/gate-fixture-bindings-tests.log",
+      "focusedTestLogSha256": "0dcde055719a03a2ccba2db113bd90c07ef405375ed7b62816efd17b358fc297",
+      "limits": [
+        "Prior package facts crash remains preserved.",
+        "New package/facts result not yet verified at this checkpoint."
+      ]
+    },
+    {
+      "recordedAt": "2026-10-01T23:06:28.472143+00:00",
+      "status": "PASS",
+      "scope": "Final corrected release-stage content/signature/FFI consistency; full gate pending.",
+      "evidence": "docs/quality/evidence/2026-10-02-completion/gate-stage-independent-review.json",
+      "evidenceSha256": "4e913e69e5ff1f93c0f28363d242f1701763ac32e6bcb3cf8626dee2e6fa721c",
+      "candidateSha256": "8b46350c5bb3a4330320689898171c59a5fd0dc9cf1947dd6548a4d4f2af668d",
+      "observed": "Fresh strict signature, canonical normalized code/resources equivalence and source9/archive hashes match. Candidate Rust checksum function returns59910, matching generated Swift. Round2 packaged facts passed. Previous round1 package failure remains historical evidence."
+    }
+  ]
+}

@@ -7,6 +7,7 @@
  * 承認は cloud で取ってあるが、**ここでもう一度確かめる。**
  * 経路が 1 本しかないと、いつか誰かが近道を作り、それが既定になる。
  */
+import { createHash } from 'node:crypto';
 import {
   ApprovalRequired,
   ConnectorError,
@@ -26,6 +27,7 @@ import {
   TokenStore,
   type ProviderConfig,
   type SecretStore,
+  type TokenSet,
 } from '@genie/oauth';
 
 /** cloud から渡ってくる、端末にやってほしいこと。 */
@@ -56,6 +58,12 @@ export interface ConnectorRuntimeDeps {
   ) => ProviderConfig | null;
   readonly fetch?: typeof globalThis.fetch;
   readonly now?: () => Date;
+  /** 提供者が更新を断ったことを Mac アプリへ知らせる（値は渡さない。指紋だけ）。 */
+  readonly reportRenewalRejected?: (
+    pluginId: string,
+    connectorId: string,
+    fingerprint: string,
+  ) => Promise<void>;
 }
 
 /**
@@ -129,6 +137,10 @@ export const TOOL_CONNECTOR: Readonly<Record<string, ConnectorKey>> = {
   'calendar.list_events': 'google-calendar',
   'calendar.get_event': 'google-calendar',
   'calendar.create_event': 'google-calendar-actions',
+  // 予定の時間を変える（承認つき。「元に戻して」も同じ道）
+  'calendar.move_event': 'google-calendar-actions',
+  // 作った会議に人を足す（承認つき。招待のメールが届く）
+  'calendar.invite_attendees': 'google-calendar-actions',
   'outlook.mail.search': 'outlook',
   'outlook.mail.read': 'outlook',
   'outlook.calendar.list_events': 'outlook',
@@ -140,9 +152,32 @@ export function connectorForTool(toolId: string): ConnectorKey | null {
   return TOOL_CONNECTOR[toolId] ?? null;
 }
 
+/** 更新した分を置く別項目の名前の末尾。アプリが作った項目とは分ける。 */
+export const HOST_RENEWAL_SUFFIX = '.host-renewal';
+
+/** 別項目の中身。どのアプリ側の接続から更新したか（`origin`）を持つ。 */
+type HostRenewal = TokenSet & { readonly origin: string };
+
+/**
+ * 接続の指紋（更新用トークンのハッシュの先頭）。値そのものは出さない。
+ * Mac アプリも同じ計算で、「断られた」がいまの接続のことかを見分ける。
+ */
+export function credentialFingerprint(tokens: Pick<TokenSet, 'refreshToken' | 'accessToken'>) {
+  return createHash('sha256')
+    .update(tokens.refreshToken ?? tokens.accessToken)
+    .digest('hex')
+    .slice(0, 32);
+}
+
 export class ConnectorRuntime {
   readonly #deps: ConnectorRuntimeDeps;
   readonly #tokens: TokenStore;
+  /**
+   * 接続ごとに、進行中の更新は 1 つだけ。同時に呼ばれた側はその結果を待つ。
+   * 2 つが同時に更新・保存すると、同じキーチェーン項目への書き込みが競合して片方が
+   * 「既に存在します」で落ち、同期全体が失敗になっていた（2026-10-07〜12、毎時）。
+   */
+  readonly #refreshing = new Map<string, Promise<string>>();
 
   constructor(deps: ConnectorRuntimeDeps) {
     this.#deps = deps;
@@ -261,6 +296,37 @@ export class ConnectorRuntime {
           step.approval ?? undefined,
           signal,
         );
+      case 'calendar.invite_attendees':
+        return this.googleCalendarActions().invite(
+          {
+            ...(typeof args['meet_request_id'] === 'string'
+              ? { meetRequestId: args['meet_request_id'] }
+              : {}),
+            title: requireString(args, 'title'),
+            start: requireString(args, 'start'),
+            end: requireString(args, 'end'),
+            emails: stringList(args['attendees']),
+          },
+          step.approval ?? undefined,
+          signal,
+        );
+      case 'calendar.move_event': {
+        const timeZone = typeof args['time_zone'] === 'string' ? args['time_zone'] : undefined;
+        // 日付だけなら終日、それ以外は日時（eventFrom の when と同じ読み方）
+        const at = (value: string) =>
+          /^\d{4}-\d{2}-\d{2}$/.test(value)
+            ? { date: value }
+            : { dateTime: value, ...(timeZone ? { timeZone } : {}) };
+        return this.googleCalendarActions().move(
+          {
+            eventId: requireString(args, 'event_id'),
+            start: at(requireString(args, 'start')),
+            end: at(requireString(args, 'end')),
+          },
+          step.approval ?? undefined,
+          signal,
+        );
+      }
       case 'outlook.mail.search':
         return this.outlookMail().list(
           {
@@ -364,8 +430,18 @@ export class ConnectorRuntime {
    */
   async #accessToken(pluginId: string, connectorId: string, provider: string): Promise<string> {
     const ref = this.#deps.credentialRefFor(pluginId, connectorId);
-    const tokens = await this.#tokens.load(ref);
-    if (!tokens) throw new ConnectorError('not_connected', `${pluginId} is not connected`);
+    const native = await this.#tokens.load(ref);
+    if (!native) throw new ConnectorError('not_connected', `${pluginId} is not connected`);
+    /*
+     * 更新した分は**別の項目**に置き、Mac アプリが作った項目は書き換えない。
+     * `security` で書き戻すと項目の partition が `apple-tool:` だけになり、アプリが自分の接続を
+     * 読めなくなって「つなぎ直す」も保存できなかった（2026-10-16〜19）。
+     * 別項目は、アプリの項目が同じ更新用トークンのままのときだけ使う（つなぎ直したらアプリの項目が勝つ）。
+     */
+    const origin = credentialFingerprint(native);
+    const hostRef = `${ref}${HOST_RENEWAL_SUFFIX}`;
+    const renewed = (await this.#tokens.load(hostRef)) as HostRenewal | null;
+    const tokens = renewed?.origin === origin ? renewed : native;
 
     const config = this.#deps.refreshConfig?.(provider, connectorId, tokens.grantedScopes ?? []);
     if (
@@ -379,6 +455,9 @@ export class ConnectorRuntime {
     const now = (this.#deps.now ?? (() => new Date()))().getTime();
     const expired = tokens.expiresAt !== null && Date.parse(tokens.expiresAt) <= now;
     if (!expired && !needsRefresh(tokens, now)) return tokens.accessToken;
+    // 一度断られた更新用トークンで、提供者を呼び直さない。
+    if (tokens.renewalRejectedAt)
+      throw new ConnectorError('token_expired', `${pluginId} needs to be connected again`);
 
     if (!config || !tokens.refreshToken) {
       /*
@@ -392,24 +471,58 @@ export class ConnectorRuntime {
       // まだ切れてはいない。更新できないだけなので、今回はそのまま使う。
       return tokens.accessToken;
     }
-    const renewed = await refresh(
-      config,
-      tokens.refreshToken,
-      this.#deps.fetch ?? globalThis.fetch,
-      () => now,
-    );
-    if (
-      provider === 'microsoft' &&
-      this.#deps.refreshConfig &&
-      !this.#deps.refreshConfig(provider, connectorId, renewed.grantedScopes)
-    ) {
-      throw new ConnectorError(
-        'provider_error',
-        'Microsoft returned scopes outside this connection',
-      );
-    }
-    await this.#tokens.save(pluginId, connectorId, renewed);
-    return renewed.accessToken;
+    const inflight = this.#refreshing.get(ref);
+    if (inflight) return inflight;
+    const refreshToken = tokens.refreshToken;
+    const task = (async () => {
+      const next = await refresh(
+        config,
+        refreshToken,
+        this.#deps.fetch ?? globalThis.fetch,
+        () => now,
+      ).catch(async (error: unknown) => {
+        /*
+         * 更新用のトークンが失効・取り消し済み（`invalid_grant`）。待っても直らないので
+         * 「つなぎ直してください」と言う。Google の「テスト中」のアプリでは 7 日で失効する
+         * （2026-10-16 に切れ、まとめは「一部を取得できませんでした」とだけ出し続け、
+         * Apps は「接続済み」のままだった）。断られたことを残し、Mac の Apps にも知らせる。
+         */
+        if ((error as { code?: unknown } | null)?.code === 'invalid_grant') {
+          // その間につなぎ直されていたら、新しい接続に印を付けない。
+          const current = await this.#tokens.load(ref);
+          if (current && credentialFingerprint(current) === origin) {
+            await this.#tokens.save(pluginId, `${connectorId}${HOST_RENEWAL_SUFFIX}`, {
+              ...tokens,
+              origin,
+              renewalRejectedAt: new Date(now).toISOString(),
+            } as HostRenewal);
+            await this.#deps.reportRenewalRejected?.(pluginId, connectorId, origin);
+          }
+          throw new ConnectorError('token_expired', `${pluginId} needs to be connected again`);
+        }
+        throw error;
+      });
+      if (
+        provider === 'microsoft' &&
+        this.#deps.refreshConfig &&
+        !this.#deps.refreshConfig(provider, connectorId, next.grantedScopes)
+      ) {
+        throw new ConnectorError(
+          'provider_error',
+          'Microsoft returned scopes outside this connection',
+        );
+      }
+      await this.#tokens.save(pluginId, `${connectorId}${HOST_RENEWAL_SUFFIX}`, {
+        ...next,
+        // Refresh responses do not carry the native UI's account label. Keep only
+        // that local metadata; tokens, scopes and client binding come from renewal.
+        ...(typeof tokens.accountLabel === 'string' ? { accountLabel: tokens.accountLabel } : {}),
+        origin,
+      } as HostRenewal);
+      return next.accessToken;
+    })().finally(() => this.#refreshing.delete(ref));
+    this.#refreshing.set(ref, task);
+    return task;
   }
 }
 
@@ -453,6 +566,13 @@ function eventFrom(args: Record<string, unknown>): CreateEventInput {
     ...(typeof args['location'] === 'string' ? { location: args['location'] } : {}),
     ...(stringList(args['attendees']).length
       ? { attendeeEmails: stringList(args['attendees']) }
+      : {}),
+    // 招待のメールは承認カードに出した引数（send_invites: true）のときだけ送る
+    ...(args['send_invites'] === true ? { sendInvites: true } : {}),
+    // Meet は承認カードに出した引数（meet: true）のときだけ付ける
+    ...(args['meet'] === true ? { meet: true } : {}),
+    ...(typeof args['meet_request_id'] === 'string'
+      ? { meetRequestId: args['meet_request_id'] }
       : {}),
   };
 }

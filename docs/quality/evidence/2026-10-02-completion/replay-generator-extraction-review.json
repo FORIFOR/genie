@@ -1,0 +1,30 @@
+{
+  "recordedAt": "2026-10-01T19:21:44.865733+00:00",
+  "scope": "Source proposal/extraction review only; no fixture generation run",
+  "replayTestBodiesByteIdenticalToHEAD": true,
+  "fixtures": {
+    "services/task/test/replay-fixtures/cancelled.json": {
+      "sha256": "c3f884e4c0b65abd0eea07f698a1ec92cf3e07c4f49b473f12ac30eab5d7b4b1",
+      "matchesHEAD": true
+    },
+    "services/task/test/replay-fixtures/completed.json": {
+      "sha256": "90852ac562c2c27faea233a39423bd27102d85f553a451d4268eb85cdde7a42d",
+      "matchesHEAD": true
+    },
+    "services/task/test/replay-fixtures/provenance.json": {
+      "sha256": "bb4e6e79ed4fbc5db3d5255dcdd183ce1f1ce372ad5699cde501d8923444a6e0",
+      "matchesHEAD": true
+    }
+  },
+  "judgment": "Separating write-producing fixture generation from unchanged two acceptance replay tests is legitimate; do not regenerate fixtures to change failed replay results.",
+  "preserved": [
+    "old revision pinned",
+    "explicit ASTRA_CAPTURE_REPLAY=1",
+    "absolute cached executable/no implicit download",
+    "synthetic effects only",
+    "capture result and no-new-patch assertions",
+    "normal replay hash/provenance/null terminal result/Worker.runReplayHistory assertions"
+  ],
+  "pendingFinding": "Generator must guarantee env teardown/temp cleanup even if worker await rejects and retain bounded lifetime formerly provided by test timeout.",
+  "followUp": "Source cleanup/deadline corrections and saved execution results reviewed in replay-runner-final-independent-review.json; initial finding retained above as history."
+}

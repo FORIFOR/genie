@@ -1,0 +1,8 @@
+{
+ "recordedAt": "2026-10-02T21:35:10.968306+00:00",
+ "target": "/Applications/Genie.app",
+ "backup": "/Users/shuhei/Library/Application Support/Genie/update-backups/20261003-063510/installed-Genie.app",
+ "after": "88be57dcb86c47fe2d1027a4f36f9e7e9000d9d3f04fcf2507b4bb47e7dddde5",
+ "source": "apps/genie-macos/build/Genie.app (scripts/build-macos-app.sh, 2026-10-03)",
+ "sameBundleIdentifier": "com.astra.mac"
+}

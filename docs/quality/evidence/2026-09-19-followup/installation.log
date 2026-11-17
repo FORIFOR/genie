@@ -1,0 +1,8 @@
+Observed tool execution record, 2026-09-19. Source: user-supplied Downloads/oss-quality-kit.
+python3 /Users/shuhei/Downloads/oss-quality-kit/scripts/install.py --target /Users/shuhei/Projects/genie --tool codex
+exit code: 0; dry run listed five CREATE paths; no writes.
+python3 /Users/shuhei/Downloads/oss-quality-kit/scripts/install.py --target /Users/shuhei/Projects/genie --tool codex --apply
+exit code: 0; CREATED all five .agents/skills directories; no network/git/instruction-file edit.
+(cd /Users/shuhei/Downloads/oss-quality-kit && shasum -a 256 -c SHA256SUMS.txt)
+exit code: 0; all listed files OK.
+All 13 copied skill/reference file bytes subsequently verified against supplied source (installed-skills.json). The extra .agents/skills/README.md records provenance and license limits.

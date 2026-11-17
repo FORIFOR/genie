@@ -1,0 +1,52 @@
+{
+  "recordedAt": "2026-10-01T17:57:14.897127+00:00",
+  "classification": "Implementation verification of shell orchestration with inert mock commands; no real Swift, Cargo, model, app, DB or full gate execution",
+  "supersedesOnly": "XCTest omission forwarding in the historical resource-harness.json candidate; prior records remain unchanged",
+  "sourceSha256": {
+    "scripts/verify-all.sh": "8d48beae473e143a0157d832d6d5e55b6dbc9282f1e374bc42f4a34b18f8802b",
+    "scripts/tests/test_verification_resources.py": "98d8906e01803bf4ed0670305e0216ba4284a04857471eace7218920a2d18d41",
+    "scripts/tests/test_macos_recording_env.py": "5ebc0ca4c09f25613f1db24a8978877f2adde8c7251cafe7896da521ecf35767",
+    "docs/quality/LOW_RESOURCE_VERIFICATION.md": "be9b17929fcae0ec1a28fdc6e92cf1c40da1c69884910e273f4456fe506c8a9b"
+  },
+  "run": {
+    "command": "python3 -m unittest scripts.tests.test_verification_resources scripts.tests.test_macos_recording_env -v",
+    "exitCode": 0,
+    "passed": 14,
+    "resourceHarnessCases": 11,
+    "recordingEnvironmentCases": 3,
+    "elapsedSeconds": 9.107,
+    "log": "verification-resources-xctskip-shellmock.log",
+    "logSha256": "08a21e5c2e5064bd3b471a0604871f8029bc1babcedb8ff8848f7eab96519488"
+  },
+  "staticChecks": {
+    "bash -n scripts/verify-all.sh": "PASS",
+    "git diff --check for owned script and test": "PASS"
+  },
+  "regressions": [
+    "XCTest one skipped test and two skipped tests become NOT_RUN/PARTIAL with case names",
+    "Zero skipped tests allow ordinary mocked gate success",
+    "XCTest failure still returns FAIL when tests also skipped",
+    "Existing local model opt-in, job limits and release optimization assertions remain passing"
+  ],
+  "observedRealSuite": {
+    "source": "/private/tmp/genie-transactions-20261002/native-memory-lifecycle-tests.log",
+    "sourceSha256": "01b4f15b484472cbf9c3af998a2989bef2f1e0a380e14049c4043d7f9c71a8db",
+    "executedIncludingSkipped": 74,
+    "skipped": 2,
+    "failures": 0,
+    "attribution": "Prior root-run log read only; not rerun here and not reported as 74 passes"
+  },
+  "separateOptInEvidence": "Root separately ran both opt-in tests successfully. Those commands do not erase the skips in the ordinary suite or complete verify-all.",
+  "independentStaticReview": {
+    "reviewer": "/root/pointer_ui",
+    "result": "No concrete finding: final summary avoids suite duplication, positive singular/plural skips forwarded, zero skip excluded, original exit retained, failure precedence preserved. Mock regression reads production script.",
+    "execution": "Reviewer did not run tests/build/GUI/model"
+  },
+  "notRun": [
+    "Full verify-all",
+    "Real Swift/Cargo/app build or test",
+    "Model inference",
+    "Database tests",
+    "Native or GUI operations"
+  ]
+}

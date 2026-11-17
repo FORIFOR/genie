@@ -1,0 +1,30 @@
+{
+  "task": {
+    "id": "01a0b957-84fb-7000-8e87-fa94711aefe1",
+    "tenant_id": "01a0b957-13ed-7001-9633-08bb2cd29cf9",
+    "created_by": "01a0b957-13ed-7000-a9b2-f48f3e604c58",
+    "conversation_id": null,
+    "kind": "computer.run",
+    "title": "Click Show details in the selected Genie Computer Use Test app.",
+    "status": "FAILED",
+    "input": {
+      "goal": "Click Show details in the selected Genie Computer Use Test app.",
+      "successCriteria": "The app displays Details open — LOCAL TEST PASSED."
+    },
+    "result_artifact_id": null,
+    "error": {
+      "code": "task.step_failed",
+      "message": "画面操作を停止しました。完了は確認されていません。権限・対象画面・モデル設定を確認してください。",
+      "step_index": 0,
+      "retryable": false,
+      "recovery": "handoff",
+      "handoff_explanation": "自動でやり直していません。再実行する前に、実行先の履歴を確認してください。"
+    },
+    "created_at": "2026-09-19T11:05:15.881Z",
+    "started_at": "2026-09-19T11:05:15.872Z",
+    "completed_at": "2026-09-19T11:06:12.624Z",
+    "updated_at": "2026-09-19T11:06:12.624Z",
+    "dock_state": "FAILED_RECOVERABLE"
+  },
+  "approvals": []
+}

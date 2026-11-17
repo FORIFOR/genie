@@ -60,13 +60,15 @@ export class HostSearchProvider implements SearchProvider {
        * **辿れない出典は載せない。**形の壊れた URL や、
        * 同じページの重複を、件数として数えない。
        */
-      if (!isHttpUrl(url) || seen.has(url)) continue;
+      // 抜粋の無い結果からは根拠を取り出せない。数に入れず、取り出しの呼び出しも作らない。
+      const snippet = typeof row['snippet'] === 'string' ? row['snippet'].trim() : '';
+      if (!isHttpUrl(url) || seen.has(url) || snippet.length === 0) continue;
       seen.add(url);
 
       hits.push({
         url,
         title: typeof row['title'] === 'string' ? row['title'] : '',
-        snippet: typeof row['snippet'] === 'string' ? row['snippet'] : '',
+        snippet,
         publisher: hostOf(url),
         publishedAt: toIsoDate(row['published']),
         sourceType: classify(url),

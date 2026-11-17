@@ -3,7 +3,12 @@
  *
  * タスクのライフサイクル、Temporal 連携、進捗。実装仕様 §6・§11。
  */
-export { TaskService, type CreateTaskParams, type CreateTaskResult } from './service.js';
+export {
+  TaskService,
+  isTaskCancelRequested,
+  type CreateTaskParams,
+  type CreateTaskResult,
+} from './service.js';
 export { createTaskActivities, type ActivityDeps, type StepExecutor } from './activities.js';
 export {
   appendEvent,
@@ -33,6 +38,7 @@ export {
 export type { TaskWorkflowInput, TaskResult, TaskStateSnapshot } from './workflows.js';
 export type { TaskActivities } from './activity-types.js';
 export { createTaskWorker, defaultWorkflowsPath, type TaskWorkerOptions } from './worker.js';
+export { currentActivityCancellation } from './activity-heartbeat.js';
 export {
   AGENT_KIND_PREFIX,
   AgentNotRunnableError,
@@ -41,3 +47,9 @@ export {
   planInstalledAgent,
   type InstalledAgent,
 } from './agent-plan.js';
+export * from './verifier.js';
+export * from './execution-ladder.js';
+export {
+  TransactionAuthorizationService,
+  type DerivedTransactionApproval,
+} from './transaction-authorizations.js';

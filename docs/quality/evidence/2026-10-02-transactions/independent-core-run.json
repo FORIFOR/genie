@@ -1,0 +1,31 @@
+{
+  "at": "2026-10-01T15:30:26.921Z",
+  "baseCommit": "ee857a5b13482cbd2d986a1f9b466c8e49a149c3",
+  "dirty": true,
+  "classification": "independent AI rerun of implementation-authored mock/multiprocess tests; not real provider or native UI",
+  "commands": [
+    {
+      "command": "pnpm exec tsc -b workers/agent-host",
+      "exitCode": 0
+    },
+    {
+      "command": "node --test workers/agent-host/test/transaction-runtime.node.mjs",
+      "exitCode": 0,
+      "tests": 12,
+      "passed": 12,
+      "skipped": 0
+    }
+  ],
+  "sourceSha256": {
+    "packages/contracts/src/transaction.ts": "7eeb9dc9d0ae99c33d50d711a833938cf14c1a347575d2ad9c9923a5e3b00363",
+    "workers/agent-host/src/transaction-adapter.ts": "271b3dbef8c8495f04b52358ca1a765795c4be6b79ee5ca97edff9e8276b22f7",
+    "workers/agent-host/src/transaction-runtime.ts": "6ef645a2d434ed3f75e59af0c69bfcc3b6c821e71579de0aaba5a349c0917c8a",
+    "workers/agent-host/src/transaction-policy.ts": "cda29a4096e1dee6247f86f311945b8af1852bb397b8b9e68395e182a091d23d",
+    "workers/agent-host/src/transaction-journal.ts": "76fd2a7addde35b97e547a9d43bffd29db025d5f914925710a499905621a1721",
+    "workers/agent-host/test/transaction-runtime.node.mjs": "849293f561e6d09723d6825540d1fd80f0a66041ff219c571b858bae4597dd22",
+    "workers/agent-host/dist/transaction-runtime.js": "ca9f68a1967017a48e5e7a23c210a4891671f599e0b6e49d8d53c7c015f2313c",
+    "workers/agent-host/dist/transaction-policy.js": "eef5ab24129b76e73c08ca60beb0f2e1a29b359f7c706643642dfe0969b177d6",
+    "workers/agent-host/dist/transaction-journal.js": "a7f12f2e90c24b25555c4e458764f55cdea6b390d02173d7e9fd0becf40947b4",
+    "packages/contracts/dist/transaction.js": "5242f90ac4cdbf2303007ed0985a19edffe26ef214be84c165991c5fe1e8132a"
+  }
+}

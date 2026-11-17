@@ -1,0 +1,11 @@
+
+ RUN  v3.2.7 /Users/shuhei/Projects/genie
+
+ ✓ services/task/test/checkout-assistance.test.ts (10 tests) 4ms
+ ✓ services/conversation/test/checkout-request.test.ts (29 tests) 5ms
+
+ Test Files  2 passed (2)
+      Tests  39 passed (39)
+   Start at  06:07:34
+   Duration  547ms (transform 101ms, setup 0ms, collect 195ms, tests 9ms, environment 0ms, prepare 55ms)
+

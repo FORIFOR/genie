@@ -1,0 +1,52 @@
+✔ scoped Mac launch gets the same absolute Codex executable that was verified (4.800541ms)
+✔ CLI rejects unsupported actions, external model URLs, ambiguous ports and unsafe names (0.405334ms)
+✔ transaction simulation is explicit, requires computer use and only exports the local fixture executable (2.485291ms)
+✔ native app launches through LaunchServices with instance-only scope and a waited lifecycle (0.146125ms)
+✔ native ownership distinguishes simultaneous app instances and rejects PID reuse without matching argv (0.11375ms)
+✔ native process inspection takes one snapshot and never treats inspection errors as exit (0.279666ms)
+✔ native stop verifies absence, escalates only after grace, and fails if exit stays unconfirmed (0.388541ms)
+✔ native stop rejects PID/start/argv changes before TERM and immediately before KILL (0.242208ms)
+✔ native stop does not report success after inspection or signal failures (0.137209ms)
+✖ native stop waits for a real tiny child exit and escalates a TERM-resistant child only (296.006208ms)
+✔ explicit local Docker selection pins child operations without inheriting or changing the user context (1.003042ms)
+✔ Docker endpoint changes are revalidated on every start and remote/relative/missing contexts fail closed (0.36325ms)
+✔ explicit Docker context persists for restart, migrates legacy state optionally and prevents changing its database host (31.716084ms)
+✔ model choice persists explicit intent, supports Ollama latest aliases and never picks a paid fallback (0.432ms)
+✔ external CLI selection needs explicit opt-in, persists that choice, and never inherits the old local model (7.037333ms)
+✔ external model process and app agree on provider and external image egress without importing credentials (7.001417ms)
+✔ Codex omitted model uses the same explicit model for host, native translation and disclosure (6.722458ms)
+✔ explicit local selection reaches native translation with its exact model and endpoint (8.785292ms)
+✔ CLI readiness uses its own authentication boundary without a generated prompt or credential copy (0.42175ms)
+✔ Ollama cloud models and renamed remote aliases cannot be disclosed as local inference (0.308833ms)
+✔ service environment does not inherit paid credentials, remote infrastructure or shell hooks (7.644292ms)
+✔ first boot persists private keys, ports and identity; later starts keep them and reject silent port changes (9.564333ms)
+✔ saved configuration is validated before forming compose operations (7.59925ms)
+✔ an unrelated nonempty state directory is never taken over (1.080125ms)
+✔ managed service stops when its supervisor disappears (108.763292ms)
+✔ managed Compose isolates named volumes and all published ports; migration mounts are read-only (6.582208ms)
+✔ port conflicts fail without modifying the listener (0.485166ms)
+✔ owned processes fail on exit and stop children; unrelated processes stay alive (37.864958ms)
+✔ command timeout, startup abort and bounded readiness cannot report success (67.73625ms)
+✔ entrypoint help works from a symlink with spaces and importing it starts nothing (101.315792ms)
+✔ network errors and redirects do not expose returned response bodies (9.150375ms)
+ℹ tests 31
+ℹ suites 0
+ℹ pass 30
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 789.202625
+
+✖ failing tests:
+
+test at scripts/tests/managed-local-preview.test.mjs:308:1
+✖ native stop waits for a real tiny child exit and escalates a TERM-resistant child only (296.006208ms)
+  Error: 専用アプリの個体が変わりました。別のプロセスは停止していません。
+      at remains (file:///Users/shuhei/Projects/genie/scripts/start-local-preview.mjs:224:13)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async waitForExit (file:///Users/shuhei/Projects/genie/scripts/start-local-preview.mjs:242:13)
+      at async stopOwnedNativeApp (file:///Users/shuhei/Projects/genie/scripts/start-local-preview.mjs:251:9)
+      at async TestContext.<anonymous> (file:///Users/shuhei/Projects/genie/scripts/tests/managed-local-preview.test.mjs:336:20)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7)

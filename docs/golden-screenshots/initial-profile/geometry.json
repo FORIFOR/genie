@@ -1,48 +1,48 @@
 [
   {
-    "bytes" : 267956,
+    "bytes" : 264535,
     "height" : 680,
     "name" : "analysing-light",
     "width" : 800
   },
   {
-    "bytes" : 154812,
+    "bytes" : 271027,
     "height" : 680,
     "name" : "ready-light",
     "width" : 800
   },
   {
-    "bytes" : 180727,
+    "bytes" : 256913,
     "height" : 680,
     "name" : "editing-light",
     "width" : 800
   },
   {
-    "bytes" : 255865,
+    "bytes" : 262356,
     "height" : 680,
     "name" : "failed-light",
     "width" : 800
   },
   {
-    "bytes" : 268036,
+    "bytes" : 264804,
     "height" : 680,
     "name" : "analysing-dark",
     "width" : 800
   },
   {
-    "bytes" : 154441,
+    "bytes" : 270133,
     "height" : 680,
     "name" : "ready-dark",
     "width" : 800
   },
   {
-    "bytes" : 181022,
+    "bytes" : 258114,
     "height" : 680,
     "name" : "editing-dark",
     "width" : 800
   },
   {
-    "bytes" : 254383,
+    "bytes" : 261613,
     "height" : 680,
     "name" : "failed-dark",
     "width" : 800

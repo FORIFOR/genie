@@ -1,0 +1,59 @@
+{
+  "schema": 1,
+  "recordedAt": "2026-10-01T22:24:44.122624+00:00",
+  "reviewer": "/root/verification_audit",
+  "method": "Independent read-only actual bundle/plist/resources/frameworks/embedded-code comparison, fresh codesign validation and manifest/source hash check. No install, launch, credential or permission action.",
+  "status": "PASS",
+  "statusScope": "Stage identity/content/signature and stored evidence integrity only. Actual OS prompt and intentional next Home send remain unverified.",
+  "candidate": "/private/tmp/genie-transactions-20261002/user-app-recovery-stage/Genie.app",
+  "executableSha256": {
+    "candidate": "a01378c92ef466086c4e6e0c1f8263e66a9da61ec24d026c86ef6cda0f678801",
+    "canonical": "490a32fc9cc3e9c89f7695bfd26cfea240ff4e88a4d375506e4c5cac0e82e660",
+    "installed": "5a27e3f39e06c0bb43c2a343dee478c7b6922e5df36d9b8a5f28aa4d90a6ad1a"
+  },
+  "stageManifestSha256": "352fd470dbf7bed4fbb0dfc0fc46eb076fec619583561b4f3af66469c55bc0c8",
+  "checks": {
+    "infoDifferencesFromCanonical": [
+      "CFBundleExecutable",
+      "CFBundleIdentifier",
+      "LSUIElement"
+    ],
+    "preservesInstalledIdentity": true,
+    "designatedRequirementMatchesInstalled": true,
+    "resources": {
+      "Resources": {
+        "canonicalEntries": 108,
+        "candidateEntries": 108,
+        "identical": true,
+        "entryCounting": "All descendant directories, regular files and symlinks; broader than the stage manifest file inventory.",
+        "regularFiles": 54,
+        "symlinks": 0
+      },
+      "Frameworks": {
+        "canonicalEntries": 156,
+        "candidateEntries": 156,
+        "identical": true,
+        "entryCounting": "All descendant directories, regular files and symlinks; broader than the stage manifest file inventory.",
+        "regularFiles": 88,
+        "symlinks": 9
+      }
+    },
+    "machineCodeComparison": {
+      "normalization": "Read actual signed Mach-O64; exclude embedded LC_CODE_SIGNATURE payload, zero its dataoff/datasize and __LINKEDIT vmsize/filesize only. Compare remaining bytes without modifying binaries.",
+      "equal": true,
+      "canonicalAndCandidateSha256": "14699895f42c2baf2b767f88c0f80469e8dc29646e5e8265477478bad609ddad"
+    },
+    "codesignDeepStrict": {
+      "command": "/usr/bin/codesign --verify --deep --strict --verbose=2 <candidate>",
+      "exitCode": 0
+    },
+    "sourceManifestMatchesStage": true,
+    "packageLogMatchesStage": true,
+    "sourceMismatches": [],
+    "artifactMismatches": []
+  },
+  "limits": [
+    "Preserving the designated requirement does not grant OS permissions.",
+    "No actual credential recovery, Home submission or whole-release success is implied."
+  ]
+}

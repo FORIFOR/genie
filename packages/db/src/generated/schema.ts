@@ -45,6 +45,60 @@ export interface ActionReceipts {
   tool_id: string;
 }
 
+export interface AgentApprovalRules {
+  connection_id: string;
+  created_at: Generated<Timestamp>;
+  from_approval_id: string | null;
+  id: string;
+  label: string;
+  last_used_at: Timestamp | null;
+  match_value: string | null;
+  operation: string;
+  project_root: string;
+  revoked_at: Timestamp | null;
+  scope: string;
+  session_id: string | null;
+  tenant_id: string;
+  tool_name: string;
+  use_count: Generated<number>;
+  user_id: string;
+}
+
+export interface AgentApprovals {
+  connection_id: string;
+  created_at: Generated<Timestamp>;
+  decided_at: Timestamp | null;
+  delivered_at: Timestamp | null;
+  expires_at: Timestamp;
+  external_session_id: string;
+  id: string;
+  input_hash: string;
+  operation: string | null;
+  prompt_id: string | null;
+  result: string | null;
+  result_at: Timestamp | null;
+  risk: string | null;
+  rule_id: string | null;
+  state: Generated<string>;
+  tenant_id: string;
+  tool_name: string;
+  user_id: string;
+  with_instruction: Generated<boolean>;
+}
+
+export interface AgentConnections {
+  created_at: Generated<Timestamp>;
+  device: string | null;
+  id: string;
+  label: string;
+  last_seen_at: Timestamp | null;
+  revoked_at: Timestamp | null;
+  source: string;
+  tenant_id: string;
+  token_hash: string;
+  user_id: string;
+}
+
 export interface AgentHosts {
   capabilities: Generated<Json>;
   created_at: Generated<Timestamp>;
@@ -55,6 +109,101 @@ export interface AgentHosts {
   tenant_id: string;
   updated_at: Generated<Timestamp>;
   user_id: string;
+}
+
+export interface AgentJobRuns {
+  attempt: number;
+  cost_usd: Numeric | null;
+  ended_at: Timestamp | null;
+  exit_code: number | null;
+  id: string;
+  job_id: string;
+  kind: string;
+  note: string | null;
+  outcome: string | null;
+  started_at: Timestamp;
+  tenant_id: string;
+  turns: number | null;
+}
+
+export interface AgentJobs {
+  agent: string;
+  attempts: Generated<number>;
+  base_sha: string | null;
+  control: string;
+  cost_known: Generated<boolean>;
+  cost_usd: Generated<Numeric>;
+  created_at: Generated<Timestamp>;
+  depends_on: Generated<string[]>;
+  elapsed_ms: Generated<Int8>;
+  external_session_id: string | null;
+  failure_signature: string | null;
+  finished_at: Timestamp | null;
+  human_wait_ms: Generated<Int8>;
+  id: string;
+  improve_base_branch: string | null;
+  improve_base_sha: string | null;
+  improve_branch: string | null;
+  improve_commit: string | null;
+  last_failure: string | null;
+  max_attempts: Generated<number>;
+  max_cost_usd: Generated<Numeric>;
+  max_lifetime_hours: Generated<number>;
+  max_minutes: Generated<number>;
+  max_turns: Generated<number>;
+  next_run_at: Timestamp | null;
+  number: number;
+  pending_approval: string | null;
+  pending_instruction: string | null;
+  project: string;
+  project_root: string;
+  request: string | null;
+  same_failure_count: Generated<number>;
+  started_at: Timestamp | null;
+  status: string;
+  stop_reason: string | null;
+  tenant_id: string;
+  title: string;
+  turns: Generated<number>;
+  updated_at: Generated<Timestamp>;
+  user_id: string;
+  waiting_since: Timestamp | null;
+}
+
+export interface AgentSessionMarks {
+  at: Generated<Timestamp>;
+  id: string;
+  kind: string;
+  session_id: string;
+  tenant_id: string;
+}
+
+export interface AgentSessions {
+  agent_job_id: string | null;
+  check_after: Timestamp | null;
+  check_state: Generated<string>;
+  checked_at: Timestamp | null;
+  connection_id: string;
+  created_at: Generated<Timestamp>;
+  end_reason: string | null;
+  ended_at: Timestamp | null;
+  external_session_id: string;
+  held_by: string | null;
+  id: string;
+  last_activity_at: Timestamp;
+  last_event: string;
+  notified_key: string | null;
+  project: string | null;
+  source: string;
+  state: Generated<string>;
+  state_since: Generated<Timestamp>;
+  tenant_id: string;
+  title: string | null;
+  turn_ended_at: Timestamp | null;
+  updated_at: Generated<Timestamp>;
+  user_id: string;
+  user_policy: Generated<string>;
+  waiting_reason: string | null;
 }
 
 export interface Approvals {
@@ -136,6 +285,130 @@ export interface AuditSequences {
   tenant_id: string;
 }
 
+export interface BrowserHandoffs {
+  created_at: Generated<Timestamp>;
+  ended_at: Timestamp | null;
+  expires_at: Timestamp;
+  host_id: string;
+  id: string;
+  reason: string;
+  request_id: string;
+  site: string;
+  state: Generated<string>;
+  task_id: string;
+  tenant_id: string;
+  token_hash: string;
+  user_id: string;
+}
+
+export interface CallSessions {
+  conversation_id: string;
+  created_at: Generated<Timestamp>;
+  end_reason: string | null;
+  ended_at: Timestamp | null;
+  expires_at: Timestamp;
+  group_id: string | null;
+  household_id: string | null;
+  id: string;
+  link_id: string;
+  opening: string | null;
+  seconds: Generated<number>;
+  started_at: Timestamp | null;
+  tenant_id: string;
+  token_hash: string;
+  user_id: string;
+}
+
+export interface ChannelGroups {
+  created_at: Generated<Timestamp>;
+  enabled_by: string;
+  group_id: string;
+  household_id: string;
+  id: string;
+  owner_user_id: string;
+  provider: string;
+  revoked_at: Timestamp | null;
+  tenant_id: string;
+  workspace_id: string;
+}
+
+export interface ChannelInbox {
+  attempts: Generated<number>;
+  claimed_at: Timestamp | null;
+  event_id: string;
+  kind: string | null;
+  lane: string | null;
+  last_error: string | null;
+  payload: string | null;
+  provider: string;
+  received_at: Generated<Timestamp>;
+  status: Generated<string>;
+}
+
+export interface ChannelLinkCodes {
+  code_hash: string;
+  created_at: Generated<Timestamp>;
+  expires_at: Timestamp;
+  provider: string;
+  tenant_id: string;
+  used_at: Timestamp | null;
+  user_id: string;
+}
+
+export interface ChannelLinks {
+  created_at: Generated<Timestamp>;
+  device_id: string;
+  id: string;
+  last_seen_at: Timestamp | null;
+  posting_policy: Generated<string>;
+  provider: string;
+  revoked_at: Timestamp | null;
+  subject: string;
+  tenant_id: string;
+  user_id: string;
+  workspace_id: string;
+}
+
+export interface ChannelMedia {
+  created_at: Generated<Timestamp>;
+  expires_at: Timestamp;
+  kind: string;
+  ref: Json;
+  source_entity_id: string;
+  tenant_id: string;
+  token_hash: string;
+}
+
+export interface ChannelOutbox {
+  answer_inline: Generated<boolean>;
+  attempts: Generated<number>;
+  body: Json;
+  created_at: Generated<Timestamp>;
+  destination: string;
+  event_sequence: Int8 | null;
+  id: string;
+  kind: string;
+  last_error: string | null;
+  link_id: string;
+  next_attempt_at: Generated<Timestamp>;
+  provider_message_id: string | null;
+  sent_at: Timestamp | null;
+  status: Generated<string>;
+  task_id: string | null;
+  tenant_id: string;
+  thread_key: string;
+}
+
+export interface ChannelThreads {
+  conversation_id: string;
+  created_at: Generated<Timestamp>;
+  destination: string;
+  last_message_at: Generated<Timestamp>;
+  link_id: string;
+  tenant_id: string;
+  thread_key: string;
+}
+
 export interface ConnectorConnections {
   account_label: string | null;
   connected_at: Generated<Timestamp>;
@@ -152,6 +425,45 @@ export interface ConnectorConnections {
   state: string;
   tenant_id: string;
   updated_at: Generated<Timestamp>;
+}
+
+export interface ConnectorReconnects {
+  authorize_url: string | null;
+  created_at: Generated<Timestamp>;
+  expires_at: Timestamp | null;
+  fingerprint: string | null;
+  id: string;
+  provider: string;
+  purpose: Generated<string>;
+  state: string;
+  tenant_id: string;
+  token_hash: string | null;
+  updated_at: Generated<Timestamp>;
+  user_id: string;
+}
+
+export interface ConversationGoals {
+  conversation_id: string;
+  expires_at: Timestamp;
+  kind: string;
+  results: Generated<Json>;
+  slots: Generated<Json>;
+  status: Generated<string>;
+  tenant_id: string;
+  updated_at: Generated<Timestamp>;
+}
+
+export interface ConversationRequests {
+  body_hash: string;
+  conversation_id: string;
+  created_at: Generated<Timestamp>;
+  prepared_response: Json | null;
+  request_id: string;
+  response: Json | null;
+  response_status: number | null;
+  tenant_id: string;
+  turn_id: string;
+  user_id: string;
 }
 
 export interface Conversations {
@@ -171,6 +483,7 @@ export interface ConversationStates {
   active_project: string | null;
   active_task: string | null;
   active_topic: string | null;
+  checkout_draft: Json | null;
   conversation_id: string;
   pending_approvals: Generated<string[]>;
   referents: Generated<Json>;
@@ -188,6 +501,27 @@ export interface ConversationSummaries {
   summary: string;
   tenant_id: string;
   turn_count: number;
+}
+
+export interface DatePolls {
+  candidates: Json;
+  closed_at: Timestamp | null;
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  decided: string | null;
+  household_id: string;
+  id: string;
+  tenant_id: string;
+  title: string;
+}
+
+export interface DatePollVotes {
+  available: Json;
+  poll_id: string;
+  tenant_id: string;
+  updated_at: Generated<Timestamp>;
+  voter: string;
+  voter_name: string | null;
 }
 
 export interface Devices {
@@ -260,6 +594,88 @@ export interface Evidence {
   title: string | null;
 }
 
+export interface ExpenseBudgets {
+  category: string;
+  currency: string;
+  household_id: string | null;
+  monthly: Numeric;
+  tenant_id: string;
+  updated_at: Generated<Timestamp>;
+  user_id: string;
+}
+
+export interface Expenses {
+  amount: Numeric;
+  category: string;
+  created_at: Generated<Timestamp>;
+  currency: string;
+  household_id: string | null;
+  id: string;
+  image_sha256: string | null;
+  merchant: string | null;
+  receipt_key: string;
+  recorded_by: string | null;
+  source: string;
+  spent_on: Timestamp;
+  tenant_id: string;
+  user_id: string;
+  voided_at: Timestamp | null;
+}
+
+export interface GenieImprovementProposals {
+  created_at: Generated<Timestamp>;
+  decided_at: Timestamp | null;
+  id: string;
+  signature: string;
+  status: Generated<string>;
+  tenant_id: string;
+  text: string;
+  user_id: string;
+}
+
+export interface GroupBoardEvents {
+  at: Generated<Timestamp>;
+  board_id: string;
+  id: string;
+  kind: string;
+  tenant_id: string;
+  text: string;
+}
+
+export interface GroupBoardLinks {
+  board_id: string;
+  created_at: Generated<Timestamp>;
+  expires_at: Timestamp;
+  tenant_id: string;
+  token_hash: string;
+}
+
+export interface GroupBoards {
+  created_at: Generated<Timestamp>;
+  household_id: string;
+  id: string;
+  kind: string;
+  state: Generated<Json>;
+  status: Generated<string>;
+  tenant_id: string;
+  title: string;
+  updated_at: Generated<Timestamp>;
+}
+
+export interface GroupMessages {
+  deleted_at: Timestamp | null;
+  expires_at: Timestamp;
+  from_genie: Generated<boolean>;
+  household_id: string;
+  message_id: string;
+  quoted_message_id: string | null;
+  sender_id: string;
+  sender_name: string | null;
+  sent_at: Timestamp;
+  tenant_id: string;
+  text: string;
+}
+
 export interface HostStepRequests {
   approval: Json | null;
   args: Generated<Json>;
@@ -277,6 +693,32 @@ export interface HostStepRequests {
   task_id: string;
   tenant_id: string;
   tool_id: string;
+}
+
+export interface Households {
+  auto_receipts: Generated<boolean>;
+  context_days: Generated<number>;
+  context_mode: Generated<string>;
+  context_paused: Generated<boolean>;
+  conversation_id: string | null;
+  created_at: Generated<Timestamp>;
+  id: string;
+  name: string;
+  owner_user_id: string;
+  tenant_id: string;
+}
+
+export interface HouseholdTodos {
+  assignee: string | null;
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  done_at: Timestamp | null;
+  done_by: string | null;
+  household_id: string | null;
+  id: string;
+  tenant_id: string;
+  title: string;
+  user_id: string;
 }
 
 export interface InitialProfiles {
@@ -375,6 +817,54 @@ export interface OnboardingStates {
   user_id: string;
 }
 
+export interface OpencodeWatches {
+  approval_log: Generated<string[]>;
+  auto_approve: Generated<boolean>;
+  base_url: string;
+  conversation_id: string;
+  created_at: Generated<Timestamp>;
+  ended_reason: string | null;
+  expires_at: Timestamp;
+  failures: Generated<number>;
+  id: string;
+  idle_nudges: Generated<number>;
+  interval_seconds: number;
+  last_activity: string | null;
+  last_activity_at: Timestamp | null;
+  last_signature: string | null;
+  next_check_at: Timestamp;
+  nudges: Generated<number>;
+  session_id: string;
+  status: Generated<string>;
+  stuck_aborts: Generated<number>;
+  stuck_notified: Generated<boolean>;
+  tenant_id: string;
+  updated_at: Generated<Timestamp>;
+  user_id: string;
+  waiting_notified: Generated<boolean>;
+  waiting_permission_id: string | null;
+}
+
+export interface PendingConfirmations {
+  conversation_id: string;
+  created_at: Generated<Timestamp>;
+  expires_at: Timestamp;
+  kind: string;
+  payload: Json;
+  tenant_id: string;
+}
+
+export interface PhoneConnections {
+  base_url: string;
+  created_at: Generated<Timestamp>;
+  grant_id: string;
+  id: string;
+  revoked_at: Timestamp | null;
+  tenant_id: string;
+  token_ciphertext: string;
+  user_id: string;
+}
+
 export interface PluginAssets {
   content: Buffer;
   created_at: Generated<Timestamp>;
@@ -453,6 +943,61 @@ export interface ResearchRuns {
   updated_at: Generated<Timestamp>;
 }
 
+export interface ScheduleCandidates {
+  batch_id: string;
+  conversation_id: string;
+  created_at: Generated<Timestamp>;
+  decided_at: Timestamp | null;
+  due_date: Timestamp | null;
+  end_at: Timestamp | null;
+  excerpt: string;
+  id: string;
+  kind: string;
+  position: number;
+  source: string;
+  start_at: Timestamp | null;
+  status: string;
+  tenant_id: string;
+  title: string;
+  user_id: string;
+}
+
+export interface ScheduledJobs {
+  catch_up: Generated<string>;
+  consecutive_errors: Generated<number>;
+  conversation_id: string;
+  created_at: Generated<Timestamp>;
+  id: string;
+  last_error: string | null;
+  last_run_at: Timestamp | null;
+  last_status: string | null;
+  name: string;
+  next_run_at: Timestamp | null;
+  payload: Json;
+  proposed_expires_at: Timestamp | null;
+  running_at: Timestamp | null;
+  schedule: Json;
+  status: string;
+  tenant_id: string;
+  tz: string;
+  updated_at: Generated<Timestamp>;
+  user_id: string;
+}
+
+export interface ScheduledRuns {
+  delivery_status: string | null;
+  error: string | null;
+  finished_at: Timestamp | null;
+  id: string;
+  job_id: string;
+  late_ms: Generated<Int8>;
+  scheduled_for: Timestamp;
+  started_at: Generated<Timestamp>;
+  status: string;
+  task_id: string | null;
+  tenant_id: string;
+}
+
 export interface SchemaMigrations {
   version: string;
 }
@@ -499,6 +1044,18 @@ export interface Shares {
   watermark: Generated<boolean>;
 }
 
+export interface ShoppingItems {
+  added_by: string | null;
+  bought_at: Timestamp | null;
+  bought_by: string | null;
+  created_at: Generated<Timestamp>;
+  household_id: string | null;
+  id: string;
+  name: string;
+  tenant_id: string;
+  user_id: string;
+}
+
 export interface TaskEvents {
   conversation_id: string | null;
   created_at: Generated<Timestamp>;
@@ -511,6 +1068,31 @@ export interface TaskEvents {
   task_id: string | null;
   tenant_id: string;
   type: string;
+}
+
+export interface TaskFollowups {
+  after_task_id: string;
+  conversation_id: string;
+  created_at: Generated<Timestamp>;
+  decided_at: Timestamp | null;
+  id: string;
+  request: string;
+  started_task_id: string | null;
+  status: Generated<string>;
+  tenant_id: string;
+  user_id: string;
+}
+
+export interface TaskInstructions {
+  applied_step_index: number | null;
+  created_at: Generated<Timestamp>;
+  created_by: string;
+  request_id: string;
+  resolved_at: Timestamp | null;
+  status: Generated<string>;
+  task_id: string;
+  tenant_id: string;
+  text: string;
 }
 
 export interface Tasks {
@@ -543,6 +1125,51 @@ export interface Tenants {
   name: string;
 }
 
+export interface Todos {
+  conversation_id: string | null;
+  created_at: Generated<Timestamp>;
+  done_at: Timestamp | null;
+  due_date: Timestamp;
+  id: string;
+  reminder_job_id: string | null;
+  status: string;
+  tenant_id: string;
+  title: string;
+  updated_at: Generated<Timestamp>;
+  user_id: string;
+}
+
+export interface TransactionAuthorizations {
+  created_at: Generated<Timestamp>;
+  created_by: string;
+  expires_at: Timestamp;
+  id: string;
+  initial_approval_id: string | null;
+  request_id: string;
+  revoked_at: Timestamp | null;
+  spec: Json;
+  spec_hash: string;
+  status: string;
+  tenant_id: string;
+}
+
+export interface TransactionAuthorizationUses {
+  account: string;
+  amount_minor: Int8;
+  approval_id: string;
+  authorization_id: string;
+  created_at: Generated<Timestamp>;
+  id: string;
+  inputs_hash: string;
+  mode: string;
+  order_key: string;
+  provider: string;
+  quote_hash: string;
+  step_index: number;
+  task_id: string;
+  tenant_id: string;
+}
+
 export interface Translations {
   created_at: Generated<Timestamp>;
   meeting_id: string;
@@ -563,6 +1190,13 @@ export interface Turns {
   tenant_id: string;
 }
 
+export interface UsageCounters {
+  count: Generated<number>;
+  kind: string;
+  month: string;
+  tenant_id: string;
+}
+
 export interface UserIdentities {
   created_at: Generated<Timestamp>;
   email: string | null;
@@ -572,12 +1206,35 @@ export interface UserIdentities {
   user_id: string;
 }
 
+export interface UserNotices {
+  body: Generated<string>;
+  created_at: Generated<Timestamp>;
+  delivered_at: Timestamp | null;
+  id: string;
+  job_id: string | null;
+  kind: string;
+  task_id: string | null;
+  tenant_id: string;
+  title: string;
+  user_id: string;
+}
+
 export interface Users {
   created_at: Generated<Timestamp>;
   deleted_at: Timestamp | null;
   display_name: string;
   email: string;
   id: string;
+}
+
+export interface UserVocabulary {
+  created_at: Generated<Timestamp>;
+  id: string;
+  spoken: string;
+  tenant_id: string;
+  updated_at: Generated<Timestamp>;
+  user_id: string;
+  written: string;
 }
 
 export interface WorkArtifacts {
@@ -603,6 +1260,42 @@ export interface WorkCorrections {
   item_id: string;
   note: string | null;
   tenant_id: string;
+  user_id: string;
+}
+
+export interface WorkCriteria {
+  agent_job_id: string | null;
+  agent_session_id: string | null;
+  created_at: Generated<Timestamp>;
+  id: string;
+  kind: string;
+  met_at: Timestamp | null;
+  spec: string | null;
+  task_id: string | null;
+  tenant_id: string;
+  text: string;
+  user_id: string;
+}
+
+export interface WorkHolds {
+  created_at: Generated<Timestamp>;
+  due_noticed_at: Timestamp | null;
+  id: string;
+  paused_schedule_ids: Generated<string[]>;
+  reason: string | null;
+  released_at: Timestamp | null;
+  status: Generated<string>;
+  subject: string;
+  tenant_id: string;
+  until_date: Timestamp | null;
+  user_id: string;
+}
+
+export interface WorkLinks {
+  created_at: Generated<Timestamp>;
+  expires_at: Timestamp;
+  tenant_id: string;
+  token_hash: string;
   user_id: string;
 }
 
@@ -691,23 +1384,53 @@ export interface WorldFacts {
 
 export interface DB {
   action_receipts: ActionReceipts;
+  agent_approval_rules: AgentApprovalRules;
+  agent_approvals: AgentApprovals;
+  agent_connections: AgentConnections;
   agent_hosts: AgentHosts;
+  agent_job_runs: AgentJobRuns;
+  agent_jobs: AgentJobs;
+  agent_session_marks: AgentSessionMarks;
+  agent_sessions: AgentSessions;
   approvals: Approvals;
   artifact_versions: ArtifactVersions;
   artifacts: Artifacts;
   attention_feedback: AttentionFeedback;
   audit_events: AuditEvents;
   audit_sequences: AuditSequences;
+  browser_handoffs: BrowserHandoffs;
+  call_sessions: CallSessions;
+  channel_groups: ChannelGroups;
+  channel_inbox: ChannelInbox;
+  channel_link_codes: ChannelLinkCodes;
+  channel_links: ChannelLinks;
+  channel_media: ChannelMedia;
+  channel_outbox: ChannelOutbox;
+  channel_threads: ChannelThreads;
   connector_connections: ConnectorConnections;
+  connector_reconnects: ConnectorReconnects;
+  conversation_goals: ConversationGoals;
+  conversation_requests: ConversationRequests;
   conversation_states: ConversationStates;
   conversation_summaries: ConversationSummaries;
   conversations: Conversations;
+  date_poll_votes: DatePollVotes;
+  date_polls: DatePolls;
   devices: Devices;
   domain_entities: DomainEntities;
   domain_links: DomainLinks;
   event_streams: EventStreams;
   evidence: Evidence;
+  expense_budgets: ExpenseBudgets;
+  expenses: Expenses;
+  genie_improvement_proposals: GenieImprovementProposals;
+  group_board_events: GroupBoardEvents;
+  group_board_links: GroupBoardLinks;
+  group_boards: GroupBoards;
+  group_messages: GroupMessages;
   host_step_requests: HostStepRequests;
+  household_todos: HouseholdTodos;
+  households: Households;
   initial_profiles: InitialProfiles;
   job_checkpoints: JobCheckpoints;
   job_leases: JobLeases;
@@ -716,6 +1439,9 @@ export interface DB {
   meetings: Meetings;
   memberships: Memberships;
   onboarding_states: OnboardingStates;
+  opencode_watches: OpencodeWatches;
+  pending_confirmations: PendingConfirmations;
+  phone_connections: PhoneConnections;
   plugin_assets: PluginAssets;
   plugin_installs: PluginInstalls;
   plugin_permissions: PluginPermissions;
@@ -723,19 +1449,34 @@ export interface DB {
   plugin_versions: PluginVersions;
   plugins: Plugins;
   research_runs: ResearchRuns;
+  schedule_candidates: ScheduleCandidates;
+  scheduled_jobs: ScheduledJobs;
+  scheduled_runs: ScheduledRuns;
   schema_migrations: SchemaMigrations;
   sessions: Sessions;
   share_access_logs: ShareAccessLogs;
   shares: Shares;
+  shopping_items: ShoppingItems;
   task_events: TaskEvents;
+  task_followups: TaskFollowups;
+  task_instructions: TaskInstructions;
   tasks: Tasks;
   tenants: Tenants;
+  todos: Todos;
+  transaction_authorization_uses: TransactionAuthorizationUses;
+  transaction_authorizations: TransactionAuthorizations;
   translations: Translations;
   turns: Turns;
+  usage_counters: UsageCounters;
   user_identities: UserIdentities;
+  user_notices: UserNotices;
+  user_vocabulary: UserVocabulary;
   users: Users;
   work_artifacts: WorkArtifacts;
   work_corrections: WorkCorrections;
+  work_criteria: WorkCriteria;
+  work_holds: WorkHolds;
+  work_links: WorkLinks;
   work_profiles: WorkProfiles;
   work_sync_state: WorkSyncState;
   world_edges: WorldEdges;

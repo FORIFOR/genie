@@ -1,0 +1,91 @@
+
+ RUN  v3.2.7 /Users/shuhei/Projects/genie
+
+ ❯ services/api-gateway/test/conversations-transaction.integration.test.ts (20 tests | 5 failed) 524ms
+   × simulation orders and official-site handoffs through conversation HTTP > keeps real merchant マクドナルドの注文画面を開いて as an explicit unsubmitted site handoff 37ms
+     → expected undefined to be 'checkout.assist' // Object.is equality
+   × simulation orders and official-site handoffs through conversation HTTP > keeps real merchant ドミノでピザを注文して as an explicit unsubmitted site handoff 21ms
+     → expected undefined to be 'checkout.assist' // Object.is equality
+   × simulation orders and official-site handoffs through conversation HTTP > preserves the unsubmitted disclosure after a lost handoff creation acknowledgement 20ms
+     → the given combination of arguments (null and string) is invalid for this assertion. You can use an array, a map, an object, a set, a string, or a weakset instead of a string
+   × simulation orders and official-site handoffs through conversation HTTP > keeps quoted merchant requests out of all host automation: 「マクドナルドの注文画面を開いて」 33ms
+     → expected 202 to be 200 // Object.is equality
+   × simulation orders and official-site handoffs through conversation HTTP > keeps quoted merchant requests out of all host automation: ドミノの注文サイトを開いてという文を書いて 23ms
+     → expected 202 to be 200 // Object.is equality
+   ✓ simulation orders and official-site handoffs through conversation HTTP > persists only fictional terms and a turn-bound order identity for '模擬ピザを注文して' 24ms
+   ✓ simulation orders and official-site handoffs through conversation HTTP > persists only fictional terms and a turn-bound order identity for '模擬バーガーを注文してください。' 20ms
+   ✓ simulation orders and official-site handoffs through conversation HTTP > persists only fictional terms and a turn-bound order identity for '模擬株を注文して！' 20ms
+   ✓ simulation orders and official-site handoffs through conversation HTTP > does not silently replace a different request with fixed simulation terms: ピザを注文して 18ms
+   ✓ simulation orders and official-site handoffs through conversation HTTP > does not silently replace a different request with fixed simulation terms: マクドナルドを注文して 22ms
+   ✓ simulation orders and official-site handoffs through conversation HTTP > does not silently replace a different request with fixed simulation terms: 株を注文して 18ms
+   ✓ simulation orders and official-site handoffs through conversation HTTP > does not silently replace a different request with fixed simulation terms: 模擬ピザを注文しないで 17ms
+   ✓ simulation orders and official-site handoffs through conversation HTTP > does not silently replace a different request with fixed simulation terms: 「模擬ピザを注文して」 17ms
+   ✓ simulation orders and official-site handoffs through conversation HTTP > does not silently replace a different request with fixed simulation terms: 模擬ピザを注文してという文を書いて 17ms
+   ✓ simulation orders and official-site handoffs through conversation HTTP > does not silently replace a different request with fixed simulation terms: 模擬ピザを注文して。予算は100円 17ms
+   ✓ simulation orders and official-site handoffs through conversation HTTP > does not silently replace a different request with fixed simulation terms: 模擬ピザを注文して、2枚にして 17ms
+   ✓ simulation orders and official-site handoffs through conversation HTTP > does not silently replace a different request with fixed simulation terms: 模擬ピザを注文して
+実際のカードで支払って 17ms
+   ✓ simulation orders and official-site handoffs through conversation HTTP > recovers a lost runtime acknowledgement and repeats with the original order key and one task 26ms
+   ✓ simulation orders and official-site handoffs through conversation HTTP > rejects changed input for the accepted request key without replacing the order or dispatching again 23ms
+   ✓ simulation orders and official-site handoffs through conversation HTTP > does not expose or duplicate a simulation task through another tenant 24ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  services/api-gateway/test/conversations-transaction.integration.test.ts > simulation orders and official-site handoffs through conversation HTTP > keeps real merchant マクドナルドの注文画面を開いて as an explicit unsubmitted site handoff
+ FAIL  services/api-gateway/test/conversations-transaction.integration.test.ts > simulation orders and official-site handoffs through conversation HTTP > keeps real merchant ドミノでピザを注文して as an explicit unsubmitted site handoff
+AssertionError: expected undefined to be 'checkout.assist' // Object.is equality
+
+- Expected: 
+"checkout.assist"
+
++ Received: 
+undefined
+
+ ❯ services/api-gateway/test/conversations-transaction.integration.test.ts:92:52
+     90|       });
+     91|       expect(Object.keys(task.input)).toEqual(['service']);
+     92|       expect(h.runtime.started.get(task.id)?.kind).toBe('checkout.assi…
+       |                                                    ^
+     93|       const repeated = await post(conversation, { text, request_id });
+     94|       expect(repeated.statusCode).toBe(202);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  services/api-gateway/test/conversations-transaction.integration.test.ts > simulation orders and official-site handoffs through conversation HTTP > preserves the unsubmitted disclosure after a lost handoff creation acknowledgement
+AssertionError: the given combination of arguments (null and string) is invalid for this assertion. You can use an array, a map, an object, a set, a string, or a weakset instead of a string
+ ❯ services/api-gateway/test/conversations-transaction.integration.test.ts:112:33
+    110|         expect(response.statusCode).toBe(202);
+    111|         const accepted = response.json();
+    112|         expect(accepted.notice).toContain('カートの準備・注文・支払いを行いません');
+       |                                 ^
+    113|         expect((await getTask(accepted.task_id)).kind).toBe('checkout.…
+    114|         expect((await post(conversation, payload)).json()).toEqual(acc…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  services/api-gateway/test/conversations-transaction.integration.test.ts > simulation orders and official-site handoffs through conversation HTTP > keeps quoted merchant requests out of all host automation: 「マクドナルドの注文画面を開いて」
+ FAIL  services/api-gateway/test/conversations-transaction.integration.test.ts > simulation orders and official-site handoffs through conversation HTTP > keeps quoted merchant requests out of all host automation: ドミノの注文サイトを開いてという文を書いて
+AssertionError: expected 202 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 202
+
+ ❯ services/api-gateway/test/conversations-transaction.integration.test.ts:126:37
+    124|         const conversation = await start();
+    125|         const response = await post(conversation, { text, request_id: …
+    126|         expect(response.statusCode).toBe(200);
+       |                                     ^
+    127|         expect(response.json().task_id).toBeNull();
+    128|         expect(await counts(conversation)).toEqual({ turns: 1, tasks: …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  5 failed | 15 passed (20)
+   Start at  06:09:54
+   Duration  1.53s (transform 319ms, setup 0ms, collect 762ms, tests 524ms, environment 0ms, prepare 31ms)
+

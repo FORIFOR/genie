@@ -6,7 +6,7 @@
  * 「根拠つき」という約束そのものが嘘になる。
  */
 import { describe, expect, it } from 'vitest';
-import { composeReport } from '../src/service.js';
+import { asksForJudgment, composeReport } from '../src/service.js';
 
 interface Row {
   id: string;
@@ -102,4 +102,45 @@ describe('the report', () => {
     expect(markdown).toContain('1. x');
     expect(markdown).toMatch(/根拠: *\n|根拠: *$/m);
   });
+});
+
+describe('a judgment asked for alongside the facts', () => {
+  it('is kept in its own section, after the facts, with the sources it stands on', () => {
+    const markdown = composeReport(
+      run,
+      [{ text: '売上高は2兆4,316億円', supports: [0] }],
+      evidence as never,
+      [{ text: '前年比の伸びから、来期も増収が有力', supports: [0, 1] }],
+    );
+    const facts = markdown.indexOf('## 結論');
+    const judgment = markdown.indexOf('## 見立て');
+    expect(facts).toBeGreaterThanOrEqual(0);
+    expect(judgment).toBeGreaterThan(facts);
+    expect(markdown).toContain('結果を保証するものではありません');
+    expect(markdown.slice(judgment)).toContain(
+      '根拠: [https://www.tel.co.jp/ir/a.pdf](https://www.tel.co.jp/ir/a.pdf) / [https://www.reuters.com/b](https://www.reuters.com/b)',
+    );
+  });
+
+  it('adds no judgment section when there is no judgment', () => {
+    expect(composeReport(run, [], evidence as never)).not.toContain('## 見立て');
+  });
+
+  it('is asked for only when the question asks for a forecast, comparison or recommendation', () => {
+    for (const question of [
+      '次の日曜の重賞の予想をまとめて',
+      '毎日王冠の有力馬は？',
+      'どちらが良いか比較して',
+      '来期の業績見通しは？',
+      'おすすめのノートPCを調べて',
+    ])
+      expect(asksForJudgment(question), question).toBe(true);
+    for (const question of ['東京エレクトロンの売上は？', '毎日王冠の距離を調べて', '明日の天気'])
+      expect(asksForJudgment(question), question).toBe(false);
+  });
+});
+
+it('names each source once per conclusion, however many claims came from it', () => {
+  const markdown = composeReport(run, [{ text: 'x', supports: [0, 0, 1, 0] }], evidence as never);
+  expect(markdown.match(/tel\.co\.jp\/ir\/a\.pdf\]/g)).toHaveLength(1);
 });

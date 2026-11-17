@@ -1,0 +1,40 @@
+{
+  "recordedAt": "2026-10-01T23:22:42.409497+00:00",
+  "scope": "Read-only diagnosis of second installed full gate; no native rerun, no model call, no service mutation",
+  "failure": {
+    "log": "docs/quality/evidence/2026-10-02-completion/verify-all-installed-current.log",
+    "lineAtDiagnosis": 1130,
+    "message": "SELFTEST_FAIL e2e001 ⑦AI 要約失敗: AI 操作に失敗しました: AIの回答を取得できませんでした。",
+    "privateNativeLogs": "/var/folders/xn/mdmvpkwd0yx4tcr7rvn_3xv80000gn/T/tmp.GEqxFfnlrD",
+    "wholeAttempt": "FAIL retained"
+  },
+  "cause": {
+    "runnerTokenPathPrefix": "/private/tmp/",
+    "preparedTestTokenAllowedPrefix": "/tmp/",
+    "effect": "Prepared token ignored. E2E001 falls back to devSignIn using e2e-<PID> fixture identity. Unlike voiceask, that fallback does not use the prepared agent email.",
+    "preparedTokenUserId": "01a0f94d-ecd8-7000-bff0-8872df336149",
+    "e2eUserId": "01a0f9bd-1b88-7000-b99c-0a43aec6c86f",
+    "e2eConversationId": "01a0f9bd-42a3-7000-ad74-3530c6179266",
+    "e2eConversationCreatedAt": "2026-10-01T23:12:05.283Z",
+    "exactExpectedE2EFixtureIdentityMatched": true,
+    "tasksInConversation": 0,
+    "agentHostsForIdentity": 0,
+    "generalAssistantInstallsForTenant": 0,
+    "turnsInConversation": 1,
+    "summary": "The task never started under the prepared host identity. This is fixture setup failure, not evidence of model generation failure or token expiry."
+  },
+  "observationMethod": "Prepared fixture token GET /v1/me and /v1/tasks; isolated preview PostgreSQL BEGIN READ ONLY projected identity/count queries only. No token, key, transcript, or unrelated user content included.",
+  "recommendation": "Next driver should pass the /tmp alias to the same existing private mode-600 token. Keep the failed attempt and rerun the actual E2E; no application authentication boundary change required.",
+  "separateAIStopObservation": {
+    "taskId": "01a0f9bb-fdb8-7000-a0de-b2a47eeadbf4",
+    "finalObservedStatus": "FAILED",
+    "error": "activity StartToClose timeout",
+    "updatedAt": "2026-10-01T23:15:42.198Z",
+    "scope": "Native PASS demonstrated stop surface remains failed and does not turn successful, initially observing CANCELLING. It does not establish terminal CANCELLED. This task is unrelated to the E2E001 conversation."
+  },
+  "sourceHashes": {
+    "apps/genie-macos/Sources/GenieMac/App/SelfTest.swift": "e319008e237729bfdb02ad648131216a85b4e89d15e54906d5a6b6256f21a0ce",
+    "apps/genie-macos/Sources/GenieMac/RecordingWorkspace/MeetingAIRequests.swift": "a6f04d8ab2fd4e4b0ab2bd5b2582a9f36c4a267604b8a7ae426ab86b140e1c5a",
+    "scripts/verify-macos-recording.sh": "8909ea54fcd8dddc3531c4db3b9b57792fa397c15fc1e8d6284ae2ec398f57e2"
+  }
+}

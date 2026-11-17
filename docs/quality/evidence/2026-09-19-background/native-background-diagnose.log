@@ -1,0 +1,14 @@
+Evidence: /tmp/genie-background-native.RvL2SR
+TEST identity org.genie.background.target nil
+TEST capture
+TEST click
+TEST capture for text
+TEST AX AXStaticText nil Optional(Details open) Optional((211.0, 541.0, 518.0, 37.0))
+TEST AX AXButton nil nil Optional((209.0, 608.0, 202.0, 50.0))
+TEST AX AXTextArea nil Optional() Optional((210.0, 687.0, 520.0, 170.0))
+TEST AX AXButton Optional(AXCloseButton) nil Optional((188.0, 473.0, 16.0, 16.0))
+TEST AX AXButton Optional(AXZoomButton) nil Optional((234.0, 473.0, 16.0, 16.0))
+TEST AX AXButton Optional(AXMinimizeButton) nil Optional((211.0, 473.0, 16.0, 16.0))
+TEST AX AXStaticText nil Optional(Genie Background Target) Optional((262.0, 473.0, 167.0, 16.0))
+[Verify.BackgroundAX.Element(path: [1], role: "AXButton", subrole: "", identifier: "", title: "Show details", valueHash: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", x: 29.0, y: 143.0, width: 202.0, height: 50.0), Verify.BackgroundAX.Element(path: [3], role: "AXButton", subrole: "AXCloseButton", identifier: "", title: "", valueHash: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", x: 8.0, y: 8.0, width: 16.0, height: 16.0), Verify.BackgroundAX.Element(path: [4], role: "AXButton", subrole: "AXZoomButton", identifier: "", title: "", valueHash: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", x: 54.0, y: 8.0, width: 16.0, height: 16.0), Verify.BackgroundAX.Element(path: [5], role: "AXButton", subrole: "AXMinimizeButton", identifier: "", title: "", valueHash: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", x: 31.0, y: 8.0, width: 16.0, height: 16.0)]
+FAIL Failure(code: "field_missing")

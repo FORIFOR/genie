@@ -1,0 +1,264 @@
+{
+  "startedAt": "2026-10-03T00:28:21.670054+00:00",
+  "finishedAt": "2026-10-03T00:40:28.861618+00:00",
+  "command": [
+    "bash",
+    "infra/db/with-test-db.sh",
+    "bash",
+    "scripts/verify-all.sh"
+  ],
+  "limits": {
+    "minFreePercent": 40,
+    "startFreePercent": 55,
+    "maxSwapGrowthMB": 512
+  },
+  "atStart": {
+    "level": 1,
+    "freePercent": 75,
+    "swapUsedMB": 853.5
+  },
+  "guardStopped": false,
+  "guardReason": null,
+  "stageAtStop": null,
+  "commandExitCode": 2,
+  "stages": [
+    {
+      "stage": "(before first stage)",
+      "samples": 1,
+      "minFreePercent": 75,
+      "maxSwapUsedMB": 853.5,
+      "maxLevel": 1
+    },
+    {
+      "stage": "current macOS debug candidate",
+      "samples": 1,
+      "minFreePercent": 75,
+      "maxSwapUsedMB": 853.5,
+      "maxLevel": 1
+    },
+    {
+      "stage": "genie-core tests",
+      "samples": 3,
+      "minFreePercent": 75,
+      "maxSwapUsedMB": 853.5,
+      "maxLevel": 1
+    },
+    {
+      "stage": "Tauri Rust regression",
+      "samples": 13,
+      "minFreePercent": 74,
+      "maxSwapUsedMB": 853.5,
+      "maxLevel": 1
+    },
+    {
+      "stage": "Tauri desktop JS regression",
+      "samples": 2,
+      "minFreePercent": 75,
+      "maxSwapUsedMB": 853.5,
+      "maxLevel": 1
+    },
+    {
+      "stage": "TCC usage descriptions",
+      "samples": 1,
+      "minFreePercent": 75,
+      "maxSwapUsedMB": 853.5,
+      "maxLevel": 1
+    },
+    {
+      "stage": "release aggregation regression",
+      "samples": 49,
+      "minFreePercent": 75,
+      "maxSwapUsedMB": 853.5,
+      "maxLevel": 1
+    },
+    {
+      "stage": "managed preview lifecycle",
+      "samples": 2,
+      "minFreePercent": 75,
+      "maxSwapUsedMB": 853.5,
+      "maxLevel": 1
+    },
+    {
+      "stage": "transaction regression",
+      "samples": 18,
+      "minFreePercent": 75,
+      "maxSwapUsedMB": 853.5,
+      "maxLevel": 1
+    },
+    {
+      "stage": "computer vision contracts",
+      "samples": 5,
+      "minFreePercent": 75,
+      "maxSwapUsedMB": 853.5,
+      "maxLevel": 1
+    },
+    {
+      "stage": "background text policy",
+      "samples": 1,
+      "minFreePercent": 75,
+      "maxSwapUsedMB": 853.5,
+      "maxLevel": 1
+    },
+    {
+      "stage": "background web link policy",
+      "samples": 1,
+      "minFreePercent": 75,
+      "maxSwapUsedMB": 853.5,
+      "maxLevel": 1
+    },
+    {
+      "stage": "PRIVACY_EGRESS_GATE",
+      "samples": 2,
+      "minFreePercent": 75,
+      "maxSwapUsedMB": 853.5,
+      "maxLevel": 1
+    },
+    {
+      "stage": "no contradiction",
+      "samples": 5,
+      "minFreePercent": 75,
+      "maxSwapUsedMB": 853.5,
+      "maxLevel": 1
+    },
+    {
+      "stage": "confirmation surface",
+      "samples": 23,
+      "minFreePercent": 73,
+      "maxSwapUsedMB": 853.5,
+      "maxLevel": 1
+    },
+    {
+      "stage": "CONFIRMATION_GATE",
+      "samples": 3,
+      "minFreePercent": 75,
+      "maxSwapUsedMB": 853.5,
+      "maxLevel": 1
+    },
+    {
+      "stage": "APPROVAL_BOUNDARY",
+      "samples": 1,
+      "minFreePercent": 76,
+      "maxSwapUsedMB": 853.5,
+      "maxLevel": 1
+    },
+    {
+      "stage": "APPROVAL_BOUNDARY selfcheck",
+      "samples": 43,
+      "minFreePercent": 75,
+      "maxSwapUsedMB": 853.5,
+      "maxLevel": 1
+    },
+    {
+      "stage": "approval boundary (real key)",
+      "samples": 4,
+      "minFreePercent": 75,
+      "maxSwapUsedMB": 853.5,
+      "maxLevel": 1
+    },
+    {
+      "stage": "guide facts (app words only)",
+      "samples": 21,
+      "minFreePercent": 74,
+      "maxSwapUsedMB": 853.5,
+      "maxLevel": 1
+    },
+    {
+      "stage": "guide facts selfcheck",
+      "samples": 2,
+      "minFreePercent": 75,
+      "maxSwapUsedMB": 853.5,
+      "maxLevel": 1
+    },
+    {
+      "stage": "swift bindings fresh",
+      "samples": 2,
+      "minFreePercent": 76,
+      "maxSwapUsedMB": 853.5,
+      "maxLevel": 1
+    },
+    {
+      "stage": "workspace fixture fresh",
+      "samples": 1,
+      "minFreePercent": 76,
+      "maxSwapUsedMB": 853.5,
+      "maxLevel": 1
+    },
+    {
+      "stage": "C# bridge -> core + gateway",
+      "samples": 4,
+      "minFreePercent": 76,
+      "maxSwapUsedMB": 853.5,
+      "maxLevel": 1
+    },
+    {
+      "stage": "Windows C# logic type-check",
+      "samples": 2,
+      "minFreePercent": 76,
+      "maxSwapUsedMB": 853.5,
+      "maxLevel": 1
+    },
+    {
+      "stage": "C ABI round-trip (C)",
+      "samples": 2,
+      "minFreePercent": 76,
+      "maxSwapUsedMB": 853.5,
+      "maxLevel": 1
+    },
+    {
+      "stage": "macOS recording + live E2E",
+      "samples": 420,
+      "minFreePercent": 56,
+      "maxSwapUsedMB": 853.5,
+      "maxLevel": 1
+    },
+    {
+      "stage": "liquid orb native lifecycle",
+      "samples": 2,
+      "minFreePercent": 75,
+      "maxSwapUsedMB": 853.5,
+      "maxLevel": 1
+    },
+    {
+      "stage": "initial profile native UI",
+      "samples": 4,
+      "minFreePercent": 75,
+      "maxSwapUsedMB": 853.5,
+      "maxLevel": 1
+    },
+    {
+      "stage": "recording experience E2E",
+      "samples": 3,
+      "minFreePercent": 76,
+      "maxSwapUsedMB": 853.5,
+      "maxLevel": 1
+    },
+    {
+      "stage": "journeys JA/JB/JC",
+      "samples": 35,
+      "minFreePercent": 75,
+      "maxSwapUsedMB": 853.5,
+      "maxLevel": 1
+    },
+    {
+      "stage": "macOS swift unit tests",
+      "samples": 28,
+      "minFreePercent": 76,
+      "maxSwapUsedMB": 853.5,
+      "maxLevel": 1
+    },
+    {
+      "stage": "AppKit termination dispatch",
+      "samples": 4,
+      "minFreePercent": 76,
+      "maxSwapUsedMB": 853.5,
+      "maxLevel": 1
+    },
+    {
+      "stage": "Keychain confirmation quit",
+      "samples": 2,
+      "minFreePercent": 76,
+      "maxSwapUsedMB": 853.5,
+      "maxLevel": 1
+    }
+  ]
+}

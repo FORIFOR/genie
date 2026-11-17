@@ -1,0 +1,35 @@
+{
+  "name": "@genie/service-line-hub",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "One LINE official account for every Genie: receives LINE webhooks and relays them to each user's Genie over an outbound WebSocket.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "bin": {
+    "genie-line-hub": "./dist/main.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "tsc -b --clean",
+    "start": "node dist/main.js",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@genie/service-channels": "workspace:*",
+    "ws": "^8.21.3"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.18.1",
+    "vitest": "catalog:"
+  }
+}

@@ -1,0 +1,180 @@
+{
+  "recordedAt": "2026-10-01T20:18:45.748339+00:00",
+  "reviewer": "/root/verification_audit",
+  "method": "Read-only comparison of saved Noa audit metadata, Genie execution records and original/copy-preserved log filesystem timestamps. No new load test, process/VM/model start or stop, stream action, Noa configuration change, credential access or other-chat message.",
+  "status": "BLOCKED for causal attribution; temporal overlap observed",
+  "noaWarningInterval": {
+    "localDate": "2026-10-02",
+    "timezone": "Asia/Tokyo",
+    "warning": "04:05:50.167",
+    "protectiveStopRequest": "04:06:20.172",
+    "normalAgain": "04:08:45.198",
+    "events": [
+      {
+        "at": "2026-10-01T19:05:50.167Z",
+        "type": "memory_state",
+        "reason": "warning",
+        "state": {
+          "level": "warning",
+          "pressureLevel": 2,
+          "freePercent": 28,
+          "warningMs": 0
+        }
+      },
+      {
+        "at": "2026-10-01T19:06:20.172Z",
+        "type": "memory_state",
+        "reason": "sustained_warning",
+        "state": {
+          "level": "critical",
+          "pressureLevel": 2,
+          "freePercent": 31,
+          "warningMs": 30005
+        }
+      },
+      {
+        "at": "2026-10-01T19:06:20.172Z",
+        "type": "memory_pressure_stop",
+        "reason": "sustained_warning",
+        "state": {
+          "level": "critical",
+          "pressureLevel": 2,
+          "freePercent": 31,
+          "warningMs": 30005
+        }
+      },
+      {
+        "at": "2026-10-01T19:08:45.198Z",
+        "type": "memory_state",
+        "reason": "normal",
+        "state": {
+          "level": "normal",
+          "pressureLevel": 1,
+          "freePercent": 58,
+          "warningMs": 0
+        }
+      }
+    ],
+    "meaning": "Noa application guard marks critical after 30 seconds of warning; OS pressure remains 2, not OS critical4. memory_pressure_stop records a requested protective close, not independently observed live broadcast termination."
+  },
+  "correlatedGenieWork": [
+    {
+      "work": "Signed idle preview termination E2E",
+      "timeJST": "SIGTERM log ends 04:04:01.545; menu Quit log ends 04:05:09.373",
+      "finding": "Both complete logs contain normal service stop. The normal-Quit completion log precedes the first warning by about 41 seconds. Saved 04:07:27 manifest confirms app PID gone, supervisor exit0 and empty owned Docker project; it says no active translation child/transaction.",
+      "classification": "Product app/service startup and idle shutdown verification; not a sustained production use benchmark",
+      "limit": "Log timestamps lack event-by-event wall clocks; no synchronized per-PID footprint. Filesystem times support ordering but are not independent process traces."
+    },
+    {
+      "work": "Foundation scroll policy build/test and native background fixture round1",
+      "timeJST": "log lifetimes 04:05:49.758–04:05:50.746 and 04:05:50.753–04:06:06.895",
+      "finding": "Overlap with onset of warning. Saved native log shows controlled fixture input and a stale_frame failure. Policy script uses swiftc; native harness creates/compiles owned fixtures.",
+      "classification": "Development verification workload",
+      "limit": "File creation/final-write bounds are metadata proxies, not exact sampled compiler allocation. Native round1 begins just after the first warning; sequence does not prove it initiated pressure."
+    },
+    {
+      "work": "Native background fixture round2",
+      "timeJST": "log lifetime 04:07:54.047–04:08:09.314",
+      "finding": "Occurs during the recorded warning state before the next normal event.",
+      "classification": "Development verification workload",
+      "limit": "No peak allocation measurement; cannot quantify contribution."
+    },
+    {
+      "work": "Node/Python regression",
+      "timeJST": "04:08:21–04:08:43 logs",
+      "finding": "Recorded during the tail of the warning interval; completed before normal transition04:08:45.",
+      "classification": "Development verification workload",
+      "limit": "Not proof of initial warning cause; exact co-residency/footprint unknown."
+    },
+    {
+      "work": "Native round3 and disabled-button Swift tests",
+      "timeJST": "native04:09:03–04:09:23; Swift build log04:10:09 onward, tests04:10:24.552–04:10:26.283",
+      "finding": "These selected runs are after the normal transition, so do not explain warning onset.",
+      "classification": "Later development verification"
+    },
+    {
+      "work": "Dedicated Colima VM",
+      "timeJST": "explicit stop04:13:46–04:13:48",
+      "finding": "The idle owned VM remained present after the app/services shutdown, consistent with a background resource contribution during the warning. Its later stop occurred after pressure normalized.",
+      "classification": "Development verification infrastructure",
+      "limit": "A prior2CPU/2GiB profile setting is a configured ceiling, not measured resident memory. No warning-time VM RSS/GPU capture was found in the reviewed records; do not assign a2GiB causal delta."
+    }
+  ],
+  "conclusion": {
+    "developmentLoad": "Genie development verification and retained dedicated VM temporally overlapped the Noa warning and may have contributed to shared memory pressure. This is a possibility supported by overlap, not a proven allocation cause.",
+    "productRuntime": "The evidence does not establish Genies normal app/runtime as the warning cause. The controlled idle app/services had completed shutdown before warning onset; the workload visible during warning was development verification and idle infrastructure.",
+    "otherFactors": "Noa model/voice/OBS and other app allocations were not captured synchronously at the peak. A prior03:20 warning with Genie stopped and the older hidden7B-test residency are separate observations; neither identifies the04:05 peak owner.",
+    "neededForCausality": "A quality-preserving, owner-coordinated synchronized timeline of pressure, physical/GPU allocation by process, model warmup and actual OBS output over an authorized workload. This review did not run it."
+  },
+  "conflictingOrCoarseObservations": [
+    "The04:07:27 shutdown manifest reports postCheckMemoryPressure1 without exact probe timestamp/key. Noa transition log next reports normal at04:08:45. These differently sampled/coarse observations cannot be treated as a single continuous pressure trace."
+  ],
+  "files": {
+    "idle_sigterm": {
+      "path": "/Users/shuhei/Projects/genie/docs/quality/evidence/2026-10-02-completion/preview-sigterm-start.log",
+      "sha256": "8fdf7c436976a44f5730582a1c2020b234bfe93009afec23bea353b8984e6f7b",
+      "fileBornAt": "2026-10-01T19:03:26.498435+00:00",
+      "fileModifiedAt": "2026-10-01T19:04:01.545454+00:00"
+    },
+    "idle_normal_quit": {
+      "path": "/Users/shuhei/Projects/genie/docs/quality/evidence/2026-10-02-completion/preview-normal-quit-start.log",
+      "sha256": "8c85728f53e1380a8fce8d28d827a108a914d3f2979ff2688f75bb7d4768dab1",
+      "fileBornAt": "2026-10-01T19:04:23.642131+00:00",
+      "fileModifiedAt": "2026-10-01T19:05:09.373103+00:00"
+    },
+    "scroll_pure": {
+      "path": "/private/tmp/genie-transactions-20261002/computer-scroll-pure.log",
+      "sha256": "105fccc06f9745d9803b84ed9753b405aa66e67db971250987446df67a7f5dd7",
+      "fileBornAt": "2026-10-01T19:05:49.757591+00:00",
+      "fileModifiedAt": "2026-10-01T19:05:50.745989+00:00"
+    },
+    "scroll_native_round1": {
+      "path": "/private/tmp/genie-transactions-20261002/computer-scroll-native-round1.log",
+      "sha256": "6dbe12ff4dc4d320371265e0844a6240090d079872cd827bec25db79626cffd6",
+      "fileBornAt": "2026-10-01T19:05:50.752575+00:00",
+      "fileModifiedAt": "2026-10-01T19:06:06.895258+00:00"
+    },
+    "scroll_native_round2": {
+      "path": "/private/tmp/genie-transactions-20261002/computer-scroll-native-round2.log",
+      "sha256": "f7ad07a5f8a1ef63067b6625f80db7c12718cb3f6567bacc575bf742154be5fd",
+      "fileBornAt": "2026-10-01T19:07:54.047226+00:00",
+      "fileModifiedAt": "2026-10-01T19:08:09.314443+00:00"
+    },
+    "scroll_native_round3": {
+      "path": "/private/tmp/genie-transactions-20261002/computer-scroll-native-round3.log",
+      "sha256": "54b5902623fab825a79bfdbf7d0d818c594785aa19332f1490e582c39d6c829e",
+      "fileBornAt": "2026-10-01T19:09:03.571204+00:00",
+      "fileModifiedAt": "2026-10-01T19:09:23.550768+00:00"
+    },
+    "node_regression": {
+      "path": "/Users/shuhei/Projects/genie/docs/quality/evidence/2026-10-02-completion/managed-preview-regression-final.log",
+      "sha256": "3741ef8b5b89878c483ef102cc83da0b07ab70f47ad2f4510db687f3979b2534",
+      "fileBornAt": "2026-10-01T19:08:21.000398+00:00",
+      "fileModifiedAt": "2026-10-01T19:08:21.926968+00:00"
+    },
+    "python_regression": {
+      "path": "/Users/shuhei/Projects/genie/docs/quality/evidence/2026-10-02-completion/python-regression-current.log",
+      "sha256": "309738ea891df1e7feaf4de278797cf23e96236d00f72927ef50342c7e06cbcc",
+      "fileBornAt": "2026-10-01T19:08:21.000457+00:00",
+      "fileModifiedAt": "2026-10-01T19:08:43.320396+00:00"
+    },
+    "disabled_ui_swift": {
+      "path": "/Users/shuhei/Projects/genie/docs/quality/evidence/2026-10-02-completion/confirmation-disabled-tests.log",
+      "sha256": "4cb902713865c3a64f65ee0533b1d54b61ca855b4bdbccff5b080f9ab2201f4d",
+      "fileBornAt": "2026-10-01T19:10:09.125536+00:00",
+      "fileModifiedAt": "2026-10-01T19:10:26.353635+00:00"
+    },
+    "idle_vm_stop": {
+      "path": "/Users/shuhei/Projects/genie/docs/quality/evidence/2026-10-02-completion/idle-vm-stop.log",
+      "sha256": "3e80e75869db3f3438eeb539acaa514578be77d495e6b1c0cd37d81ed18de7b2",
+      "fileBornAt": "2026-10-01T19:13:45.962300+00:00",
+      "fileModifiedAt": "2026-10-01T19:13:48.191994+00:00"
+    }
+  },
+  "relatedEvidence": {
+    "noa-current-readonly-20261002-0510.json": "7db13347e63c302d2cffb30ecba8fd941a1a3799aba9ae68f0eda378c6d95f15",
+    "main-app-shutdown-final.json": "3420c984b8b4e93397891fda79ff6a5ea6a20dbdd92939e7ad6a18d8e5bf770f",
+    "macos-final-release.json": "f468a53336630085cc641a391c792df965d6a42e1883a9001413f8a8454b8098"
+  },
+  "noSecretProjection": "Only source/log hashes, numeric metrics, event/time metadata and fixture result categories are retained. No conversation or stream content."
+}

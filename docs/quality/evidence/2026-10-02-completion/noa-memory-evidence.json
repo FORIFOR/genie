@@ -1,0 +1,270 @@
+{
+  "observedAt": "2026-10-01T18:29:56.464802+00:00",
+  "classification": "Independent read-only audit of saved performance metadata only. No Noa code/config changes, model/app/VM launches, GUI actions, message sends, prompt text or stream keys.",
+  "pressureMetricDefinition": {
+    "source": "Jev_VTuber_Studio/src/memory-guard.mjs",
+    "osLevelKey": "kern.memorystatus_vm_pressure_level",
+    "freeIndicatorCommand": "memory_pressure -Q",
+    "notPhysicalFreeRAM": "The free percentage is an OS pressure/headroom indicator, not arithmetic free physical RAM.",
+    "doNotConfuse": "vm.memory_pressure is a different sysctl and currently reads 0 while the level key reads 1."
+  },
+  "noaWorkloadSummaries": [
+    {
+      "sourceFile": "/Users/shuhei/.local/share/noa-maintenance/memory-quality-20261002/load-2026-10-01T17-43-18-128Z-e5bdb550-summary.json",
+      "sourceSha256": "0f300ac2b6e65f66644f70763aaf98a0eafdd2be972d46c29d759f97a8104f9e",
+      "metrics": {
+        "startedAt": "2026-10-01T17:43:18.129Z",
+        "endedAt": "2026-10-01T17:43:24.421Z",
+        "requestedMinutes": 15,
+        "elapsedMs": 6292,
+        "workloadElapsedMs": 6202,
+        "result": "stopped",
+        "reason": "memory_warning",
+        "lastPhase": "conversation",
+        "model": "qwen3.5:9b",
+        "provider": "aivisspeech",
+        "keepAlive": "45s",
+        "intervalMs": 20000,
+        "sampleMs": 5000,
+        "completedTurns": 0,
+        "sampleCount": 2,
+        "llmMeanMs": null,
+        "llmMaxMs": null,
+        "ttsMeanMs": null,
+        "ttsMaxMs": null,
+        "minFreePercent": 27,
+        "maxPressureLevel": 2,
+        "maxObsMemoryMiB": 144.046875,
+        "minObsFps": 30.000000300000007,
+        "maxObsRenderMs": 5.086869,
+        "maxNodeRssBytes": 71778304,
+        "obsRenderSkippedDelta": 0,
+        "obsOutputSkippedDelta": 0
+      },
+      "aivisBefore": {
+        "at": "2026-10-01T17:43:18.219Z",
+        "footprint": {
+          "pid": 68703,
+          "current": "3.0G",
+          "peak": "3.0G"
+        }
+      },
+      "aivisAfter": {
+        "at": "2026-10-01T17:43:23.282Z",
+        "footprint": {
+          "pid": 68703,
+          "current": "3.1G",
+          "peak": "3.1G"
+        }
+      },
+      "sampleSourceSha256": "18876785ac4d3eb1ffe53808d9565ccc1a639e3d39675f8679c01e799466400d",
+      "selectedSamples": [
+        {
+          "at": "2026-10-01T17:43:18.165Z",
+          "elapsedMs": 36,
+          "memory": {
+            "freePercent": 56,
+            "pressureLevel": 1
+          },
+          "otherModelCount": 0,
+          "modelsCount": 0,
+          "obsMemoryMiB": 144.046875,
+          "outputActive": false,
+          "nodeRSSBytes": 71778304,
+          "stopReason": null
+        },
+        {
+          "at": "2026-10-01T17:43:23.220Z",
+          "elapsedMs": 5091,
+          "memory": {
+            "freePercent": 27,
+            "pressureLevel": 2
+          },
+          "otherModelCount": 0,
+          "modelsCount": 0,
+          "obsMemoryMiB": 87.328125,
+          "outputActive": false,
+          "nodeRSSBytes": 48005120,
+          "stopReason": "memory_warning"
+        }
+      ]
+    },
+    {
+      "sourceFile": "/Users/shuhei/.local/share/noa-maintenance/memory-quality-20261002/load-2026-10-01T17-44-45-874Z-ebb7870e-summary.json",
+      "sourceSha256": "8bbbcf2714a246242bcec9173b5a176011fda550ae5d3b4579836beed2a97973",
+      "metrics": {
+        "startedAt": "2026-10-01T17:44:45.875Z",
+        "endedAt": "2026-10-01T17:46:12.092Z",
+        "requestedMinutes": 15,
+        "elapsedMs": 86217,
+        "workloadElapsedMs": 86124,
+        "result": "stopped",
+        "reason": "memory_warning",
+        "lastPhase": "interval",
+        "model": "noa-qwen35-9b-text:verified",
+        "provider": "aivisspeech",
+        "keepAlive": "45s",
+        "intervalMs": 20000,
+        "sampleMs": 5000,
+        "completedTurns": 5,
+        "sampleCount": 18,
+        "llmMeanMs": 2601.6,
+        "llmMaxMs": 5033,
+        "ttsMeanMs": 1088.4,
+        "ttsMaxMs": 1994,
+        "minFreePercent": 38,
+        "maxPressureLevel": 2,
+        "maxObsMemoryMiB": 92.96875,
+        "minObsFps": 30.000000300000007,
+        "maxObsRenderMs": 4.606462,
+        "maxNodeRssBytes": 94978048,
+        "obsRenderSkippedDelta": 2,
+        "obsOutputSkippedDelta": 0
+      },
+      "aivisBefore": {
+        "at": "2026-10-01T17:44:45.968Z",
+        "footprint": {
+          "pid": 68703,
+          "current": "3.1G",
+          "peak": "3.1G"
+        }
+      },
+      "aivisAfter": {
+        "at": "2026-10-01T17:46:11.033Z",
+        "footprint": {
+          "pid": 68703,
+          "current": "3.3G",
+          "peak": "3.3G"
+        }
+      },
+      "sampleSourceSha256": "7d30716f28ed4c4549cec4db0fd169d0220193a2080bca0f1f5764b5e0ce5146",
+      "selectedSamples": [
+        {
+          "at": "2026-10-01T17:46:10.983Z",
+          "elapsedMs": 85108,
+          "memory": {
+            "freePercent": 40,
+            "pressureLevel": 2
+          },
+          "otherModelCount": null,
+          "modelsCount": 0,
+          "obsMemoryMiB": 89.703125,
+          "outputActive": false,
+          "nodeRSSBytes": 84869120,
+          "stopReason": "memory_warning"
+        }
+      ]
+    },
+    {
+      "sourceFile": "/Users/shuhei/.local/share/noa-maintenance/memory-quality-20261002/load-2026-10-01T18-20-33-805Z-b5b08f56-summary.json",
+      "sourceSha256": "68260f1fe349661b267ea0f2b3d6d5136ee3a3fa9d5df628b8fa5199b963f1c5",
+      "metrics": {
+        "startedAt": "2026-10-01T18:20:33.806Z",
+        "endedAt": "2026-10-01T18:20:39.881Z",
+        "requestedMinutes": 15,
+        "elapsedMs": 6075,
+        "workloadElapsedMs": 6007,
+        "result": "stopped",
+        "reason": "memory_warning",
+        "lastPhase": "conversation",
+        "model": "noa-qwen35-9b-text:verified",
+        "provider": "aivisspeech",
+        "keepAlive": "45s",
+        "intervalMs": 20000,
+        "sampleMs": 5000,
+        "completedTurns": 0,
+        "sampleCount": 2,
+        "llmMeanMs": null,
+        "llmMaxMs": null,
+        "ttsMeanMs": null,
+        "ttsMaxMs": null,
+        "minFreePercent": 33,
+        "maxPressureLevel": 2,
+        "maxObsMemoryMiB": 283.109375,
+        "minObsFps": 30.000000300000007,
+        "maxObsRenderMs": 2.213025,
+        "maxNodeRssBytes": 71696384,
+        "obsRenderSkippedDelta": 0,
+        "obsOutputSkippedDelta": 0
+      },
+      "aivisBefore": {
+        "at": "2026-10-01T18:20:33.874Z",
+        "footprint": {
+          "pid": 68703,
+          "current": "3.3G",
+          "peak": "3.3G"
+        }
+      },
+      "aivisAfter": {
+        "at": "2026-10-01T18:20:38.933Z",
+        "footprint": {
+          "pid": 68703,
+          "current": "3.3G",
+          "peak": "3.3G"
+        }
+      },
+      "sampleSourceSha256": "a779565285e7ce5310a90b9b05479364772cc0e104aaef0ef0c2f546a90f3072",
+      "selectedSamples": [
+        {
+          "at": "2026-10-01T18:20:33.849Z",
+          "elapsedMs": 43,
+          "memory": {
+            "freePercent": 61,
+            "pressureLevel": 1
+          },
+          "otherModelCount": 0,
+          "modelsCount": 0,
+          "obsMemoryMiB": 283.109375,
+          "outputActive": false,
+          "nodeRSSBytes": 71696384,
+          "stopReason": null
+        },
+        {
+          "at": "2026-10-01T18:20:38.875Z",
+          "elapsedMs": 5069,
+          "memory": {
+            "freePercent": 33,
+            "pressureLevel": 2
+          },
+          "otherModelCount": null,
+          "modelsCount": 0,
+          "obsMemoryMiB": 183.859375,
+          "outputActive": false,
+          "nodeRSSBytes": 59129856,
+          "stopReason": "memory_warning"
+        }
+      ]
+    }
+  ],
+  "obsEventProjection": {
+    "sourceFile": "/Users/shuhei/Library/Application Support/obs-studio/logs/2026-09-30 23-17-39.txt",
+    "modifiedAt": "2026-10-01T18:22:04.020267+00:00",
+    "latestEvents": [
+      {
+        "clockTime": "01:25:58.591:",
+        "event": "streaming_start"
+      },
+      {
+        "clockTime": "01:40:16.953:",
+        "event": "streaming_stop"
+      },
+      {
+        "clockTime": "03:06:32.175:",
+        "event": "streaming_start"
+      },
+      {
+        "clockTime": "03:16:11.124:",
+        "event": "streaming_stop"
+      }
+    ],
+    "inference": "Latest observed stream event is STOP, with no later START in this log. This is log-based state, not an external platform confirmation."
+  },
+  "conclusion": "Pressure 2 is observed during Noa model warmup even after the owned Genie preview was stopped. Genie cannot be established as the sole cause. Exact peak allocation owner remains unobserved; warning-time model list is empty/unavailable, and sampled Node/OBS RSS decrease. Aivis physical footprint stays around 3.3G in the latest run.",
+  "notEstablished": [
+    "Exact cause of memory pressure",
+    "A memory leak in a named process",
+    "A crash rather than a protective stop",
+    "A successful 15-minute or 3-hour actual streaming workload",
+    "Causal memory savings from stopping Genie"
+  ]
+}

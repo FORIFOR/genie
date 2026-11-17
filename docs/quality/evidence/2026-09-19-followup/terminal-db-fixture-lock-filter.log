@@ -1,0 +1,43 @@
+
+ RUN  v3.2.7 /Users/shuhei/Projects/genie/services/task
+
+ ❯ test/terminal-state.test.ts (7 tests | 1 failed) 2418ms
+   ✓ terminal transitions with real PostgreSQL > completion after accepted cancellation emits no false completion 107ms
+   ✓ terminal transitions with real PostgreSQL > late cancellation and failure preserve completed artifact and only one terminal event 63ms
+   ✓ terminal transitions with real PostgreSQL > duplicate cancellation does not mutate timestamps or duplicate audit entries 42ms
+   ✓ terminal transitions with real PostgreSQL > failure remains immutable when terminal activities are redelivered 29ms
+   ✓ terminal transitions with real PostgreSQL > a different tenant cannot cancel or finalize this task 20ms
+   × terminal transitions with real PostgreSQL > cancel rechecks a completion committed while waiting for the row lock 1846ms
+     → expected false to be true // Object.is equality
+   ✓ terminal transitions with real PostgreSQL > concurrent cancellation and completion converge without opposite terminal events 275ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/terminal-state.test.ts > terminal transitions with real PostgreSQL > cancel rechecks a completion committed while waiting for the row lock
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ test/terminal-state.test.ts:236:38
+    234|       await committingCompletion;
+    235|     }
+    236|     expect(observedBlockedStatement).toBe(true);
+       |                                      ^
+    237|     expect(await cancelling).toEqual({ rejected: true, code: 'task.inv…
+    238|     expect((await service.get(tenantId, input.taskId)).status).toBe('C…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 6 passed (7)
+   Start at  18:48:58
+   Duration  3.00s (transform 147ms, setup 0ms, collect 409ms, tests 2.42s, environment 0ms, prepare 36ms)
+
+undefined
+/Users/shuhei/Projects/genie/services/task:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run test/terminal-state.test.ts

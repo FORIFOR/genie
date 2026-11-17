@@ -1,0 +1,8 @@
+
+> genie@0.1.4 build:macos-app /Users/shuhei/Projects/genie
+> ./scripts/build-macos-app.sh
+
+/Users/shuhei/Projects/genie/apps/genie-macos/build/Genie.app: replacing existing signature
+built /Users/shuhei/Projects/genie/apps/genie-macos/build/Genie.app
+Identifier=com.astra.mac
+Signature=adhoc

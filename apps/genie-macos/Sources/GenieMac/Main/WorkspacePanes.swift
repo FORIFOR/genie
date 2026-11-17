@@ -146,6 +146,9 @@ struct TasksPane: View {
                     Button("新しく依頼する") { MainNav.shared.select(.home) }
                         .accessibilityIdentifier("tasksNewRequest")
                 }
+                WorkOverviewCard(board: WorkOverviewBoard.shared, dark: dark)
+                ScheduleSection(board: ScheduleBoard.shared, dark: dark)
+                AgentSessionsSection(board: AgentSessionsBoard.shared, dark: dark)
                 if tasks.isEmpty {
                     WorkspaceEmpty(title: "まだ仕事はありません", hint: "最初の依頼をすると、ここから進み具合を確認できます。",
                                    primaryLabel: "依頼を書く", primaryAction: { MainNav.shared.select(.home) })
@@ -179,6 +182,15 @@ struct TasksPane: View {
         }
         .background(Palette.canvas(dark))
         .onAppear { tasks = LocalStore.shared.loadTasks() }
+        .task { await ScheduleBoard.shared.refresh() }
+        .task {
+            // 見ている間だけ取り直す（hooks の出来事は gateway に届く。Mac へは押してこない）
+            while !Task.isCancelled {
+                await AgentSessionsBoard.shared.refresh()
+                await WorkOverviewBoard.shared.refresh()
+                try? await Task.sleep(for: .seconds(15))
+            }
+        }
         .onReceive(NotificationCenter.default.publisher(for: LocalStore.tasksChanged).receive(on: RunLoop.main)) { _ in tasks = LocalStore.shared.loadTasks() }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("tasksPane")
@@ -322,8 +334,18 @@ struct FlowChips: View {
     var overflow: Int = 0
 
     var body: some View {
+        // 札の幅に入るぶんだけ並べ、入らないものは数で言う。全部を固定幅で並べると、
+        // 長い権限名（system_audio.capture など）で札が横に伸び、隣の札に重なった（2026-10-23）。
+        ViewThatFits(in: .horizontal) {
+            ForEach((0...items.count).reversed(), id: \.self) { shown in
+                row(Array(items.prefix(shown)), overflow: overflow + items.count - shown)
+            }
+        }
+    }
+
+    private func row(_ shown: [String], overflow: Int) -> some View {
         HStack(spacing: 5) {
-            ForEach(items, id: \.self) { item in
+            ForEach(shown, id: \.self) { item in
                 Text(item)
                     .font(.system(size: TypeScale.microSize))
                     .foregroundStyle(Palette.muted(dark))
@@ -337,6 +359,7 @@ struct FlowChips: View {
                 Text("+\(overflow)")
                     .font(.system(size: TypeScale.microSize))
                     .foregroundStyle(Palette.muted(dark))
+                    .fixedSize()
             }
             Spacer(minLength: 0)
         }

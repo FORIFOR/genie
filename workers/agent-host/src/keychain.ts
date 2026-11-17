@@ -8,6 +8,7 @@
  * **鍵を扱う経路を、外から読める短いコードにしておきたい**から。
  */
 import { execFile } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import { chmod, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { promisify } from 'node:util';
@@ -39,19 +40,32 @@ function serviceFor(key: string): string {
  */
 export class MacKeychain implements SecretStore {
   readonly #account: string;
+  /**
+   * 読み書きに使う Genie.app の実行ファイル（`--connector-secret`）。無ければ `security`。
+   * `security` だと、アプリが作った項目を読むたびに macOS がパスワードを求め、書き戻すとアプリが
+   * 読めなくなった（2026-10-16〜20）。同じ署名の Genie 自身なら確認なしで通る。
+   */
+  readonly #genie: string | null;
+  /** 同じ項目への書き込みは 1 本ずつ（`security` の更新が並ぶと片方が「既に存在」で落ちる）。 */
+  static readonly #writes = new Map<string, Promise<void>>();
 
-  constructor(account: string) {
+  constructor(account: string, genie: string | null = null) {
     this.#account = account;
+    this.#genie = genie;
   }
 
   async get(key: string): Promise<string | null> {
     try {
-      const { stdout } = await run(
-        'security',
-        ['find-generic-password', '-a', this.#account, '-s', serviceFor(key), '-w'],
-        { timeout: 30_000 },
-      );
-      return stdout.trimEnd();
+      const { stdout } = this.#genie
+        ? await run(this.#genie, ['--connector-secret', 'get', serviceFor(key)], {
+            timeout: 30_000,
+          })
+        : await run(
+            'security',
+            ['find-generic-password', '-a', this.#account, '-s', serviceFor(key), '-w'],
+            { timeout: 30_000 },
+          );
+      return this.#genie ? stdout : stdout.trimEnd();
     } catch (error) {
       if (isNotFound(error)) return null;
       throw new KeychainUnavailable(
@@ -61,33 +75,107 @@ export class MacKeychain implements SecretStore {
   }
 
   async set(key: string, value: string): Promise<void> {
-    // `-U` で既存を更新する。付けないと、繋ぎ直すたびに項目が増える。
-    await run('security', [
-      'add-generic-password',
-      '-a',
-      this.#account,
-      '-s',
-      serviceFor(key),
-      '-w',
-      value,
-      '-U',
-    ]);
+    /*
+     * **値をコマンドの引数に置かない。**引数は他のプロセスから見え（ps）、失敗すると
+     * エラー文に丸ごと入ってログへ出る（2026-10-07: 更新したトークンが host.log に出た）。
+     * `security -i` へ標準入力で渡し、値は 16 進（-X）にして引用の崩れも避ける。
+     * `-U` で既存を更新する。付けないと、繋ぎ直すたびに項目が増える。
+     */
+    const hex = Buffer.from(value, 'utf8').toString('hex');
+    const line = `add-generic-password -U -a ${quoted(this.#account)} -s ${quoted(serviceFor(key))} -X ${hex}\n`;
+    const slot = `${this.#account}\u0000${serviceFor(key)}`;
+    const previous = MacKeychain.#writes.get(slot) ?? Promise.resolve();
+    const write = previous
+      .catch(() => undefined)
+      .then(() =>
+        this.#genie
+          ? runWithInput(this.#genie, ['--connector-secret', 'set', serviceFor(key)], value, 30_000)
+          : runWithInput('security', ['-i'], line, 30_000),
+      );
+    MacKeychain.#writes.set(slot, write);
+    try {
+      await write;
+    } catch (error) {
+      // 失敗の詳細（コマンド行）には値が入りうるので、文に含めない。原因を追えるよう、
+      // 16 進の連なりと引用部分を伏せた終了コードと stderr だけを 1 行残す（2026-10-12）。
+      process.stderr.write(
+        `${JSON.stringify({ level: 'warn', time: new Date().toISOString(), service: 'agent-host', msg: 'keychain write failed', detail: error instanceof Error ? error.message : 'unknown' })}\n`,
+      );
+      throw new KeychainUnavailable(
+        '接続情報を保存できませんでした。macOSのキーチェーン確認を許可してから、もう一度試してください。',
+      );
+    } finally {
+      if (MacKeychain.#writes.get(slot) === write) MacKeychain.#writes.delete(slot);
+    }
   }
 
   async delete(key: string): Promise<void> {
     try {
-      await run('security', [
-        'delete-generic-password',
-        '-a',
-        this.#account,
-        '-s',
-        serviceFor(key),
-      ]);
+      if (this.#genie)
+        await run(this.#genie, ['--connector-secret', 'delete', serviceFor(key)], {
+          timeout: 30_000,
+        });
+      else
+        await run('security', [
+          'delete-generic-password',
+          '-a',
+          this.#account,
+          '-s',
+          serviceFor(key),
+        ]);
     } catch (error) {
       // 無いものを消せなくても、結果は同じ
       if (!isNotFound(error)) throw error;
     }
   }
+}
+
+/** `security -i` の 1 語。空白や引用符を含む名前でも崩れないように二重引用で囲む。 */
+function quoted(text: string): string {
+  if (/["\\\n]/.test(text))
+    throw new KeychainUnavailable('キーチェーンの項目名に使えない文字があります。');
+  return `"${text}"`;
+}
+
+/** 標準入力に `input` を渡して実行する。失敗の理由には入力を含めない。 */
+function runWithInput(
+  command: string,
+  args: string[],
+  input: string,
+  timeout: number,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const child = execFile(command, args, { timeout }, (error, _stdout, stderr) => {
+      const said = redactSecurityOutput(stderr);
+      if (error)
+        reject(
+          new Error(
+            `exit ${String((error as { code?: unknown }).code ?? '?')}${said ? `; ${said}` : ''}`,
+          ),
+        );
+      else if (/error|failed|could not/i.test(stderr))
+        reject(new Error(`security reported an error; ${said}`));
+      else resolve();
+    });
+    child.stdin?.end(input);
+  });
+}
+
+/**
+ * `security` の出力から値になりうる部分を伏せる: 引用された語、数字や記号を含む 4 字以上の連なり。
+ * 残るのは「何が起きたか」の語と終了コードだけ（200 字まで）。
+ */
+export function redactSecurityOutput(text: string): string {
+  return text
+    .replace(/"[^"]*"/g, '"…"')
+    .replace(/'[^']*'/g, "'…'")
+    .replace(/[A-Za-z0-9+/=_.-]{4,}/g, (word) => {
+      const plain = word.replace(/\.$/, '');
+      return /^[A-Za-z]+$/.test(plain) && plain.length <= 40 ? word : '…';
+    })
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 200);
 }
 
 function isNotFound(error: unknown): boolean {
@@ -165,8 +253,15 @@ export function keychainFor(
   platform: string,
   account: string,
   env: Readonly<Record<string, string | undefined>> = process.env,
+  exists: (path: string) => boolean = existsSync,
 ): SecretStore {
   const file = env['ASTRA_SECRET_STORE_FILE'];
   if (file) return new FileSecretStore(file);
-  return platform === 'darwin' ? new MacKeychain(account) : new NoKeychain();
+  if (platform !== 'darwin') return new NoKeychain();
+  // Genie.app があればそれで読み書きする（パスワードを求めない）。無ければ `security`。
+  const genie = env['ASTRA_GENIE_EXECUTABLE'] || DEFAULT_GENIE_EXECUTABLE;
+  return new MacKeychain(account, exists(genie) ? genie : null);
 }
+
+/** 既定の Genie.app の実行ファイル。 */
+export const DEFAULT_GENIE_EXECUTABLE = '/Applications/Genie.app/Contents/MacOS/Genie';

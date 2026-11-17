@@ -26,15 +26,36 @@ import { registerIdpRoutes } from './auth/idp-routes.js';
 import { IdpVerifiers, type IdentityVerifier } from './auth/idp.js';
 import type { JwtTokens } from './auth/tokens.js';
 import { registerTaskRoutes, type EvidenceReader } from './routes/tasks.js';
+import { registerTransactionAuthorizationRoutes } from './routes/transaction-authorizations.js';
 import { registerAgentHostRoutes } from './routes/agent-host.js';
+import { registerAgentSessionRoutes } from './routes/agent-sessions.js';
+import { registerWorkDeskRoutes } from './routes/work-desk.js';
+import { registerWorkHomeRoutes } from './routes/work-home.js';
+import {
+  registerHandoffHostRoutes,
+  registerHandoffViewerRoutes,
+} from './routes/browser-handoff.js';
+import { registerConnectorReconnectRoutes } from './connector-reconnect.js';
 import { registerArtifactRoutes } from './routes/artifacts.js';
 import { registerPluginRoutes } from './routes/plugins.js';
 import { registerShareRoutes } from './routes/shares.js';
 import { registerDomainRoutes, type DomainRouteDeps } from './routes/domain.js';
 import { registerBriefRoutes } from './routes/brief.js';
-import { registerConversationRoutes } from './routes/conversations.js';
+import { registerConversationRoutes, type ConversationRouteDeps } from './routes/conversations.js';
+import {
+  registerChannelRoutes,
+  registerUnconfiguredChannelStatus,
+  type ChannelRouteDeps,
+} from './routes/channels.js';
+import { registerScheduleRoutes } from './routes/schedules.js';
+import { registerVocabularyRoutes } from './routes/vocabulary.js';
+import type { TurnDeps } from '@genie/service-conversation';
+import { registerPhoneRoutes, type PhoneRouteDeps } from './routes/phone.js';
 import { registerOnboardingRoutes } from './routes/onboarding.js';
 import { registerVoiceRoutes, type VoiceRouteDeps } from './routes/voice.js';
+import { registerCallRoutes } from './routes/call.js';
+import { registerBoardRoutes } from './routes/board.js';
+import { registerMediaRoutes } from './routes/media.js';
 import type { ConversationService } from '@genie/service-conversation';
 import type { WorkContextService, WorldModelService } from '@genie/service-world-model';
 import { localArtifacts, registerWorkRoutes } from './routes/work.js';
@@ -77,6 +98,57 @@ export interface AppDeps {
   readonly work?: WorkContextService;
   /** Conversation Engine。Task Dock の入口（Phase 7 §3）。 */
   readonly conversations?: ConversationService;
+  /** 「電話して」を Oathra 経由の仕事にする。無ければ電話の頼みは受けない。 */
+  readonly phone?: ConversationRouteDeps['phone'];
+  /**
+   * チャット（Slack / LINE）。発話の入口は Task Dock と同じ handleTurn なので、
+   * ここで組んだ TurnDeps を受け取って受け口の依存を返す。null なら受け口を開かない。
+   */
+  readonly channels?: (turnDeps: TurnDeps) => ChannelRouteDeps | null;
+  /**
+   * 予約（「明日 9 時に〜教えて」）。会話で作り・一覧し・取り消す。無ければ予約の言い方は受けない。
+   * 時間になったら動かす見回り（ScheduleRunner）は、組んだ TurnDeps を受け取って呼ぶ側が作る
+   * （`onTurnDeps`）。
+   */
+  readonly schedules?: import('@genie/service-schedule').ScheduleService;
+  /**
+   * 締切のある「やること」（「金曜までに見積書を出す」「やることは？」「見積書出した」）。予約より先に読む。
+   * 無ければ受けない（予約の言い方だけ）。
+   */
+  readonly todos?: import('@genie/service-schedule').TodoService;
+  /** 議事録・貼った文から拾った予定とやることの候補（提案と、本人の「全部入れて」） */
+  readonly candidates?: import('@genie/service-schedule').CandidateService;
+  /** 仕事の見通し（Task Dock の件数と、「今の作業どうなってる？」の答え）。 */
+  readonly workDesk?: import('./work-desk.js').WorkDesk;
+  /** 仕事のホームのリンク（LINE から開くページ）。 */
+  readonly workLinks?: import('./work-home.js').WorkLinkStore;
+  /** Claude Code の承認を LINE から（agent-approvals.ts）。 */
+  readonly agentApprovals?: import('./agent-approvals.js').AgentApprovals;
+  /** 公開の入口（GENIE_PUBLIC_URL）。別の PC の Claude Code はここを通って届く */
+  readonly publicUrl?: string | null;
+  /** エージェントの仕事（agent-jobs.ts）。 */
+  readonly agentJobs?: import('./agent-jobs.js').AgentJobs;
+  /** メール・予定の接続が切れたときの知らせと、LINE からのつなぎ直し。 */
+  readonly connectorReconnects?: import('./connector-reconnect.js').ConnectorReconnects;
+  /** ブラウザの引き継ぎ（つまずいた Genie 専用のブラウザを、本人が LINE から操作する）。 */
+  readonly handoffs?: Omit<
+    import('./routes/browser-handoff.js').HandoffRouteDeps,
+    'bridge' | 'tasks'
+  >;
+  /** 個人の辞書。会話で登録し、Mac の音声入力が取りに来る（GET /v1/vocabulary）。 */
+  readonly vocabulary?: import('@genie/service-vocabulary').VocabularyService;
+  /** グループの計画（Action Board）のページ。リンクで開く（読むだけ）。 */
+  readonly boards?: import('./board.js').BoardStore;
+  /** カードの画像（店の写真・地図）の中継。 */
+  readonly media?: import('./media.js').MediaResolver;
+  /** 送った写真・外国語の文のあと（「はい」「取り消して」「家計簿を見せて」「これに返信して」）。 */
+  readonly understand?: import('@genie/service-conversation').TurnSchedules;
+  /** 予定を読む・ずらす・元に戻す（calendar-turn.ts）。 */
+  readonly calendar?: import('@genie/service-conversation').TurnCalendar;
+  /** 組み上がった TurnDeps を受け取る（予約の見回りが、同じ入口で頼むため）。 */
+  readonly onTurnDeps?: (turnDeps: TurnDeps) => void;
+  /** 利用者ごとの電話の接続（PUT / GET / DELETE /v1/phone/connection）。 */
+  readonly phoneConnections?: PhoneRouteDeps;
   /** connector の接続状態（正本 §2.4・§21）。 */
   readonly connections?: ConnectionService;
   /** Voice OS の Google STT / TTS。未設定でも route は明示的に 503 を返す。 */
@@ -142,17 +214,53 @@ export function buildApp(deps: AppDeps): App {
     verifier: deps.identityVerifier ?? new IdpVerifiers(deps.config.idp),
     enableDevTokens: allowsDevelopmentRoutes(deps.config),
   });
+  let channelService: ChannelRouteDeps['service'] | null = null;
   registerTaskRoutes(app, {
     tasks: deps.tasks,
+    watchOrcaTask: async (tenantId, userId, taskId) => {
+      try {
+        await channelService?.watchUserTask(tenantId, userId, taskId);
+      } catch {
+        deps.logger.warn({ task_id: taskId }, 'orca LINE watch registration failed');
+      }
+    },
     redis: deps.redis,
     ...(deps.evidence === undefined ? {} : { evidence: deps.evidence }),
     ...(deps.ssePollIntervalMs === undefined ? {} : { ssePollIntervalMs: deps.ssePollIntervalMs }),
   });
+  registerTransactionAuthorizationRoutes(app, { db: deps.db, tasks: deps.tasks });
+  // ほかの AI（Claude Code）に頼んだ仕事の見守り。hooks の受け口と Task Dock の一覧
+  registerAgentSessionRoutes(app, {
+    db: deps.db,
+    ...(deps.agentApprovals ? { approvals: deps.agentApprovals } : {}),
+    ...(deps.agentJobs ? { jobs: deps.agentJobs } : {}),
+    ...(deps.publicUrl ? { publicUrl: deps.publicUrl } : {}),
+  });
+  if (deps.workDesk) registerWorkDeskRoutes(app, deps.workDesk);
+  if (deps.workDesk && deps.workLinks)
+    registerWorkHomeRoutes(app, {
+      desk: deps.workDesk,
+      links: deps.workLinks,
+      ...(deps.agentApprovals ? { approvals: deps.agentApprovals } : {}),
+    });
+  const handoffs =
+    deps.handoffs && deps.hostBridge
+      ? { ...deps.handoffs, bridge: deps.hostBridge, tasks: deps.tasks }
+      : null;
+  if (handoffs) registerHandoffHostRoutes(app, handoffs);
+  if (deps.connectorReconnects) registerConnectorReconnectRoutes(app, deps.connectorReconnects);
   if (deps.agentHosts) {
     registerAgentHostRoutes(app, {
       hosts: deps.agentHosts,
       tasks: deps.tasks,
       ...(deps.hostBridge === undefined ? {} : { bridge: deps.hostBridge }),
+      notifyOrcaSupervision: async (tenantId, userId, taskId, outcome) => {
+        try {
+          await channelService?.notifyOrcaSupervision(tenantId, userId, taskId, outcome);
+        } catch {
+          deps.logger.warn({ task_id: taskId }, 'orca LINE supervision notice failed');
+        }
+      },
     });
   }
   registerArtifactRoutes(app, { library: deps.library });
@@ -165,11 +273,60 @@ export function buildApp(deps: AppDeps): App {
     ...(deps.dataSources === undefined ? {} : { dataSources: deps.dataSources }),
   });
   if (deps.domain) registerDomainRoutes(app, deps.domain);
+  if (deps.phoneConnections) registerPhoneRoutes(app, deps.phoneConnections);
+  // 通話のページ（WebSocket）。チャネルを組んだあと、websocket のスコープで登録する
+  let callRoutes: import('./routes/call.js').CallRouteDeps | null = null;
   if (deps.conversations) {
-    registerConversationRoutes(app, {
+    /*
+     * 発話から仕事へ（handleTurn）の依存。Task Dock（HTTP）とチャットで**同じものを使う。**
+     * 別々に組むと、片方だけ電話や Work Context が効かない、ということが起きる。
+     */
+    // 候補への答え（「全部入れて」）と貼った議事録 → やること（締切つき）の順に読む
+    const planning =
+      deps.todos || deps.candidates
+        ? async (
+            principal: { tenantId: string; userId: string },
+            conversationId: string,
+            text: string,
+          ) =>
+            (await deps.candidates?.handle(principal, conversationId, text)) ??
+            (await deps.todos?.handle(principal, conversationId, text)) ??
+            null
+        : null;
+    const turnDeps: TurnDeps = {
       conversations: deps.conversations,
       tasks: deps.tasks,
-      redis: deps.redis,
+      ...(deps.phone ? { phone: deps.phone } : {}),
+      /*
+       * やること（締切つき）は、ほかの言い方より先に読む。期限なしの TODO（understand）の「やることは？」に
+       * 先に取られると、締切つきのものが一覧に出ない（2026-11-06 に見つけた）。一覧は両方を 1 つにして返す。
+       * 読めなければ（null）いつもの順（understand → 辞書 → 予約）へ。
+       */
+      ...(deps.schedules
+        ? {
+            schedules:
+              planning && !deps.understand
+                ? {
+                    handle: async (principal, conversationId, text) =>
+                      (await planning(principal, conversationId, text)) ??
+                      deps.schedules!.handle(principal, conversationId, text),
+                  }
+                : deps.schedules,
+          }
+        : {}),
+      ...(deps.vocabulary ? { vocabulary: deps.vocabulary } : {}),
+      ...(deps.understand
+        ? {
+            understand: planning
+              ? {
+                  handle: async (principal, conversationId, text) =>
+                    (await planning(principal, conversationId, text)) ??
+                    deps.understand!.handle(principal, conversationId, text),
+                }
+              : deps.understand,
+          }
+        : {}),
+      ...(deps.calendar ? { calendar: deps.calendar } : {}),
       ...(deps.work
         ? {
             work: deps.work,
@@ -184,11 +341,26 @@ export function buildApp(deps: AppDeps): App {
               ),
           }
         : {}),
+    };
+    registerConversationRoutes(app, {
+      ...turnDeps,
+      conversations: deps.conversations,
+      redis: deps.redis,
       ...(deps.ssePollIntervalMs === undefined
         ? {}
         : { ssePollIntervalMs: deps.ssePollIntervalMs }),
     });
+    const channels = deps.channels?.(turnDeps) ?? null;
+    channelService = channels?.service ?? null;
+    if (channels) registerChannelRoutes(app, channels);
+    else registerUnconfiguredChannelStatus(app);
+    callRoutes = channels?.call ?? null;
+    deps.onTurnDeps?.(turnDeps);
   }
+  if (deps.schedules) registerScheduleRoutes(app, { schedules: deps.schedules });
+  if (deps.boards) registerBoardRoutes(app, { boards: deps.boards });
+  if (deps.media) registerMediaRoutes(app, { media: deps.media });
+  if (deps.vocabulary) registerVocabularyRoutes(app, { vocabulary: deps.vocabulary });
   if (deps.work) {
     registerWorkRoutes(app, {
       work: deps.work,
@@ -237,6 +409,8 @@ export function buildApp(deps: AppDeps): App {
       tokens: deps.tokens,
       logger: deps.logger,
     });
+    if (callRoutes) registerCallRoutes(instance as unknown as App, callRoutes);
+    if (handoffs) registerHandoffViewerRoutes(instance as unknown as App, handoffs);
     if (deps.meetings) {
       registerMeetingAudioRoute(instance as unknown as App, {
         ...deps.meetings,

@@ -1,0 +1,6 @@
+AXIsProcessTrusted=true
+onScreenWindows:
+  id=49503 cg=(88,33 1200x966)
+AXWindows err=0 count=2
+  [0] rect=nil titleErr=0 title=Chrome role=AXApplication posErr=-25205 attrs=19:AXFunctionRowTopLevelElements,AXFrame,AXChildren,AXFocusedUIElement,AXFrontmost,AXRole,AXExtrasMenuBar,AXMainWindow
+  [1] rect=nil titleErr=0 title=Chrome role=AXApplication posErr=-25205 attrs=19:AXFunctionRowTopLevelElements,AXFrame,AXChildren,AXFocusedUIElement,AXFrontmost,AXRole,AXExtrasMenuBar,AXMainWindow

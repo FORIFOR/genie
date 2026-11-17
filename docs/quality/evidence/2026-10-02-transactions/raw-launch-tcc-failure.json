@@ -1,0 +1,26 @@
+{
+  "procName": "GenieMac",
+  "pid": 26594,
+  "parentProc": "node",
+  "parentPid": 26219,
+  "procPath": "/private/tmp/*/GenieTransactionPreview.app/Contents/MacOS/GenieMac",
+  "captureTime": "2026-10-02 00:46:32.9716 +0900",
+  "exception": {
+    "codes": "0x0000000000000000, 0x0000000000000000",
+    "rawCodes": [
+      0,
+      0
+    ],
+    "type": "EXC_CRASH",
+    "signal": "SIGABRT"
+  },
+  "termination": {
+    "flags": 518,
+    "code": 0,
+    "namespace": "TCC",
+    "details": [
+      "This app has crashed because it attempted to access privacy-sensitive data without a usage description. The app's Info.plist must contain an NSSpeechRecognitionUsageDescription key with a string value explaining to the user how the app uses this data."
+    ]
+  },
+  "sourceReport": "/Users/shuhei/Library/Logs/DiagnosticReports/GenieMac-2026-10-02-004635.ips"
+}

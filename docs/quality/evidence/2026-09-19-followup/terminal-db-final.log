@@ -1,0 +1,10 @@
+
+ RUN  v3.2.7 /Users/shuhei/Projects/genie/services/task
+
+ ✓ test/terminal-state.test.ts (7 tests) 650ms
+
+ Test Files  1 passed (1)
+      Tests  7 passed (7)
+   Start at  18:49:17
+   Duration  1.23s (transform 150ms, setup 0ms, collect 406ms, tests 650ms, environment 0ms, prepare 34ms)
+

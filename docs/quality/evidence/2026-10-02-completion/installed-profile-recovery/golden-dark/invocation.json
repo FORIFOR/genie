@@ -1,0 +1,19 @@
+{
+  "label": "golden-dark",
+  "command": [
+    "/Applications/Genie.app/Contents/MacOS/Genie",
+    "--selftest",
+    "golden",
+    "/Users/shuhei/Projects/genie/docs/quality/evidence/2026-10-02-completion/installed-macos27-candidate/dark/images",
+    "/private/tmp/genie-transactions-20261002/installed-profile-recovery/dark-images"
+  ],
+  "startedAt": "2026-10-01T22:26:07.652804+00:00",
+  "finishedAt": "2026-10-01T22:26:08.131342+00:00",
+  "exitCode": 0,
+  "receipt": {
+    "exitCode": 0,
+    "schema": 1,
+    "normalExit": true
+  },
+  "binarySHA256": "a01378c92ef466086c4e6e0c1f8263e66a9da61ec24d026c86ef6cda0f678801"
+}

@@ -1,0 +1,40 @@
+✔ preview credentials cannot be sent to a remote or credential-bearing URL (0.533458ms)
+✔ desktop identity maps to the same isolated development account (0.251375ms)
+✔ scoped Mac launch gets the same absolute Codex executable that was verified (5.405083ms)
+✔ CLI rejects unsupported actions, external model URLs, ambiguous ports and unsafe names (0.475041ms)
+✔ transaction simulation is explicit, requires computer use and only exports the local fixture executable (3.192458ms)
+✔ native app launches through LaunchServices with instance-only scope and a waited lifecycle (0.22325ms)
+✔ native ownership distinguishes simultaneous app instances and rejects PID reuse without matching argv (0.129834ms)
+✔ native process inspection takes one snapshot and never treats inspection errors as exit (0.310875ms)
+✔ native stop verifies absence, escalates only after grace, and fails if exit stays unconfirmed (0.391375ms)
+✔ native stop rejects PID/start/argv changes before TERM and immediately before KILL (0.248667ms)
+✔ native stop does not report success after inspection or signal failures (0.139917ms)
+✔ native stop waits for a real tiny child exit and escalates a TERM-resistant child only (304.99325ms)
+✔ explicit local Docker selection pins child operations without inheriting or changing the user context (0.297625ms)
+✔ Docker endpoint changes are revalidated on every start and remote/relative/missing contexts fail closed (0.28025ms)
+✔ explicit Docker context persists for restart, migrates legacy state optionally and prevents changing its database host (30.492417ms)
+✔ model choice persists explicit intent, supports Ollama latest aliases and never picks a paid fallback (0.30475ms)
+✔ external CLI selection needs explicit opt-in, persists that choice, and never inherits the old local model (6.434792ms)
+✔ external model process and app agree on provider and external image egress without importing credentials (7.073625ms)
+✔ Codex default model is named consistently in readiness and app disclosure when model is omitted (6.727333ms)
+✔ CLI readiness uses its own authentication boundary without a generated prompt or credential copy (0.284208ms)
+✔ Ollama cloud models and renamed remote aliases cannot be disclosed as local inference (0.471125ms)
+✔ service environment does not inherit paid credentials, remote infrastructure or shell hooks (7.186125ms)
+✔ first boot persists private keys, ports and identity; later starts keep them and reject silent port changes (9.986458ms)
+✔ saved configuration is validated before forming compose operations (6.822083ms)
+✔ an unrelated nonempty state directory is never taken over (0.88075ms)
+✔ managed service stops when its supervisor disappears (106.250792ms)
+✔ managed Compose isolates named volumes and all published ports; migration mounts are read-only (6.979792ms)
+✔ port conflicts fail without modifying the listener (0.538458ms)
+✔ owned processes fail on exit and stop children; unrelated processes stay alive (43.100166ms)
+✔ command timeout, startup abort and bounded readiness cannot report success (68.099875ms)
+✔ entrypoint help works from a symlink with spaces and importing it starts nothing (118.034916ms)
+✔ network errors and redirects do not expose returned response bodies (12.191333ms)
+ℹ tests 32
+ℹ suites 0
+ℹ pass 32
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 825.498292

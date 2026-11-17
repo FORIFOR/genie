@@ -1,0 +1,6 @@
+Evidence: /tmp/genie-background-native.jhyNWL
+TEST capture
+TEST click
+TEST capture for text
+TEST type Element(path: [3], role: "AXTextArea", subrole: "", identifier: "fixture-editor", title: "", valueHash: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", x: 30.0, y: 222.0, width: 520.0, height: 170.0) Optional(Verify.BackgroundAX.Element(path: [3], role: "AXTextArea", subrole: "", identifier: "fixture-editor", title: "", valueHash: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", x: 30.0, y: 222.0, width: 520.0, height: 170.0))
+FAIL Failure(code: "input_leaked")

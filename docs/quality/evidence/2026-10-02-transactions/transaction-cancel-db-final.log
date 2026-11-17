@@ -1,0 +1,16 @@
+
+ RUN  v3.2.7 /Users/shuhei/Projects/genie
+
+ ✓ services/task/test/transaction-approval.db.test.ts (6 tests) 464ms
+ ✓ services/task/test/transaction-authorization-ledger.db.test.ts (8 tests) 970ms
+   ✓ bounded authorization atomic ledger > serializes quota in independent processes and reserves at most the total budget and count  379ms
+ ✓ services/api-gateway/test/transaction-authorizations.integration.test.ts (4 tests) 409ms
+ ✓ services/task/test/terminal-state.test.ts (13 tests | 1 skipped) 1176ms
+   ✓ terminal transitions with real PostgreSQL > concurrent stop and in-flight transaction failure cannot overwrite an accepted stop  408ms
+   ✓ terminal transitions with real PostgreSQL > concurrent cancellation and completion converge without opposite terminal events  334ms
+
+ Test Files  4 passed (4)
+      Tests  30 passed | 1 skipped (31)
+   Start at  02:10:27
+   Duration  2.11s (transform 749ms, setup 0ms, collect 2.82s, tests 3.02s, environment 0ms, prepare 189ms)
+

@@ -1,0 +1,33 @@
+✔ saved local inference quality is retained, not reduced (0.945042ms)
+✔ cloud, changed voice/direction or non-loopback configuration is unsupported (0.170458ms)
+✔ Noa must be positively stopped with no owned OBS (0.095042ms)
+✔ initial residency must be positively empty, not an unavailable or malformed API (0.082583ms)
+✔ pressure 2/4 and unknown probe immediately refuse; normal requires 25 percent headroom (0.076292ms)
+✔ approved local generation forwards same payload, forces redirect error, strips report content (0.293375ms)
+✔ cloud, posting, control, model management and redirects receive no request (0.257041ms)
+✔ different model/context/keep-alive cannot silently change the compared load (0.25225ms)
+✔ warning preflight or owned cancellation sends no generation request (0.191916ms)
+✔ audio query report records no text, speaker, auth or body (0.15925ms)
+✔ bounded request count refuses further work (0.936417ms)
+✔ a real local GGUF descriptor is required; cloud/remote descriptors fail closed (0.189875ms)
+✔ ownership requires PID, start time and full command together (0.065542ms)
+✔ a runner remains enumerable in its owned group after the parent is absent (0.879875ms)
+✔ private port owner is read, never inferred from a successful HTTP endpoint (0.170542ms)
+✔ cleanup discovers and stops a previously unobserved orphan after parent loss (0.129209ms)
+✔ cleanup re-enumerates a late runner created just before parent exit (0.065834ms)
+✔ unknown/reused group or surviving runner cannot become a cleanup PASS (0.089792ms)
+✔ failed exec without a PID is proven unsent without any process signal (0.06925ms)
+✔ fast child exit needs both absent PID and empty owned group before cleanup is confirmed (0.081458ms)
+✔ unobserved exit or failed probe stays unconfirmed rather than inventing startup cleanup (0.050917ms)
+✔ startup diagnostics preserve reason category without printing raw environment or paths (0.115167ms)
+✔ Ollama 0.35 discovery children are exact loopback/offline commands without a model (0.054958ms)
+✔ model children bind exact installed runner/model, reject alternate paths and overridden listener (0.141375ms)
+✔ discovery orphan remains owned after parent exit, foreign or old group member remains rejected (0.061833ms)
+ℹ tests 25
+ℹ suites 0
+ℹ pass 25
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 71.18375

@@ -375,18 +375,21 @@ describe('where the tokens live', () => {
   });
 });
 
-describe('Microsoft token client binding', () => {
-  it('records the client used for both code exchange and refresh', async () => {
-    const c = config({ provider: 'microsoft', scopes: ['Mail.Read'] });
-    const { pending } = await beginAuthorization(c, () => NOW);
-    const fetchImpl = vi.fn(async () =>
-      jsonResponse({ access_token: 'access', scope: 'Mail.Read' }),
-    );
-    expect((await exchangeCode(pending, 'code', fetchImpl, () => NOW)).clientId).toBe(c.clientId);
-    const renewed = await refresh(c, 'existing-refresh', fetchImpl, () => NOW);
-    expect(renewed.clientId).toBe(c.clientId);
-    expect(renewed.refreshToken).toBe('existing-refresh');
-  });
+describe('token client binding', () => {
+  it.each(['google', 'microsoft'])(
+    'records the actual %s client used for both code exchange and refresh',
+    async (provider) => {
+      const c = config({ provider, scopes: ['Mail.Read'] });
+      const { pending } = await beginAuthorization(c, () => NOW);
+      const fetchImpl = vi.fn(async () =>
+        jsonResponse({ access_token: 'access', scope: 'Mail.Read' }),
+      );
+      expect((await exchangeCode(pending, 'code', fetchImpl, () => NOW)).clientId).toBe(c.clientId);
+      const renewed = await refresh(c, 'existing-refresh', fetchImpl, () => NOW);
+      expect(renewed.clientId).toBe(c.clientId);
+      expect(renewed.refreshToken).toBe('existing-refresh');
+    },
+  );
   it('does not refresh Microsoft without explicit scopes', async () => {
     const fetchImpl = vi.fn();
     await expect(

@@ -1,0 +1,51 @@
+{
+  "recordedAt": "2026-10-01T19:37:13.002387+00:00",
+  "method": "Independent read-only peer source and saved execution evidence review; no build, fixture, Safari or app operation by reviewer",
+  "sourceHashes": {
+    "tools/computer-use/BackgroundWebLink.swift": "c9c70db032365d6a90600ffeb98d8724489bfce2939b5c0733db92e76df100ec",
+    "tools/computer-use/BackgroundAX.swift": "161ccd31f6303c74b6f5ce3c21cb8e5ca124619864f32db89dfc0f82d30110ec",
+    "tools/computer-use/BackgroundWebLinkTests.swift": "698398c5a1debd3142e3eb229f841bbe1c81186e5cfb77852a14230ff481f7bd",
+    "tools/computer-use/BackgroundWebTests.swift": "55b0bb6ee926722d424d43d79a0ca9aa393aa0e9e3c9e8c2662f870144c81ebd",
+    "scripts/test-background-web.sh": "d02dd3e4aebe0604bffdc9ad430c98922edba2fbd6fcab0021166cc7ddcc9308",
+    "scripts/build-computer-helper.sh": "4517a542649087eb068f1e8b989c87a8be33e66f5e38ef109a8a90d1f44b5a22",
+    "apps/genie-macos/Sources/GenieMac/App/SelfTest.swift": "578a56beb54e54cc6fdbd65856683c5ef62f0691dce0ae34248cc4f76e9ecc3a",
+    "apps/genie-macos/Sources/GenieMac/App/UIGeometry.swift": "b3bfc20eadf3aace76f76d1cf95f01132f5b162ead06ac07466416323ffa24e2",
+    "apps/genie-macos/Tests/GenieMacTests/UIGeometryRecordingTests.swift": "e121f84006d8dfa96b4292475c1eda3b2dd23be3855ad184960f02bdec03d2cf"
+  },
+  "webLink": {
+    "sourceVerdict": "No additional P1 found in reviewed narrow route. Safari only in production; test fixture bundle enabled solely under GENIE_BACKGROUND_TEST. Same-origin expected HTTP(S) href without user/password, distinct source/destination URL, one top-level document, iframe ancestor rejected. Snapshot descriptor/sourceURL and fresh path/object identity rechecked immediately before one AXPress.",
+    "readback": "Selected-window document destination URL hash required; bounded readonly polling, no secondary mouse delivery or press after uncertainty. Authority/frontmost/clipboard guard retained while waiting.",
+    "savedRound1": {
+      "status": "PASS",
+      "resultPath": "/private/tmp/genie-background-web.rhGzqI/result.json",
+      "resultSHA256": "75110d7e721dd125d6ccba6fe01a79809bc3991a24ee971b00798a56a07e7b0e",
+      "logPath": "/private/tmp/genie-transactions-20261002/computer-web-native-round1.log",
+      "logSHA256": "fe2cb920c2f042b502f2e5c9f164e1d3cd0dbbcf50dd6a06e72f484e3af49c77",
+      "requests": {
+        "/first": 1,
+        "/second": 1
+      },
+      "navigationsBefore": 1,
+      "navigationsAfter": 2,
+      "negativeLinksRefused": 2,
+      "replayRefused": true,
+      "foregroundUnchanged": true,
+      "cursorUnchanged": true,
+      "clipboardUnchanged": true,
+      "scope": "Owned WebKit fixture; test-created grant, not production Safari consent"
+    },
+    "limitations": [
+      "URL-confirmed navigation is not page-load completion or business success.",
+      "Same origin is checked on the pre-dispatch href; this is not a firewall against server redirects, page JavaScript side effects or external network egress.",
+      "Initial owned WKWebView fixture uses a test-created grant, not real Safari consent or arbitrary site compatibility.",
+      "The test source now adds unknown-navigation refusal/replay coverage, but this initial round1 evidence predates that addition. Await new execution evidence.",
+      "Live Safari consent, link/document mutation race and iframe refusal not established by this initial fixture report."
+    ]
+  },
+  "geometryRecording": {
+    "sourceVerdict": "Limited false-success defect corrected: all six exact unique states/nonempty snapshots/no collection problems required before any writes; all encoding happens first; write failure throws and selftest reports FAIL. Existing AX gate, baselines and tolerance unchanged.",
+    "regressionSource": "Five meaningful tests cover0/5states without touching existing reference, empty/problems, wrong/duplicate names, write failure,6-state roundtrip; execution pending at this checkpoint.",
+    "remainingCoverage": "Snapshot can still contain only window keys if AX element enumeration is empty. Profile adoption must separately verify actual control/text coverage; nonempty alone is not equivalent element-level acceptance.",
+    "writeLimitation": "Each file is atomic but whole six-file set is not transactional on mid-write I/O failure; failure is reported and should not be described as all-or-nothing persistence."
+  }
+}

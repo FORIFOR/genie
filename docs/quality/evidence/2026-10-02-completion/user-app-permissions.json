@@ -1,0 +1,32 @@
+{
+  "status": "COMPLETED",
+  "exitCode": 0,
+  "recordedAt": "2026-10-01T20:42:22.988920+00:00",
+  "command": [
+    "open",
+    "-n",
+    "-W",
+    "--env",
+    "ASTRA_DATA_ROOT=/tmp/genie-transactions-20261002/user-install/permissions/data",
+    "--env",
+    "ASTRA_SELFTEST_EXIT_RECEIPT=/tmp/genie-transactions-20261002/user-install/permissions/exit.json",
+    "--stdout",
+    "/private/tmp/genie-transactions-20261002/user-install/permissions/stdout.log",
+    "--stderr",
+    "/private/tmp/genie-transactions-20261002/user-install/permissions/stderr.log",
+    "/Applications/Genie.app",
+    "--args",
+    "-astra.transcription.cloudGoogleSTT",
+    "NO",
+    "--selftest",
+    "permissions"
+  ],
+  "scope": "Actual installed com.astra.mac app via LaunchServices; read-only permission preflight only; no permission request or grant",
+  "stdout.log": "SELFTEST_OK permissions: mic=許可済み screen=未確認 ax=許可済み calendar=未確認 speech=3\n",
+  "stderr.log": "",
+  "appExitReceipt": {
+    "normalExit": true,
+    "exitCode": 0,
+    "schema": 1
+  }
+}

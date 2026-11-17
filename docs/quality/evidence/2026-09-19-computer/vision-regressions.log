@@ -1,0 +1,32 @@
+✔ actual before/after image references go to the action verifier; goal gets a NEW frame (2.153083ms)
+✔ a model saying done is not sufficient (0.3705ms)
+✔ pointer motion or a changed image hash alone is never completion (0.444958ms)
+✔ target changes stop before the next model call (0.140167ms)
+✔ aborted input never reaches the device or model (0.177125ms)
+✔ cancellation during a nonresponsive model prevents later action (1.897292ms)
+✔ an empty approval object is not approval and does not capture (0.097542ms)
+✔ expired and wrong-operation approvals are refused (0.110459ms)
+✔ external screenshot egress needs separate opt-in BEFORE capture (0.09425ms)
+✔ unavailable selected model does not silently fall back (0.110166ms)
+✔ action limit is enforced (0.214ms)
+✔ ambiguous input failure is not automatically retried (0.130542ms)
+✔ locally cancelled action stops, not replans (0.123875ms)
+✔ duplicate request is refused by durable claim (0.160791ms)
+✔ uncertain visual verification cannot return success (0.111666ms)
+✔ image pixels map correctly with Retina scale and negative monitor origin (0.052709ms)
+✔ old screenshot and NaN geometry are rejected (0.070042ms)
+✔ stale frame-id, out-of-bounds and low-confidence grounding are rejected (0.075208ms)
+✔ shell / Enter / arbitrary modifiers are not action capabilities (0.065875ms)
+✔ control text is rejected; Japanese and non-BMP emoji are preserved (0.126041ms)
+✔ unknown model fields are not forwarded to helper (0.03ms)
+✔ goal verdict must reference latest frame and concrete evidence (0.054292ms)
+✔ audit does not retain screenshot paths, typed text, or model evidence (0.791875ms)
+✔ prompts separate goal from untrusted screen instructions and require real pixels (0.225625ms)
+ℹ tests 24
+ℹ suites 0
+ℹ pass 24
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 63.255375

@@ -1,0 +1,17 @@
+{"name": "contracts", "command": ["node", "--test", "scripts/tests/computer-use.test.mjs", "scripts/tests/managed-local-preview.test.mjs"], "exit_code": 0, "seconds": 0.49}
+{"name": "vision-regressions", "command": ["node", "--test", "workers/agent-host/test/computer-vision.node.mjs"], "exit_code": 0, "seconds": 0.1}
+{"name": "preflight", "command": ["node", "scripts/computer-use.mjs", "check", "--state-dir", "/tmp/genie-computer-preview-20260919"], "exit_code": 1, "seconds": 0.1}
+{"name": "native-start", "command": ["node", "scripts/computer-use.mjs", "start", "--state-dir", "/tmp/genie-computer-preview-20260919", "--run-file", "/tmp/genie-computer-test-run.json", "--goal", "Click Show details in the selected Genie Computer Use Test app.", "--criteria", "The app displays Details open \u2014 LOCAL TEST PASSED."], "exit_code": 0, "seconds": 0.16}
+{"name": "preflight-fixed", "command": ["node", "scripts/computer-use.mjs", "check", "--state-dir", "/tmp/genie-computer-preview-20260919"], "exit_code": 0, "seconds": 0.1}
+{"name": "native-approve", "command": ["node", "scripts/computer-use.mjs", "approve", "--state-dir", "/tmp/genie-computer-preview-20260919", "--run-file", "/tmp/genie-computer-test-run.json", "--approval-id", "01a0b957-857d-7000-a012-26c97c0300b3"], "exit_code": 0, "seconds": 0.11}
+{"name": "typecheck", "command": ["pnpm", "typecheck"], "exit_code": 0, "seconds": 6.02}
+{"name": "cli-format", "command": ["pnpm", "exec", "prettier", "--write", "scripts/computer-use.mjs", "scripts/tests/computer-use.test.mjs"], "exit_code": 0, "seconds": 0.78}
+{"name": "helper-status", "command": [".build/computer/genie-computer", "--status"], "exit_code": 0, "seconds": 0.04}
+{"name": "task-tests", "command": ["pnpm", "--filter", "@genie/service-task", "test"], "exit_code": 0, "seconds": 2.42}
+{"name": "native-status-first", "command": ["node", "scripts/computer-use.mjs", "status", "--state-dir", "/tmp/genie-computer-preview-20260919", "--run-file", "/tmp/genie-computer-test-run.json"], "exit_code": 0, "seconds": 0.13}
+{"name": "native-status-second", "command": ["node", "scripts/computer-use.mjs", "status", "--state-dir", "/tmp/genie-computer-preview-20260919", "--run-file", "/tmp/genie-computer-test-run2.json"], "exit_code": 0, "seconds": 0.11}
+{"name": "final-contracts", "command": ["node", "--test", "scripts/tests/computer-use.test.mjs", "scripts/tests/managed-local-preview.test.mjs"], "exit_code": 0, "seconds": 0.47}
+{"name": "stop-preview", "command": ["node", "scripts/start-local-preview.mjs", "stop", "--state-dir", "/tmp/genie-computer-preview-20260919"], "exit_code": 0, "seconds": 0.08}
+{"name": "launcher", "command": ["node", "scripts/start-local-preview.mjs", "--state-dir", "/tmp/genie-computer-preview-20260919", "--port", "43151", "--model", "qwen3.5:9b", "--computer-use", "--no-open"], "exit_code": 0, "seconds": 389.01}
+{"name": "final-typecheck", "command": ["pnpm", "typecheck"], "exit_code": 0, "seconds": 6.5}
+{"name": "vision-integration", "command": ["node", "--test", "workers/agent-host/test/computer-vision-integration.node.mjs"], "exit_code": 0, "seconds": 0.2}

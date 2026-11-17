@@ -1,0 +1,45 @@
+{
+  "recordedAt": "2026-10-01T17:02:06.063054+00:00",
+  "classification": "implementation verification; no independent release verdict",
+  "baseRevision": "ee857a5b13482cbd2d986a1f9b466c8e49a149c3",
+  "worktree": "uncommitted candidate",
+  "sourceSha256": {
+    "scripts/local-preview/config.mjs": "6eb2ab8d4a445c14838647cf0b8b821f263edfd7be8e0d02d2477a3c44243107",
+    "scripts/start-local-preview.mjs": "d60e296117f5114922d0e5679d4b51be4645d564c5eb5d684a4dc2b74b8944fa",
+    "scripts/tests/managed-local-preview.test.mjs": "5f54eb4e4300fb6b78fba1c5b8dff3c5ec29c75a9a896541a0d3c704d0c2bfbf",
+    "workers/agent-host/src/codex.ts": "3c6a9f92928f3adf8177475ee23926b505b4ac7e0c96a57a794e522d8d0601f9",
+    "docs/MANAGED_PREVIEW.md": "de682dc98334c379557379c7c280679b76bfc00ad07ce1cc7f5f8aba06c4782b",
+    "docs/MANAGED_PREVIEW.ja.md": "fea280ce21f2e786106be1253df3ca83db7ffce2659e3e342a9a9b38539e7554"
+  },
+  "providerSmoke": {
+    "provider": "Codex / OpenAI",
+    "model": "gpt-6-sol",
+    "credentials": "existing ChatGPT login; no credential value recorded",
+    "prompt": "Return only this JSON object: {\"ok\":true}. Do not access any files, tools, apps, websites or other context.",
+    "response": {
+      "ok": true
+    },
+    "exitCode": 0,
+    "imagesSent": 0,
+    "userDocumentsSent": 0,
+    "route": "existing CodexCli adapter direct smoke; not main app"
+  },
+  "launcherTests": {
+    "passed": 24,
+    "failed": 0,
+    "skipped": 0,
+    "log": "external-model-launcher-tests.log"
+  },
+  "checks": {
+    "prettier": true,
+    "gitDiffCheck": true
+  },
+  "previewRestarted": true,
+  "mainAppExternalFlowVerified": true,
+  "mainAppParentFollowup": {
+    "reported": true,
+    "scope": "Root observed external Home disclosure and actual three-item checklist task; verifier subsequently GET-read task/artifact/registered host and checked selected live host environment. No per-generation upstream model receipt exposed.",
+    "evidence": "MAIN_APP_BOUNDED_REUSE.md"
+  },
+  "previewRestartedBy": "root"
+}
