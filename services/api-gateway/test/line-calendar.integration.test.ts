@@ -242,8 +242,7 @@ describe.skipIf(!url)('calendar in LINE: read, move with approval, undo (spec v1
       }),
       'application/vnd.genie.agenda+json',
     );
-    await harness.channels!.service.pump(tenantId);
-    await harness.channels!.service.pump(tenantId);
+    await waitFor(() => texts(before).length > 0, 'agenda reply');
     expect(texts(before).join('\n')).toContain('明日の予定は 2 件です。');
     // 予定はカードで届く（時刻と題名が並ぶ）
     const card = sent
@@ -277,8 +276,7 @@ describe.skipIf(!url)('calendar in LINE: read, move with approval, undo (spec v1
       move.id,
       '予定「定例ミーティング」を 14:00〜15:00 に変更しました。元に戻すときは「元に戻して」と送ってください。',
     );
-    await harness.channels!.service.pump(tenantId);
-    await harness.channels!.service.pump(tenantId);
+    await waitFor(() => texts(before).length > 0, 'move result');
     expect(texts(before).join('\n')).toContain('14:00〜15:00 に変更しました');
 
     // 4. やっぱり元に戻して → 前後を入れ替えた、承認が要る仕事

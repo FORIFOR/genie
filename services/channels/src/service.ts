@@ -423,6 +423,7 @@ const EVENT_KIND: Readonly<Record<string, OutboxKind>> = {
 
 export class ChannelService {
   readonly #now: () => number;
+  readonly #inlineReplies = new Set<string>();
   #draining: Promise<number> | null = null;
 
   constructor(private readonly deps: ChannelServiceDeps) {
@@ -1002,6 +1003,7 @@ export class ChannelService {
       // 会話と、調べて答える質問。受付は送らず、見回りの起点だけ残す（送った扱い）。答えは終わったら本文で返す
       // （本人の指示 2026-10-26: 質問に「受け付けました」を先に送らない。クレジットの質問で先に届いていた）。
       // 「競合を調べて」のような依頼は、下で「承知しました」と受ける
+      if (link.provider === 'line' && replyToken) this.#inlineReplies.add(outcome.taskId);
       const id = await this.deps.store.enqueue({
         tenantId: link.tenantId,
         linkId: link.id,
@@ -1014,7 +1016,20 @@ export class ChannelService {
         answerInline: true,
       });
       if (id) await this.deps.store.markSent(link.tenantId, id, null);
-      if (outcome.intent === 'looking_up') this.#tellIfSlow(link, target, outcome.taskId);
+      if (link.provider === 'line' && replyToken) {
+        try {
+          await this.#replyTaskResult(link, target, outcome.taskId, replyToken);
+        } catch (error) {
+          this.#log('channel.inline_reply_failed', {
+            task_id: outcome.taskId,
+            error: errorCode(error),
+          });
+        } finally {
+          this.#inlineReplies.delete(outcome.taskId);
+        }
+      }
+      if (outcome.intent === 'looking_up' && link.provider !== 'line')
+        this.#tellIfSlow(link, target, outcome.taskId);
     } else if (outcome.taskId) {
       const task = await this.deps.tasks.get(link.tenantId, outcome.taskId).catch(() => null);
       // 受付は sequence 0。以後のイベントはこの行を起点に見回る
@@ -1039,6 +1054,50 @@ export class ChannelService {
       );
     }
     return 'handled';
+  }
+
+  /** A LINE reply is free and valid only briefly. Prefer it for quick chat results. */
+  async #replyTaskResult(
+    link: ChannelLink,
+    target: { destination: string; threadKey: string },
+    taskId: string,
+    replyToken: string,
+  ): Promise<void> {
+    const until = Date.now() + 45_000;
+    while (Date.now() < until) {
+      const events = await this.deps.tasks.eventsAfter(link.tenantId, taskId, 0);
+      const event = events.find((item) =>
+        ['task.completed', 'task.failed', 'task.cancelled'].includes(item.type),
+      );
+      if (event) {
+        const kind = EVENT_KIND[event.type];
+        if (kind) {
+          const watch: WatchedTask = {
+            taskId,
+            linkId: link.id,
+            provider: link.provider,
+            destination: target.destination,
+            threadKey: target.threadKey,
+            postingPolicy: link.postingPolicy,
+            lastSequence: 0,
+            answerInline: true,
+          };
+          const body = await this.#milestone(link.tenantId, watch, kind, event);
+          await this.#queueAndSend(link, target, taskId, event.sequence, kind, body, replyToken);
+          return;
+        }
+      }
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+    await this.#queueAndSend(
+      link,
+      target,
+      null,
+      null,
+      'notice',
+      render.notice('まだ進めています。結果は Genie の作業一覧でも確認できます。'),
+      replyToken,
+    );
   }
 
   /**
@@ -1892,6 +1951,7 @@ export class ChannelService {
     const tenants = only ? [only] : await this.deps.store.tenantsWithLinks();
     for (const tenantId of tenants) {
       for (const watch of await this.deps.store.watchedTasks(tenantId)) {
+        if (this.#inlineReplies.has(watch.taskId)) continue;
         try {
           queued += await this.#queueMilestones(tenantId, watch);
         } catch (error) {

@@ -27,7 +27,10 @@ describe.skipIf(!url)('chat conversation in LINE', () => {
       url: target,
       body: JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>,
     });
-    return Response.json({});
+    // LINE の月間 push 枠が尽きても、無料の reply は送れる。
+    return target.endsWith('/message/push')
+      ? Response.json({ message: 'monthly quota exceeded' }, { status: 429 })
+      : Response.json({});
   });
   const texts = (since: number) =>
     sent
@@ -166,9 +169,9 @@ describe.skipIf(!url)('chat conversation in LINE', () => {
     expect(texts(before)).toEqual([]);
 
     await complete(chat!.id, '# こんにちは\n\nこんにちは！今日は何をしましょうか？');
-    await harness.channels!.service.pump(tenantId);
-    await harness.channels!.service.pump(tenantId);
+    await waitFor(() => texts(before).length > 0, 'greeting reply');
     expect(texts(before)).toEqual(['こんにちは！今日は何をしましょうか？']);
+    expect(sent.slice(before).find((s) => s.url.endsWith('/message/reply'))).toBeDefined();
   });
 
   it('reads the spoken sentence of an info card (news, weather) instead of 「作業一覧で開けます」', async () => {
@@ -185,8 +188,9 @@ describe.skipIf(!url)('chat conversation in LINE', () => {
       JSON.stringify({ kind: 'news', text: '主なニュースは 3 件です。', items: [] }),
       'application/vnd.genie.info+json',
     );
-    await harness.channels!.service.pump(tenantId);
+    await waitFor(() => texts(before).length > 0, 'news reply');
     expect(texts(before)).toEqual(['主なニュースは 3 件です。']);
+    expect(sent.slice(before).find((s) => s.url.endsWith('/message/reply'))).toBeDefined();
   });
 
   it('still acknowledges a request to look something up with 「承知しました」, and reports the end', async () => {
