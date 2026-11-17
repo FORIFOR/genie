@@ -188,7 +188,7 @@ export class HostStepLoop {
               outcome.error ?? { code: 'host.failed', message: '端末で実行できませんでした。' },
               // Keep reconciliation identity even when an order outcome is unknown.
               // It remains a failure; recording it must not turn it into a new submit.
-              step.toolId.startsWith('transaction.')
+              step.toolId.startsWith('transaction.') || step.toolId.startsWith('coding.orca.')
                 ? outcome.result
                 : step.toolId === 'computer.run'
                   ? segmentResult(outcome.result)

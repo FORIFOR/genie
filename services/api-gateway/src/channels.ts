@@ -33,6 +33,8 @@ import {
 } from '@genie/service-channels';
 import { secretBoxFromEnv } from '@genie/service-phone';
 import { createHmac } from 'node:crypto';
+import { isAbsolute } from 'node:path';
+import { AgentHostService } from '@genie/service-agent-host';
 import WebSocket from 'ws';
 import {
   handleTurn,
@@ -70,6 +72,30 @@ export interface ChannelsStatus {
  */
 export function lineCallBridgeKey(secretKey: string): string {
   return createHmac('sha256', secretKey).update('genie-line-call-bridge').digest('hex');
+}
+
+/** Route deliberate coding requests only; ordinary questions keep the chat path. */
+export function lineOrcaRequest(
+  text: string,
+): { agent: 'claude' | 'codex'; fallbackAgent?: 'claude' | 'codex' } | null {
+  if (
+    text.length > 8_000 ||
+    !/(?:README|コード|リポジトリ|プロジェクト|アプリ|実装|修正|テスト|セットアップ|ファイル)/i.test(
+      text,
+    )
+  )
+    return null;
+  if (
+    !/(?:してください|して[。！!]?|直して|追加して|追記して|修正して|実装して|更新して)/.test(text)
+  )
+    return null;
+  const agents = [...text.matchAll(/Claude|Codex/gi)].map((match) => match[0]!.toLowerCase());
+  if (!agents.length) return null;
+  const agent = agents[0] === 'codex' ? 'codex' : 'claude';
+  const other = agent === 'claude' ? 'codex' : 'claude';
+  const fallbackAgent =
+    agents.includes(other) && /(?:上限|利用制限|引き継|切り替)/.test(text) ? other : undefined;
+  return { agent, ...(fallbackAgent ? { fallbackAgent } : {}) };
 }
 
 export interface GatewayChannels {
@@ -375,6 +401,7 @@ export function channelsFromEnv(
     ...(deps.callEndpoint ? { endpoint: deps.callEndpoint } : {}),
   };
   const calls = new CallStore(deps.db);
+  const codingHosts = new AgentHostService({ db: deps.db });
   const service: ChannelService = new ChannelService({
     store,
     senders,
@@ -536,6 +563,46 @@ export function channelsFromEnv(
       return result.kind === 'clarification'
         ? { kind: 'clarification', answer: result.answer.text }
         : { kind: 'started', taskId: result.taskId, notice: result.notice, intent: result.intent };
+    },
+    lineCoding: async (principal, conversationId, message) => {
+      const parsed = lineOrcaRequest(message.text);
+      if (!parsed) return null;
+      const project = env['GENIE_LINE_ORCA_PROJECT']?.trim() ?? '';
+      if (!isAbsolute(project))
+        return {
+          notice:
+            'LINE からコードを変更する作業場所がまだ設定されていません。Genie の起動設定で作業場所を指定してください。',
+        };
+      const hosts = (await codingHosts.hosts(principal.tenantId, principal.userId)).filter(
+        (host) => host.state === 'online',
+      );
+      const selectedId = env['GENIE_LINE_ORCA_HOST_ID']?.trim();
+      const eligible = selectedId ? hosts.filter((host) => host.id === selectedId) : hosts;
+      if (eligible.length !== 1)
+        return {
+          notice:
+            eligible.length === 0
+              ? 'コードを変更する端末がオンラインではありません。Genie と Orca を起動してから、もう一度送ってください。'
+              : 'コードを変更できる端末が複数あります。Genie の起動設定で使用する端末を指定してください。',
+        };
+      const { task } = await deps.tasks.create({
+        tenantId: principal.tenantId,
+        userId: principal.userId,
+        request: {
+          kind: 'coding.orca.launch',
+          title: 'Orca でコードを変更する',
+          conversation_id: conversationId as never,
+          input: {
+            host_id: eligible[0]!.id,
+            path: project,
+            agent: parsed.agent,
+            ...(parsed.fallbackAgent ? { fallback_agent: parsed.fallbackAgent } : {}),
+            prompt: message.text,
+          },
+        },
+        idempotencyKey: `line-orca:${createHmac('sha256', 'genie-line-orca-idempotency').update(message.eventId).digest('hex')}`,
+      });
+      return { taskId: task.id, title: task.title ?? null };
     },
     tasks: {
       get: (tenantId, taskId) => deps.tasks.get(tenantId, taskId),

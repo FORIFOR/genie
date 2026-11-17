@@ -19,6 +19,20 @@ node scripts/start-local-preview.mjs --app apps/genie-macos/build/Genie.app \
 
 この保存先とモデル表示を持つ専用アプリをLaunchServices経由で開きます。通常起動中のGenieは終了しません。この仕事にはプレビュー側のHomeを使ってください。次回は同じコマンドを使うか、同じrevisionのアプリをApplicationsへコピーして **`Start Genie.command`** を開くと、保存済みモデルを再利用できます。標準の保存先で準備が完了した後は、Genie.appを直接開いても接続先・モデル・作業場所を引き継ぎます。アプリだけでは停止中のサービスを起動しないため、接続できないときは起動ツールを再開してください。未設定時の既定はlocalのままで、初回起動だけでは外部モデルを選びません。
 
+## Orcaでコーディングエージェントを使う場合
+
+Orcaを導入し、設定でセッション検索を有効にしてから、許可するプロジェクトの親フォルダを明示して起動します。`--orca-root`はそのフォルダだけをAgent Hostへ渡します。通常の文章依頼には不要です。
+
+```sh
+node scripts/start-local-preview.mjs --app apps/genie-macos/build/Genie.app \
+  --model-provider codex --allow-cloud --model gpt-6-sol \
+  --orca-root "$HOME/Projects"
+```
+
+Orcaの操作はAPIタスクから利用できます。さらにLINEを連携済みなら、Genieのリポジトリが`--orca-root`の内側にある場合、本人の1:1トークで「GenieのREADMEにセットアップ手順を追記してください。Claudeの利用上限に達した場合はCodexへ引き継いで」と送るとOrcaの作業依頼になります。実行前にGenieの承認カードで対象と代替エージェントを確認してください。別のプロジェクトを使う場合は、`--channels-env`に`GENIE_LINE_ORCA_PROJECT=/absolute/path/to/project`を指定します。作業場所は`--orca-root`内に限られます。Genie画面からのプロジェクト選択・起動はまだありません。新しいフォルダでCodexを初めて開くと、Codex側に「Trust this folder?」が出ます。内容を確かめてOrcaのterminalで判断してください。詳しい入力形式は[Orca連携](integrations/orca.md)を参照してください。
+起動タスクに `fallback_agent` を指定すると、利用制限を起動前に確認し、起動後も最初の応答が終わるまで監視します。途中で上限に達した場合は、元の端末を停止できたと確認してから、明示して承認した別のエージェントへ引き継ぎます。監視・引き継ぎの結果は `GET /v1/tasks/:taskId/orca-supervision` で確認できます。LINEを連携済みの本人には、既存のタスク通知で起動結果・引き継ぎ・失敗が届きます。
+Orcaを使う起動では毎回`--orca-root`を指定します。指定しない通常起動では作業フォルダへのアクセスを追加しません。
+
 ## ローカル処理を選ぶ場合
 
 Ollamaへ導入済みのモデルを、明示的に選びます。
@@ -97,15 +111,15 @@ node scripts/start-local-preview.mjs --app apps/genie-macos/build/Genie.app \
 
 ## 止まったとき
 
-| 表示・状況                 | 対応                                                       |
-| -------------------------- | ---------------------------------------------------------- |
-| Nodeが見つからない         | [Node](https://nodejs.org/)の22以降を導入して再実行        |
-| Dockerが起動しない         | Docker Desktopを開き、初回設定・エラー・空き容量を確認     |
-| Codexへ接続できない        | 既存Codex CLIのサインインと選択モデルを確認。自動でlocalへ切り替えません |
-| ローカルモデルが見つからない | `ollama list`で名前を確認し、`--model-provider local --model`で選択 |
-| 保存先は起動中             | `status`で確認。停止する場合は同じ保存先を指定して`stop`   |
-| ポートが使用中             | 既存の環境を確認。別の保存先を作る場合は別の`--port`を指定 |
-| 工程名とログ名が表示された | 保存先の`logs`にある該当ファイルを確認して再実行           |
+| 表示・状況                   | 対応                                                                     |
+| ---------------------------- | ------------------------------------------------------------------------ |
+| Nodeが見つからない           | [Node](https://nodejs.org/)の22以降を導入して再実行                      |
+| Dockerが起動しない           | Docker Desktopを開き、初回設定・エラー・空き容量を確認                   |
+| Codexへ接続できない          | 既存Codex CLIのサインインと選択モデルを確認。自動でlocalへ切り替えません |
+| ローカルモデルが見つからない | `ollama list`で名前を確認し、`--model-provider local --model`で選択      |
+| 保存先は起動中               | `status`で確認。停止する場合は同じ保存先を指定して`stop`                 |
+| ポートが使用中               | 既存の環境を確認。別の保存先を作る場合は別の`--port`を指定               |
+| 工程名とログ名が表示された   | 保存先の`logs`にある該当ファイルを確認して再実行                         |
 
 設定ファイルにはこのプレビューの認証情報が含まれ、ログにも依頼内容が含まれる場合があります。公開Issueにはファイル全体を貼らず、工程名・エラーの要約・再現手順を伝えてください。`stop`はデータを削除しません。保存先の削除やDockerボリュームの削除は復旧操作には使わないでください。
 

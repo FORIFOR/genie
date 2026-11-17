@@ -1,4 +1,4 @@
-import { canonicalSha256 } from '@genie/contracts';
+import { canonicalSha256, isOrcaMutation } from '@genie/contracts';
 import { isTransactionAuthorizationApprovalActive, withTenant, type DbHandle } from '@genie/db';
 import type { ApprovalProof } from '@genie/service-agent-host';
 
@@ -63,6 +63,19 @@ export async function approvalProof(
     )
       return null;
   }
+  if (isOrcaMutation(where.toolId)) {
+    const stored =
+      row.details && typeof row.details === 'object'
+        ? (row.details as Record<string, unknown>)['inputsHash']
+        : undefined;
+    if (
+      typeof stored !== 'string' ||
+      stored !== (await canonicalSha256(where.args)) ||
+      row.expires_at.getTime() <= Date.now()
+    )
+      return null;
+    inputsHash = stored;
+  }
 
   return {
     approvalId: row.id,
@@ -94,4 +107,8 @@ const OPERATION_FOR: Readonly<Record<string, string>> = {
   'computer.key': 'computer.key',
   'computer.run': 'computer.run',
   'transaction.submit': 'transaction.submit',
+  'coding.orca.create': 'coding.orca.create',
+  'coding.orca.register': 'coding.orca.register',
+  'coding.orca.launch': 'coding.orca.launch',
+  'coding.orca.resume': 'coding.orca.resume',
 };

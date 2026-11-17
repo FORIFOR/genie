@@ -159,6 +159,12 @@ export interface ChannelServiceDeps {
     conversationId: string,
     text: string,
   ) => Promise<TurnOutcome>;
+  /** Linked owner's explicit LINE coding request, before the general chat turn. */
+  readonly lineCoding?: (
+    principal: { tenantId: string; userId: string },
+    conversationId: string,
+    message: { text: string; eventId: string },
+  ) => Promise<{ taskId: string; title: string | null } | { notice: string } | null>;
   readonly tasks: {
     get(tenantId: string, taskId: string): Promise<ChannelTaskView>;
     eventsAfter(tenantId: string, taskId: string, after: number): Promise<readonly ChannelEvent[]>;
@@ -807,6 +813,34 @@ export class ChannelService {
       // ここから先で落ちたら、やり直さずに本人へ伝える（仕事が二つにならないように）
       if (queued) await this.deps.store.markInboundTurning(queued.provider, queued.eventId);
       const principal = { tenantId: link.tenantId, userId: link.userId };
+      if (message.provider === 'line' && this.deps.lineCoding && !message.mention) {
+        const coding = await this.deps.lineCoding(principal, conversationId, {
+          text: message.text,
+          eventId: message.eventId,
+        });
+        if (coding) {
+          if ('taskId' in coding)
+            await this.#queueAndSend(
+              link,
+              target,
+              coding.taskId,
+              0,
+              'accepted',
+              render.notice(
+                'Orca での作業を受け付けました。実行前に Genie の承認カードで内容を確認してください。進捗はこのトークへお知らせします。',
+              ),
+              message.replyToken,
+            );
+          else
+            await this.#reply(
+              message.provider,
+              target,
+              render.notice(coding.notice),
+              message.replyToken,
+            );
+          return 'handled';
+        }
+      }
       if (this.deps.call && !message.mention && CALL.test(message.text)) {
         const reply = await this.deps.call.issue(link, conversationId);
         await this.#queueAndSend(link, target, null, null, 'notice', reply, message.replyToken);
@@ -1679,6 +1713,61 @@ export class ChannelService {
     return true;
   }
 
+  /** Follow a locally created task in the owner's linked LINE DM, without posting a second acceptance. */
+  async watchUserTask(tenantId: string, userId: string, taskId: string): Promise<boolean> {
+    const link = (await this.deps.store.listLinks(tenantId, userId)).find(
+      (item) => item.provider === 'line',
+    );
+    if (!link) return false;
+    const id = await this.deps.store.enqueue({
+      tenantId,
+      linkId: link.id,
+      taskId,
+      eventSequence: 0,
+      kind: 'accepted',
+      destination: link.subject,
+      threadKey: link.subject,
+      body: render.accepted(null),
+    });
+    if (id) await this.deps.store.markSent(tenantId, id, null);
+    return true;
+  }
+
+  /** A late Orca outcome is a new notice after the launch task's terminal event. */
+  async notifyOrcaSupervision(
+    tenantId: string,
+    userId: string,
+    taskId: string,
+    outcome:
+      | { state: 'finished' }
+      | { state: 'blocked' | 'uncertain'; reason: string }
+      | { state: 'switched'; terminal: string; agent: 'claude' | 'codex' },
+  ): Promise<boolean> {
+    const link = (await this.deps.store.listLinks(tenantId, userId)).find(
+      (item) => item.provider === 'line',
+    );
+    if (!link) return false;
+    const text =
+      outcome.state === 'switched'
+        ? `利用上限に達したため、${outcome.agent === 'claude' ? 'Claude' : 'Codex'} に作業を引き継ぎました。新しいエージェントの完了はまだ確認していません。`
+        : outcome.state === 'finished'
+          ? 'コーディングエージェントが応答を終えました。結果を端末で確認してください。'
+          : outcome.state === 'blocked'
+            ? `自動引き継ぎを止めました。${outcome.reason}`
+            : '引き継ぎの結果を確認できません。Orca の端末を確認してください。';
+    await this.deps.store.enqueue({
+      tenantId,
+      linkId: link.id,
+      taskId,
+      eventSequence: -999_001,
+      kind: 'notice',
+      destination: link.subject,
+      threadKey: link.subject,
+      body: render.notice(text),
+    });
+    return true;
+  }
+
   /**
    * 本人の共有スペースのグループへ送る（本人が「送って」と確かめたあとだけ呼ぶ）。
    * 送れたグループの数を返す（グループが無ければ 0）。
@@ -1954,6 +2043,40 @@ export class ChannelService {
         return render.paused(typeof payload['message'] === 'string' ? payload['message'] : null);
       case 'completed': {
         const task = await this.deps.tasks.get(tenantId, watch.taskId).catch(() => null);
+        if (
+          (task?.kind === 'coding.orca.launch' || task?.kind === 'coding.orca.resume') &&
+          task.result_artifact_id &&
+          this.deps.artifactBody
+        ) {
+          const body = await this.deps
+            .artifactBody(tenantId, task.result_artifact_id)
+            .catch(() => null);
+          try {
+            const result = JSON.parse(body ?? 'null') as {
+              agent?: unknown;
+              failover?: { from?: unknown; reason?: unknown };
+            } | null;
+            if (
+              result?.failover?.reason === 'rate_limited' &&
+              typeof result.failover.from === 'string' &&
+              typeof result.agent === 'string'
+            ) {
+              return render.notice(
+                `${result.failover.from === 'claude' ? 'Claude' : 'Codex'} の利用上限を検出し、${result.agent === 'claude' ? 'Claude' : 'Codex'} に作業を引き継ぎました。起動したエージェントの完了はまだ確認していません。`,
+              );
+            }
+            if (result?.agent === 'claude' || result?.agent === 'codex') {
+              return render.notice(
+                `${result.agent === 'claude' ? 'Claude' : 'Codex'} を起動しました。作業の完了はまだ確認していません。`,
+              );
+            }
+          } catch {
+            /* older Orca artifacts used Markdown despite a JSON MIME type */
+          }
+          return render.notice(
+            'エージェントの起動を受け付けました。作業の完了はまだ確認していません。',
+          );
+        }
         // 電話は結果カード（結果を先頭に）。報告の形で読めなければ、いつもの知らせ
         if (task?.kind?.startsWith('phone.') && task.result_artifact_id && this.deps.artifactText) {
           const report = parseCallReport(

@@ -44,6 +44,7 @@ import { OwnedProcesses, waitFor, jsonRequest } from '../local-preview/processes
 import {
   macAppLaunchArgs,
   nativeAppIdentity,
+  nativeAppPath,
   readNativeProcessIdentity,
   stopOwnedNativeApp,
   monitorNativeAppExit,
@@ -286,16 +287,26 @@ test('CLI rejects unsupported actions, external model URLs, ambiguous ports and 
     ['--docker-context', '-remote'],
     ['--docker-context'],
     ['--transaction-simulation'],
+    ['--orca-root', 'relative/path'],
   ])
     assert.throws(() => parseOptions(args));
   assert.equal(parseOptions(['stop']).command, 'stop');
   assert.equal(parseOptions(['--app', '/tmp/Genie.app']).open, true);
   assert.equal(parseOptions(['--app', '/tmp/Genie.app', '--no-open']).open, false);
   assert.equal(parseOptions(['--port', '43124', '--no-open']).port, 43124);
+  assert.equal(parseOptions(['--orca-root', '/tmp/projects']).orcaRoot, '/tmp/projects');
   assert.equal(
     parseOptions(['--docker-context', 'colima-genie-test']).dockerContext,
     'colima-genie-test',
   );
+});
+
+test('source-build app symlink resolves to the executable path LaunchServices reports', async (t) => {
+  const root = await temporary(t);
+  const actual = join(root, 'build.noindex', 'Genie.app');
+  await mkdir(actual, { recursive: true });
+  await symlink('build.noindex', join(root, 'build'));
+  assert.equal(await nativeAppPath(join(root, 'build', 'Genie.app')), await realpath(actual));
 });
 
 test('transaction simulation is explicit, requires computer use and only exports the local fixture executable', async (t) => {

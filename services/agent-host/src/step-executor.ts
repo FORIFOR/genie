@@ -112,7 +112,11 @@ export class HostStepExecutor {
   ): Promise<{ result: unknown; detail?: string | null }> {
     const { bridge } = this.#deps;
 
-    if (!(await bridge.hasOnlineHost(input.tenantId, input.userId))) {
+    const targetHostId =
+      step.toolId.startsWith('coding.orca.') && typeof step.args['host_id'] === 'string'
+        ? step.args['host_id']
+        : undefined;
+    if (!(await bridge.hasOnlineHost(input.tenantId, input.userId, targetHostId))) {
       throw new HostOfflineError('この操作は端末で行います。端末が応答していません。');
     }
 
@@ -127,6 +131,7 @@ export class HostStepExecutor {
 
     const request = await bridge.request({
       tenantId: input.tenantId,
+      userId: input.userId,
       taskId: input.taskId,
       stepIndex: step.index,
       toolId: step.toolId,

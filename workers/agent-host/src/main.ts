@@ -34,6 +34,10 @@ import { localVisionRuntime } from './local-vision-model.js';
 import { HttpLlmClient } from './http-llm.js';
 import { CurrentInfoRunner } from './current-info/runner.js';
 import { CompositeRunner } from './runner.js';
+import { OrcaStatusRunner, findOrca } from './coding/orca-status-runner.js';
+import { OrcaActionRunner } from './coding/orca-action-runner.js';
+import { OrcaAdapter } from './coding/orca-adapter.js';
+import { OrcaSupervisor, httpOrcaSupervisionTransport } from './coding/orca-supervisor.js';
 import { ComputerVisionRuntime } from './computer-vision.js';
 import { CloudModelBudget } from './cloud-vision-budget.js';
 import { visualContextDir } from './visual-context.js';
@@ -470,6 +474,8 @@ async function main(): Promise<void> {
           onCalendarRead: (outcome) => logger.info(outcome, 'brief google calendar'),
         }),
         new CurrentInfoRunner(),
+        new OrcaStatusRunner(id),
+        new OrcaActionRunner(id),
         llm,
       ],
       (toolId, outcome, ms) =>
@@ -487,6 +493,29 @@ async function main(): Promise<void> {
     onError: (error) => logger.warn({ err: error.message }, 'a step could not be handled'),
   });
   void steps.start(id);
+  let orcaSupervisor: OrcaSupervisor | null = null;
+  if (process.env['ASTRA_ORCA_WORKSPACE_ROOTS']) {
+    try {
+      const roots: unknown = JSON.parse(process.env['ASTRA_ORCA_WORKSPACE_ROOTS']);
+      const executable = await findOrca();
+      if (
+        executable &&
+        Array.isArray(roots) &&
+        roots.length &&
+        roots.every((value) => typeof value === 'string')
+      ) {
+        orcaSupervisor = new OrcaSupervisor({
+          hostId: id,
+          transport: httpOrcaSupervisionTransport({ baseUrl, token, fetch: apiSession.fetch }),
+          port: new OrcaAdapter({ executable, roots: roots as string[] }),
+          onError: (message) => logger.warn({ error: message }, 'Orca supervision check failed'),
+        });
+        orcaSupervisor.start();
+      }
+    } catch {
+      logger.warn({}, 'Orca supervision is not configured');
+    }
+  }
 
   /*
    * Work Context の同期。正本 §6、Work Context 仕様。
@@ -593,6 +622,7 @@ async function main(): Promise<void> {
     clearInterval(initialTimer);
     workSync.stop();
     steps.stop();
+    orcaSupervisor?.stop();
     void host.stop().finally(async () => {
       await instance.release();
       process.exit(0);

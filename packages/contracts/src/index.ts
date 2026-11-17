@@ -15,6 +15,7 @@ export * from './codec.js';
 export * from './canonical.js';
 export * from './errors.js';
 export * from './agent-host.js';
+export * from './coding-orca.js';
 export * from './approval.js';
 export * from './artifact.js';
 export * from './context.js';

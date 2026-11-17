@@ -11,7 +11,7 @@ import {
   lstat,
 } from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { resolve, join } from 'node:path';
+import { resolve, join, isAbsolute } from 'node:path';
 import { createServer } from 'node:net';
 import { constants } from 'node:fs';
 import { isDeepStrictEqual } from 'node:util';
@@ -73,6 +73,7 @@ export function parseOptions(args) {
     '--model-url': 'modelURL',
     '--computer-vision-model': 'computerVisionModel',
     '--app': 'app',
+    '--orca-root': 'orcaRoot',
     '--docker-context': 'dockerContext',
     /*
      * 画面操作ヘルパーの道。**既定は今までどおりリポジトリが建てた本番の実行ファイル。**
@@ -105,6 +106,8 @@ export function parseOptions(args) {
   result.stateDir = resolve(result.stateDir);
   if (result.computerHelper !== undefined) result.computerHelper = resolve(result.computerHelper);
   if (result.channelsEnv !== undefined) result.channelsEnv = resolve(result.channelsEnv);
+  if (result.orcaRoot !== undefined && !isAbsolute(result.orcaRoot))
+    throw new Error('--orca-root には絶対パスを指定してください。');
   if (result.port !== undefined) result.port = portNumber(result.port);
   if (result.model !== undefined) validateModel(result.model);
   if (result.computerVisionModel !== undefined) {
@@ -143,6 +146,10 @@ export const CHANNEL_ENV_KEYS = Object.freeze([
   'GENIE_LINE_LIFF_ID',
   // LINE の中継（公式アカウント 1 つ）の場所。鍵（GENIE_LINE_HUB_CREDENTIAL）はキーチェーン
   'GENIE_LINE_HUB_URL',
+  // LINE のコーディング依頼で使う、Orca 許可フォルダ内の既存プロジェクト。
+  'GENIE_LINE_ORCA_PROJECT',
+  // 複数の Agent Host がオンラインなら、この端末だけを使う。
+  'GENIE_LINE_ORCA_HOST_ID',
 ]);
 
 /**

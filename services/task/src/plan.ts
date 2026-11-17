@@ -26,7 +26,10 @@ export function requiresSingleAttempt(step: {
 }): boolean {
   // A manual checkout handoff must never escalate to generic screen automation.
   return (
-    step.toolId === 'checkout.open' || (step.risk !== 'READ' && step.risk !== 'REVERSIBLE_WRITE')
+    step.toolId === 'checkout.open' ||
+    (step.toolId?.startsWith('coding.orca.') &&
+      !['coding.orca.status', 'coding.orca.search'].includes(step.toolId)) ||
+    (step.risk !== 'READ' && step.risk !== 'REVERSIBLE_WRITE')
   );
 }
 
@@ -269,6 +272,12 @@ export interface TaskPlan {
 
 export const KNOWN_TASK_KINDS = [
   'echo',
+  'coding.orca.status',
+  'coding.orca.search',
+  'coding.orca.create',
+  'coding.orca.register',
+  'coding.orca.launch',
+  'coding.orca.resume',
   'research',
   'meeting.finalize',
   'mail.send',
@@ -814,6 +823,138 @@ export function planTask(kind: string, input: Record<string, unknown>): TaskPlan
   switch (kind) {
     case 'echo':
       return planEcho(input);
+    case 'coding.orca.status':
+      if (
+        typeof input['host_id'] !== 'string' ||
+        !/^[a-f\d]{8}-[a-f\d-]{27,40}$/i.test(input['host_id'])
+      )
+        throw new UnknownTaskKindError('coding.orca.status needs host_id');
+      return {
+        steps: [
+          {
+            index: 0,
+            toolId: 'coding.orca.status',
+            risk: 'READ',
+            surface: 'local',
+            message: 'この端末の Orca を確認しています',
+            args: { host_id: input['host_id'] },
+          },
+        ],
+        artifact: { type: 'OTHER', title: 'Orca の状態', mimeType: 'application/json' },
+      };
+    case 'coding.orca.search': {
+      const hostId = input['host_id'];
+      const path = input['path'];
+      const agent = input['agent'];
+      const query = input['query'];
+      if (
+        typeof hostId !== 'string' ||
+        !/^[a-f\d]{8}-[a-f\d-]{27,40}$/i.test(hostId) ||
+        typeof path !== 'string' ||
+        !path.startsWith('/') ||
+        path.length > 1024 ||
+        (agent !== 'claude' && agent !== 'codex') ||
+        typeof query !== 'string' ||
+        !query.trim() ||
+        query.length > 500
+      ) {
+        throw new UnknownTaskKindError('coding.orca.search needs path, agent, and query');
+      }
+      return {
+        steps: [
+          {
+            index: 0,
+            toolId: 'coding.orca.search',
+            risk: 'READ',
+            surface: 'local',
+            message: 'このプロジェクトのセッションを探しています',
+            args: { host_id: hostId, path, agent, query },
+          },
+        ],
+        artifact: { type: 'OTHER', title: 'Orca セッション検索', mimeType: 'application/json' },
+      };
+    }
+    case 'coding.orca.create':
+    case 'coding.orca.register':
+    case 'coding.orca.launch':
+    case 'coding.orca.resume': {
+      const hostId = input['host_id'];
+      const path = input['path'];
+      const root = input['root'];
+      const name = input['name'];
+      const agent = input['agent'];
+      const prompt = input['prompt'];
+      const fallbackAgent = input['fallback_agent'];
+      const query = input['query'];
+      const sessionId = input['session_id'];
+      if (typeof hostId !== 'string' || !/^[a-f\d]{8}-[a-f\d-]{27,40}$/i.test(hostId))
+        throw new UnknownTaskKindError(`${kind} needs host_id`);
+      const isPath = (value: unknown): value is string =>
+        typeof value === 'string' && value.startsWith('/') && value.length <= 1024;
+      if (
+        kind === 'coding.orca.create' &&
+        (!isPath(root) ||
+          typeof name !== 'string' ||
+          !/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,79}$/.test(name))
+      )
+        throw new UnknownTaskKindError('coding.orca.create needs root and name');
+      if (kind !== 'coding.orca.create' && !isPath(path))
+        throw new UnknownTaskKindError(`${kind} needs path`);
+      if (
+        (kind === 'coding.orca.launch' || kind === 'coding.orca.resume') &&
+        agent !== 'claude' &&
+        agent !== 'codex'
+      )
+        throw new UnknownTaskKindError(`${kind} needs agent`);
+      if (
+        kind === 'coding.orca.launch' &&
+        (typeof prompt !== 'string' || !prompt.trim() || prompt.length > 8000)
+      )
+        throw new UnknownTaskKindError('coding.orca.launch needs prompt');
+      if (
+        kind === 'coding.orca.launch' &&
+        fallbackAgent !== undefined &&
+        ((fallbackAgent !== 'claude' && fallbackAgent !== 'codex') || fallbackAgent === agent)
+      )
+        throw new UnknownTaskKindError('coding.orca.launch needs a different fallback_agent');
+      if (
+        kind === 'coding.orca.resume' &&
+        (typeof sessionId !== 'string' ||
+          !/^[a-f\d]{8}-[a-f\d-]{27,40}$/i.test(sessionId) ||
+          typeof query !== 'string' ||
+          !query.trim() ||
+          query.length > 500)
+      )
+        throw new UnknownTaskKindError('coding.orca.resume needs session_id and query');
+      const args =
+        kind === 'coding.orca.create'
+          ? { host_id: hostId, root, name }
+          : kind === 'coding.orca.register'
+            ? { host_id: hostId, path }
+            : kind === 'coding.orca.launch'
+              ? {
+                  host_id: hostId,
+                  path,
+                  agent,
+                  prompt,
+                  ...(fallbackAgent ? { fallback_agent: fallbackAgent } : {}),
+                }
+              : { host_id: hostId, path, agent, query, session_id: sessionId };
+      return {
+        steps: [
+          {
+            index: 0,
+            toolId: kind,
+            risk: 'REVERSIBLE_WRITE',
+            surface: 'local',
+            requiresConfirmation: true,
+            message: 'Orca での操作を確認しています',
+            args,
+          },
+        ],
+        artifact: { type: 'OTHER', title: 'Orca の操作受付', mimeType: 'application/json' },
+      };
+    }
     case 'research':
       return planResearch(input);
     case 'meeting.finalize':
@@ -1150,6 +1291,44 @@ export interface ApprovalCard {
 export function approvalSummaryFor(step: TaskStep): ApprovalCard {
   if (step.toolId === 'computer.run') return computerRunApproval(step);
   if (step.toolId === 'transaction.submit') return transactionApproval(step);
+  if (
+    [
+      'coding.orca.create',
+      'coding.orca.register',
+      'coding.orca.launch',
+      'coding.orca.resume',
+    ].includes(step.toolId)
+  ) {
+    const labels: Record<string, string> = {
+      'coding.orca.create': '新しいプロジェクトを作る',
+      'coding.orca.register': '既存プロジェクトを登録する',
+      'coding.orca.launch': 'コーディングエージェントを起動する',
+      'coding.orca.resume': '以前のセッションを再開する',
+    };
+    const fields: Readonly<Record<string, string>> = {
+      root: '保存先',
+      name: '名前',
+      path: 'プロジェクト',
+      agent: 'エージェント',
+      fallback_agent: '利用制限時の代替エージェント',
+      prompt: '指示',
+      query: '検索語',
+      session_id: 'セッション ID',
+    };
+    return {
+      summary: labels[step.toolId]!,
+      details: Object.entries(fields).flatMap(([key, label]) =>
+        typeof step.args[key] === 'string' ? [{ label, value: step.args[key] as string }] : [],
+      ),
+      impact: {
+        primary_action_label: labels[step.toolId]!,
+        affected_count: 1,
+        scope: 'internal',
+        reversible: false,
+        recovery_note: '起動後のエージェントは別途停止が必要です。',
+      },
+    };
+  }
   // 予定の変更は、変更前と変更後だけを見せる（予定の id や ISO の時刻は見せない）。元に戻すのも同じ道で、承認が要る
   if (step.toolId === 'calendar.move_event')
     return {

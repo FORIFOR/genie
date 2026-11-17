@@ -5,9 +5,10 @@
  */
 import { createHmac } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import { type TokenResponse, uuidv7 } from '@genie/contracts';
+import { canonicalSha256, type TokenResponse, uuidv7 } from '@genie/contracts';
 import { withTenant } from '@genie/db';
 import { appendEvent } from '@genie/service-task';
+import { AgentHostService, HostBridge as HostStepBridge } from '@genie/service-agent-host';
 import { makeTestApp, makeTokens, testDbConfig, type TestApp } from './support.js';
 import type { App } from '../src/fastify.js';
 
@@ -138,7 +139,11 @@ describe.skipIf(!url)('calendar in LINE: read, move with approval, undo (spec v1
           })) as unknown as typeof fetch,
       },
       channels: {
-        env: { LINE_CHANNEL_SECRET: LINE_SECRET, LINE_CHANNEL_ACCESS_TOKEN: 'line-token' },
+        env: {
+          LINE_CHANNEL_SECRET: LINE_SECRET,
+          LINE_CHANNEL_ACCESS_TOKEN: 'line-token',
+          GENIE_LINE_ORCA_PROJECT: '/projects/app',
+        },
         fetchImpl: fetchImpl as unknown as typeof fetch,
       },
     });
@@ -343,5 +348,362 @@ describe.skipIf(!url)('calendar in LINE: read, move with approval, undo (spec v1
     expect(JSON.stringify(messages[1])).toContain('焼き鳥 とり新');
     expect(JSON.stringify(messages[1]!['quickReply'])).toContain('今日18時');
     expect(String(messages[0]!['text'])).not.toContain('分かりません');
+  });
+
+  it('notifies the linked LINE DM once when a local Orca task switches agents', async () => {
+    const made = await app.inject({
+      method: 'POST',
+      url: '/v1/tasks',
+      headers: { ...auth, 'idempotency-key': `orca-line-${uuidv7()}` },
+      payload: {
+        kind: 'coding.orca.launch',
+        input: {
+          host_id: '123e4567-e89b-42d3-a456-426614174000',
+          path: '/projects/app',
+          agent: 'claude',
+          fallback_agent: 'codex',
+          prompt: 'Implement',
+        },
+      },
+    });
+    expect(made.statusCode).toBe(202);
+    const taskId = made.json<{ id: string }>().id;
+    const before = sent.length;
+    await complete(
+      taskId,
+      JSON.stringify({
+        state: 'launched',
+        agent: 'codex',
+        failover: { from: 'claude', reason: 'rate_limited' },
+      }),
+      'application/json',
+    );
+    await harness.channels!.service.pump(tenantId);
+    await harness.channels!.service.pump(tenantId);
+    const notices = texts(before).filter((text) => text.includes('Codex に作業を引き継ぎました'));
+    expect(notices).toHaveLength(1);
+    expect(notices[0]).toContain('完了はまだ確認していません');
+  });
+
+  it('notifies the linked LINE DM when all approved agents are unavailable', async () => {
+    const made = await app.inject({
+      method: 'POST',
+      url: '/v1/tasks',
+      headers: { ...auth, 'idempotency-key': `orca-line-failed-${uuidv7()}` },
+      payload: {
+        kind: 'coding.orca.launch',
+        input: {
+          host_id: '123e4567-e89b-42d3-a456-426614174000',
+          path: '/projects/app',
+          agent: 'claude',
+          fallback_agent: 'codex',
+          prompt: 'Implement',
+        },
+      },
+    });
+    expect(made.statusCode).toBe(202);
+    const taskId = made.json<{ id: string }>().id;
+    const before = sent.length;
+    const error = {
+      code: 'task.step_failed',
+      message: '両方が利用上限に達しています。',
+      step_index: 0,
+      retryable: false,
+    };
+    await withTenant(harness.db, tenantId, async (tx) => {
+      await tx
+        .updateTable('tasks')
+        .set({ status: 'FAILED', error })
+        .where('id', '=', taskId)
+        .execute();
+      await appendEvent(tx, {
+        tenantId,
+        streamKind: 'task',
+        streamId: taskId,
+        taskId,
+        type: 'task.failed',
+        payload: { error },
+      });
+    });
+    await harness.channels!.service.pump(tenantId);
+    await harness.channels!.service.pump(tenantId);
+    expect(texts(before).filter((text) => text.includes('両方が利用上限'))).toHaveLength(1);
+  });
+
+  it('delivers a late Orca handoff notice once after the launch task has ended', async () => {
+    const made = await app.inject({
+      method: 'POST',
+      url: '/v1/tasks',
+      headers: { ...auth, 'idempotency-key': `orca-late-line-${uuidv7()}` },
+      payload: {
+        kind: 'coding.orca.launch',
+        input: {
+          host_id: '123e4567-e89b-42d3-a456-426614174000',
+          path: '/projects/app',
+          agent: 'claude',
+          fallback_agent: 'codex',
+          prompt: 'Implement',
+        },
+      },
+    });
+    expect(made.statusCode).toBe(202);
+    const taskId = made.json<{ id: string }>().id;
+    const before = sent.length;
+    const outcome = {
+      state: 'switched' as const,
+      agent: 'codex' as const,
+      terminal: 'term_223e4567-e89b-42d3-a456-426614174000',
+    };
+    await harness.channels!.service.notifyOrcaSupervision(tenantId, userId, taskId, outcome);
+    await harness.channels!.service.notifyOrcaSupervision(tenantId, userId, taskId, outcome);
+    await harness.channels!.service.pump(tenantId);
+    expect(
+      texts(before).filter((text) => text.includes('Codex に作業を引き継ぎました')),
+    ).toHaveLength(1);
+  });
+
+  it('does not create a coding task when the owner has no online host', async () => {
+    const seen = new Set((await tasks()).map((task) => task.id));
+    const before = sent.length;
+    await line('GenieのREADMEをClaudeで修正してください。');
+    await waitFor(
+      () => texts(before).some((text) => text.includes('端末がオンラインではありません')),
+      'offline host notice',
+    );
+    expect((await tasks()).filter((task) => !seen.has(task.id))).toHaveLength(0);
+  });
+
+  it('turns a linked LINE coding request into an approved Orca task with fallback', async () => {
+    const hostId = (
+      await new AgentHostService({ db: harness.db }).heartbeat({
+        tenantId,
+        userId,
+        deviceLabel: `line-coding-${uuidv7()}`,
+        models: ['claude', 'codex'],
+      })
+    ).id;
+    const seen = new Set((await tasks()).map((task) => task.id));
+    const prompt =
+      'GenieのREADMEにセットアップ手順を追記してください。Claudeの利用上限に達した場合はCodexへ引き継いで、進捗をLINEへ通知してください。';
+    const before = sent.length;
+    await line(prompt);
+    const task = await newest('coding.orca.launch', seen);
+    expect(await taskRow(task.id)).toMatchObject({
+      kind: 'coding.orca.launch',
+      input: {
+        host_id: hostId,
+        path: '/projects/app',
+        agent: 'claude',
+        fallback_agent: 'codex',
+        prompt,
+      },
+    });
+    expect(texts(before).join('\n')).toContain('Orca での作業を受け付けました');
+    expect(sent.slice(before).some((item) => item.url.endsWith('/message/reply'))).toBe(true);
+    expect(
+      (await tasks()).filter(
+        (item) => !seen.has(item.id) && item.kind === 'plugin:com.astra.general:assistant',
+      ),
+    ).toHaveLength(0);
+
+    const args = (await taskRow(task.id)).input as Record<string, unknown>;
+    const inputsHash = await canonicalSha256(args);
+    const approvalId = uuidv7();
+    const expiresAt = new Date(Date.now() + 60_000);
+    await withTenant(harness.db, tenantId, (tx) =>
+      tx
+        .insertInto('approvals')
+        .values({
+          id: approvalId,
+          tenant_id: tenantId,
+          task_id: task.id,
+          step_index: 0,
+          risk: 'REVERSIBLE_WRITE',
+          summary: 'Launch',
+          details: JSON.stringify({ inputsHash }),
+          editable_fields: JSON.stringify([]),
+          status: 'APPROVED',
+          expires_at: expiresAt,
+          decided_by: userId,
+          decided_at: new Date(),
+        })
+        .execute(),
+    );
+    const bridge = new HostStepBridge({ db: harness.db });
+    const request = await bridge.request({
+      tenantId,
+      userId,
+      taskId: task.id,
+      stepIndex: 0,
+      toolId: 'coding.orca.launch',
+      args,
+      approval: {
+        approvalId,
+        operationId: 'coding.orca.launch',
+        decision: 'APPROVED',
+        decidedBy: userId,
+        decidedAt: new Date().toISOString(),
+        expiresAt: expiresAt.toISOString(),
+        inputsHash,
+      },
+    });
+    await bridge.claimNext({ tenantId, hostId });
+    await bridge.complete({
+      tenantId,
+      hostId,
+      requestId: request.id,
+      result: {
+        state: 'launched',
+        terminal: 'term_123e4567-e89b-42d3-a456-426614174000',
+        agent: 'claude',
+      },
+    });
+    await withTenant(harness.db, tenantId, (tx) =>
+      tx.updateTable('tasks').set({ status: 'COMPLETED' }).where('id', '=', task.id).execute(),
+    );
+    const claimed = await app.inject({
+      method: 'POST',
+      url: `/v1/host-steps/${request.id}/orca-supervision/begin`,
+      headers: auth,
+      payload: { host_id: hostId },
+    });
+    expect(claimed.json()).toEqual({ claimed: true });
+    const beforeNotice = sent.length;
+    const outcome = {
+      state: 'switched',
+      agent: 'codex',
+      terminal: 'term_223e4567-e89b-42d3-a456-426614174000',
+    };
+    const finished = await app.inject({
+      method: 'POST',
+      url: `/v1/host-steps/${request.id}/orca-supervision/finish`,
+      headers: auth,
+      payload: { host_id: hostId, outcome },
+    });
+    expect(finished.statusCode).toBe(204);
+    await harness.channels!.service.pump(tenantId);
+    await harness.channels!.service.pump(tenantId);
+    expect(
+      texts(beforeNotice).filter((text) => text.includes('Codex に作業を引き継ぎました')),
+    ).toHaveLength(1);
+  });
+
+  it('records a late switch through the authenticated Gateway and queues one LINE notice', async () => {
+    const hostId = (
+      await new AgentHostService({ db: harness.db }).heartbeat({
+        tenantId,
+        userId,
+        deviceLabel: `orca-test-${uuidv7()}`,
+        models: ['codex'],
+      })
+    ).id;
+    const args = {
+      host_id: hostId,
+      path: '/projects/app',
+      agent: 'claude',
+      fallback_agent: 'codex',
+      prompt: 'Implement',
+    };
+    const made = await app.inject({
+      method: 'POST',
+      url: '/v1/tasks',
+      headers: { ...auth, 'idempotency-key': `orca-late-api-${uuidv7()}` },
+      payload: { kind: 'coding.orca.launch', input: args },
+    });
+    expect(made.statusCode).toBe(202);
+    const taskId = made.json<{ id: string }>().id;
+    const inputsHash = await canonicalSha256(args);
+    const approvalId = uuidv7();
+    const expiresAt = new Date(Date.now() + 60_000);
+    await withTenant(harness.db, tenantId, (tx) =>
+      tx
+        .insertInto('approvals')
+        .values({
+          id: approvalId,
+          tenant_id: tenantId,
+          task_id: taskId,
+          step_index: 0,
+          risk: 'REVERSIBLE_WRITE',
+          summary: 'Launch',
+          details: JSON.stringify({ inputsHash }),
+          editable_fields: JSON.stringify([]),
+          status: 'APPROVED',
+          expires_at: expiresAt,
+          decided_by: userId,
+          decided_at: new Date(),
+        })
+        .execute(),
+    );
+    const bridge = new HostStepBridge({ db: harness.db });
+    const request = await bridge.request({
+      tenantId,
+      userId,
+      taskId,
+      stepIndex: 0,
+      toolId: 'coding.orca.launch',
+      args,
+      approval: {
+        approvalId,
+        operationId: 'coding.orca.launch',
+        decision: 'APPROVED',
+        decidedBy: userId,
+        decidedAt: new Date().toISOString(),
+        expiresAt: expiresAt.toISOString(),
+        inputsHash,
+      },
+    });
+    await bridge.claimNext({ tenantId, hostId });
+    await bridge.complete({
+      tenantId,
+      hostId,
+      requestId: request.id,
+      result: {
+        state: 'launched',
+        terminal: 'term_123e4567-e89b-42d3-a456-426614174000',
+        agent: 'claude',
+      },
+    });
+    await withTenant(harness.db, tenantId, (tx) =>
+      tx.updateTable('tasks').set({ status: 'COMPLETED' }).where('id', '=', taskId).execute(),
+    );
+    const list = await app.inject({
+      method: 'GET',
+      url: `/v1/host-steps/orca-supervisions?host_id=${hostId}`,
+      headers: auth,
+    });
+    expect(list.statusCode).toBe(200);
+    expect(list.json<{ items: { requestId: string }[] }>().items).toContainEqual(
+      expect.objectContaining({ requestId: request.id }),
+    );
+    const begin = await app.inject({
+      method: 'POST',
+      url: `/v1/host-steps/${request.id}/orca-supervision/begin`,
+      headers: auth,
+      payload: { host_id: hostId },
+    });
+    expect(begin.json()).toEqual({ claimed: true });
+    const before = sent.length;
+    const outcome = {
+      state: 'switched',
+      agent: 'codex',
+      terminal: 'term_223e4567-e89b-42d3-a456-426614174000',
+    };
+    const finish = await app.inject({
+      method: 'POST',
+      url: `/v1/host-steps/${request.id}/orca-supervision/finish`,
+      headers: auth,
+      payload: { host_id: hostId, outcome },
+    });
+    expect(finish.statusCode).toBe(204);
+    const state = await app.inject({
+      method: 'GET',
+      url: `/v1/tasks/${taskId}/orca-supervision`,
+      headers: auth,
+    });
+    expect(state.json()).toMatchObject({ state: 'switched', outcome });
+    await harness.channels!.service.pump(tenantId);
+    expect(
+      texts(before).filter((text) => text.includes('Codex に作業を引き継ぎました')),
+    ).toHaveLength(1);
   });
 });

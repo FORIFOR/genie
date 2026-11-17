@@ -3,7 +3,7 @@
 import { execFile } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, realpath, access, constants, stat, writeFile } from 'node:fs/promises';
-import { join, dirname, resolve } from 'node:path';
+import { join, dirname, resolve, relative, isAbsolute } from 'node:path';
 import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { createServer } from 'node:http';
@@ -69,6 +69,7 @@ DB設定・マイグレーション・3サービスの起動をまとめて行�
   --no-external-screen  保存した画面画像の送信許可を解除（会話の接続設定は保持）
   --model-url <URL>    ローカルHTTPモデル（既定 http://127.0.0.1:11434/v1）
   --app <Genie.app>    開くMacアプリ（既定 /Applications/Genie.app）
+  --orca-root <path>   Orca が操作できるプロジェクトの親フォルダ（絶対パス）
   --state-dir <path>  専用の保存先（既定 ${DEFAULT_STATE}）
   --port <port>       初回作成時のGatewayポート（既定 ${DEFAULT_PORT}）
   --docker-context <名前>  ローカルunixソケットのcontext。専用保存先に記録し、毎回検証
@@ -334,6 +335,12 @@ export async function nativeAppIdentity(
     : null;
 }
 
+/** Resolve source-build app aliases before comparing the LaunchServices process argv. */
+export async function nativeAppPath(path) {
+  const absolute = resolve(path);
+  return realpath(absolute).catch(() => absolute);
+}
+
 export async function stopOwnedNativeApp(
   identity,
   env,
@@ -563,7 +570,17 @@ export async function start(options) {
   try {
     config = modelConfiguration(await loadConfig(stateDir, options), options);
     const base = `http://127.0.0.1:${config.port}`;
-    const app = resolve(options.app ?? '/Applications/Genie.app');
+    const app = options.open
+      ? await nativeAppPath(options.app ?? '/Applications/Genie.app')
+      : resolve(options.app ?? '/Applications/Genie.app');
+    let orcaRoot = null;
+    if (options.orcaRoot) {
+      orcaRoot = await realpath(options.orcaRoot).catch(() => {
+        throw new Error('--orca-root のフォルダが見つかりません。');
+      });
+      if (!(await stat(orcaRoot)).isDirectory())
+        throw new Error('--orca-root にはフォルダを指定してください。');
+    }
     let appBundleID;
     if (options.open) {
       const appVersion = await probe(
@@ -851,6 +868,15 @@ export async function start(options) {
       ...options,
       ...(hasConnections ? { connectionsConfig } : {}),
     });
+    // The managed preview's checked-out Genie repo is the LINE coding target only
+    // when it is inside the operator's explicit Orca allowlist.
+    const repoFromOrcaRoot = orcaRoot ? relative(orcaRoot, REPO) : null;
+    if (
+      repoFromOrcaRoot !== null &&
+      !repoFromOrcaRoot.startsWith('..') &&
+      !isAbsolute(repoFromOrcaRoot)
+    )
+      runtimeEnv.GENIE_LINE_ORCA_PROJECT ??= REPO;
     if (options.channelsEnv) {
       // 設定のファイルは本人だけが読める（0600）ものに限る。鍵はファイルではなくキーチェーンから読む
       const info = await stat(options.channelsEnv);
@@ -875,6 +901,20 @@ export async function start(options) {
           `／キーチェーンの鍵: ${Object.keys(keychainEnv).join(', ') || 'なし'}` +
           (ignored.length ? `（渡さなかった名前: ${ignored.join(', ')}）` : ''),
       );
+    }
+    if (runtimeEnv.GENIE_LINE_ORCA_PROJECT) {
+      const project = await realpath(runtimeEnv.GENIE_LINE_ORCA_PROJECT).catch(() => {
+        throw new Error('LINE の Orca 作業場所が見つかりません。');
+      });
+      const withinRoot = orcaRoot ? relative(orcaRoot, project) : null;
+      if (
+        withinRoot === null ||
+        withinRoot.startsWith('..') ||
+        isAbsolute(withinRoot) ||
+        !(await stat(project)).isDirectory()
+      )
+        throw new Error('LINE の Orca 作業場所は --orca-root の中のフォルダにしてください。');
+      runtimeEnv.GENIE_LINE_ORCA_PROJECT = project;
     }
     if (options.publicUrl) runtimeEnv.GENIE_PUBLIC_URL = options.publicUrl;
     if (codexExecutable) runtimeEnv.ASTRA_CODEX_PATH = codexExecutable;
@@ -946,6 +986,7 @@ export async function start(options) {
     });
     await runService('host', 'workers/agent-host/dist/main.js', {
       ...simulationHostEnv,
+      ...(orcaRoot ? { ASTRA_ORCA_WORKSPACE_ROOTS: JSON.stringify([orcaRoot]) } : {}),
       // host だけは仕事ごとの 1 行（何を・何秒で・結果の種類）を残す。ほかのサービスは warn のまま
       ASTRA_LOG_LEVEL: 'info',
       ASTRA_HOST_TOKEN: credentials.access_token,

@@ -9,6 +9,7 @@ import { formatCalendarArtifact } from './calendar-plan.js';
 import { ApplicationFailure } from '@temporalio/common';
 import {
   canonicalSha256,
+  isOrcaMutation,
   handoffExplanation,
   isHostOfflineError,
   HostOfflineError,
@@ -377,6 +378,7 @@ export function createTaskActivities(deps: ActivityDeps): TaskActivities {
       const decision = evaluate(policyContextFor(step));
       if (!decision.requiresApproval) return null;
       const binding = await transactionApprovalBinding(step, now());
+      const orcaHash = isOrcaMutation(step.toolId) ? await canonicalSha256(step.args) : null;
 
       if (binding && !decision.denied) {
         const card = approvalSummaryFor(step);
@@ -400,9 +402,9 @@ export function createTaskActivities(deps: ActivityDeps): TaskActivities {
           .where('step_index', '=', step.index)
           .executeTakeFirst();
         if (
-          binding &&
+          (binding || orcaHash) &&
           existing &&
-          (storedInputsHash(existing.details) !== binding.inputsHash ||
+          (storedInputsHash(existing.details) !== (binding?.inputsHash ?? orcaHash) ||
             existing.expires_at.getTime() <= now().getTime())
         ) {
           throw ApplicationFailure.nonRetryable(
@@ -445,7 +447,9 @@ export function createTaskActivities(deps: ActivityDeps): TaskActivities {
               impact: card.impact,
               ...(binding
                 ? { inputsHash: binding.inputsHash, transactionSubmitArgs: step.args }
-                : {}),
+                : orcaHash
+                  ? { inputsHash: orcaHash }
+                  : {}),
             }),
             editable_fields: JSON.stringify([]),
             status: 'PENDING',
@@ -986,6 +990,7 @@ export function createTaskActivities(deps: ActivityDeps): TaskActivities {
           .at(-1);
 
       const body =
+        (input.kind.startsWith('coding.orca.') ? JSON.stringify(results.at(-1) ?? null) : null) ??
         composed?.markdown ??
         [
           `# ${spec.title}`,

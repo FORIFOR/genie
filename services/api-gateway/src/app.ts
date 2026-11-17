@@ -214,8 +214,16 @@ export function buildApp(deps: AppDeps): App {
     verifier: deps.identityVerifier ?? new IdpVerifiers(deps.config.idp),
     enableDevTokens: allowsDevelopmentRoutes(deps.config),
   });
+  let channelService: ChannelRouteDeps['service'] | null = null;
   registerTaskRoutes(app, {
     tasks: deps.tasks,
+    watchOrcaTask: async (tenantId, userId, taskId) => {
+      try {
+        await channelService?.watchUserTask(tenantId, userId, taskId);
+      } catch {
+        deps.logger.warn({ task_id: taskId }, 'orca LINE watch registration failed');
+      }
+    },
     redis: deps.redis,
     ...(deps.evidence === undefined ? {} : { evidence: deps.evidence }),
     ...(deps.ssePollIntervalMs === undefined ? {} : { ssePollIntervalMs: deps.ssePollIntervalMs }),
@@ -246,6 +254,13 @@ export function buildApp(deps: AppDeps): App {
       hosts: deps.agentHosts,
       tasks: deps.tasks,
       ...(deps.hostBridge === undefined ? {} : { bridge: deps.hostBridge }),
+      notifyOrcaSupervision: async (tenantId, userId, taskId, outcome) => {
+        try {
+          await channelService?.notifyOrcaSupervision(tenantId, userId, taskId, outcome);
+        } catch {
+          deps.logger.warn({ task_id: taskId }, 'orca LINE supervision notice failed');
+        }
+      },
     });
   }
   registerArtifactRoutes(app, { library: deps.library });
@@ -336,6 +351,7 @@ export function buildApp(deps: AppDeps): App {
         : { ssePollIntervalMs: deps.ssePollIntervalMs }),
     });
     const channels = deps.channels?.(turnDeps) ?? null;
+    channelService = channels?.service ?? null;
     if (channels) registerChannelRoutes(app, channels);
     else registerUnconfiguredChannelStatus(app);
     callRoutes = channels?.call ?? null;
